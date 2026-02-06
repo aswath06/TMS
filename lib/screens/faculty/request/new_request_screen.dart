@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tms/components/location_selector.dart';
 import 'package:tms/components/passenger_selector.dart';
+import 'package:tms/components/location_selector.dart'; // Import the new component
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});
@@ -16,7 +16,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   int _passengerCount = 1;
   String _selectedCountryCode = "+91";
   DateTime? _startDate, _endDate;
+
   List<String> _locationResults = ["", ""];
+  double _totalDistance = 0.0;
+  double _totalDuration = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -45,11 +48,19 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
               const SizedBox(height: 32),
               _header("Location Details", Icons.route_rounded, primaryIndigo),
+
+              // --- EXTERNAL COMPONENT ---
               LocationSelector(
                 cardColor: cardColor,
                 titleColor: titleColor,
                 accentColor: primaryIndigo,
-                onChanged: (v) => _locationResults = v,
+                onChanged: (addresses, distance, duration) {
+                  setState(() {
+                    _locationResults = addresses;
+                    _totalDistance = distance;
+                    _totalDuration = duration;
+                  });
+                },
               ),
 
               const SizedBox(height: 32),
@@ -102,6 +113,28 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
 
               const SizedBox(height: 40),
+
+              if (_totalDistance > 0)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: primaryIndigo.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "Estimate: ${_totalDistance.toStringAsFixed(1)} km | ~${_totalDuration.toStringAsFixed(0)} mins",
+                      style: const TextStyle(
+                        color: primaryIndigo,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+
               _buildSubmit(primaryIndigo),
               const SizedBox(height: 100),
             ],
@@ -111,7 +144,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  // --- COMPACT UI HELPERS ---
+  // UI HELPERS (AppBar, Header, TypeSelector, DateRow, DatePicker, Input, Submit)
+  // [Retain the helper methods from your original code here...]
 
   PreferredSizeWidget _buildAppBar(Color color) => AppBar(
     backgroundColor: Colors.transparent,
@@ -276,7 +310,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     width: double.infinity,
     height: 60,
     child: ElevatedButton(
-      onPressed: () => debugPrint("Locations: $_locationResults"),
+      onPressed: () {
+        debugPrint("Finalizing Request:");
+        debugPrint("Locations: $_locationResults");
+        debugPrint(
+          "Distance: $_totalDistance km, Duration: $_totalDuration mins",
+        );
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: acc,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
