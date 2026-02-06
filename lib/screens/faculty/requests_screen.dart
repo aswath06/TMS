@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Media Query for responsiveness
     final Size size = MediaQuery.of(context).size;
     final double horizontalPadding = size.width * 0.06;
-
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Theme Colors
@@ -26,14 +25,12 @@ class RequestsScreen extends StatelessWidget {
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          // Visual decorative elements
           _buildBackgroundDecor(isDark, size),
-
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- ADAPTIVE HEADER ---
+                // --- HEADER ---
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     horizontalPadding,
@@ -74,6 +71,7 @@ class RequestsScreen extends StatelessWidget {
                   ),
                 ),
 
+                // --- CONTENT ---
                 Expanded(
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
@@ -101,9 +99,7 @@ class RequestsScreen extends StatelessWidget {
                         accent: primaryIndigo,
                         screenWidth: size.width,
                       ),
-
                       const SizedBox(height: 32),
-
                       _buildSectionTitle(
                         "Requires Attention",
                         Colors.redAccent,
@@ -123,8 +119,6 @@ class RequestsScreen extends StatelessWidget {
                         accent: primaryIndigo,
                         screenWidth: size.width,
                       ),
-
-                      // Padding to ensure content isn't hidden by Bottom Bar & FAB
                       SizedBox(height: size.height * 0.2),
                     ],
                   ),
@@ -135,13 +129,33 @@ class RequestsScreen extends StatelessWidget {
         ],
       ),
 
-      // --- ACTION BUTTON (MOVED TO BOTTOM RIGHT) ---
+      // --- FAB IN BOTTOM RIGHT ---
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Container(
-        // Margin adjusted to sit perfectly above your 72px high CustomBottomBar
         margin: const EdgeInsets.only(bottom: 90, right: 8),
         child: FloatingActionButton.extended(
-          onPressed: () {},
+          onPressed: () {
+            // Smooth Navigation to New Request
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    const NewRequestScreen(),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                      return SlideTransition(
+                        position: animation.drive(
+                          Tween(
+                            begin: const Offset(0, 1),
+                            end: Offset.zero,
+                          ).chain(CurveTween(curve: Curves.easeOutQuart)),
+                        ),
+                        child: FadeTransition(opacity: animation, child: child),
+                      );
+                    },
+              ),
+            );
+          },
           elevation: 6,
           backgroundColor: primaryIndigo,
           icon: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
@@ -154,7 +168,6 @@ class RequestsScreen extends StatelessWidget {
               fontSize: 13,
             ),
           ),
-          // Using a slightly more circular shape for the corner aesthetic
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -163,8 +176,7 @@ class RequestsScreen extends StatelessWidget {
     );
   }
 
-  // --- UI HELPERS ---
-
+  // UI Helpers (Titles, Badges, Background)
   Widget _buildSectionTitle(String title, Color accent, Color titleColor) {
     return Row(
       children: [
