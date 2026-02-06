@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:tms/components/custom_button.dart';
 import 'package:tms/components/custom_input.dart';
 import 'package:tms/components/app_branding.dart';
+import 'package:tms/screens/auth/forgot_password_screen.dart';
+import 'package:tms/utils/validators.dart';
 import "../../utils/routes.dart";
 
 class LoginScreen extends StatefulWidget {
@@ -12,30 +14,30 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoggingIn = false;
   bool _isGoogleLoading = false;
 
   Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please fill in all fields"),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _isLoggingIn = true);
+
+    // Simulate API Call
     await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
       setState(() => _isLoggingIn = false);
+
       String role = _emailController.text.toLowerCase().contains('driver')
           ? 'driver'
           : 'faculty';
+
       Navigator.pushReplacementNamed(
         context,
         AppRoutes.dashboard,
@@ -71,15 +73,18 @@ class _LoginScreenState extends State<LoginScreen> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    const AppBranding(),
-                    const SizedBox(height: 40),
-                    _buildLoginForm(),
-                    _buildDivider(),
-                    _buildGoogleButton(),
-                    const SizedBox(height: 30),
-                  ],
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      const AppBranding(),
+                      const SizedBox(height: 40),
+                      _buildLoginForm(),
+                      _buildDivider(),
+                      _buildGoogleButton(),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -110,6 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailController,
             icon: Icons.alternate_email_rounded,
             keyboardType: TextInputType.emailAddress,
+            validator: AppValidators.validateEmail,
           ),
           const SizedBox(height: 20),
           CustomInput(
@@ -117,11 +123,19 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _passwordController,
             icon: Icons.lock_outline_rounded,
             isPassword: true,
+            validator: AppValidators.validatePassword,
           ),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ForgotPasswordScreen(),
+                  ),
+                );
+              },
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF4F46E5),
               ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../components/custom_bottom_bar.dart';
-import 'profile_screen.dart';
-import 'missions_screen.dart';
-import 'dashboard_screen.dart';
-import 'requests_screen.dart';
+import 'faculty/profile_screen.dart';
+import 'faculty/missions_screen.dart';
+import 'faculty/dashboard_screen.dart';
+import 'faculty/requests_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String userRole;

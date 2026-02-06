@@ -8,19 +8,17 @@ class DashboardScreen extends StatelessWidget {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Premium Color Palette
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
-    final Color primaryBlue = const Color(0xFF6366F1); // Modern Indigo
+    final Color primaryBlue = const Color(0xFF6366F1);
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // Decorative background glow
           Positioned(
             top: -50,
             right: -50,
@@ -43,7 +41,6 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 24),
 
-                  // --- 1. PREMIUM HEADER ---
                   _buildHeader(
                     "Aswath",
                     titleColor,
@@ -53,11 +50,9 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
 
-                  // --- 2. GLASSMORPHIC SEARCH ---
                   _buildSearchBar(isDark, subColor, surfaceColor, primaryBlue),
                   const SizedBox(height: 36),
 
-                  // --- 3. OPERATIONAL OVERVIEW ---
                   _buildSectionTitle("Operational Overview", titleColor),
                   const SizedBox(height: 18),
                   _buildStatusCards(
@@ -68,13 +63,11 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 36),
 
-                  // --- 4. QUICK ACTIONS ---
                   _buildSectionTitle("Quick Actions", titleColor),
                   const SizedBox(height: 18),
                   _buildQuickActions(primaryBlue, surfaceColor, isDark),
                   const SizedBox(height: 36),
 
-                  // --- 5. RECENT ACTIVITY ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -94,7 +87,6 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   _buildNotificationList(primaryBlue, surfaceColor, isDark),
 
-                  // Reduced bottom padding
                   const SizedBox(height: 30),
                 ],
               ),
@@ -104,8 +96,6 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
-
-  // --- UI COMPONENT HELPERS ---
 
   Widget _buildHeader(
     String name,
