@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class LocationStopData {
   final int id;
@@ -36,6 +39,32 @@ class _LocationSelectorState extends State<LocationSelector> {
     super.dispose();
   }
 
+  // Free OpenStreetMap Search Logic
+  Future<List<String>> _getSuggestions(String query) async {
+    if (query.length < 3) return [];
+
+    // Filtered for Tamil Nadu, India
+    final String url =
+        "https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=5&countrycodes=in&viewbox=76.2,13.5,80.3,8.1&bounded=1";
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': 'TMS_Flutter_App', // Required for OSM usage
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        return data.map((e) => e['display_name'].toString()).toList();
+      }
+    } catch (e) {
+      debugPrint("OSM Error: $e");
+    }
+    return [];
+  }
+
   void _notify() =>
       widget.onChanged(_stops.map((s) => s.controller.text).toList());
 
@@ -43,24 +72,16 @@ class _LocationSelectorState extends State<LocationSelector> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ReorderableListView.builder(
+        ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          buildDefaultDragHandles: false,
           itemCount: _stops.length,
-          onReorder: (oldIdx, newIdx) {
-            setState(() {
-              if (newIdx > oldIdx) newIdx -= 1;
-              _stops.insert(newIdx, _stops.removeAt(oldIdx));
-            });
-            _notify();
-          },
           itemBuilder: (context, i) {
             bool isFirst = i == 0;
             bool isLast = i == _stops.length - 1;
+
             return Container(
-              key: ValueKey(_stops[i].id),
-              margin: const EdgeInsets.only(bottom: 8),
+              margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
                 color: widget.cardColor,
                 borderRadius: BorderRadius.circular(16),
@@ -75,25 +96,59 @@ class _LocationSelectorState extends State<LocationSelector> {
                       ? Colors.green
                       : (isLast ? Colors.red : Colors.grey),
                 ),
-                title: TextField(
+                title: TypeAheadField<String>(
+                  // v5.0+ requires this controller setup
                   controller: _stops[i].controller,
-                  onChanged: (_) => _notify(),
-                  style: TextStyle(
-                    color: widget.titleColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: isFirst
-                        ? "Pickup"
-                        : (isLast ? "Drop" : "Stop $i"),
-                    border: InputBorder.none,
-                  ),
+                  builder: (context, controller, focusNode) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      onChanged: (_) => _notify(),
+                      style: TextStyle(
+                        color: widget.titleColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: isFirst
+                            ? "Pickup Location"
+                            : (isLast ? "Drop Location" : "Stop $i"),
+                        border: InputBorder.none,
+                        hintStyle: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
+                      ),
+                    );
+                  },
+                  suggestionsCallback: (search) => _getSuggestions(search),
+                  itemBuilder: (context, suggestion) {
+                    return ListTile(
+                      leading: const Icon(Icons.location_on_outlined, size: 16),
+                      title: Text(
+                        suggestion,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    );
+                  },
+                  onSelected: (suggestion) {
+                    _stops[i].controller.text = suggestion;
+                    _notify();
+                  },
                 ),
-                trailing: ReorderableDragStartListener(
-                  index: i,
-                  child: const Icon(Icons.drag_indicator, color: Colors.grey),
-                ),
+                trailing: _stops.length > 2
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.redAccent,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          setState(() => _stops.removeAt(i));
+                          _notify();
+                        },
+                      )
+                    : null,
               ),
             );
           },
