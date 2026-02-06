@@ -85,10 +85,11 @@ class CustomBottomBar extends StatelessWidget {
     );
   }
 
+  // --- Updated Faculty Items Order ---
   List<_NavItem> _facultyItems() => [
     _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
+    _NavItem(Icons.explore_outlined, Icons.explore_rounded, 'Missions'),
     _NavItem(Icons.assignment_outlined, Icons.assignment_rounded, 'Requests'),
-    _NavItem(Icons.history_rounded, Icons.history_rounded, 'History'),
     _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
   ];
 
