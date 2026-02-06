@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/main_screen.dart'; // Import your MainScreen
 
 class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
+  static const String dashboard = '/dashboard';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -18,6 +20,11 @@ class AppRoutes {
           transitionsBuilder: (_, animation, __, child) =>
               FadeTransition(opacity: animation, child: child),
         );
+
+      case dashboard:
+        // Default to 'faculty' if no argument is passed
+        final role = settings.arguments as String? ?? 'faculty';
+        return MaterialPageRoute(builder: (_) => MainScreen(userRole: role));
 
       default:
         return MaterialPageRoute(

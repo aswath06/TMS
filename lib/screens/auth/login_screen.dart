@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/custom_button.dart';
 import 'package:tms/components/custom_input.dart';
+import "../../utils/routes.dart";
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,14 +19,29 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in all fields")),
+        const SnackBar(
+          content: Text("Please fill in all fields"),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
 
     setState(() => _isLoggingIn = true);
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => _isLoggingIn = false);
+
+    if (mounted) {
+      setState(() => _isLoggingIn = false);
+      String role = 'faculty';
+      if (_emailController.text.toLowerCase().contains('driver')) {
+        role = 'driver';
+      }
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.dashboard,
+        arguments: role,
+      );
+    }
   }
 
   @override
@@ -38,15 +54,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Matching Scaffold bg with gradient bottom to blend with System Nav Bar
+      backgroundColor: const Color(0xFFF1F5F9),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF8FAFC),
-              Color(0xFFF1F5F9),
-            ], // Slate 50 to Slate 100
+            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
           ),
         ),
         child: SafeArea(
@@ -148,10 +165,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                Row(
+                const Row(
                   children: [
-                    const Expanded(child: Divider(color: Color(0xFFCBD5E1))),
-                    const Padding(
+                    Expanded(child: Divider(color: Color(0xFFCBD5E1))),
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         "OR CONTINUE WITH",
@@ -162,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const Expanded(child: Divider(color: Color(0xFFCBD5E1))),
+                    Expanded(child: Divider(color: Color(0xFFCBD5E1))),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -178,7 +195,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     setState(() => _isGoogleLoading = true);
                     Future.delayed(const Duration(seconds: 2), () {
-                      if (mounted) setState(() => _isGoogleLoading = false);
+                      if (mounted) {
+                        setState(() => _isGoogleLoading = false);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          AppRoutes.dashboard,
+                          arguments: 'faculty',
+                        );
+                      }
                     });
                   },
                 ),
