@@ -16,19 +16,23 @@ class CustomBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isFaculty = userRole == 'faculty';
     final List<_NavItem> items = isFaculty ? _facultyItems() : _driverItems();
+
+    const Color brandColor = Color(0xFF4F46E5);
+    const Color grayText = Color(0xFF94A3B8);
+
     return Container(
-      padding: const EdgeInsets.only(left: 24, right: 24, top: 10, bottom: 12),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Container(
-        height: 70,
+        height: 72,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(35),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              color: const Color(0xFF0F172A).withOpacity(0.08),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
@@ -40,35 +44,34 @@ class CustomBottomBar extends StatelessWidget {
               onTap: () => onTap(index),
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.fastOutSlowIn,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF7C3AED)
+                      ? brandColor.withOpacity(0.12)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       isSelected ? items[index].activeIcon : items[index].icon,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF94A3B8),
-                      size: 24,
+                      color: isSelected ? brandColor : grayText,
+                      size: 26,
                     ),
                     if (isSelected) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Text(
                         items[index].label,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: brandColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
@@ -85,12 +88,18 @@ class CustomBottomBar extends StatelessWidget {
   List<_NavItem> _facultyItems() => [
     _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
     _NavItem(Icons.assignment_outlined, Icons.assignment_rounded, 'Requests'),
+    _NavItem(Icons.history_rounded, Icons.history_rounded, 'History'),
     _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
   ];
 
   List<_NavItem> _driverItems() => [
     _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
     _NavItem(Icons.alt_route_outlined, Icons.alt_route_rounded, 'Routes'),
+    _NavItem(
+      Icons.calendar_month_outlined,
+      Icons.calendar_month_rounded,
+      'Schedule',
+    ),
     _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
   ];
 }

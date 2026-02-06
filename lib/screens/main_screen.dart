@@ -12,29 +12,34 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Placeholder Screens
   Widget _buildBody(bool isFaculty) {
-    if (isFaculty) {
-      return [
-        const Center(child: Text("Faculty Home")),
-        const Center(child: Text("My Requests (Clipboard)")),
-        const Center(child: Text("Faculty Profile")),
-      ][_currentIndex];
-    } else {
-      return [
-        const Center(child: Text("Driver Home")),
-        const Center(child: Text("Routes Map")),
-        const Center(child: Text("Driver Profile")),
-      ][_currentIndex];
-    }
+    // 4 screens for each role
+    final List<Widget> facultyScreens = [
+      const Center(child: Text("Faculty Home")),
+      const Center(child: Text("Requests")),
+      const Center(child: Text("History")),
+      const Center(child: Text("Profile")),
+    ];
+
+    final List<Widget> driverScreens = [
+      const Center(child: Text("Driver Home")),
+      const Center(child: Text("Routes")),
+      const Center(child: Text("Schedule")),
+      const Center(child: Text("Profile")),
+    ];
+
+    return isFaculty
+        ? facultyScreens[_currentIndex]
+        : driverScreens[_currentIndex];
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isFaculty = widget.userRole == 'faculty';
-
     return Scaffold(
-      body: _buildBody(isFaculty),
+      backgroundColor: const Color(
+        0xFFF1F5F9,
+      ), // Matching your Login background
+      body: _buildBody(widget.userRole == 'faculty'),
       bottomNavigationBar: CustomBottomBar(
         currentIndex: _currentIndex,
         userRole: widget.userRole,
