@@ -41,6 +41,8 @@ dependencies:
   flutter_map: ^8.2.2
   country_code_picker: ^3.4.1
   mobile_scanner: ^7.1.4
+  google_sign_in: ^6.2.1 
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

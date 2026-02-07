@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import 'package:tms/components/custom_button.dart';
 import 'package:tms/components/custom_input.dart';
 import 'package:tms/components/app_branding.dart';
 import 'package:tms/screens/auth/forgot_password_screen.dart';
 import 'package:tms/utils/validators.dart';
+import 'package:tms/utils/api_constants.dart'; // Import the new constants file
 import "../../utils/routes.dart";
 
 class LoginScreen extends StatefulWidget {
@@ -15,34 +20,91 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
   bool _isLoggingIn = false;
   bool _isGoogleLoading = false;
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: <String>['email', 'profile'],
+  );
+
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoggingIn = true);
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        String role = _emailController.text.toLowerCase().contains('driver')
+            ? 'driver'
+            : 'faculty';
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.dashboard,
+          arguments: role,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoggingIn = false);
+    }
+  }
 
-    // Simulate API Call
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() => _isGoogleLoading = true);
 
-    if (mounted) {
-      setState(() => _isLoggingIn = false);
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
 
-      String role = _emailController.text.toLowerCase().contains('driver')
-          ? 'driver'
-          : 'faculty';
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.dashboard,
-        arguments: role,
+      // Using the centralized ApiConstants here
+      final response = await http.post(
+        Uri.parse(ApiConstants.googleLogin),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'idToken': googleAuth.idToken}),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+
+        // Extracting data based on your specific JSON structure
+        final String userRole = data['user']?['role']?.toLowerCase() ?? 'user';
+        final String token = data['token'];
+
+        debugPrint("Authentication Successful. Role: $userRole");
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.dashboard,
+            arguments: userRole,
+          );
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw errorData['message'] ?? "Authentication failed";
+      }
+    } catch (error) {
+      debugPrint("GOOGLE LOGIN ERROR: $error");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString()),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -189,19 +251,13 @@ class _LoginScreenState extends State<LoginScreen> {
         'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
         height: 20,
       ),
-      onPressed: () {
-        setState(() => _isGoogleLoading = true);
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            setState(() => _isGoogleLoading = false);
-            Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.dashboard,
-              arguments: 'faculty',
-            );
-          }
-        });
-      },
+      onPressed: _handleGoogleSignIn,
     );
   }
+}
+
+class BackgroundDecorator extends StatelessWidget {
+  const BackgroundDecorator({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
