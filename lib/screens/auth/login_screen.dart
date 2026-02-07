@@ -27,7 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isGoogleLoading = false;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: <String>['email', 'profile'],
+    clientId:"1044594848603-d8jula4v28ackbnro25un3cl3vr9bv64.apps.googleusercontent.com",
+    scopes: <String>['email', 'profile','openid'],
   );
 
   Future<void> _handleLogin() async {
@@ -54,33 +55,45 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() => _isGoogleLoading = true);
 
+      // 1. Trigger the Google Sign-In account picker
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
       if (googleUser == null) {
         setState(() => _isGoogleLoading = false);
-        return;
+        return; // User cancelled
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // 2. Obtain the auth tokens (this is where the idToken lives)
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // Using the centralized ApiConstants here
+      // This is the equivalent of 'credentialResponse.credential' in React
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw "No ID Token (credential) received from Google";
+      }
+
+      // 3. Post to your backend (mirroring your Axios call)
       final response = await http.post(
         Uri.parse(ApiConstants.googleLogin),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({'idToken': googleAuth.idToken}),
+        body: jsonEncode({
+          'idToken': idToken, // This matches your backend's expected key
+        }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
-        // Extracting data based on your specific JSON structure
+        // ✅ Store token (Equivalent to localStorage.setItem)
+        // Note: In Flutter, use 'shared_preferences' or 'flutter_secure_storage'
+        // For now, we'll just proceed to the navigation logic
+        
         final String userRole = data['user']?['role']?.toLowerCase() ?? 'user';
-        final String token = data['token'];
-
-        debugPrint("Authentication Successful. Role: $userRole");
+        debugPrint("LOGIN SUCCESS: $data");
 
         if (mounted) {
           Navigator.pushReplacementNamed(
@@ -91,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         final errorData = jsonDecode(response.body);
-        throw errorData['message'] ?? "Authentication failed";
+        throw errorData['message'] ?? "Login failed";
       }
     } catch (error) {
       debugPrint("GOOGLE LOGIN ERROR: $error");
