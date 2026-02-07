@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -28,20 +29,13 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          // Background decorations stay outside SafeArea to fill the screen
           _buildBackgroundDecor(isDark),
 
           SafeArea(
-            // top: true ensures we stay below the system status bar/notch
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  24,
-                  12,
-                  24,
-                  20,
-                ), // Adjusted top padding
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -92,11 +86,39 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 32),
                     _buildSectionTitle("Maintenance", titleColor, primaryBlue),
                     const SizedBox(height: 16),
+
                     _buildUpdateTile(
                       cardColor,
                       titleColor,
                       subTitleColor,
                       primaryBlue,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ✅ SCANNER TILE
+                    _settingsTile(
+                      Icons.qr_code_scanner_rounded,
+                      "Scan Code",
+                      "Scan using camera",
+                      cardColor,
+                      titleColor,
+                      subTitleColor,
+                      primaryBlue,
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ScannerPage(),
+                          ),
+                        );
+
+                        if (result != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Scanned: $result")),
+                          );
+                        }
+                      },
                     ),
 
                     const SizedBox(height: 40),
@@ -115,7 +137,40 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // --- UI Components ---
+  // ---------------- UI COMPONENTS ----------------
+
+  Widget _settingsTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue, {
+    VoidCallback? onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: _buildIconContainer(icon, primaryBlue),
+        title: Text(
+          title,
+          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 13, color: subColor),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+      ),
+    );
+  }
+
+  // --------- KEEPING REST OF YOUR ORIGINAL METHODS ---------
 
   Widget _buildUpdateTile(
     Color cardColor,
@@ -152,31 +207,27 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildLogoutButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {},
-        icon: const Icon(Icons.logout_rounded, color: Colors.white),
-        label: const Text(
-          "Logout Session",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFEF4444),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
+  Widget _buildLogoutButton() => SizedBox(
+    width: double.infinity,
+    child: ElevatedButton.icon(
+      onPressed: () {},
+      icon: const Icon(Icons.logout_rounded, color: Colors.white),
+      label: const Text(
+        "Logout Session",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
         ),
       ),
-    );
-  }
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFEF4444),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+      ),
+    ),
+  );
 
   Widget _buildHeader(
     BuildContext context,
@@ -331,87 +382,58 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _settingsTile(
-    IconData icon,
+  Widget _buildSectionTitle(
     String title,
-    String subtitle,
-    Color cardColor,
     Color titleColor,
-    Color subColor,
     Color primaryBlue,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: ListTile(
-        leading: _buildIconContainer(icon, primaryBlue),
-        title: Text(
-          title,
-          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+  ) => Row(
+    children: [
+      Container(
+        width: 4,
+        height: 18,
+        decoration: BoxDecoration(
+          color: primaryBlue,
+          borderRadius: BorderRadius.circular(10),
         ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(fontSize: 13, color: subColor),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
       ),
-    );
-  }
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: titleColor,
+        ),
+      ),
+    ],
+  );
 
-  Widget _buildSectionTitle(String title, Color titleColor, Color primaryBlue) {
-    return Row(
+  Widget _buildBackgroundDecor(bool isDark) => Positioned.fill(
+    child: Stack(
       children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: primaryBlue,
-            borderRadius: BorderRadius.circular(10),
+        Positioned(
+          top: -50,
+          right: -50,
+          child: CircleAvatar(
+            radius: 150,
+            backgroundColor: const Color(
+              0xFF6366F1,
+            ).withOpacity(isDark ? 0.1 : 0.05),
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: titleColor,
+        Positioned(
+          bottom: 0,
+          left: -50,
+          child: CircleAvatar(
+            radius: 120,
+            backgroundColor: const Color(
+              0xFFEC4899,
+            ).withOpacity(isDark ? 0.08 : 0.04),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBackgroundDecor(bool isDark) {
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          Positioned(
-            top: -50,
-            right: -50,
-            child: CircleAvatar(
-              radius: 150,
-              backgroundColor: const Color(
-                0xFF6366F1,
-              ).withOpacity(isDark ? 0.1 : 0.05),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: -50,
-            child: CircleAvatar(
-              radius: 120,
-              backgroundColor: const Color(
-                0xFFEC4899,
-              ).withOpacity(isDark ? 0.08 : 0.04),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 
   Widget _buildTopIcon(IconData icon, Color titleColor) => Container(
     padding: const EdgeInsets.all(10),
@@ -431,25 +453,23 @@ class _SettingsPageState extends State<SettingsPage> {
     child: Icon(icon, color: color, size: 22),
   );
 
-  Widget _buildAppVersion(Color subColor) {
-    return Center(
-      child: Column(
-        children: [
-          Text(
-            "App Version 2.4.0 (Stable)",
-            style: TextStyle(
-              color: subColor,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+  Widget _buildAppVersion(Color subColor) => Center(
+    child: Column(
+      children: [
+        Text(
+          "App Version 2.4.0 (Stable)",
+          style: TextStyle(
+            color: subColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
           ),
-          const SizedBox(height: 4),
-          Text(
-            "Built by BIT-SSG",
-            style: TextStyle(color: subColor.withOpacity(0.5), fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Built by BIT-SSG",
+          style: TextStyle(color: subColor.withOpacity(0.5), fontSize: 11),
+        ),
+      ],
+    ),
+  );
 }
