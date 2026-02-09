@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:tms/components/custom_button.dart';
 import 'package:tms/components/custom_input.dart';
 import 'package:tms/components/app_branding.dart';
-import 'package:tms/screens/auth/forgot_password_screen.dart';
+import 'package:tms/store/user_store.dart';
 import 'package:tms/utils/validators.dart';
-import 'package:tms/utils/api_constants.dart'; // Import the new constants file
+import 'package:tms/utils/api_constants.dart';
 import "../../utils/routes.dart";
+import '../main_screen.dart' show MainScreen;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,16 +26,20 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoggingIn = false;
   bool _isGoogleLoading = false;
 
+  // FIXED: Using the Web Client ID for serverClientId to enable idToken generation
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId:"1044594848603-d8jula4v28ackbnro25un3cl3vr9bv64.apps.googleusercontent.com",
-    scopes: <String>['email', 'profile','openid'],
+    serverClientId:
+        '1044594848603-3l3hi7sf390vgru417runabvpuimfpn2.apps.googleusercontent.com',
+    scopes: <String>['email', 'profile', 'openid'],
+    hostedDomain: 'bitsathy.ac.in',
   );
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoggingIn = true);
     try {
-      await Future.delayed(const Duration(seconds: 2));
+      // Logic for traditional email/password login
+      await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
         String role = _emailController.text.toLowerCase().contains('driver')
             ? 'driver'
@@ -55,66 +59,56 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() => _isGoogleLoading = true);
 
-      // 1. Trigger the Google Sign-In account picker
+      await _googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+
       if (googleUser == null) {
         setState(() => _isGoogleLoading = false);
-        return; // User cancelled
+        return;
       }
 
-      // 2. Obtain the auth tokens (this is where the idToken lives)
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // This is the equivalent of 'credentialResponse.credential' in React
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
 
-      if (idToken == null) {
-        throw "No ID Token (credential) received from Google";
-      }
+      if (idToken == null) throw "Failed to retrieve ID Token.";
 
-      // 3. Post to your backend (mirroring your Axios call)
       final response = await http.post(
         Uri.parse(ApiConstants.googleLogin),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'idToken': idToken, // This matches your backend's expected key
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'idToken': idToken}),
       );
-
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final String jwtToken = responseData['token'];
+        final Map<String, dynamic> userData = responseData['user'];
 
-        // ✅ Store token (Equivalent to localStorage.setItem)
-        // Note: In Flutter, use 'shared_preferences' or 'flutter_secure_storage'
-        // For now, we'll just proceed to the navigation logic
-        
-        final String userRole = data['user']?['role']?.toLowerCase() ?? 'user';
-        debugPrint("LOGIN SUCCESS: $data");
+        await UserStore.saveUserData(
+          token: jwtToken,
+          role: userData['role'] ?? 'faculty',
+          email: userData['email'],
+        );
 
         if (mounted) {
-          Navigator.pushReplacementNamed(
+          Navigator.pushAndRemoveUntil(
             context,
-            AppRoutes.dashboard,
-            arguments: userRole,
+            MaterialPageRoute(
+              builder: (context) => MainScreen(
+                userRole: userData['role'].toString().toLowerCase(),
+              ),
+            ),
+            (route) => false,
           );
         }
       } else {
-        final errorData = jsonDecode(response.body);
-        throw errorData['message'] ?? "Login failed";
+        throw responseData['message'] ?? "Backend Authentication Failed";
       }
     } catch (error) {
       debugPrint("GOOGLE LOGIN ERROR: $error");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString()),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
@@ -131,53 +125,46 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFFFFFF), Color(0xFFF1F5F9)],
-          ),
-        ),
-        child: Stack(
-          children: [
-            const BackgroundDecorator(),
-            SafeArea(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          const BackgroundDecorator(),
+          SafeArea(
+            child: Center(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const AppBranding(),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 48),
                       _buildLoginForm(),
                       _buildDivider(),
                       _buildGoogleButton(),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildLoginForm() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.05),
+            color: const Color(0xFF0F172A).withOpacity(0.08),
             blurRadius: 40,
             offset: const Offset(0, 20),
           ),
@@ -203,20 +190,13 @@ class _LoginScreenState extends State<LoginScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ForgotPasswordScreen(),
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF4F46E5),
-              ),
+              onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
               child: const Text(
                 "Forgot Password?",
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Color(0xFF6366F1),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -232,39 +212,58 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildDivider() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 32),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 36),
       child: Row(
         children: [
-          Expanded(child: Divider(color: Color(0xFFCBD5E1))),
+          const Expanded(child: Divider(thickness: 1)),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              "OR CONTINUE WITH",
+              "OR",
               style: TextStyle(
-                fontSize: 12,
+                color: Colors.grey.shade400,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF94A3B8),
               ),
             ),
           ),
-          Expanded(child: Divider(color: Color(0xFFCBD5E1))),
+          const Expanded(child: Divider(thickness: 1)),
         ],
       ),
     );
   }
 
   Widget _buildGoogleButton() {
-    return CustomButton(
-      text: "Sign in with Google",
-      isLoading: _isGoogleLoading,
-      backgroundColor: Colors.white,
-      textColor: const Color(0xFF0F172A),
-      icon: Image.network(
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
-        height: 20,
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
+        icon: _isGoogleLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Image.network(
+                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
+                height: 22,
+              ),
+        label: const Text(
+          "Continue with Google",
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          side: BorderSide(color: Colors.grey.shade200),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          backgroundColor: Colors.white,
+        ),
       ),
-      onPressed: _handleGoogleSignIn,
     );
   }
 }
@@ -272,5 +271,34 @@ class _LoginScreenState extends State<LoginScreen> {
 class BackgroundDecorator extends StatelessWidget {
   const BackgroundDecorator({super.key});
   @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned(
+          top: -100,
+          right: -100,
+          child: Container(
+            width: 300,
+            height: 300,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF6366F1).withOpacity(0.05),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -50,
+          left: -50,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF6366F1).withOpacity(0.03),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

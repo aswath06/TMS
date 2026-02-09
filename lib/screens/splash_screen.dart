@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../utils/routes.dart';
+import '../store/user_store.dart'; // Import your UserStore
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -46,11 +47,31 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+    // Trigger Auth Check instead of a simple Timer
+    _initiateAuthCheck();
+  }
+
+  /// Checks if the user is already logged in
+  Future<void> _initiateAuthCheck() async {
+    // Wait for the animation to feel natural (minimum 2.5 seconds)
+    await Future.delayed(const Duration(milliseconds: 2500));
+
+    final String? token = await UserStore.getToken();
+    final String? role = await UserStore.getRole();
+
+    if (mounted) {
+      if (token != null && role != null) {
+        // DIRECT ACCESS: User is authenticated
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.dashboard,
+          arguments: role,
+        );
+      } else {
+        // REQUIRE LOGIN: No token found
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
       }
-    });
+    }
   }
 
   @override
@@ -95,7 +116,6 @@ class _SplashScreenState extends State<SplashScreen>
                 const Color(0xFF4F46E5).withOpacity(0.03),
               ),
             ),
-
             AnimatedBuilder(
               animation: _controller,
               builder: (context, child) {
@@ -137,7 +157,6 @@ class _SplashScreenState extends State<SplashScreen>
                 );
               },
             ),
-
             Positioned(
               bottom: 40,
               child: FadeTransition(
