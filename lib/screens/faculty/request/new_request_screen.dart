@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Required for input formatters
 import 'package:tms/components/passenger_selector.dart';
 import 'package:tms/components/location_selector.dart';
 
@@ -82,7 +83,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
                 child: Form(
-                  key: _formKey,
+                  key: _formKey, // Form Key attached
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -174,6 +175,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           titleColor,
                           controller: _mainPhoneController,
                           primaryBlue: primaryBlue,
+                          isPhone: true,
                         ),
                         if (_passengerCount >= 12) ...[
                           const SizedBox(height: 8),
@@ -184,6 +186,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                             titleColor,
                             controller: _secondaryPhoneController,
                             primaryBlue: primaryBlue,
+                            isPhone: true,
                           ),
                         ],
                         const SizedBox(height: 24),
@@ -221,24 +224,29 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
                                 child: _inputField(
-                                  "Guest ${idx + 1}",
+                                  "Guest ${idx + 1} Name",
                                   Icons.person_outline,
                                   cardColor,
                                   titleColor,
                                   controller: entry.value,
                                   primaryBlue: primaryBlue,
+                                  isName: true,
                                 ),
                               ),
                               if (idx > 0)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.remove_circle_outline,
-                                    color: Colors.redAccent,
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_circle_outline,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () => _removeGuest(idx),
                                   ),
-                                  onPressed: () => _removeGuest(idx),
                                 ),
                             ],
                           ),
@@ -377,6 +385,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     int max = 1,
     TextEditingController? controller,
     required Color primaryBlue,
+    bool isPhone = false,
+    bool isName = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -384,13 +394,31 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         color: c,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         maxLines: max,
         style: TextStyle(color: t, fontSize: 14, fontWeight: FontWeight.w600),
+        keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+        inputFormatters: [
+          if (isPhone) FilteringTextInputFormatter.digitsOnly,
+          if (isName) FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+        ],
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return "This field is required";
+          }
+          if (isPhone && value.length < 10) {
+            return "Enter a valid phone number";
+          }
+          if (isName && value.length < 2) {
+            return "Enter a valid name";
+          }
+          return null;
+        },
         decoration: InputDecoration(
           hintText: h,
           hintStyle: TextStyle(color: t.withOpacity(0.4), fontSize: 13),
+          errorStyle: const TextStyle(fontSize: 10, height: 0.8),
           prefixIcon: Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(8),
@@ -570,49 +598,59 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          // --- Console Logging All Fields ---
-          debugPrint("========== NEW REQUEST SUBMISSION ==========");
-          debugPrint("Travel Type: $_travelType");
-          debugPrint(
-            "Start Date: ${_startDate?.toIso8601String() ?? 'Not Selected'}",
-          );
-          debugPrint(
-            "End Date: ${_endDate?.toIso8601String() ?? 'N/A (One/Two Way)'}",
-          );
+          // --- Trigger Form Validation ---
+          if (_formKey.currentState!.validate()) {
+            if (_startDate == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Please select a Start Date")),
+              );
+              return;
+            }
 
-          debugPrint("--- Route Details ---");
-          debugPrint("Total Distance: $_totalDistance km");
-          debugPrint("Total Duration: $_totalDuration mins");
+            // --- Console Logging All Fields ---
+            debugPrint("========== NEW REQUEST SUBMISSION ==========");
+            debugPrint("Travel Type: $_travelType");
+            debugPrint(
+              "Start Date: ${_startDate?.toIso8601String() ?? 'Not Selected'}",
+            );
+            debugPrint(
+              "End Date: ${_endDate?.toIso8601String() ?? 'N/A (One/Two Way)'}",
+            );
 
-          debugPrint("--- Passenger & Vehicle ---");
-          debugPrint("Passenger Count: $_passengerCount");
-          debugPrint("Vehicle Type: $_selectedVehicleType");
-          debugPrint("Country Code: $_selectedCountryCode");
+            debugPrint("--- Route Details ---");
+            debugPrint("Total Distance: $_totalDistance km");
+            debugPrint("Total Duration: $_totalDuration mins");
 
-          debugPrint("--- Contact Info ---");
-          debugPrint("Primary Phone: ${_mainPhoneController.text}");
-          if (_passengerCount >= 12) {
-            debugPrint("Emergency Phone: ${_secondaryPhoneController.text}");
+            debugPrint("--- Passenger & Vehicle ---");
+            debugPrint("Passenger Count: $_passengerCount");
+            debugPrint("Vehicle Type: $_selectedVehicleType");
+            debugPrint("Country Code: $_selectedCountryCode");
+
+            debugPrint("--- Contact Info ---");
+            debugPrint("Primary Phone: ${_mainPhoneController.text}");
+            if (_passengerCount >= 12) {
+              debugPrint("Emergency Phone: ${_secondaryPhoneController.text}");
+            }
+
+            debugPrint("--- Guest Names ---");
+            for (int i = 0; i < _guestNameControllers.length; i++) {
+              debugPrint("Guest ${i + 1}: ${_guestNameControllers[i].text}");
+            }
+
+            debugPrint("--- Additional ---");
+            debugPrint("Special Requirements: ${_specialReqController.text}");
+            debugPrint("Luggage Details: ${_luggageController.text}");
+            debugPrint("============================================");
+
+            // Simple UI feedback
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text("Request logged to console!"),
+                backgroundColor: primaryBlue,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           }
-
-          debugPrint("--- Guest Names ---");
-          for (int i = 0; i < _guestNameControllers.length; i++) {
-            debugPrint("Guest ${i + 1}: ${_guestNameControllers[i].text}");
-          }
-
-          debugPrint("--- Additional ---");
-          debugPrint("Special Requirements: ${_specialReqController.text}");
-          debugPrint("Luggage Details: ${_luggageController.text}");
-          debugPrint("============================================");
-
-          // Simple UI feedback
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text("Request logged to console!"),
-              backgroundColor: primaryBlue,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryBlue,

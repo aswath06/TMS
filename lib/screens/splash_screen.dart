@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   /// Checks if the user is already logged in
   Future<void> _initiateAuthCheck() async {
-    await Future.delayed(const Duration(milliseconds: 2500));
+    await Future.delayed(const Duration(milliseconds: 1500));
 
     final prefs = await SharedPreferences.getInstance();
     final String? token = await UserStore.getToken();
