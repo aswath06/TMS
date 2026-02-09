@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../utils/routes.dart';
 import '../store/user_store.dart'; // Import your UserStore
@@ -53,24 +54,34 @@ class _SplashScreenState extends State<SplashScreen>
 
   /// Checks if the user is already logged in
   Future<void> _initiateAuthCheck() async {
-    // Wait for the animation to feel natural (minimum 2.5 seconds)
     await Future.delayed(const Duration(milliseconds: 2500));
 
+    final prefs = await SharedPreferences.getInstance();
     final String? token = await UserStore.getToken();
     final String? role = await UserStore.getRole();
+    final bool isPinEnabled = prefs.getBool('isPinEnabled') ?? false;
 
-    if (mounted) {
-      if (token != null && role != null) {
-        // DIRECT ACCESS: User is authenticated
+    if (!mounted) return;
+
+    if (token != null && role != null) {
+      if (isPinEnabled) {
+        // Navigate to Lock Screen if PIN is enabled
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.lockScreen,
+          arguments: role,
+        );
+      } else {
+        // Direct access if authenticated but no PIN
         Navigator.pushReplacementNamed(
           context,
           AppRoutes.dashboard,
           arguments: role,
         );
-      } else {
-        // REQUIRE LOGIN: No token found
-        Navigator.pushReplacementNamed(context, AppRoutes.login);
       }
+    } else {
+      // Require Login
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 

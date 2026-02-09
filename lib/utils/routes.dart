@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
-import '../screens/main_screen.dart'; // Import your MainScreen
+import '../screens/main_screen.dart';
+import '../screens/lock_screen.dart'; // Import the new LockScreen
 
 class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String dashboard = '/dashboard';
+  static const String lockScreen = '/lock-screen'; // New Route
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -21,8 +23,12 @@ class AppRoutes {
               FadeTransition(opacity: animation, child: child),
         );
 
+      case lockScreen:
+        // We pass the role to the lock screen so it knows where to go after success
+        final role = settings.arguments as String? ?? 'faculty';
+        return MaterialPageRoute(builder: (_) => LockScreen(role: role));
+
       case dashboard:
-        // Default to 'faculty' if no argument is passed
         final role = settings.arguments as String? ?? 'faculty';
         return MaterialPageRoute(builder: (_) => MainScreen(userRole: role));
 

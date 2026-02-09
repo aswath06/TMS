@@ -54,6 +54,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     final TextEditingController verifyController = TextEditingController();
     String? verifyError;
     bool isLoading = false;
+    bool isVisible = false;
 
     showModalBottomSheet(
       context: context,
@@ -77,14 +78,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+                _buildHandle(),
                 const SizedBox(height: 20),
                 const Text(
                   "Disable Security",
@@ -96,50 +90,26 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                   hint: "Current PIN",
                   errorText: verifyError,
                   enabled: !isLoading,
+                  obscure: !isVisible,
+                  onToggleVisibility: () =>
+                      setModalState(() => isVisible = !isVisible),
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    onPressed: isLoading
-                        ? null
-                        : () async {
-                            if (verifyController.text == storedPin) {
-                              setModalState(() => isLoading = true);
-                              await Future.delayed(const Duration(seconds: 1));
-                              await _clearPinData();
-                              Navigator.pop(context);
-                              _showSnackBar("Security Disabled Successfully");
-                            } else {
-                              setModalState(
-                                () => verifyError = "Incorrect PIN",
-                              );
-                            }
-                          },
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            "Confirm & Disable",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
+                _buildButton(
+                  text: "Confirm & Disable",
+                  color: Colors.redAccent,
+                  isLoading: isLoading,
+                  onPressed: () async {
+                    if (verifyController.text == storedPin) {
+                      setModalState(() => isLoading = true);
+                      await Future.delayed(const Duration(milliseconds: 800));
+                      await _clearPinData();
+                      if (context.mounted) Navigator.pop(context);
+                      _showSnackBar("Security Disabled Successfully");
+                    } else {
+                      setModalState(() => verifyError = "Incorrect PIN");
+                    }
+                  },
                 ),
               ],
             ),
@@ -160,6 +130,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     String? confirmError;
     bool isLoading = false;
     bool isSuccess = false;
+    bool isVisible = false;
 
     showModalBottomSheet(
       context: context,
@@ -168,53 +139,42 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           void validateAndSave() async {
-            // Reset errors locally first
+            FocusScope.of(context).unfocus();
             setModalState(() {
               currentError = null;
               newError = null;
               confirmError = null;
             });
 
-            bool hasError = false;
-
-            // 1. Check current PIN if it exists
             if (storedPin != null && currentController.text != storedPin) {
               setModalState(() => currentError = "Incorrect current PIN");
-              hasError = true;
+              return;
             }
-
-            // 2. Check new PIN length
             if (newController.text.length < 4) {
-              setModalState(() => newError = "PIN must be at least 4 digits");
-              hasError = true;
+              setModalState(() => newError = "Minimum 4 digits required");
+              return;
             }
-
-            // 3. Check mismatch
             if (newController.text != confirmController.text) {
-              setModalState(() => confirmError = "New PINs do not match");
-              hasError = true;
+              setModalState(() => confirmError = "PINs do not match");
+              return;
             }
 
-            if (hasError) return;
-
-            // Start Loading Effect
             setModalState(() => isLoading = true);
             await Future.delayed(const Duration(seconds: 1));
 
-            // Success State
             setModalState(() {
               isLoading = false;
               isSuccess = true;
             });
 
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 600));
 
             storedPin = newController.text;
             await _savePreference('userPin', storedPin!);
             await _savePreference('isPinEnabled', true);
             setState(() => isPinEnabled = true);
 
-            Navigator.pop(context);
+            if (context.mounted) Navigator.pop(context);
             _showSnackBar("PIN Updated Successfully");
           }
 
@@ -235,14 +195,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[400],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                  _buildHandle(),
                   const SizedBox(height: 20),
                   Text(
                     storedPin != null ? "Change App PIN" : "Set App PIN",
@@ -252,69 +205,43 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
                   if (storedPin != null) ...[
                     _buildPinField(
                       controller: currentController,
                       hint: "Current PIN",
                       errorText: currentError,
-                      isSuccess: isSuccess,
                       enabled: !isLoading,
+                      obscure: !isVisible,
+                      onToggleVisibility: () =>
+                          setModalState(() => isVisible = !isVisible),
                     ),
                     const SizedBox(height: 16),
                   ],
-
                   _buildPinField(
                     controller: newController,
                     hint: "New PIN",
                     errorText: newError,
-                    isSuccess: isSuccess,
                     enabled: !isLoading,
+                    obscure: !isVisible,
+                    onToggleVisibility: () =>
+                        setModalState(() => isVisible = !isVisible),
                   ),
                   const SizedBox(height: 16),
-
                   _buildPinField(
                     controller: confirmController,
                     hint: "Confirm New PIN",
                     errorText: confirmError,
-                    isSuccess: isSuccess,
                     enabled: !isLoading,
+                    obscure: !isVisible,
+                    onToggleVisibility: () =>
+                        setModalState(() => isVisible = !isVisible),
                   ),
-
                   const SizedBox(height: 24),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isSuccess
-                            ? Colors.green
-                            : const Color(0xFF6366F1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      onPressed: (isLoading || isSuccess)
-                          ? null
-                          : validateAndSave,
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              isSuccess ? "Success!" : "Save PIN",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
+                  _buildButton(
+                    text: isSuccess ? "Success!" : "Save PIN",
+                    color: isSuccess ? Colors.green : const Color(0xFF6366F1),
+                    isLoading: isLoading,
+                    onPressed: isSuccess ? null : validateAndSave,
                   ),
                 ],
               ),
@@ -325,50 +252,52 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     );
   }
 
+  // --- UI HELPERS ---
+
+  Widget _buildHandle() => Container(
+    width: 40,
+    height: 4,
+    margin: const EdgeInsets.only(bottom: 10),
+    decoration: BoxDecoration(
+      color: Colors.grey[400],
+      borderRadius: BorderRadius.circular(10),
+    ),
+  );
+
   Widget _buildPinField({
     required TextEditingController controller,
     required String hint,
     String? errorText,
-    bool isSuccess = false,
     bool enabled = true,
+    bool obscure = true,
+    VoidCallback? onToggleVisibility,
   }) {
     return TextField(
       controller: controller,
-      obscureText: true,
+      obscureText: obscure,
       enabled: enabled,
       keyboardType: TextInputType.number,
       maxLength: 6,
       decoration: InputDecoration(
         counterText: "",
         hintText: hint,
-        errorText: errorText, // THIS SHOWS THE ERROR BELOW FIELD
-        errorStyle: const TextStyle(
-          color: Colors.redAccent,
-          fontWeight: FontWeight.w600,
+        errorText: errorText,
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+            size: 20,
+          ),
+          onPressed: onToggleVisibility,
         ),
         filled: true,
-        fillColor: isSuccess
-            ? Colors.green.withOpacity(0.05)
-            : Colors.black.withOpacity(0.05),
+        fillColor: Colors.black.withOpacity(0.05),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 18,
         ),
-        enabledBorder: OutlineInputBorder(
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(
-            color: isSuccess ? Colors.green : Colors.transparent,
-          ),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(
-            color: isSuccess ? Colors.green : const Color(0xFF6366F1),
-          ),
+          borderSide: BorderSide.none,
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
@@ -382,6 +311,44 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     );
   }
 
+  Widget _buildButton({
+    required String text,
+    required Color color,
+    required bool isLoading,
+    VoidCallback? onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+        ),
+        onPressed: isLoading ? null : onPressed,
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+      ),
+    );
+  }
+
   void _showSnackBar(String msg) => ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
   );
@@ -389,18 +356,12 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFF1F5F9);
-    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subTitleColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF6366F1);
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: isDark
+          ? const Color(0xFF0F172A)
+          : const Color(0xFFF1F5F9),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -429,7 +390,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: titleColor,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 32),
@@ -439,18 +400,10 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               subtitle: isPinEnabled
                   ? "PIN Active • Tap to change"
                   : "Secure your app with a PIN",
-              cardColor: cardColor,
-              titleColor: titleColor,
-              subColor: subTitleColor,
-              primaryBlue: primaryBlue,
               value: isPinEnabled,
-              onChanged: (val) {
-                if (val) {
-                  _showPinSetup();
-                } else {
-                  _showVerifyToDisable();
-                }
-              },
+              primaryBlue: primaryBlue,
+              onChanged: (val) =>
+                  val ? _showPinSetup() : _showVerifyToDisable(),
               onTileTap: _showPinSetup,
             ),
             const SizedBox(height: 16),
@@ -458,11 +411,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               icon: Icons.fingerprint_rounded,
               title: "Biometric Lock",
               subtitle: "Fingerprint or Face ID",
-              cardColor: cardColor,
-              titleColor: titleColor,
-              subColor: subTitleColor,
-              primaryBlue: primaryBlue,
               value: isBiometricEnabled,
+              primaryBlue: primaryBlue,
               isEnabled: isPinEnabled,
               onChanged: (val) {
                 setState(() => isBiometricEnabled = val);
@@ -479,21 +429,19 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     required IconData icon,
     required String title,
     required String subtitle,
-    required Color cardColor,
-    required Color titleColor,
-    required Color subColor,
-    required Color primaryBlue,
     required bool value,
+    required Color primaryBlue,
     required ValueChanged<bool> onChanged,
     VoidCallback? onTileTap,
     bool isEnabled = true,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isEnabled ? 1.0 : 0.5,
       child: Container(
         decoration: BoxDecoration(
-          color: cardColor,
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
         ),
         child: ListTile(
@@ -512,19 +460,23 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
           ),
           title: Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
           ),
           subtitle: Text(
             subtitle,
-            style: TextStyle(fontSize: 13, color: subColor),
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
           ),
           trailing: Switch(
             value: value,
             onChanged: isEnabled
                 ? onChanged
-                : (val) {
-                    if (val && !isPinEnabled) _showSnackBar("Enable PIN first");
-                  },
+                : (val) => _showSnackBar("Enable PIN first"),
             activeTrackColor: primaryBlue,
           ),
         ),
