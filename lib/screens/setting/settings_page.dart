@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tms/screens/setting/SecuritySettingsPage.dart';
+import 'package:tms/store/istamil.dart';
 import '../scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -11,12 +12,16 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
-  String _selectedLanguage = "English"; // Default language
+
+  // Sync initial state with the Global Store
+  String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    // Determine language state
+    final bool isTamil = LanguageStore.isTamil;
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
@@ -40,20 +45,22 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context, titleColor, primaryBlue),
+                    _buildHeader(context, titleColor, primaryBlue, isTamil),
                     const SizedBox(height: 32),
 
                     // --- NOTIFICATIONS ---
                     _buildSectionTitle(
-                      "Notifications",
+                      isTamil ? "அறிவிப்புகள்" : "Notifications",
                       titleColor,
                       primaryBlue,
                     ),
                     const SizedBox(height: 16),
                     _buildToggleTile(
                       Icons.notifications_active_outlined,
-                      "Push Notifications",
-                      "Receive alerts and updates",
+                      isTamil ? "செய்தி அறிவிப்பு" : "Push Notifications",
+                      isTamil
+                          ? "முக்கிய தகவல்களை உடனுக்குடன் பெறவும்"
+                          : "Receive alerts and updates",
                       _notificationsEnabled,
                       (val) => setState(() => _notificationsEnabled = val),
                       cardColor,
@@ -65,19 +72,28 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 32),
 
                     // --- APPEARANCE ---
-                    _buildSectionTitle("Appearance", titleColor, primaryBlue),
+                    _buildSectionTitle(
+                      isTamil ? "வடிவம்" : "Appearance",
+                      titleColor,
+                      primaryBlue,
+                    ),
                     const SizedBox(height: 16),
                     _buildThemeSelector(
                       isDark,
                       cardColor,
                       subTitleColor,
                       primaryBlue,
+                      isTamil,
                     ),
 
                     const SizedBox(height: 32),
 
-                    // --- LOCALIZATION (Language Switcher) ---
-                    _buildSectionTitle("Localization", titleColor, primaryBlue),
+                    // --- LOCALIZATION ---
+                    _buildSectionTitle(
+                      isTamil ? "மொழி" : "Localization",
+                      titleColor,
+                      primaryBlue,
+                    ),
                     const SizedBox(height: 16),
                     _buildLanguageSelector(
                       cardColor,
@@ -88,45 +104,57 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 32),
 
                     // --- SECURITY ---
-                    _buildSectionTitle("Security", titleColor, primaryBlue),
+                    _buildSectionTitle(
+                      isTamil ? "பாதுகாப்பு" : "Security",
+                      titleColor,
+                      primaryBlue,
+                    ),
                     const SizedBox(height: 16),
-                    // Inside SettingsPage Column
                     _settingsTile(
                       Icons.lock_outline,
-                      "Privacy & Security",
-                      "Password and data control",
+                      isTamil
+                          ? "ரகசியம் மற்றும் பாதுகாப்பு"
+                          : "Privacy & Security",
+                      isTamil
+                          ? "கடவுச்சொல் மற்றும் தரவு மேலாண்மை"
+                          : "Password and data control",
                       cardColor,
                       titleColor,
                       subTitleColor,
                       primaryBlue,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SecuritySettingsPage(),
-                          ),
-                        );
-                      },
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SecuritySettingsPage(),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 32),
 
                     // --- MAINTENANCE ---
-                    _buildSectionTitle("Maintenance", titleColor, primaryBlue),
+                    _buildSectionTitle(
+                      isTamil ? "நிர்வாகம்" : "Maintenance",
+                      titleColor,
+                      primaryBlue,
+                    ),
                     const SizedBox(height: 16),
                     _buildUpdateTile(
                       cardColor,
                       titleColor,
                       subTitleColor,
                       primaryBlue,
+                      isTamil,
                     ),
                     const SizedBox(height: 12),
 
-                    // ✅ SCANNER TILE
+                    // SCANNER TILE
                     _settingsTile(
                       Icons.qr_code_scanner_rounded,
-                      "Scan Code",
-                      "Scan using camera",
+                      isTamil ? "ஸ்கேன் செய்க" : "Scan Code",
+                      isTamil
+                          ? "கேமராவை வைத்து ஸ்கேன் செய்யவும்"
+                          : "Scan using camera",
                       cardColor,
                       titleColor,
                       subTitleColor,
@@ -140,14 +168,20 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                         if (result != null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Scanned: $result")),
+                            SnackBar(
+                              content: Text(
+                                isTamil
+                                    ? "ஸ்கேன் செய்யப்பட்டது: $result"
+                                    : "Scanned: $result",
+                              ),
+                            ),
                           );
                         }
                       },
                     ),
 
                     const SizedBox(height: 60),
-                    _buildAppVersion(subTitleColor),
+                    _buildAppVersion(subTitleColor, isTamil),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -159,8 +193,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ---------------- LANGUAGE SWITCHER COMPONENTS ----------------
-
+  // --- LANGUAGE SELECTOR ---
   Widget _buildLanguageSelector(
     Color cardColor,
     Color subColor,
@@ -202,7 +235,12 @@ class _SettingsPageState extends State<SettingsPage> {
     Color primaryBlue,
   ) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedLanguage = label),
+      onTap: () {
+        setState(() {
+          _selectedLanguage = label;
+          LanguageStore.setLanguage(label);
+        });
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -224,7 +262,151 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ---------------- EXISTING UI COMPONENTS ----------------
+  // --- UI HELPERS ---
+
+  Widget _buildHeader(
+    BuildContext context,
+    Color titleColor,
+    Color primaryBlue,
+    bool isTamil,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Icon(
+                    Icons.arrow_back_ios,
+                    size: 18,
+                    color: primaryBlue,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isTamil ? "அமைப்புகள்" : "SETTINGS",
+                  style: TextStyle(
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w900,
+                    color: primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isTamil ? "மாற்றங்கள்" : "Configuration",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: titleColor,
+              ),
+            ),
+          ],
+        ),
+        _buildTopIcon(Icons.tune_outlined, titleColor),
+      ],
+    );
+  }
+
+  Widget _buildThemeSelector(
+    bool isDark,
+    Color cardColor,
+    Color subColor,
+    Color primaryBlue,
+    bool isTamil,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildThemeOption(
+              isTamil ? "பகல்" : "Light Mode",
+              Icons.light_mode_outlined,
+              !isDark,
+              subColor,
+              primaryBlue,
+            ),
+          ),
+          Expanded(
+            child: _buildThemeOption(
+              isTamil ? "இரவு" : "Dark Mode",
+              Icons.dark_mode_outlined,
+              isDark,
+              subColor,
+              primaryBlue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpdateTile(
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue,
+    bool isTamil,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: ListTile(
+        leading: _buildIconContainer(
+          Icons.system_update_alt_rounded,
+          primaryBlue,
+        ),
+        title: Text(
+          isTamil ? "புதிய அப்டேட் சரிபார்" : "Check for Update",
+          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+        ),
+        subtitle: Text(
+          "${isTamil ? 'தற்போதைய பதிப்பு' : 'Current'}: v2.4.0",
+          style: TextStyle(fontSize: 13, color: subColor),
+        ),
+        trailing: TextButton(
+          onPressed: () {},
+          child: Text(
+            isTamil ? "சரிபார்" : "Check",
+            style: TextStyle(fontWeight: FontWeight.bold, color: primaryBlue),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppVersion(Color subColor, bool isTamil) => Center(
+    child: Column(
+      children: [
+        Text(
+          isTamil ? "பதிப்பு 2.4.0 (சரியானது)" : "App Version 2.4.0 (Stable)",
+          style: TextStyle(
+            color: subColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isTamil ? "BIT-SSG குழுவினரால் உருவாக்கப்பட்டது" : "Built by BIT-SSG",
+          style: TextStyle(color: subColor.withOpacity(0.5), fontSize: 11),
+        ),
+      ],
+    ),
+  );
 
   Widget _settingsTile(
     IconData icon,
@@ -257,89 +439,31 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildUpdateTile(
-    Color cardColor,
-    Color titleColor,
-    Color subColor,
-    Color primaryBlue,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: ListTile(
-        leading: _buildIconContainer(
-          Icons.system_update_alt_rounded,
-          primaryBlue,
-        ),
-        title: Text(
-          "Check for Update",
-          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
-        ),
-        subtitle: Text(
-          "Current: v2.4.0",
-          style: TextStyle(fontSize: 13, color: subColor),
-        ),
-        trailing: TextButton(
-          onPressed: () {},
-          child: Text(
-            "Check",
-            style: TextStyle(fontWeight: FontWeight.bold, color: primaryBlue),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(
-    BuildContext context,
+  Widget _buildSectionTitle(
+    String title,
     Color titleColor,
     Color primaryBlue,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Icon(
-                    Icons.arrow_back_ios,
-                    size: 18,
-                    color: primaryBlue,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "SETTINGS",
-                  style: TextStyle(
-                    fontSize: 12,
-                    letterSpacing: 1.5,
-                    fontWeight: FontWeight.w900,
-                    color: primaryBlue,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Configuration",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: titleColor,
-              ),
-            ),
-          ],
+  ) => Row(
+    children: [
+      Container(
+        width: 4,
+        height: 18,
+        decoration: BoxDecoration(
+          color: primaryBlue,
+          borderRadius: BorderRadius.circular(10),
         ),
-        _buildTopIcon(Icons.tune_outlined, titleColor),
-      ],
-    );
-  }
+      ),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: titleColor,
+        ),
+      ),
+    ],
+  );
 
   Widget _buildToggleTile(
     IconData icon,
@@ -376,43 +500,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildThemeSelector(
-    bool isDark,
-    Color cardColor,
-    Color subColor,
-    Color primaryBlue,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildThemeOption(
-              "Light Mode",
-              Icons.light_mode_outlined,
-              !isDark,
-              subColor,
-              primaryBlue,
-            ),
-          ),
-          Expanded(
-            child: _buildThemeOption(
-              "Dark Mode",
-              Icons.dark_mode_outlined,
-              isDark,
-              subColor,
-              primaryBlue,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildThemeOption(
     String label,
     IconData icon,
@@ -444,32 +531,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  Widget _buildSectionTitle(
-    String title,
-    Color titleColor,
-    Color primaryBlue,
-  ) => Row(
-    children: [
-      Container(
-        width: 4,
-        height: 18,
-        decoration: BoxDecoration(
-          color: primaryBlue,
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Text(
-        title,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          color: titleColor,
-        ),
-      ),
-    ],
-  );
 
   Widget _buildBackgroundDecor(bool isDark) => Positioned.fill(
     child: Stack(
@@ -506,7 +567,6 @@ class _SettingsPageState extends State<SettingsPage> {
     ),
     child: Icon(icon, color: titleColor.withOpacity(0.6), size: 20),
   );
-
   Widget _buildIconContainer(IconData icon, Color color) => Container(
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
@@ -514,25 +574,5 @@ class _SettingsPageState extends State<SettingsPage> {
       borderRadius: BorderRadius.circular(12),
     ),
     child: Icon(icon, color: color, size: 22),
-  );
-
-  Widget _buildAppVersion(Color subColor) => Center(
-    child: Column(
-      children: [
-        Text(
-          "App Version 2.4.0 (Stable)",
-          style: TextStyle(
-            color: subColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          "Built by BIT-SSG",
-          style: TextStyle(color: subColor.withOpacity(0.5), fontSize: 11),
-        ),
-      ],
-    ),
   );
 }

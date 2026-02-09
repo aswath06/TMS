@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tms/screens/driver/DriverLeaveScreen.dart';
+import 'package:tms/screens/driver/DriverProfileScreen.dart';
 import 'package:tms/screens/driver/driver_duties_screen.dart';
 import 'package:tms/screens/driver/driver_routes_screen.dart';
 import '../components/custom_bottom_bar.dart';
@@ -48,7 +49,7 @@ class _MainScreenState extends State<MainScreen> {
         const DriverDutiesScreen(), // Updated from placeholder
         const DriverRoutesScreen(),
         const DriverLeaveScreen(),
-        const ProfileScreen(),
+        const DriverProfileScreen(),
       ];
     }
   }

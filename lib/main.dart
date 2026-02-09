@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/date_symbol_data_local.dart'; // 1. IMPORT THIS
 import 'utils/routes.dart';
 
-void main() {
+void main() async {
+  // 2. MARK AS ASYNC
+  // Ensure Flutter framework is initialized before running code
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 3. INITIALIZE DATE FORMATTING (This fixes your crash)
+  try {
+    await initializeDateFormatting('ta', null);
+    await initializeDateFormatting('en', null);
+  } catch (e) {
+    debugPrint("Locale initialization error: $e");
+  }
 
   // Premium Edge-to-Edge System UI
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark, // Dark icons for light theme
+      statusBarIconBrightness: Brightness.dark,
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
@@ -27,23 +38,17 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'TMS Pro',
 
-      // --- NATIVE PROFESSIONAL THEME ---
       theme: ThemeData(
         useMaterial3: true,
-
-        // Removing Times New Roman.
-        // Leaving fontFamily null defaults to the platform's native font
-        // (Roboto on Android, San Francisco on iOS).
         fontFamily: null,
 
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF4F46E5),
           primary: const Color(0xFF4F46E5),
-          surface: const Color(0xFFF8FAFC), // Slate-50: Professional Background
-          onSurface: const Color(0xFF0F172A), // Slate-900: Deep text color
+          surface: const Color(0xFFF8FAFC),
+          onSurface: const Color(0xFF0F172A),
         ),
 
-        // --- TYPOGRAPHY HIERARCHY ---
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontWeight: FontWeight.w900,

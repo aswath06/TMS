@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:tms/store/istamil.dart'; // Ensure this path is correct
 
 class DriverDutiesScreen extends StatelessWidget {
   const DriverDutiesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final bool isTamil = LanguageStore.isTamil;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -20,7 +22,7 @@ class DriverDutiesScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // Decorative Background Circle (Top Right)
+          // Decorative Background Circle
           Positioned(
             top: -50,
             right: -50,
@@ -43,72 +45,90 @@ class DriverDutiesScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 24),
 
-                  // 1. HEADER (Same as Dashboard but with Driver Status)
+                  // 1. HEADER
                   _buildHeader(
-                    "Arun", // Pass driver name here
+                    isTamil ? "அருண்" : "Arun",
                     titleColor,
                     subColor,
                     screenWidth,
                     primaryBlue,
+                    isTamil,
                   ),
                   const SizedBox(height: 32),
 
-                  // 2. SEARCH BAR (Same as Dashboard)
-                  _buildSearchBar(isDark, subColor, surfaceColor, primaryBlue),
+                  // 2. SEARCH BAR
+                  _buildSearchBar(
+                    isDark,
+                    subColor,
+                    surfaceColor,
+                    primaryBlue,
+                    isTamil,
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 3. STATS SECTION
+                  _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil),
                   const SizedBox(height: 36),
 
-                  // 3. TODAY'S ASSIGNMENTS
-                  _buildSectionTitle("Today's Assignments", titleColor),
+                  // 4. TODAY'S ASSIGNMENTS
+                  _buildSectionTitle(
+                    isTamil ? "இன்றைய பணிகள்" : "Today's Assignments",
+                    titleColor,
+                  ),
                   const SizedBox(height: 18),
                   _buildDutyCard(
                     context: context,
                     id: "MSN-8821",
-                    pickup: "Main Terminal",
-                    drop: "Faculty Block B",
+                    pickup: isTamil ? "முதன்மை முனையம்" : "Main Terminal",
+                    drop: isTamil ? "பேராசிரியர் பிளாக் B" : "Faculty Block B",
                     time: "09:00 AM",
                     vehicle: "BUS-04",
-                    status: "Active",
+                    status: isTamil ? "செயலில் உள்ளது" : "Active",
                     statusColor: Colors.orangeAccent,
                     surface: surfaceColor,
                     primary: primaryBlue,
                     isDark: isDark,
+                    isTamil: isTamil,
                   ),
 
                   const SizedBox(height: 36),
 
-                  // 4. UPCOMING ASSIGNMENTS
-                  _buildSectionTitle("Upcoming", titleColor),
+                  // 5. UPCOMING ASSIGNMENTS
+                  _buildSectionTitle(
+                    isTamil ? "வரவிருப்பவை" : "Upcoming",
+                    titleColor,
+                  ),
                   const SizedBox(height: 18),
                   _buildDutyCard(
                     context: context,
                     id: "MSN-8825",
-                    pickup: "Student Housing",
-                    drop: "Sports Complex",
+                    pickup: isTamil ? "மாணவர் விடுதி" : "Student Housing",
+                    drop: isTamil ? "விளையாட்டு வளாகம்" : "Sports Complex",
                     time: "02:30 PM",
                     vehicle: "VAN-02",
-                    status: "Upcoming",
+                    status: isTamil ? "வரவிருக்கிறது" : "Upcoming",
                     statusColor: Colors.blueAccent,
                     surface: surfaceColor,
                     primary: primaryBlue,
                     isDark: isDark,
+                    isTamil: isTamil,
                   ),
                   _buildDutyCard(
                     context: context,
                     id: "MSN-8790",
-                    pickup: "Gate 1",
-                    drop: "Admin Office",
+                    pickup: isTamil ? "நுழைவாயில் 1" : "Gate 1",
+                    drop: isTamil ? "நிர்வாக அலுவலகம்" : "Admin Office",
                     time: "04:00 PM",
                     vehicle: "BUS-04",
-                    status: "Completed",
+                    status: isTamil ? "முடிந்தது" : "Completed",
                     statusColor: Colors.teal.shade400,
                     surface: surfaceColor,
                     primary: primaryBlue,
                     isDark: isDark,
+                    isTamil: isTamil,
                   ),
 
-                  const SizedBox(
-                    height: 100,
-                  ), // Extra space for Bottom Navigation Bar
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -118,7 +138,86 @@ class DriverDutiesScreen extends StatelessWidget {
     );
   }
 
-  // --- UI Components ---
+  Widget _buildStatCards(
+    Color primary,
+    Color surface,
+    bool isDark,
+    bool isTamil,
+  ) {
+    return Row(
+      children: [
+        _statItem(
+          label: isTamil ? "நிலுவையில்" : "Pending",
+          value: "03",
+          icon: Icons.assignment_late_rounded,
+          accentColor: Colors.orangeAccent,
+          surface: surface,
+          isDark: isDark,
+        ),
+        const SizedBox(width: 16),
+        _statItem(
+          label: isTamil ? "வருகை" : "Attendance",
+          value: "98%",
+          icon: Icons.verified_user_rounded,
+          accentColor: Colors.tealAccent.shade700,
+          surface: surface,
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  Widget _statItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color accentColor,
+    required Color surface,
+    required bool isDark,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: accentColor, size: 20),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildHeader(
     String name,
@@ -126,6 +225,7 @@ class DriverDutiesScreen extends StatelessWidget {
     Color subColor,
     double width,
     Color primary,
+    bool isTamil,
   ) {
     return Row(
       children: [
@@ -143,7 +243,7 @@ class DriverDutiesScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  "STATUS: On-Duty",
+                  isTamil ? "நிலை: பணியில்" : "STATUS: On-Duty",
                   style: TextStyle(
                     fontSize: 10,
                     color: primary,
@@ -154,7 +254,7 @@ class DriverDutiesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "Hello, $name",
+                isTamil ? "வணக்கம், $name" : "Hello, $name",
                 style: TextStyle(
                   fontSize: width * 0.075,
                   fontWeight: FontWeight.w900,
@@ -165,22 +265,13 @@ class DriverDutiesScreen extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [primary, primary.withOpacity(0.4)],
-            ),
-          ),
+        CircleAvatar(
+          radius: width * 0.065,
+          backgroundColor: primary,
           child: CircleAvatar(
-            radius: width * 0.065,
-            backgroundColor: Colors.white,
-            child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundImage: const NetworkImage(
-                "https://ui-avatars.com/api/?name=Driver&background=6366F1&color=fff",
-              ),
+            radius: width * 0.06,
+            backgroundImage: const NetworkImage(
+              "https://ui-avatars.com/api/?name=Driver&background=6366F1&color=fff",
             ),
           ),
         ),
@@ -193,6 +284,7 @@ class DriverDutiesScreen extends StatelessWidget {
     Color subColor,
     Color surface,
     Color primary,
+    bool isTamil,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -203,13 +295,6 @@ class DriverDutiesScreen extends StatelessWidget {
         border: Border.all(
           color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -222,7 +307,9 @@ class DriverDutiesScreen extends StatelessWidget {
           Expanded(
             child: TextField(
               decoration: InputDecoration(
-                hintText: "Search Missions...",
+                hintText: isTamil
+                    ? "பணிகளைத் தேடுங்கள்..."
+                    : "Search Missions...",
                 hintStyle: TextStyle(
                   color: subColor.withOpacity(0.5),
                   fontSize: 15,
@@ -231,15 +318,7 @@ class DriverDutiesScreen extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            height: 38,
-            width: 38,
-            decoration: BoxDecoration(
-              color: primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.tune_rounded, color: primary, size: 20),
-          ),
+          Icon(Icons.tune_rounded, color: primary, size: 20),
         ],
       ),
     );
@@ -269,8 +348,10 @@ class DriverDutiesScreen extends StatelessWidget {
     required Color surface,
     required Color primary,
     required bool isDark,
+    required bool isTamil,
   }) {
-    bool isActive = status == "Active";
+    // Logic check for active status in either language
+    bool isActive = status == "Active" || status == "செயலில் உள்ளது";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -281,13 +362,6 @@ class DriverDutiesScreen extends StatelessWidget {
         border: Border.all(
           color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,35 +451,23 @@ class DriverDutiesScreen extends StatelessWidget {
           ),
           if (isActive) ...[
             const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () {
-                // Action for starting mission
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [primary, primary.withOpacity(0.8)],
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primary.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primary, primary.withOpacity(0.8)],
                 ),
-                child: const Center(
-                  child: Text(
-                    "START MISSION",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                      letterSpacing: 1,
-                    ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Center(
+                child: Text(
+                  isTamil ? "பணி தொடங்கப்பட்டது..." : "MISSION STARTED...",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    letterSpacing: 1,
                   ),
                 ),
               ),
