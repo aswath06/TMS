@@ -71,7 +71,7 @@ class DashboardScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildSectionTitle("Recent Activity", titleColor),
+                      _buildSectionTitle("Recent Notifcations", titleColor),
                       TextButton(
                         onPressed: () {},
                         child: Text(
@@ -112,7 +112,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
+                  horizontal: 10,    
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
@@ -120,7 +120,7 @@ class DashboardScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  "STATUS: Faculty",
+                  "ROLE: Faculty",
                   style: TextStyle(
                     fontSize: 10,
                     color: primary,
