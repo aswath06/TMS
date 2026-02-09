@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/profile/info_card.dart';
 import 'package:tms/components/profile/profile_hero.dart';
-import 'package:tms/screens/settings_page.dart';
+import 'package:tms/screens/setting/settings_page.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});

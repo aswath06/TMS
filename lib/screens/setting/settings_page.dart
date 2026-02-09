@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'scanner_page.dart';
+import 'package:tms/screens/setting/SecuritySettingsPage.dart';
+import '../scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -89,6 +90,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // --- SECURITY ---
                     _buildSectionTitle("Security", titleColor, primaryBlue),
                     const SizedBox(height: 16),
+                    // Inside SettingsPage Column
                     _settingsTile(
                       Icons.lock_outline,
                       "Privacy & Security",
@@ -97,6 +99,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       titleColor,
                       subTitleColor,
                       primaryBlue,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SecuritySettingsPage(),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 32),
