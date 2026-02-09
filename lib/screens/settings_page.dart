@@ -10,6 +10,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
+  String _selectedLanguage = "English"; // Default language
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,6 @@ class _SettingsPageState extends State<SettingsPage> {
       body: Stack(
         children: [
           _buildBackgroundDecor(isDark),
-
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -42,6 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildHeader(context, titleColor, primaryBlue),
                     const SizedBox(height: 32),
 
+                    // --- NOTIFICATIONS ---
                     _buildSectionTitle(
                       "Notifications",
                       titleColor,
@@ -61,6 +62,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // --- APPEARANCE ---
                     _buildSectionTitle("Appearance", titleColor, primaryBlue),
                     const SizedBox(height: 16),
                     _buildThemeSelector(
@@ -71,6 +74,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // --- LOCALIZATION (Language Switcher) ---
+                    _buildSectionTitle("Localization", titleColor, primaryBlue),
+                    const SizedBox(height: 16),
+                    _buildLanguageSelector(
+                      cardColor,
+                      subTitleColor,
+                      primaryBlue,
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // --- SECURITY ---
                     _buildSectionTitle("Security", titleColor, primaryBlue),
                     const SizedBox(height: 16),
                     _settingsTile(
@@ -84,16 +100,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // --- MAINTENANCE ---
                     _buildSectionTitle("Maintenance", titleColor, primaryBlue),
                     const SizedBox(height: 16),
-
                     _buildUpdateTile(
                       cardColor,
                       titleColor,
                       subTitleColor,
                       primaryBlue,
                     ),
-
                     const SizedBox(height: 12),
 
                     // ✅ SCANNER TILE
@@ -112,7 +128,6 @@ class _SettingsPageState extends State<SettingsPage> {
                             builder: (_) => const ScannerPage(),
                           ),
                         );
-
                         if (result != null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text("Scanned: $result")),
@@ -121,10 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                     ),
 
-                    const SizedBox(height: 40),
-                    _buildLogoutButton(),
-
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 60),
                     _buildAppVersion(subTitleColor),
                     const SizedBox(height: 20),
                   ],
@@ -137,7 +149,72 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ---------------- UI COMPONENTS ----------------
+  // ---------------- LANGUAGE SWITCHER COMPONENTS ----------------
+
+  Widget _buildLanguageSelector(
+    Color cardColor,
+    Color subColor,
+    Color primaryBlue,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildLanguageOption(
+              "English",
+              _selectedLanguage == "English",
+              subColor,
+              primaryBlue,
+            ),
+          ),
+          Expanded(
+            child: _buildLanguageOption(
+              "தமிழ்",
+              _selectedLanguage == "தமிழ்",
+              subColor,
+              primaryBlue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageOption(
+    String label,
+    bool isSelected,
+    Color subColor,
+    Color primaryBlue,
+  ) {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedLanguage = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: isSelected ? Colors.white : subColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------- EXISTING UI COMPONENTS ----------------
 
   Widget _settingsTile(
     IconData icon,
@@ -169,8 +246,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  // --------- KEEPING REST OF YOUR ORIGINAL METHODS ---------
 
   Widget _buildUpdateTile(
     Color cardColor,
@@ -206,28 +281,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  Widget _buildLogoutButton() => SizedBox(
-    width: double.infinity,
-    child: ElevatedButton.icon(
-      onPressed: () {},
-      icon: const Icon(Icons.logout_rounded, color: Colors.white),
-      label: const Text(
-        "Logout Session",
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFEF4444),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-      ),
-    ),
-  );
 
   Widget _buildHeader(
     BuildContext context,
