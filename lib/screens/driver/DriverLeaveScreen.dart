@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:tms/screens/driver/apply_leave_page.dart';
 import 'package:tms/store/istamil.dart';
 
 class DriverLeaveScreen extends StatefulWidget {
@@ -420,25 +421,4 @@ class _DriverLeaveScreenState extends State<DriverLeaveScreen> {
     title,
     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color),
   );
-}
-
-class ApplyLeavePage extends StatelessWidget {
-  const ApplyLeavePage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final bool isTamil = LanguageStore.isTamil;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isTamil ? "விடுப்பு விண்ணப்பம்" : "Request Leave"),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Text(
-          isTamil
-              ? "புதிய விடுப்பு விண்ணப்பப் படிவம்"
-              : "Form for new leave application",
-        ),
-      ),
-    );
-  }
 }
