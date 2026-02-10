@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tms/screens/setting/SecuritySettingsPage.dart';
 import 'package:tms/store/istamil.dart';
-import '../scanner_page.dart';
+import 'scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});

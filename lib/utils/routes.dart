@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_screen.dart';
-import '../screens/lock_screen.dart'; // Import the new LockScreen
+import '../screens/auth/lock_screen.dart'; // Import the new LockScreen
 
 class AppRoutes {
   static const String splash = '/';

@@ -14,11 +14,12 @@ class CustomBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isFaculty = userRole == 'faculty';
-    final List<_NavItem> items = isFaculty ? _facultyItems() : _driverItems();
+    // Determine which items to show based on the role
+    final List<_NavItem> items = _getNavItems();
 
     const Color brandColor = Color(0xFF4F46E5);
     const Color grayText = Color(0xFF94A3B8);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -26,7 +27,7 @@ class CustomBottomBar extends StatelessWidget {
       child: Container(
         height: 72,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -85,24 +86,60 @@ class CustomBottomBar extends StatelessWidget {
     );
   }
 
-  // --- Updated Faculty Items Order ---
-  List<_NavItem> _facultyItems() => [
-    _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
-    _NavItem(Icons.explore_outlined, Icons.explore_rounded, 'Missions'),
-    _NavItem(Icons.assignment_outlined, Icons.assignment_rounded, 'Requests'),
-    _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
-  ];
-
-  List<_NavItem> _driverItems() => [
-    _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
-    _NavItem(Icons.alt_route_outlined, Icons.alt_route_rounded, 'Routes'),
-    _NavItem(
-      Icons.calendar_month_outlined,
-      Icons.calendar_month_rounded,
-      'Schedule',
-    ),
-    _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
-  ];
+  List<_NavItem> _getNavItems() {
+    switch (userRole.toLowerCase()) {
+      case 'transport admin':
+        return [
+          _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
+          _NavItem(
+            Icons.assignment_outlined,
+            Icons.assignment_rounded,
+            'Requests',
+          ),
+          _NavItem(
+            Icons.local_shipping_outlined,
+            Icons.local_shipping_rounded,
+            'Vehicle',
+          ),
+          _NavItem(
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+            'Profile',
+          ),
+        ];
+      case 'faculty':
+        return [
+          _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
+          _NavItem(Icons.explore_outlined, Icons.explore_rounded, 'Missions'),
+          _NavItem(
+            Icons.assignment_outlined,
+            Icons.assignment_rounded,
+            'Requests',
+          ),
+          _NavItem(
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+            'Profile',
+          ),
+        ];
+      case 'driver':
+      default:
+        return [
+          _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
+          _NavItem(Icons.alt_route_outlined, Icons.alt_route_rounded, 'Routes'),
+          _NavItem(
+            Icons.calendar_month_outlined,
+            Icons.calendar_month_rounded,
+            'Schedule',
+          ),
+          _NavItem(
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+            'Profile',
+          ),
+        ];
+    }
+  }
 }
 
 class _NavItem {

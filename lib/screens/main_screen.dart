@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:tms/screens/admin/vechile_page.dart'; // Ensure path is correct
+// Driver Screens
 import 'package:tms/screens/driver/DriverLeaveScreen.dart';
 import 'package:tms/screens/driver/DriverProfileScreen.dart';
 import 'package:tms/screens/driver/driver_duties_screen.dart';
 import 'package:tms/screens/driver/driver_routes_screen.dart';
-import '../components/custom_bottom_bar.dart';
+// Faculty/Admin Screens
 import 'faculty/profile_screen.dart';
 import 'faculty/missions_screen.dart';
 import 'faculty/dashboard_screen.dart';
 import 'faculty/requests_screen.dart' hide MissionsScreen;
+
+import '../components/custom_bottom_bar.dart';
 
 class MainScreen extends StatefulWidget {
   final String userRole;
@@ -19,7 +23,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  // PageController handles the sliding animation
   late PageController _pageController;
 
   @override
@@ -35,22 +38,29 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   List<Widget> _getScreens() {
-    final bool isFaculty = widget.userRole == 'faculty';
-
-    if (isFaculty) {
-      return [
-        const DashboardScreen(),
-        const MissionsScreen(),
-        const RequestsScreen(),
-        const ProfileScreen(),
-      ];
-    } else {
-      return [
-        const DriverDutiesScreen(), // Updated from placeholder
-        const DriverRoutesScreen(),
-        const DriverLeaveScreen(),
-        const DriverProfileScreen(),
-      ];
+    switch (widget.userRole.toLowerCase()) {
+      case 'transport admin':
+        return [
+          const DashboardScreen(),
+          const RequestsScreen(),
+          const VehiclePage(), // Matches 'Vehicle' icon in Nav Bar
+          const ProfileScreen(),
+        ];
+      case 'faculty':
+        return [
+          const DashboardScreen(),
+          const MissionsScreen(),
+          const RequestsScreen(),
+          const ProfileScreen(),
+        ];
+      case 'driver':
+      default:
+        return [
+          const DriverDutiesScreen(),
+          const DriverRoutesScreen(),
+          const DriverLeaveScreen(),
+          const DriverProfileScreen(),
+        ];
     }
   }
 
@@ -72,26 +82,22 @@ class _MainScreenState extends State<MainScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          // Replaced IndexedStack with PageView for smooth transitions
           PageView(
             controller: _pageController,
             onPageChanged: _onPageChanged,
-            physics:
-                const NeverScrollableScrollPhysics(), // Disable swiping to keep Nav Bar in sync
+            physics: const NeverScrollableScrollPhysics(),
             children: _getScreens(),
           ),
-
           Align(
             alignment: Alignment.bottomCenter,
             child: CustomBottomBar(
               currentIndex: _currentIndex,
               userRole: widget.userRole,
               onTap: (index) {
-                // Trigger the sliding animation
                 _pageController.animateToPage(
                   index,
                   duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOutQuart, // Smooth, professional curve
+                  curve: Curves.easeInOutQuart,
                 );
               },
             ),

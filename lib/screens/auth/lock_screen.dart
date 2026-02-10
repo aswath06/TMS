@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/routes.dart';
+import '../../utils/routes.dart';
 
 class LockScreen extends StatefulWidget {
   final String role; // Passed from Splash to redirect after PIN success
