@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/profile/info_card.dart';
-import 'package:tms/screens/setting/settings_page.dart';
+import 'package:tms/screens/admin/add_vehicle_page.dart';
 
 class VehiclePage extends StatelessWidget {
   const VehiclePage({super.key});
@@ -18,10 +18,17 @@ class VehiclePage extends StatelessWidget {
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
 
-    const int totalVehicles = 47;
-
     return Scaffold(
       backgroundColor: bgColor,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF6366F1),
+        onPressed: () => _navigateToAddVehicle(context),
+        label: const Text(
+          "Add Vehicle",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        icon: const Icon(Icons.add, color: Colors.white),
+      ),
       body: Stack(
         children: [
           _buildBackgroundDecor(isDark),
@@ -38,20 +45,14 @@ class VehiclePage extends StatelessWidget {
                   children: [
                     _buildHeader(context, titleColor),
                     const SizedBox(height: 30),
-
-                    _buildSectionTitle(
-                      "Operational Status ($totalVehicles)",
-                      titleColor,
-                    ),
+                    _buildSectionTitle("Operational Status (47)", titleColor),
                     const SizedBox(height: 16),
                     _buildStatusGrid(cardColor, titleColor, subTitleColor),
-
                     const SizedBox(height: 32),
                     _buildSectionTitle("Vehicle Registry", titleColor),
                     const SizedBox(height: 16),
                     _buildVehicleList(cardColor, titleColor, subTitleColor),
-
-                    const SizedBox(height: 110), // Padding for Bottom Bar
+                    const SizedBox(height: 110),
                   ],
                 ),
               ),
@@ -59,6 +60,13 @@ class VehiclePage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _navigateToAddVehicle(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddVehiclePage()),
     );
   }
 
@@ -75,12 +83,9 @@ class VehiclePage extends StatelessWidget {
           ),
         ),
         IconButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SettingsPage()),
-          ),
+          onPressed: () => _navigateToAddVehicle(context),
           icon: Icon(
-            Icons.settings_outlined,
+            Icons.add_circle_outline_rounded,
             color: titleColor.withOpacity(0.6),
             size: 26,
           ),
@@ -111,7 +116,6 @@ class VehiclePage extends StatelessWidget {
         'c': Colors.red,
       },
     ];
-
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -148,20 +152,7 @@ class VehiclePage extends StatelessWidget {
         'type': 'Staff Car',
         'km': '8,210',
       },
-      {
-        'no': 'TS-09-HC-9012',
-        'status': 'Inactive',
-        'type': 'Utility Van',
-        'km': '15,000',
-      },
-      {
-        'no': 'TS-01-EE-4321',
-        'status': 'Standby',
-        'type': 'Bus',
-        'km': '22,100',
-      },
     ];
-
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -170,19 +161,11 @@ class VehiclePage extends StatelessWidget {
       itemBuilder: (context, index) {
         final v = vehicles[index];
         final Color statusColor = _getStatusColor(v['status']);
-
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Row(
             children: [
@@ -212,40 +195,36 @@ class VehiclePage extends StatelessWidget {
                         color: titleColor,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       "${v['type']} • ${v['km']} km",
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subColor,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(fontSize: 13, color: subColor),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  v['status'],
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              _buildStatusBadge(v['status'], statusColor),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStatusBadge(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
@@ -300,16 +279,6 @@ class VehiclePage extends StatelessWidget {
               backgroundColor: const Color(
                 0xFF6366F1,
               ).withOpacity(isDark ? 0.06 : 0.04),
-            ),
-          ),
-          Positioned(
-            bottom: 100,
-            left: -40,
-            child: CircleAvatar(
-              radius: 80,
-              backgroundColor: const Color(
-                0xFFA855F7,
-              ).withOpacity(isDark ? 0.04 : 0.02),
             ),
           ),
         ],
