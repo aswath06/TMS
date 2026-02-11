@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/profile/info_card.dart';
-import 'package:tms/screens/admin/add_vehicle_page.dart';
+import 'package:tms/screens/admin/request/add_vehicle_page.dart';
 
 class VehiclePage extends StatelessWidget {
   const VehiclePage({super.key});

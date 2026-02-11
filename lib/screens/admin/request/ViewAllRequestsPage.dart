@@ -1,9 +1,37 @@
 import 'package:flutter/material.dart';
 
-class ViewAllRequestsPage extends StatelessWidget {
+class ViewAllRequestsPage extends StatefulWidget {
   final List<Map<String, dynamic>> requests;
 
   const ViewAllRequestsPage({super.key, required this.requests});
+
+  @override
+  State<ViewAllRequestsPage> createState() => _ViewAllRequestsPageState();
+}
+
+class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
+  late List<Map<String, dynamic>> _filteredRequests;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredRequests = widget.requests;
+  }
+
+  void _filterRequests(String query) {
+    setState(() {
+      _filteredRequests = widget.requests
+          .where(
+            (req) =>
+                (req['faculty'] ?? "").toLowerCase().contains(
+                  query.toLowerCase(),
+                ) ||
+                (req['id'] ?? "").toLowerCase().contains(query.toLowerCase()),
+          )
+          .toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,6 +41,7 @@ class ViewAllRequestsPage extends StatelessWidget {
         : const Color(0xFFF8FAFC);
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
     final Color primaryBlue = const Color(0xFF6366F1);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -36,23 +65,115 @@ class ViewAllRequestsPage extends StatelessWidget {
             fontSize: 18,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.history_rounded, color: titleColor),
+            onPressed: () {
+              // Action for history
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        physics: const BouncingScrollPhysics(),
-        itemCount: requests.length,
-        itemBuilder: (context, index) {
-          return _buildEnhancedRequestCard(
-            requests[index],
-            isDark,
-            primaryBlue,
-          );
-        },
+      body: Column(
+        children: [
+          // Search Bar Section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterRequests,
+                style: TextStyle(color: titleColor),
+                decoration: InputDecoration(
+                  hintText: "Search faculty or ID...",
+                  hintStyle: TextStyle(
+                    color: titleColor.withOpacity(0.4),
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: primaryBlue,
+                    size: 22,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 15),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.clear_rounded,
+                            color: titleColor.withOpacity(0.4),
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filterRequests("");
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+
+          // List Section
+          Expanded(
+            child: _filteredRequests.isEmpty
+                ? _buildEmptyState(titleColor)
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: _filteredRequests.length,
+                    itemBuilder: (context, index) {
+                      return _buildEnhancedRequestCard(
+                        _filteredRequests[index],
+                        isDark,
+                        primaryBlue,
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
 
-  // REUSABLE CARD WIDGET (Matching the dashboard style)
+  Widget _buildEmptyState(Color titleColor) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 60,
+            color: titleColor.withOpacity(0.2),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "No requests found",
+            style: TextStyle(
+              color: titleColor.withOpacity(0.5),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEnhancedRequestCard(
     Map<String, dynamic> req,
     bool isDark,

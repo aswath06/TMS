@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/request_card.dart';
-import 'package:tms/components/leave_card.dart'; // Import the new component
-import 'package:tms/screens/admin/ViewAllRequestsPage.dart';
+import 'package:tms/components/leave_card.dart';
+import 'package:tms/screens/admin/request/ViewAllRequestsPage.dart';
+import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart'; // Import the new page
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
 class RequestListPage extends StatefulWidget {
@@ -48,6 +49,7 @@ class _RequestListPageState extends State<RequestListPage> {
     },
   ];
 
+  // Mock data with 4 items to trigger the "View All" logic (> 3)
   final List<Map<String, dynamic>> _leaves = [
     {
       'driver': 'John Doe',
@@ -63,6 +65,20 @@ class _RequestListPageState extends State<RequestListPage> {
       'to': 'Nov 05',
       'status': 'Pending',
     },
+    {
+      'driver': 'Harvey Specter',
+      'days': '2',
+      'from': 'Nov 07',
+      'to': 'Nov 08',
+      'status': 'Approved',
+    },
+    {
+      'driver': 'Rachel Zane',
+      'days': '5',
+      'from': 'Nov 10',
+      'to': 'Nov 15',
+      'status': 'Pending',
+    },
   ];
 
   @override
@@ -74,7 +90,11 @@ class _RequestListPageState extends State<RequestListPage> {
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
     final Color primaryBlue = const Color(0xFF6366F1);
 
-    final int displayCount = _requests.length > 2 ? 2 : _requests.length;
+    // Logic for Request Section (Show 2)
+    final int requestDisplayCount = _requests.length > 2 ? 2 : _requests.length;
+
+    // Logic for Leaves Section (Show 3)
+    final int leaveDisplayCount = _leaves.length > 3 ? 3 : _leaves.length;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -106,7 +126,7 @@ class _RequestListPageState extends State<RequestListPage> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: displayCount,
+                    itemCount: requestDisplayCount,
                     itemBuilder: (context, index) => RequestCard(
                       req: _requests[index],
                       isDark: isDark,
@@ -121,18 +141,26 @@ class _RequestListPageState extends State<RequestListPage> {
                     "Leaves Request",
                     titleColor,
                     primaryBlue,
-                    onViewAll:
-                        () {}, // You can navigate to a ViewAllLeavesPage here later
+                    onViewAll: () {
+                      // Navigate only if count > 3 (or always allow navigation to see full history)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ViewAllLeavesPage(leaves: _leaves),
+                        ),
+                      );
+                    },
                   ),
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _leaves.length,
+                    itemCount: leaveDisplayCount,
                     itemBuilder: (context, index) => LeaveCard(
-                      leaf: _leaves[index], // Data Prop
-                      isDark: isDark, // Theme Prop
-                      primaryColor: primaryBlue, // Style Prop
+                      leaf: _leaves[index],
+                      isDark: isDark,
+                      primaryColor: primaryBlue,
                     ),
                   ),
 
@@ -146,7 +174,7 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  // Helper Methods for UI structure
+  // Helper Methods (Headers, etc.) remain as they were in your previous code...
   Widget _buildSectionHeader(
     String title,
     Color titleColor,

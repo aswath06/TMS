@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tms/screens/admin/request_list_page.dart';
-import 'package:tms/screens/admin/vechile_page.dart'; // Ensure path is correct
+import 'package:tms/screens/admin/request/request_list_page.dart';
+import 'package:tms/screens/admin/vechiles/vechile_page.dart'; // Ensure path is correct
 // Driver Screens
 import 'package:tms/screens/driver/DriverLeaveScreen.dart';
 import 'package:tms/screens/driver/DriverProfileScreen.dart';
