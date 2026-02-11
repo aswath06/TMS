@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tms/screens/setting/SecuritySettingsPage.dart';
 import 'package:tms/store/istamil.dart';
+import 'package:tms/store/isdark.dart'; // Import the new theme store
 import 'scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -13,15 +14,16 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
 
-  // Sync initial state with the Global Store
+  // Sync initial state with the Global Stores
   String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
 
   @override
   Widget build(BuildContext context) {
-    // Determine language state
+    // Determine current states from global stores
     final bool isTamil = LanguageStore.isTamil;
+    final bool isDark = ThemeStore.isDark; // Driven by the store
 
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    // Dynamic Colors based on Store state
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
@@ -193,6 +195,55 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // --- THEME SELECTOR ---
+  Widget _buildThemeSelector(
+    bool isDark,
+    Color cardColor,
+    Color subColor,
+    Color primaryBlue,
+    bool isTamil,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => ThemeStore.setTheme(false));
+              },
+              child: _buildThemeOption(
+                isTamil ? "பகல்" : "Light Mode",
+                Icons.light_mode_outlined,
+                !ThemeStore.isDark,
+                subColor,
+                primaryBlue,
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => ThemeStore.setTheme(true));
+              },
+              child: _buildThemeOption(
+                isTamil ? "இரவு" : "Dark Mode",
+                Icons.dark_mode_outlined,
+                ThemeStore.isDark,
+                subColor,
+                primaryBlue,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- LANGUAGE SELECTOR ---
   Widget _buildLanguageSelector(
     Color cardColor,
@@ -311,44 +362,6 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         _buildTopIcon(Icons.tune_outlined, titleColor),
       ],
-    );
-  }
-
-  Widget _buildThemeSelector(
-    bool isDark,
-    Color cardColor,
-    Color subColor,
-    Color primaryBlue,
-    bool isTamil,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildThemeOption(
-              isTamil ? "பகல்" : "Light Mode",
-              Icons.light_mode_outlined,
-              !isDark,
-              subColor,
-              primaryBlue,
-            ),
-          ),
-          Expanded(
-            child: _buildThemeOption(
-              isTamil ? "இரவு" : "Dark Mode",
-              Icons.dark_mode_outlined,
-              isDark,
-              subColor,
-              primaryBlue,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tms/store/isdark.dart'; // Ensure this path is correct
 
 class SecuritySettingsPage extends StatefulWidget {
   const SecuritySettingsPage({super.key});
@@ -56,6 +57,11 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     bool isLoading = false;
     bool isVisible = false;
 
+    // Use current store state for modal
+    final bool isDark = ThemeStore.isDark;
+    final Color modalBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -70,7 +76,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               right: 24,
             ),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: modalBg,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(30),
               ),
@@ -78,11 +84,15 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildHandle(),
+                _buildHandle(isDark),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   "Disable Security",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _buildPinField(
@@ -91,6 +101,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                   errorText: verifyError,
                   enabled: !isLoading,
                   obscure: !isVisible,
+                  isDark: isDark,
                   onToggleVisibility: () =>
                       setModalState(() => isVisible = !isVisible),
                 ),
@@ -131,6 +142,10 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     bool isLoading = false;
     bool isSuccess = false;
     bool isVisible = false;
+
+    final bool isDark = ThemeStore.isDark;
+    final Color modalBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
     showModalBottomSheet(
       context: context,
@@ -186,7 +201,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               right: 24,
             ),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: modalBg,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(30),
               ),
@@ -195,13 +210,14 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildHandle(),
+                  _buildHandle(isDark),
                   const SizedBox(height: 20),
                   Text(
                     storedPin != null ? "Change App PIN" : "Set App PIN",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -212,6 +228,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                       errorText: currentError,
                       enabled: !isLoading,
                       obscure: !isVisible,
+                      isDark: isDark,
                       onToggleVisibility: () =>
                           setModalState(() => isVisible = !isVisible),
                     ),
@@ -223,6 +240,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                     errorText: newError,
                     enabled: !isLoading,
                     obscure: !isVisible,
+                    isDark: isDark,
                     onToggleVisibility: () =>
                         setModalState(() => isVisible = !isVisible),
                   ),
@@ -233,6 +251,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                     errorText: confirmError,
                     enabled: !isLoading,
                     obscure: !isVisible,
+                    isDark: isDark,
                     onToggleVisibility: () =>
                         setModalState(() => isVisible = !isVisible),
                   ),
@@ -254,12 +273,12 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
 
   // --- UI HELPERS ---
 
-  Widget _buildHandle() => Container(
+  Widget _buildHandle(bool isDark) => Container(
     width: 40,
     height: 4,
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
-      color: Colors.grey[400],
+      color: isDark ? Colors.white24 : Colors.grey[400],
       borderRadius: BorderRadius.circular(10),
     ),
   );
@@ -267,6 +286,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
   Widget _buildPinField({
     required TextEditingController controller,
     required String hint,
+    required bool isDark,
     String? errorText,
     bool enabled = true,
     bool obscure = true,
@@ -278,19 +298,24 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
       enabled: enabled,
       keyboardType: TextInputType.number,
       maxLength: 6,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black),
       decoration: InputDecoration(
         counterText: "",
         hintText: hint,
+        hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
         errorText: errorText,
         suffixIcon: IconButton(
           icon: Icon(
             obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
             size: 20,
+            color: isDark ? Colors.white70 : Colors.black54,
           ),
           onPressed: onToggleVisibility,
         ),
         filled: true,
-        fillColor: Colors.black.withOpacity(0.05),
+        fillColor: isDark
+            ? Colors.white.withOpacity(0.05)
+            : Colors.black.withOpacity(0.05),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 18,
@@ -302,10 +327,6 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: const BorderSide(color: Colors.redAccent),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
       ),
     );
@@ -355,8 +376,10 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    // Determine current dark state from Global Store
+    final bool isDark = ThemeStore.isDark;
     final Color primaryBlue = const Color(0xFF6366F1);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
     return Scaffold(
       backgroundColor: isDark
@@ -390,7 +413,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                color: textColor,
               ),
             ),
             const SizedBox(height: 32),
@@ -435,7 +458,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     VoidCallback? onTileTap,
     bool isEnabled = true,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isDark = ThemeStore.isDark;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isEnabled ? 1.0 : 0.5,
@@ -472,12 +495,12 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),
           ),
-          trailing: Switch(
+          trailing: Switch.adaptive(
             value: value,
             onChanged: isEnabled
                 ? onChanged
                 : (val) => _showSnackBar("Enable PIN first"),
-            activeTrackColor: primaryBlue,
+            activeColor: primaryBlue,
           ),
         ),
       ),

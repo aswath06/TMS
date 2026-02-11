@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'package:tms/store/user_store.dart';
+import 'package:tms/store/istamil.dart'; // Import Language Store
+import 'package:tms/store/isdark.dart'; // Import Theme Store
 import 'package:tms/utils/api_constants.dart';
 
 class ScannerPage extends StatefulWidget {
@@ -22,12 +24,6 @@ class _ScannerPageState extends State<ScannerPage>
   );
 
   late AnimationController _animationController;
-
-  // Modern Slate Theme Colors
-  final Color bgColor = const Color(0xFF0F172A);
-  final Color cardColor = const Color(0xFF1E293B);
-  final Color primaryBlue = const Color(0xFF6366F1);
-  final Color subTitleColor = const Color(0xFF94A3B8);
 
   @override
   void initState() {
@@ -50,6 +46,7 @@ class _ScannerPageState extends State<ScannerPage>
 
   Future<void> _approveLogin() async {
     setState(() => isProcessing = true);
+    final bool isTamil = LanguageStore.isTamil;
     try {
       final token = await UserStore.getToken();
       final hours = int.tryParse(_hoursController.text) ?? 24;
@@ -65,14 +62,27 @@ class _ScannerPageState extends State<ScannerPage>
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          _showStatusSnackBar("Login Approved Successfully", Colors.green);
+          _showStatusSnackBar(
+            isTamil
+                ? "உள்நுழைவு அங்கீகரிக்கப்பட்டது"
+                : "Login Approved Successfully",
+            Colors.green,
+          );
           Navigator.pop(context);
         }
       } else {
-        _handleError("Server Error: ${response.statusCode}");
+        _handleError(
+          isTamil
+              ? "சர்வர் பிழை: ${response.statusCode}"
+              : "Server Error: ${response.statusCode}",
+        );
       }
     } catch (e) {
-      _handleError("Connection failed. Check your internet.");
+      _handleError(
+        isTamil
+            ? "இணைப்பு தோல்வியடைந்தது"
+            : "Connection failed. Check your internet.",
+      );
     } finally {
       if (mounted) setState(() => isProcessing = false);
     }
@@ -109,8 +119,13 @@ class _ScannerPageState extends State<ScannerPage>
 
   @override
   Widget build(BuildContext context) {
+    // Determine Global States
+    final bool isDark = ThemeStore.isDark;
+    final bool isTamil = LanguageStore.isTamil;
+    final Color primaryBlue = const Color(0xFF6366F1);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black, // Camera view is always black background
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         elevation: 0,
@@ -123,9 +138,9 @@ class _ScannerPageState extends State<ScannerPage>
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "SCAN QR",
-          style: TextStyle(
+        title: Text(
+          isTamil ? "ஸ்கேன் செய்க" : "SCAN QR",
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 14,
             letterSpacing: 2,
@@ -152,15 +167,16 @@ class _ScannerPageState extends State<ScannerPage>
       body: Stack(
         children: [
           MobileScanner(controller: cameraController, onDetect: _onDetect),
-          _buildScannerOverlay(),
-          if (scannedSessionId != null) _buildApprovalPanel(),
-          if (isProcessing) _buildLoadingOverlay(),
+          _buildScannerOverlay(primaryBlue, isTamil),
+          if (scannedSessionId != null)
+            _buildApprovalPanel(isDark, isTamil, primaryBlue),
+          if (isProcessing) _buildLoadingOverlay(primaryBlue),
         ],
       ),
     );
   }
 
-  Widget _buildScannerOverlay() {
+  Widget _buildScannerOverlay(Color primaryBlue, bool isTamil) {
     return Stack(
       children: [
         ColorFiltered(
@@ -246,13 +262,15 @@ class _ScannerPageState extends State<ScannerPage>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: cardColor.withOpacity(0.8),
+                color: const Color(0xFF1E293B).withOpacity(0.8),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: primaryBlue.withOpacity(0.3)),
               ),
-              child: const Text(
-                "Align QR Code within the frame",
-                style: TextStyle(
+              child: Text(
+                isTamil
+                    ? "சட்டத்தில் QR குறியீட்டை சீரமைக்கவும்"
+                    : "Align QR Code within the frame",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -265,7 +283,16 @@ class _ScannerPageState extends State<ScannerPage>
     );
   }
 
-  Widget _buildApprovalPanel() {
+  Widget _buildApprovalPanel(bool isDark, bool isTamil, Color primaryBlue) {
+    final Color bgColor = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF1F5F9);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTitleColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+
     return Positioned(
       bottom: 0,
       left: 0,
@@ -276,7 +303,10 @@ class _ScannerPageState extends State<ScannerPage>
           color: bgColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 40),
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.5 : 0.1),
+              blurRadius: 40,
+            ),
           ],
         ),
         child: Column(
@@ -294,12 +324,12 @@ class _ScannerPageState extends State<ScannerPage>
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  "Authorize Session",
+                Text(
+                  isTamil ? "அனுமதி வழங்குக" : "Authorize Session",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: titleColor,
                   ),
                 ),
               ],
@@ -308,12 +338,9 @@ class _ScannerPageState extends State<ScannerPage>
             TextField(
               controller: _hoursController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
-                labelText: "Duration (Hours)",
+                labelText: isTamil ? "கால அளவு (மணிநேரம்)" : "Duration (Hours)",
                 labelStyle: TextStyle(color: subTitleColor),
                 filled: true,
                 fillColor: cardColor,
@@ -322,7 +349,7 @@ class _ScannerPageState extends State<ScannerPage>
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
                 ),
-                suffixText: "HRS",
+                suffixText: isTamil ? "மணி" : "HRS",
                 suffixStyle: TextStyle(
                   color: primaryBlue,
                   fontWeight: FontWeight.bold,
@@ -340,7 +367,7 @@ class _ScannerPageState extends State<ScannerPage>
                       _animationController.repeat(reverse: true);
                     },
                     child: Text(
-                      "CANCEL",
+                      isTamil ? "ரத்து" : "CANCEL",
                       style: TextStyle(
                         color: subTitleColor,
                         fontWeight: FontWeight.w900,
@@ -361,9 +388,9 @@ class _ScannerPageState extends State<ScannerPage>
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      "APPROVE",
-                      style: TextStyle(
+                    child: Text(
+                      isTamil ? "அனுமதி" : "APPROVE",
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.2,
@@ -379,7 +406,7 @@ class _ScannerPageState extends State<ScannerPage>
     );
   }
 
-  Widget _buildLoadingOverlay() {
+  Widget _buildLoadingOverlay(Color primaryBlue) {
     return Container(
       color: Colors.black87,
       child: Center(

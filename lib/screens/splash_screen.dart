@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../utils/routes.dart';
-import '../store/user_store.dart'; // Import your UserStore
+import '../store/user_store.dart';
+import '../store/isdark.dart'; // Import Theme Store
+import '../store/istamil.dart'; // Import Language Store
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -48,15 +50,25 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Trigger Auth Check instead of a simple Timer
-    _initiateAuthCheck();
+    // Trigger Auth and Preferences Check
+    _initiateStartupSequence();
   }
 
-  /// Checks if the user is already logged in
-  Future<void> _initiateAuthCheck() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-
+  /// Loads local settings and checks auth
+  Future<void> _initiateStartupSequence() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // 1. Sync Theme and Language before navigating
+    setState(() {
+      ThemeStore.isDark = prefs.getBool('isDark') ?? false;
+      bool isTamil = prefs.getBool('isTamil') ?? false;
+      LanguageStore.isTamil = isTamil;
+    });
+
+    // 2. Wait for animation to finish a bit
+    await Future.delayed(const Duration(milliseconds: 2000));
+
+    // 3. Auth Logic
     final String? token = await UserStore.getToken();
     final String? role = await UserStore.getRole();
     final bool isPinEnabled = prefs.getBool('isPinEnabled') ?? false;
@@ -65,14 +77,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (token != null && role != null) {
       if (isPinEnabled) {
-        // Navigate to Lock Screen if PIN is enabled
         Navigator.pushReplacementNamed(
           context,
           AppRoutes.lockScreen,
           arguments: role,
         );
       } else {
-        // Direct access if authenticated but no PIN
         Navigator.pushReplacementNamed(
           context,
           AppRoutes.dashboard,
@@ -80,7 +90,6 @@ class _SplashScreenState extends State<SplashScreen>
         );
       }
     } else {
-      // Require Login
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
@@ -93,30 +102,44 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Local theme variables
+    final bool isDark = ThemeStore.isDark;
     final Size size = MediaQuery.of(context).size;
     final bool isSmallScreen = size.width < 360;
+
+    // Dynamic Colors
+    final Color bgColorStart = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFFFFFFF);
+    final Color bgColorEnd = isDark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFF1F5F9);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTitleColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
 
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFFFFFF), Color(0xFFF1F5F9)],
+            colors: [bgColorStart, bgColorEnd],
           ),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // Decorative circles change opacity based on theme
             Positioned(
               top: -size.height * 0.05,
               right: -size.width * 0.1,
               child: _buildDecorativeCircle(
                 size.width * 0.6,
-                const Color(0xFF6366F1).withOpacity(0.04),
+                const Color(0xFF6366F1).withOpacity(isDark ? 0.08 : 0.04),
               ),
             ),
             Positioned(
@@ -124,7 +147,7 @@ class _SplashScreenState extends State<SplashScreen>
               left: -size.width * 0.1,
               child: _buildDecorativeCircle(
                 size.width * 0.4,
-                const Color(0xFF4F46E5).withOpacity(0.03),
+                const Color(0xFF4F46E5).withOpacity(isDark ? 0.06 : 0.03),
               ),
             ),
             AnimatedBuilder(
@@ -139,26 +162,28 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildLogoIcon(isSmallScreen),
+                          _buildLogoIcon(isSmallScreen, isDark),
                           SizedBox(height: size.height * 0.04),
                           Text(
                             "TMS",
                             style: TextStyle(
                               fontSize: isSmallScreen ? 48 : 60,
                               fontWeight: FontWeight.w900,
-                              color: const Color(0xFF0F172A),
+                              color: titleColor,
                               letterSpacing: 12,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "TRANSPORT MANAGEMENT SYSTEM",
+                            LanguageStore.isTamil
+                                ? "போக்குவரத்து மேலாண்மை அமைப்பு"
+                                : "TRANSPORT MANAGEMENT SYSTEM",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: isSmallScreen ? 10 : 12,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF64748B),
-                              letterSpacing: 4,
+                              color: subTitleColor,
+                              letterSpacing: LanguageStore.isTamil ? 1 : 4,
                             ),
                           ),
                         ],
@@ -175,7 +200,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Text(
                   "V 1.0.0",
                   style: TextStyle(
-                    color: const Color(0xFF94A3B8).withOpacity(0.5),
+                    color: subTitleColor.withOpacity(0.5),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -188,15 +213,15 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLogoIcon(bool isSmall) {
+  Widget _buildLogoIcon(bool isSmall, bool isDark) {
     return Container(
       padding: EdgeInsets.all(isSmall ? 24 : 32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4F46E5).withOpacity(0.12),
+            color: const Color(0xFF4F46E5).withOpacity(isDark ? 0.3 : 0.12),
             blurRadius: 40,
             offset: const Offset(0, 15),
           ),
@@ -211,7 +236,7 @@ class _SplashScreenState extends State<SplashScreen>
         child: Icon(
           Icons.local_shipping_rounded,
           size: isSmall ? 64 : 84,
-          color: Colors.white,
+          color: Colors.white, // Colors.white is needed for ShaderMask to work
         ),
       ),
     );
