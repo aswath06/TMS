@@ -19,6 +19,7 @@ class DashboardScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
+          // Background decorative circle
           Positioned(
             top: -50,
             right: -50,
@@ -33,6 +34,8 @@ class DashboardScreen extends StatelessWidget {
           ),
 
           SafeArea(
+            // bottom: true ensures it respects the system nav bar
+            bottom: true,
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
@@ -71,7 +74,7 @@ class DashboardScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildSectionTitle("Recent Notifcations", titleColor),
+                      _buildSectionTitle("Recent Notifications", titleColor),
                       TextButton(
                         onPressed: () {},
                         child: Text(
@@ -87,7 +90,9 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   _buildNotificationList(primaryBlue, surfaceColor, isDark),
 
-                  const SizedBox(height: 30),
+                  // ADDED: Significant bottom gap to ensure the last item
+                  // isn't flush against the screen edge.
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -155,8 +160,8 @@ class DashboardScreen extends StatelessWidget {
             backgroundColor: Colors.white,
             child: CircleAvatar(
               radius: width * 0.06,
-              backgroundImage: const NetworkImage(
-                "https://ui-avatars.com/api/?name=Aswath&background=6366F1&color=fff",
+              backgroundImage: NetworkImage(
+                "https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff",
               ),
             ),
           ),
@@ -314,6 +319,7 @@ class DashboardScreen extends StatelessWidget {
               fontWeight: FontWeight.w900,
               fontSize: width * 0.052,
               letterSpacing: -0.8,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           const SizedBox(height: 4),
@@ -404,6 +410,14 @@ class DashboardScreen extends StatelessWidget {
           "2h ago",
           Icons.check_circle_rounded,
           Colors.green.shade400,
+          surface,
+        ),
+        _buildNotifyItem(
+          "Update",
+          "Route TR-2041 schedule modified.",
+          "5h ago",
+          Icons.info_outline_rounded,
+          Colors.orange,
           surface,
         ),
       ],

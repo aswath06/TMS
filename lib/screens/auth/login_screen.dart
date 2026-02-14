@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 import 'package:tms/components/custom_button.dart';
 import 'package:tms/components/custom_input.dart';
 import 'package:tms/components/app_branding.dart';
@@ -26,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoggingIn = false;
   bool _isGoogleLoading = false;
 
-  // FIXED: Using the Web Client ID for serverClientId to enable idToken generation
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     serverClientId:
         '1044594848603-3l3hi7sf390vgru417runabvpuimfpn2.apps.googleusercontent.com',
@@ -34,27 +34,61 @@ class _LoginScreenState extends State<LoginScreen> {
     hostedDomain: 'bitsathy.ac.in',
   );
 
+  // ✅ UPDATED REAL LOGIN
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoggingIn = true);
+
     try {
-      // Logic for traditional email/password login
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        String role = _emailController.text.toLowerCase().contains('driver')
-            ? 'driver'
-            : 'faculty';
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.dashboard,
-          arguments: role,
+      final response = await http.post(
+        Uri.parse(ApiConstants.login),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "identifier": _emailController.text.trim(),
+          "password": _passwordController.text.trim(),
+        }),
+      );
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final String token = data['token'];
+        final Map<String, dynamic> user = data['user'];
+
+        await UserStore.saveUserData(
+          token: token,
+          role: user['role'] ?? 'faculty',
+          email: user['email'],
         );
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  MainScreen(userRole: user['role'].toString().toLowerCase()),
+            ),
+            (route) => false,
+          );
+        }
+      } else {
+        throw data['message'] ?? "Login failed";
+      }
+    } catch (e) {
+      debugPrint("LOGIN ERROR: $e");
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);
     }
   }
 
+  // ✅ GOOGLE LOGIN (unchanged)
   Future<void> _handleGoogleSignIn() async {
     try {
       setState(() => _isGoogleLoading = true);
@@ -69,8 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
 
+      final String? idToken = googleAuth.idToken;
       if (idToken == null) throw "Failed to retrieve ID Token.";
 
       final response = await http.post(
@@ -78,7 +112,9 @@ class _LoginScreenState extends State<LoginScreen> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'idToken': idToken}),
       );
+
       final Map<String, dynamic> responseData = jsonDecode(response.body);
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final String jwtToken = responseData['token'];
         final Map<String, dynamic> userData = responseData['user'];
@@ -105,6 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (error) {
       debugPrint("GOOGLE LOGIN ERROR: $error");
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -270,6 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
 class BackgroundDecorator extends StatelessWidget {
   const BackgroundDecorator({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Stack(
