@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tms/components/request_card.dart';
 import 'package:tms/components/leave_card.dart';
 import 'package:tms/screens/admin/request/ViewAllRequestsPage.dart';
-import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart'; // Import the new page
+import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
 class RequestListPage extends StatefulWidget {
@@ -49,7 +49,6 @@ class _RequestListPageState extends State<RequestListPage> {
     },
   ];
 
-  // Mock data with 4 items to trigger the "View All" logic (> 3)
   final List<Map<String, dynamic>> _leaves = [
     {
       'driver': 'John Doe',
@@ -90,10 +89,7 @@ class _RequestListPageState extends State<RequestListPage> {
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
     final Color primaryBlue = const Color(0xFF6366F1);
 
-    // Logic for Request Section (Show 2)
     final int requestDisplayCount = _requests.length > 2 ? 2 : _requests.length;
-
-    // Logic for Leaves Section (Show 3)
     final int leaveDisplayCount = _leaves.length > 3 ? 3 : _leaves.length;
 
     return Scaffold(
@@ -127,11 +123,23 @@ class _RequestListPageState extends State<RequestListPage> {
                     physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: requestDisplayCount,
-                    itemBuilder: (context, index) => RequestCard(
-                      req: _requests[index],
-                      isDark: isDark,
-                      accentColor: primaryBlue,
-                    ),
+                    itemBuilder: (context, index) {
+                      final req = _requests[index];
+                      return InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                RequestDetailScreen(request: req),
+                          ),
+                        ),
+                        child: RequestCard(
+                          req: req,
+                          isDark: isDark,
+                          accentColor: primaryBlue,
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24),
@@ -141,29 +149,37 @@ class _RequestListPageState extends State<RequestListPage> {
                     "Leaves Request",
                     titleColor,
                     primaryBlue,
-                    onViewAll: () {
-                      // Navigate only if count > 3 (or always allow navigation to see full history)
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ViewAllLeavesPage(leaves: _leaves),
-                        ),
-                      );
-                    },
+                    onViewAll: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ViewAllLeavesPage(leaves: _leaves),
+                      ),
+                    ),
                   ),
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: leaveDisplayCount,
-                    itemBuilder: (context, index) => LeaveCard(
-                      leaf: _leaves[index],
-                      isDark: isDark,
-                      primaryColor: primaryBlue,
-                    ),
+                    itemBuilder: (context, index) {
+                      final leaf = _leaves[index];
+                      return InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                LeaveDetailScreen(leave: leaf),
+                          ),
+                        ),
+                        child: LeaveCard(
+                          leaf: leaf,
+                          isDark: isDark,
+                          primaryColor: primaryBlue,
+                        ),
+                      );
+                    },
                   ),
-
                   const SizedBox(height: 100),
                 ],
               ),
@@ -174,7 +190,8 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  // Helper Methods (Headers, etc.) remain as they were in your previous code...
+  // --- UI HELPER METHODS ---
+
   Widget _buildSectionHeader(
     String title,
     Color titleColor,
@@ -280,6 +297,75 @@ class _RequestListPageState extends State<RequestListPage> {
         backgroundColor: const Color(
           0xFF6366F1,
         ).withOpacity(isDark ? 0.05 : 0.03),
+      ),
+    );
+  }
+}
+
+// --- DETAIL SCREENS ---
+
+class RequestDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> request;
+  const RequestDetailScreen({super.key, required this.request});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Request Details: ${request['id']}")),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          _infoTile("Faculty", request['faculty']),
+          _infoTile("Date", request['date']),
+          _infoTile("Pickup Location", request['pickup']),
+          _infoTile("Destination", request['drop']),
+          _infoTile("Vehicle Type", request['vehicle']),
+          _infoTile("Status", request['status']),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTile(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const Divider(),
+        ],
+      ),
+    );
+  }
+}
+
+class LeaveDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> leave;
+  const LeaveDetailScreen({super.key, required this.leave});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Leave Details")),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              leave['driver'],
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            Text("From ${leave['from']} to ${leave['to']}"),
+            const SizedBox(height: 20),
+            Chip(label: Text(leave['status'])),
+          ],
+        ),
       ),
     );
   }
