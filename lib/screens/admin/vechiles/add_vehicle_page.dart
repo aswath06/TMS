@@ -23,6 +23,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   DateTime? pollutionDate;
   DateTime? rcDate;
   DateTime? fitnessDate;
+  DateTime? nextServiceDate; // New State for Service Date
 
   Future<void> _selectDate(BuildContext context, String type) async {
     final DateTime? picked = await showDatePicker(
@@ -33,7 +34,11 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF6366F1)),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF6366F1),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
           ),
           child: child!,
         );
@@ -45,6 +50,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         if (type == 'pol') pollutionDate = picked;
         if (type == 'rc') rcDate = picked;
         if (type == 'fit') fitnessDate = picked;
+        if (type == 'srv') nextServiceDate = picked; // Handle Service Date
       });
     }
   }
@@ -62,10 +68,15 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         leading: BackButton(color: titleColor),
         title: Text(
           "Vehicle Registration",
-          style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: titleColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -122,18 +133,19 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
 
               const SizedBox(height: 32),
               _buildSectionLabel(
-                "Document Expiry Dates",
-                Icons.calendar_today_outlined,
+                "Compliance & Maintenance",
+                Icons.fact_check_outlined,
               ),
               const SizedBox(height: 12),
 
+              // Updated Grid to include Next Service
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 2.1,
+                childAspectRatio: 2.2,
                 children: [
                   _buildDateTile(
                     "Insurance",
@@ -163,6 +175,15 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                     isDark,
                     inputColor,
                   ),
+                  // Added Next Service Tile
+                  _buildDateTile(
+                    "Next Service",
+                    nextServiceDate,
+                    () => _selectDate(context, 'srv'),
+                    isDark,
+                    inputColor,
+                    highlight: true,
+                  ),
                 ],
               ),
 
@@ -173,12 +194,13 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // Save Logic Here
+                      // Check if dates are selected if mandatory
                       Navigator.pop(context);
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6366F1),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -193,6 +215,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -244,6 +267,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
           style: TextStyle(color: isDark ? Colors.white : Colors.black),
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
             prefixIcon: Icon(icon, color: const Color(0xFF6366F1), size: 20),
             filled: true,
             fillColor: fill,
@@ -281,8 +305,8 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
             child: DropdownButton<String>(
               value: _selectedType,
               isExpanded: true,
-              dropdownColor: fill,
-              items: ['Bus', 'Staff Car', 'Van']
+              dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+              items: ['Bus', 'Staff Car', 'Van', 'Truck']
                   .map(
                     (v) => DropdownMenuItem(
                       value: v,
@@ -308,8 +332,9 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     DateTime? date,
     VoidCallback onTap,
     bool isDark,
-    Color fill,
-  ) {
+    Color fill, {
+    bool highlight = false,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -317,6 +342,12 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         decoration: BoxDecoration(
           color: fill,
           borderRadius: BorderRadius.circular(12),
+          border: highlight
+              ? Border.all(
+                  color: const Color(0xFF6366F1).withOpacity(0.5),
+                  width: 1,
+                )
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,14 +358,16 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white38 : Colors.black38,
+                color: highlight
+                    ? const Color(0xFF6366F1)
+                    : (isDark ? Colors.white38 : Colors.black38),
               ),
             ),
             const SizedBox(height: 4),
             Row(
               children: [
                 Icon(
-                  Icons.event,
+                  Icons.event_note_outlined,
                   size: 16,
                   color: date == null ? Colors.grey : const Color(0xFF6366F1),
                 ),

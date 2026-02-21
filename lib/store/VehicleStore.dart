@@ -7,23 +7,40 @@ import 'package:tms/store/user_store.dart';
 class VehicleStore extends ChangeNotifier {
   List<dynamic> _allVehicles = [];
   List<dynamic> _filteredVehicles = [];
+  List<String> _dynamicCategories = ["All"];
   bool _isLoading = false;
   String _searchQuery = "";
-  String _selectedCategory = "All";
+
+  // Changed to Set for multi-select support
+  Set<String> _selectedCategories = {"All"};
+
+  // Cache management
+  DateTime? _lastFetchTime;
 
   // Getters
   List<dynamic> get filteredVehicles => _filteredVehicles;
+  List<String> get categories => _dynamicCategories;
   bool get isLoading => _isLoading;
-  String get selectedCategory => _selectedCategory;
+  Set<String> get selectedCategories => _selectedCategories;
   int get totalVehicles => _allVehicles.length;
 
-  int get totalCapacity => _allVehicles.fold(
-    0,
-    (sum, item) => sum + (item['capacity'] as int? ?? 0),
-  );
+  int get activeTrucks => _allVehicles.where((v) {
+    final type = v['vehicle_type']?.toString().toLowerCase() ?? '';
+    final status = v['status']?.toString().toLowerCase() ?? '';
+    return type.contains('truck') && (status == 'active' || status == 'live');
+  }).length;
 
-  // Fetching Logic
-  Future<void> fetchVehicles() async {
+  /// Fetches vehicles with built-in caching logic
+  Future<void> fetchVehicles({bool forceRefresh = false}) async {
+    // Cache Check: If data exists and is less than 5 mins old, don't hit API
+    if (_allVehicles.isNotEmpty && !forceRefresh) {
+      if (_lastFetchTime != null &&
+          DateTime.now().difference(_lastFetchTime!).inMinutes < 5) {
+        debugPrint("TMS: Serving from local cache");
+        return;
+      }
+    }
+
     _isLoading = true;
     notifyListeners();
 
@@ -42,6 +59,17 @@ class VehicleStore extends ChangeNotifier {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         _allVehicles = responseData['data'] ?? [];
+        _lastFetchTime = DateTime.now();
+
+        // Build unique categories from live data
+        final Set<String> types = {"All"};
+        for (var v in _allVehicles) {
+          if (v['vehicle_type'] != null) {
+            types.add(_capitalize(v['vehicle_type'].toString()));
+          }
+        }
+        _dynamicCategories = types.toList()..sort();
+
         _applyFilters();
       }
     } catch (e) {
@@ -57,24 +85,57 @@ class VehicleStore extends ChangeNotifier {
     _applyFilters();
   }
 
-  void updateCategory(String category) {
-    _selectedCategory = category;
+  /// Multi-select toggle logic
+  void toggleCategory(String category) {
+    if (category == "All") {
+      _selectedCategories = {"All"};
+    } else {
+      // If selecting a specific type, remove 'All'
+      _selectedCategories.remove("All");
+
+      if (_selectedCategories.contains(category)) {
+        _selectedCategories.remove(category);
+      } else {
+        _selectedCategories.add(category);
+      }
+
+      // If nothing is selected, default back to 'All'
+      if (_selectedCategories.isEmpty) {
+        _selectedCategories.add("All");
+      }
+    }
     _applyFilters();
   }
 
+  /// Logic to filter the list based on search and multi-selected categories
   void _applyFilters() {
     _filteredVehicles = _allVehicles.where((v) {
       final String plate = (v['vehicle_number'] ?? "").toString().toLowerCase();
       final String type = (v['vehicle_type'] ?? "").toString().toLowerCase();
 
+      // Search check
       final matchesSearch =
           plate.contains(_searchQuery.toLowerCase()) ||
           type.contains(_searchQuery.toLowerCase());
+
+      // Multi-category check
       final matchesCategory =
-          _selectedCategory == "All" || type == _selectedCategory.toLowerCase();
+          _selectedCategories.contains("All") ||
+          _selectedCategories.any((cat) => cat.toLowerCase() == type);
 
       return matchesSearch && matchesCategory;
     }).toList();
+    notifyListeners();
+  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : "${s[0].toUpperCase()}${s.substring(1)}";
+
+  void clearCache() {
+    _allVehicles = [];
+    _filteredVehicles = [];
+    _selectedCategories = {"All"};
+    _lastFetchTime = null;
     notifyListeners();
   }
 }
