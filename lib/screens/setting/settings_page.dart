@@ -196,6 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   // --- THEME SELECTOR ---
+  // --- THEME SELECTOR ---
   Widget _buildThemeSelector(
     bool isDark,
     Color cardColor,
@@ -213,8 +214,11 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                setState(() => ThemeStore.setTheme(false));
+              onTap: () async {
+                // 1. Await the async work outside of setState
+                await ThemeStore.setTheme(false);
+                // 2. Update UI only if the widget is still in the tree
+                if (mounted) setState(() {});
               },
               child: _buildThemeOption(
                 isTamil ? "பகல்" : "Light Mode",
@@ -227,8 +231,11 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                setState(() => ThemeStore.setTheme(true));
+              onTap: () async {
+                // 1. Await the async work outside of setState
+                await ThemeStore.setTheme(true);
+                // 2. Update UI
+                if (mounted) setState(() {});
               },
               child: _buildThemeOption(
                 isTamil ? "இரவு" : "Dark Mode",

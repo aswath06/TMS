@@ -1,5 +1,8 @@
+import 'dart:convert'; // Added for JSON encoding
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Required for input formatters
+import 'package:flutter/services.dart';
+import 'package:country_code_picker/country_code_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:tms/components/passenger_selector.dart';
 import 'package:tms/components/location_selector.dart';
 
@@ -16,37 +19,45 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   // --- State Variables ---
   String _travelType = 'One Way';
   int _passengerCount = 1;
-  String _selectedCountryCode = "+91";
   String _selectedVehicleType = 'Mini';
   DateTime? _startDate, _endDate;
 
-  // --- Controllers ---
-  final TextEditingController _mainPhoneController = TextEditingController();
-  final TextEditingController _secondaryPhoneController =
-      TextEditingController();
-  final TextEditingController _specialReqController = TextEditingController();
-  final TextEditingController _luggageController = TextEditingController();
-  List<TextEditingController> _guestNameControllers = [TextEditingController()];
-
+  // --- Location State ---
   double _totalDistance = 0.0;
   double _totalDuration = 0.0;
+  List<String> _selectedAddresses = []; // Captures the address strings
+
+  // --- Controllers & Dynamic Lists ---
+  final TextEditingController _specialReqController = TextEditingController();
+  final TextEditingController _luggageController = TextEditingController();
+
+  List<TextEditingController> _guestNameControllers = [TextEditingController()];
+  List<TextEditingController> _guestPhoneControllers = [
+    TextEditingController(),
+  ];
+  List<String> _guestCountryCodes = ["+91"];
 
   @override
   void dispose() {
-    _mainPhoneController.dispose();
-    _secondaryPhoneController.dispose();
     _specialReqController.dispose();
     _luggageController.dispose();
     for (var c in _guestNameControllers) {
       c.dispose();
     }
+    for (var c in _guestPhoneControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
+
+  // --- Logic Helpers ---
 
   void _addGuest() {
     if (_guestNameControllers.length < _passengerCount) {
       setState(() {
         _guestNameControllers.add(TextEditingController());
+        _guestPhoneControllers.add(TextEditingController());
+        _guestCountryCodes.add("+91");
       });
     }
   }
@@ -55,7 +66,87 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     if (_guestNameControllers.length > 1) {
       setState(() {
         _guestNameControllers.removeAt(index).dispose();
+        _guestPhoneControllers.removeAt(index).dispose();
+        _guestCountryCodes.removeAt(index);
       });
+    }
+  }
+
+  void _handleBulkUpload() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Bulk Upload Clicked: Import CSV/Excel template"),
+      ),
+    );
+  }
+
+  List<Map<String, String>> _getFormattedGuestData() {
+    List<Map<String, String>> guests = [];
+    for (int i = 0; i < _guestNameControllers.length; i++) {
+      guests.add({
+        "name": _guestNameControllers[i].text.trim(),
+        "country_code": _guestCountryCodes[i],
+        "phone": _guestPhoneControllers[i].text.trim(),
+        "full_phone":
+            "${_guestCountryCodes[i]}${_guestPhoneControllers[i].text.trim()}",
+      });
+    }
+    return guests;
+  }
+
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      // Data Collection for API or Console
+      final Map<String, dynamic> requestData = {
+        "travel_info": {
+          "type": _travelType,
+          "start_date": _startDate != null
+              ? DateFormat('yyyy-MM-dd').format(_startDate!)
+              : null,
+          "end_date": _endDate != null
+              ? DateFormat('yyyy-MM-dd').format(_endDate!)
+              : null,
+        },
+        "route_details": {
+          "selected_locations": _selectedAddresses,
+          "distance_km": _totalDistance,
+          "duration_mins": _totalDuration,
+        },
+        "vehicle_config": {
+          "passenger_count": _passengerCount,
+          "vehicle_type": _selectedVehicleType,
+        },
+        "guests": _getFormattedGuestData(),
+        "additional_info": {
+          "special_requirements": _specialReqController.text.trim(),
+          "luggage_details": _luggageController.text.trim(),
+        },
+        "submitted_at": DateTime.now().toIso8601String(),
+      };
+
+      // --- Beautiful Console Logging ---
+      debugPrint("================= SUBMISSION DATA =================");
+      debugPrint("TRAVEL TYPE: ${requestData['travel_info']['type']}");
+      debugPrint("LOCATIONS:");
+      for (var i = 0; i < _selectedAddresses.length; i++) {
+        debugPrint("  Stop ${i + 1}: ${_selectedAddresses[i]}");
+      }
+      debugPrint("STATS: ${_totalDistance}km | ${_totalDuration}mins");
+      debugPrint("VEHICLE: $_selectedVehicleType for $_passengerCount pax");
+      debugPrint("GUESTS: ${requestData['guests'].length}");
+      debugPrint("JSON PAYLOAD:");
+      debugPrint(const JsonEncoder.withIndent('  ').convert(requestData));
+      debugPrint("====================================================");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Request submitted successfully! Check console."),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all required fields")),
+      );
     }
   }
 
@@ -83,14 +174,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
                 child: Form(
-                  key: _formKey, // Form Key attached
+                  key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeader(context, titleColor, primaryBlue),
                       const SizedBox(height: 32),
 
-                      // --- Section: Travel Info ---
                       _buildSectionTitle(
                         "Travel Plan",
                         titleColor,
@@ -113,7 +203,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
                       const SizedBox(height: 32),
 
-                      // --- Section: Location ---
                       _buildSectionTitle(
                         "Route Details",
                         titleColor,
@@ -126,6 +215,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         accentColor: primaryBlue,
                         onChanged: (addresses, distance, duration) {
                           setState(() {
+                            _selectedAddresses =
+                                addresses; // Capturing locations
                             _totalDistance = distance;
                             _totalDuration = duration;
                           });
@@ -134,14 +225,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
                       const SizedBox(height: 32),
 
-                      // --- Section: Passengers ---
-                      _buildSectionTitle("Passengers", titleColor, primaryBlue),
-                      const SizedBox(height: 16),
                       PassengerSelector(
                         cardColor: cardColor,
                         titleColor: titleColor,
                         passengerCount: _passengerCount,
-                        selectedCountryCode: _selectedCountryCode,
                         selectedVehicleType: _selectedVehicleType,
                         onVehicleTypeChanged: (v) =>
                             setState(() => _selectedVehicleType = v),
@@ -151,57 +238,44 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                             if (_guestNameControllers.length > v) {
                               _guestNameControllers = _guestNameControllers
                                   .sublist(0, v);
+                              _guestPhoneControllers = _guestPhoneControllers
+                                  .sublist(0, v);
+                              _guestCountryCodes = _guestCountryCodes.sublist(
+                                0,
+                                v,
+                              );
                             }
                           });
                         },
-                        onCountryCodeChanged: (v) =>
-                            setState(() => _selectedCountryCode = v),
                       ),
 
                       const SizedBox(height: 24),
 
-                      // --- Contact Details (Conditional) ---
-                      if (_passengerCount > 1) ...[
-                        _buildSectionTitle(
-                          "Contact Details",
-                          titleColor,
-                          primaryBlue,
-                        ),
-                        const SizedBox(height: 16),
-                        _inputField(
-                          "Primary Phone",
-                          Icons.phone,
-                          cardColor,
-                          titleColor,
-                          controller: _mainPhoneController,
-                          primaryBlue: primaryBlue,
-                          isPhone: true,
-                        ),
-                        if (_passengerCount >= 12) ...[
-                          const SizedBox(height: 8),
-                          _inputField(
-                            "Emergency Phone",
-                            Icons.phone_paused_rounded,
-                            cardColor,
-                            titleColor,
-                            controller: _secondaryPhoneController,
-                            primaryBlue: primaryBlue,
-                            isPhone: true,
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                      ],
-
-                      // --- Guest Names ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildSectionTitle(
-                            "Guest Names",
+                            "Guest Details",
                             titleColor,
                             primaryBlue,
                           ),
-                          if (_guestNameControllers.length < _passengerCount)
+                          if (_passengerCount > 5)
+                            TextButton.icon(
+                              onPressed: _handleBulkUpload,
+                              icon: const Icon(
+                                Icons.upload_file_rounded,
+                                size: 18,
+                              ),
+                              label: Text(
+                                "Bulk Upload",
+                                style: TextStyle(
+                                  color: primaryBlue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          else if (_guestNameControllers.length <
+                              _passengerCount)
                             TextButton.icon(
                               onPressed: _addGuest,
                               icon: const Icon(
@@ -209,7 +283,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                 size: 18,
                               ),
                               label: Text(
-                                "Add",
+                                "Add Guest",
                                 style: TextStyle(
                                   color: primaryBlue,
                                   fontWeight: FontWeight.bold,
@@ -221,33 +295,85 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       const SizedBox(height: 16),
                       ..._guestNameControllers.asMap().entries.map((entry) {
                         int idx = entry.key;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: titleColor.withOpacity(0.05),
+                            ),
+                          ),
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: _inputField(
-                                  "Guest ${idx + 1} Name",
-                                  Icons.person_outline,
-                                  cardColor,
-                                  titleColor,
-                                  controller: entry.value,
-                                  primaryBlue: primaryBlue,
-                                  isName: true,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _inputField(
+                                      "Guest ${idx + 1} Name",
+                                      Icons.person_outline,
+                                      cardColor,
+                                      titleColor,
+                                      controller: _guestNameControllers[idx],
+                                      primaryBlue: primaryBlue,
+                                      isName: true,
+                                    ),
+                                  ),
+                                  if (idx > 0)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                        color: Colors.redAccent,
+                                        size: 20,
+                                      ),
+                                      onPressed: () => _removeGuest(idx),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: bgColor.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CountryCodePicker(
+                                      onChanged: (country) =>
+                                          _guestCountryCodes[idx] =
+                                              country.dialCode!,
+                                      initialSelection: 'IN',
+                                      favorite: const ['+91', 'US'],
+                                      textStyle: TextStyle(
+                                        color: titleColor,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      showFlagMain: true,
+                                      flagWidth: 20,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 20,
+                                      color: Colors.grey.withOpacity(0.3),
+                                    ),
+                                    Expanded(
+                                      child: _inputField(
+                                        "Phone Number",
+                                        Icons.phone_android_outlined,
+                                        Colors.transparent,
+                                        titleColor,
+                                        controller: _guestPhoneControllers[idx],
+                                        primaryBlue: primaryBlue,
+                                        isPhone: true,
+                                        noMargin: true,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              if (idx > 0)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: IconButton(
-                                    icon: const Icon(
-                                      Icons.remove_circle_outline,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () => _removeGuest(idx),
-                                  ),
-                                ),
                             ],
                           ),
                         );
@@ -255,7 +381,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
                       const SizedBox(height: 32),
 
-                      // --- Requirements ---
                       _buildSectionTitle("Additional", titleColor, primaryBlue),
                       const SizedBox(height: 16),
                       _inputField(
@@ -291,7 +416,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  // --- UI Components Library ---
+  // --- UI Helpers ---
 
   Widget _buildHeader(
     BuildContext context,
@@ -337,17 +462,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             ),
           ],
         ),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: titleColor.withOpacity(0.05),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.local_taxi_outlined,
-            color: titleColor.withOpacity(0.6),
-            size: 20,
-          ),
+        Icon(
+          Icons.local_taxi_outlined,
+          color: titleColor.withOpacity(0.2),
+          size: 30,
         ),
       ],
     );
@@ -358,7 +476,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       children: [
         Container(
           width: 4,
-          height: 18,
+          height: 16,
           decoration: BoxDecoration(
             color: primaryBlue,
             borderRadius: BorderRadius.circular(10),
@@ -368,7 +486,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         Text(
           title,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             color: titleColor,
           ),
@@ -387,12 +505,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     required Color primaryBlue,
     bool isPhone = false,
     bool isName = false,
+    bool noMargin = false,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: noMargin ? 0 : 8),
       decoration: BoxDecoration(
         color: c,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: TextFormField(
         controller: controller,
@@ -403,34 +522,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           if (isPhone) FilteringTextInputFormatter.digitsOnly,
           if (isName) FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
         ],
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return "This field is required";
-          }
-          if (isPhone && value.length < 10) {
-            return "Enter a valid phone number";
-          }
-          if (isName && value.length < 2) {
-            return "Enter a valid name";
-          }
-          return null;
-        },
+        validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
         decoration: InputDecoration(
           hintText: h,
           hintStyle: TextStyle(color: t.withOpacity(0.4), fontSize: 13),
-          errorStyle: const TextStyle(fontSize: 10, height: 0.8),
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(i, size: 18, color: primaryBlue),
-          ),
+          prefixIcon: Icon(i, size: 16, color: primaryBlue.withOpacity(0.7)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            vertical: 20,
+            vertical: 15,
             horizontal: 12,
           ),
         ),
@@ -440,10 +539,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _buildTypeSelector(Color acc, Color card, Color txt, Color sub) {
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: card,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         children: ['One Way', 'Two Way', 'Multi Day'].map((type) {
@@ -452,11 +551,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             child: GestureDetector(
               onTap: () => setState(() => _travelType = type),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: sel ? acc : Colors.transparent,
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
@@ -464,7 +563,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     style: TextStyle(
                       color: sel ? Colors.white : sub,
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -481,7 +580,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       children: [
         Expanded(
           child: _dateTile(
-            "Start Date",
+            "Start",
             _startDate,
             (d) => setState(() => _startDate = d),
             acc,
@@ -491,10 +590,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           ),
         ),
         if (_travelType == 'Multi Day') ...[
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: _dateTile(
-              "End Date",
+              "End",
               _endDate,
               (d) => setState(() => _endDate = d),
               acc,
@@ -528,36 +627,22 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         if (p != null) onP(p);
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: card,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(15),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
+            Icon(Icons.calendar_month, size: 16, color: acc),
+            const SizedBox(width: 8),
             Text(
-              l,
+              d == null ? l : "${d.day}/${d.month}",
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: sub,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: txt,
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.calendar_today_rounded, size: 16, color: acc),
-                const SizedBox(width: 8),
-                Text(
-                  d == null ? "Select" : "${d.day}/${d.month}/${d.year}",
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: txt,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -569,26 +654,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: acc.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: acc.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(15),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.auto_graph_rounded, color: acc, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            "${_totalDistance.toStringAsFixed(1)} km  •  ${_totalDuration.toStringAsFixed(0)} mins",
-            style: TextStyle(
-              color: acc,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
+      child: Center(
+        child: Text(
+          "${_totalDistance.toStringAsFixed(1)} km  •  ${_totalDuration.toStringAsFixed(0)} mins",
+          style: TextStyle(
+            color: acc,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -597,76 +676,17 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          // --- Trigger Form Validation ---
-          if (_formKey.currentState!.validate()) {
-            if (_startDate == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Please select a Start Date")),
-              );
-              return;
-            }
-
-            // --- Console Logging All Fields ---
-            debugPrint("========== NEW REQUEST SUBMISSION ==========");
-            debugPrint("Travel Type: $_travelType");
-            debugPrint(
-              "Start Date: ${_startDate?.toIso8601String() ?? 'Not Selected'}",
-            );
-            debugPrint(
-              "End Date: ${_endDate?.toIso8601String() ?? 'N/A (One/Two Way)'}",
-            );
-
-            debugPrint("--- Route Details ---");
-            debugPrint("Total Distance: $_totalDistance km");
-            debugPrint("Total Duration: $_totalDuration mins");
-
-            debugPrint("--- Passenger & Vehicle ---");
-            debugPrint("Passenger Count: $_passengerCount");
-            debugPrint("Vehicle Type: $_selectedVehicleType");
-            debugPrint("Country Code: $_selectedCountryCode");
-
-            debugPrint("--- Contact Info ---");
-            debugPrint("Primary Phone: ${_mainPhoneController.text}");
-            if (_passengerCount >= 12) {
-              debugPrint("Emergency Phone: ${_secondaryPhoneController.text}");
-            }
-
-            debugPrint("--- Guest Names ---");
-            for (int i = 0; i < _guestNameControllers.length; i++) {
-              debugPrint("Guest ${i + 1}: ${_guestNameControllers[i].text}");
-            }
-
-            debugPrint("--- Additional ---");
-            debugPrint("Special Requirements: ${_specialReqController.text}");
-            debugPrint("Luggage Details: ${_luggageController.text}");
-            debugPrint("============================================");
-
-            // Simple UI feedback
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text("Request logged to console!"),
-                backgroundColor: primaryBlue,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        },
+        onPressed: _submitForm,
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryBlue,
           padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(15),
           ),
-          elevation: 0,
         ),
         child: const Text(
-          "SUBMIT REQUEST",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-          ),
+          "SUBMIT",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -681,19 +701,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             right: -50,
             child: CircleAvatar(
               radius: 150,
-              backgroundColor: const Color(
-                0xFF6366F1,
-              ).withOpacity(isDark ? 0.1 : 0.05),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: -50,
-            child: CircleAvatar(
-              radius: 120,
-              backgroundColor: const Color(
-                0xFFEC4899,
-              ).withOpacity(isDark ? 0.08 : 0.04),
+              backgroundColor: const Color(0xFF6366F1).withOpacity(0.05),
             ),
           ),
         ],
