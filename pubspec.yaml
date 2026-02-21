@@ -48,6 +48,7 @@ dependencies:
   local_auth_ios: ^1.1.7
   flutter_launcher_icons: "^0.13.1"
   file_picker: ^10.3.10
+  provider: ^6.1.5+1
 
 flutter_launcher_icons:
   android: "launcher_icon"

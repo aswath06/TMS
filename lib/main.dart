@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/date_symbol_data_local.dart'; // 1. IMPORT THIS
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart'; // 1. Add Provider import
+import 'package:tms/store/VehicleStore.dart'; // 2. Import your Store
 import 'utils/routes.dart';
 
 void main() async {
-  // 2. MARK AS ASYNC
   // Ensure Flutter framework is initialized before running code
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 3. INITIALIZE DATE FORMATTING (This fixes your crash)
+  // INITIALIZE DATE FORMATTING
   try {
     await initializeDateFormatting('ta', null);
     await initializeDateFormatting('en', null);
@@ -26,7 +27,17 @@ void main() async {
     ),
   );
 
-  runApp(const MyApp());
+  runApp(
+    // 3. Wrap MyApp with MultiProvider to make stores accessible globally
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => VehicleStore()),
+        // You can add more stores here later:
+        // ChangeNotifierProvider(create: (_) => UserStore()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -37,18 +48,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'TMS Pro',
-
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: null,
-
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF4F46E5),
           primary: const Color(0xFF4F46E5),
           surface: const Color(0xFFF8FAFC),
           onSurface: const Color(0xFF0F172A),
         ),
-
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontWeight: FontWeight.w900,
@@ -61,7 +69,6 @@ class MyApp extends StatelessWidget {
           titleLarge: TextStyle(fontWeight: FontWeight.w700),
           bodyMedium: TextStyle(fontWeight: FontWeight.w500),
         ),
-
         appBarTheme: const AppBarTheme(
           elevation: 0,
           backgroundColor: Colors.transparent,
@@ -73,7 +80,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-
       initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.generateRoute,
     );

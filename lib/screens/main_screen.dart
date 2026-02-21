@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tms/screens/admin/AdminProfileScreen.dart';
 import 'package:tms/screens/admin/request/request_list_page.dart';
 import 'package:tms/screens/admin/vechiles/vechile_page.dart'; // Ensure path is correct
 // Driver Screens
@@ -45,7 +46,7 @@ class _MainScreenState extends State<MainScreen> {
           const DashboardScreen(),
           const RequestListPage(),
           const VehiclePage(),
-          const ProfileScreen(),
+          const AdminProfileScreen(),
         ];
       case 'faculty':
         return [

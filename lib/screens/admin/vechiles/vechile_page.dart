@@ -1,60 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tms/components/profile/info_card.dart';
 import 'package:tms/screens/admin/request/add_vehicle_page.dart';
+import 'package:tms/store/VehicleStore.dart';
 
-class VehiclePage extends StatelessWidget {
+class VehiclePage extends StatefulWidget {
   const VehiclePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  State<VehiclePage> createState() => _VehiclePageState();
+}
 
-    final Color bgColor = isDark
+class _VehiclePageState extends State<VehiclePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Safety check: ensure provider exists before fetching
+        try {
+          context.read<VehicleStore>().fetchVehicles();
+        } catch (e) {
+          debugPrint("Provider Error: VehicleStore not found in tree. $e");
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This will now work correctly as long as main.dart has the Provider
+    final store = context.watch<VehicleStore>();
+    final bool isDarkTheme = Theme.of(context).brightness == Brightness.dark;
+
+    final Color bgColor = isDarkTheme
         ? const Color(0xFF0F172A)
-        : const Color(0xFFF1F5F9);
-    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subTitleColor = isDark
+        : const Color(0xFFF8FAFC);
+    final Color cardColor = isDarkTheme
+        ? const Color(0xFF1E293B)
+        : Colors.white;
+    final Color titleColor = isDarkTheme
+        ? Colors.white
+        : const Color(0xFF1E293B);
+    final Color subTitleColor = isDarkTheme
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
 
     return Scaffold(
       backgroundColor: bgColor,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF6366F1),
-        onPressed: () => _navigateToAddVehicle(context),
-        label: const Text(
-          "Add Vehicle",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        icon: const Icon(Icons.add, color: Colors.white),
-      ),
       body: Stack(
         children: [
-          _buildBackgroundDecor(isDark),
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+          _buildBackgroundDecor(),
+          RefreshIndicator(
+            onRefresh: () => store.fetchVehicles(),
+            color: const Color(0xFF6366F1),
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context, titleColor),
-                    const SizedBox(height: 30),
-                    _buildSectionTitle("Operational Status (47)", titleColor),
-                    const SizedBox(height: 16),
-                    _buildStatusGrid(cardColor, titleColor, subTitleColor),
-                    const SizedBox(height: 32),
-                    _buildSectionTitle("Vehicle Registry", titleColor),
-                    const SizedBox(height: 16),
-                    _buildVehicleList(cardColor, titleColor, subTitleColor),
-                    const SizedBox(height: 110),
-                  ],
-                ),
+              child: CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(20),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _buildHeader(context, titleColor),
+                        const SizedBox(height: 25),
+                        _buildSectionTitle("Quick Stats", titleColor),
+                        const SizedBox(height: 16),
+                        _buildStatusGrid(
+                          store,
+                          cardColor,
+                          titleColor,
+                          subTitleColor,
+                        ),
+                        const SizedBox(height: 32),
+                        _buildSectionTitle("Vehicle Registry", titleColor),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSearchBar(
+                                store,
+                                cardColor,
+                                subTitleColor,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _buildFilterDropdown(store, cardColor, titleColor),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ]),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: store.isLoading
+                        ? const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF6366F1),
+                              ),
+                            ),
+                          )
+                        : _buildVehicleList(
+                            store,
+                            cardColor,
+                            titleColor,
+                            subTitleColor,
+                          ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
               ),
             ),
           ),
@@ -63,10 +119,138 @@ class VehiclePage extends StatelessWidget {
     );
   }
 
-  void _navigateToAddVehicle(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AddVehiclePage()),
+  // --- UI Components ---
+
+  Widget _buildSearchBar(VehicleStore store, Color cardColor, Color subColor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12),
+        ],
+      ),
+      child: TextField(
+        onChanged: (val) => store.updateSearch(val),
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black,
+        ),
+        decoration: InputDecoration(
+          hintText: "Search TN-03...",
+          hintStyle: TextStyle(color: subColor.withOpacity(0.5)),
+          prefixIcon: Icon(Icons.search_rounded, color: subColor),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterDropdown(
+    VehicleStore store,
+    Color cardColor,
+    Color titleColor,
+  ) {
+    final categories = ["All", "Van", "Sedan", "Electric Car", "Bus", "Truck"];
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: PopupMenuButton<String>(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Icon(
+          Icons.filter_list_rounded,
+          color: store.selectedCategory == "All"
+              ? const Color(0xFF6366F1)
+              : Colors.orange,
+        ),
+        onSelected: store.updateCategory,
+        itemBuilder: (ctx) => categories
+            .map(
+              (c) => PopupMenuItem(
+                value: c,
+                child: Text(
+                  c,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildVehicleList(
+    VehicleStore store,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+  ) {
+    final list = store.filteredVehicles;
+    if (list.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: 40),
+            child: Text(
+              "No vehicles found",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+        ),
+      );
+    }
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        return _VehicleCard(
+          vehicle: list[index],
+          cardColor: cardColor,
+          titleColor: titleColor,
+          subColor: subColor,
+        );
+      }, childCount: list.length),
+    );
+  }
+
+  Widget _buildStatusGrid(
+    VehicleStore store,
+    Color card,
+    Color title,
+    Color sub,
+  ) {
+    return Row(
+      children: [
+        Expanded(
+          child: InfoCard(
+            title: "Live",
+            value: store.totalVehicles.toString(),
+            icon: Icons.sensors,
+            iconColor: Colors.blue,
+            cardColor: card,
+            titleColor: title,
+            subColor: sub,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InfoCard(
+            title: "Capacity",
+            value: store.totalCapacity.toString(),
+            icon: Icons.groups,
+            iconColor: Colors.green,
+            cardColor: card,
+            titleColor: title,
+            subColor: sub,
+          ),
+        ),
+      ],
     );
   }
 
@@ -75,214 +259,115 @@ class VehiclePage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          "Vehicle Monitor",
+          "Fleet Monitor",
           style: TextStyle(
             fontSize: 28,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w900,
             color: titleColor,
           ),
         ),
         IconButton(
-          onPressed: () => _navigateToAddVehicle(context),
-          icon: Icon(
-            Icons.add_circle_outline_rounded,
-            color: titleColor.withOpacity(0.6),
-            size: 26,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddVehiclePage()),
+          ),
+          icon: const Icon(
+            Icons.add_circle_rounded,
+            color: Color(0xFF6366F1),
+            size: 40,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatusGrid(Color cardColor, Color titleColor, Color subColor) {
-    final List<Map<String, dynamic>> stats = [
-      {
-        't': 'Active',
-        'v': '24',
-        'i': Icons.check_circle_rounded,
-        'c': Colors.green,
-      },
-      {'t': 'Moving', 'v': '12', 'i': Icons.bolt_rounded, 'c': Colors.blue},
-      {
-        't': 'Standby',
-        'v': '08',
-        'i': Icons.access_time_rounded,
-        'c': Colors.amber.shade700,
-      },
-      {
-        't': 'Inactive',
-        'v': '03',
-        'i': Icons.dangerous_rounded,
-        'c': Colors.red,
-      },
-    ];
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.4,
-      ),
-      itemCount: stats.length,
-      itemBuilder: (context, i) => InfoCard(
-        title: stats[i]['t'],
-        value: stats[i]['v'],
-        icon: stats[i]['i'],
-        iconColor: stats[i]['c'],
-        cardColor: cardColor,
-        titleColor: titleColor,
-        subColor: subColor,
-      ),
-    );
-  }
+  Widget _buildSectionTitle(String title, Color color) => Text(
+    title,
+    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+  );
 
-  Widget _buildVehicleList(Color cardColor, Color titleColor, Color subColor) {
-    final List<Map<String, dynamic>> vehicles = [
-      {
-        'no': 'TS-09-EA-1234',
-        'status': 'Moving',
-        'type': 'Bus',
-        'km': '12,450',
-      },
-      {
-        'no': 'TS-09-FB-5678',
-        'status': 'Active',
-        'type': 'Staff Car',
-        'km': '8,210',
-      },
-    ];
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: vehicles.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final v = vehicles[index];
-        final Color statusColor = _getStatusColor(v['status']);
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            children: [
-              Container(
-                height: 54,
-                width: 54,
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.directions_bus_filled_rounded,
-                  color: statusColor,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      v['no'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: titleColor,
-                      ),
-                    ),
-                    Text(
-                      "${v['type']} • ${v['km']} km",
-                      style: TextStyle(fontSize: 13, color: subColor),
-                    ),
-                  ],
-                ),
-              ),
-              _buildStatusBadge(v['status'], statusColor),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  Widget _buildBackgroundDecor() => Positioned(
+    top: -100,
+    left: -50,
+    child: CircleAvatar(
+      radius: 125,
+      backgroundColor: const Color(0xFF6366F1).withOpacity(0.05),
+    ),
+  );
+}
 
-  Widget _buildStatusBadge(String status, Color color) {
+class _VehicleCard extends StatelessWidget {
+  final dynamic vehicle;
+  final Color cardColor, titleColor, subColor;
+  const _VehicleCard({
+    required this.vehicle,
+    required this.cardColor,
+    required this.titleColor,
+    required this.subColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final String type = vehicle['vehicle_type'] ?? "Truck";
+    final String plate = vehicle['vehicle_number'] ?? "N/A";
+    final String capacity = (vehicle['capacity'] ?? "0").toString();
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Moving':
-        return Colors.blue;
-      case 'Active':
-        return Colors.green;
-      case 'Inactive':
-        return Colors.red;
-      case 'Standby':
-        return Colors.amber.shade700;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Widget _buildSectionTitle(String title, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            color: const Color(0xFF6366F1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBackgroundDecor(bool isDark) {
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          Positioned(
-            top: -60,
-            right: -60,
-            child: CircleAvatar(
-              radius: 140,
-              backgroundColor: const Color(
-                0xFF6366F1,
-              ).withOpacity(isDark ? 0.06 : 0.04),
-            ),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(_getIcon(type), color: Colors.indigo),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  plate,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: titleColor,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  "$type • $capacity Seats",
+                  style: TextStyle(color: subColor, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.check_circle, color: Colors.green, size: 20),
+        ],
+      ),
     );
+  }
+
+  IconData _getIcon(String type) {
+    type = type.toLowerCase();
+    if (type.contains('bus')) return Icons.directions_bus;
+    if (type.contains('car') || type.contains('sedan'))
+      return Icons.directions_car;
+    if (type.contains('van')) return Icons.airport_shuttle;
+    return Icons.local_shipping;
   }
 }

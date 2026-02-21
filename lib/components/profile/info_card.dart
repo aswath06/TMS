@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tms/screens/admin/AdminProfileScreen.dart';
 
 class InfoCard extends StatelessWidget {
   final String title;
@@ -17,7 +18,7 @@ class InfoCard extends StatelessWidget {
     required this.iconColor,
     required this.cardColor,
     required this.titleColor,
-    required this.subColor,
+    required this.subColor, TypingText? valueWidget,
   });
 
   @override
