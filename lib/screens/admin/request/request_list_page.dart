@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import 'package:tms/components/request_card.dart';
 import 'package:tms/components/leave_card.dart';
 import 'package:tms/screens/admin/request/ViewAllRequestsPage.dart';
 import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart';
+import 'package:tms/screens/admin/request/request_detail_screen.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
 class RequestListPage extends StatefulWidget {
@@ -13,41 +17,9 @@ class RequestListPage extends StatefulWidget {
 }
 
 class _RequestListPageState extends State<RequestListPage> {
-  final List<Map<String, dynamic>> _requests = [
-    {
-      'id': 'REQ-8821',
-      'faculty': 'Dr. Sarah Jenkins',
-      'date': 'Oct 24, 2023',
-      'pickup': 'Central Station, NY',
-      'drop': 'JFK Airport, Terminal 4',
-      'status': 'Pending',
-      'vehicle': 'Mini Sedan',
-      'capacity': 4,
-      'passengers': 2,
-    },
-    {
-      'id': 'REQ-7652',
-      'faculty': 'Prof. James Wilson',
-      'date': 'Oct 28, 2023',
-      'pickup': 'Grand Hyatt Hotel',
-      'drop': 'City Tour Loop',
-      'status': 'Confirmed',
-      'vehicle': 'Luxury SUV',
-      'capacity': 7,
-      'passengers': 4,
-    },
-    {
-      'id': 'REQ-1234',
-      'faculty': 'Dr. Alice Brown',
-      'date': 'Nov 02, 2023',
-      'pickup': 'University Gate 1',
-      'drop': 'Tech Park South',
-      'status': 'Completed',
-      'vehicle': 'Bus',
-      'capacity': 30,
-      'passengers': 15,
-    },
-  ];
+  List<Map<String, dynamic>> _requests = [];
+  bool _isLoading = true;
+  String? _error;
 
   final List<Map<String, dynamic>> _leaves = [
     {
@@ -64,21 +36,67 @@ class _RequestListPageState extends State<RequestListPage> {
       'to': 'Nov 05',
       'status': 'Pending',
     },
-    {
-      'driver': 'Harvey Specter',
-      'days': '2',
-      'from': 'Nov 07',
-      'to': 'Nov 08',
-      'status': 'Approved',
-    },
-    {
-      'driver': 'Rachel Zane',
-      'days': '5',
-      'from': 'Nov 10',
-      'to': 'Nov 15',
-      'status': 'Pending',
-    },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRequests();
+  }
+
+  /// Extracts the relevant part of the address (e.g., "Coimbatore, Coimbatore North")
+  String _formatAddress(String? address) {
+    if (address == null || address.isEmpty) return 'Unknown Location';
+
+    // Split by comma
+    List<String> parts = address.split(',');
+
+    if (parts.length >= 2) {
+      // Returns "Part1, Part2" (e.g., Coimbatore, Coimbatore North)
+      return "${parts[0].trim()}, ${parts[1].trim()}";
+    }
+
+    return address;
+  }
+
+  Future<void> _fetchRequests() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://18x50gz9-8055.inc1.devtunnels.ms/request/get-all?page=1&limit=10',
+        ),
+        headers: {
+          'Authorization':
+              'TMS eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IlN1cmVzaCBLYW5uYW4gUiBWIiwidXNlcl9uYW1lIjoiU3VyZXNoQDA1IiwiZW1haWwiOiJzdXJlc2hrYW5uYW4uY3MyM0BiaXRzYXRoeS5hYy5pbiIsInJvbGUiOiJUcmFuc3BvcnQgQWRtaW4iLCJzZXNzaW9uSWQiOiI5MjE0YTIzMy0wZDg2LTQ1Y2EtYWJiNi0yMTkyMzkzNDhkMzEiLCJ0eXBlIjoiV0VCIiwiaWF0IjoxNzcxNTgzNTU5LCJleHAiOjE3NzE2Njk5NTh9.BVN1XXSntfqi5QbHB5MpKQRExblVyRfBdB9Fj-1U02c',
+        },
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        setState(() {
+          _requests = List<Map<String, dynamic>>.from(data['items']);
+          _isLoading = false;
+          _error = null;
+        });
+      } else {
+        setState(() {
+          _error = 'Server Error: ${response.statusCode}';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = "Connection failed. Please check your internet.";
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,99 +107,69 @@ class _RequestListPageState extends State<RequestListPage> {
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
     final Color primaryBlue = const Color(0xFF6366F1);
 
-    final int requestDisplayCount = _requests.length > 2 ? 2 : _requests.length;
-    final int leaveDisplayCount = _leaves.length > 3 ? 3 : _leaves.length;
-
     return Scaffold(
       backgroundColor: bgColor,
       body: Stack(
         children: [
           _buildBackgroundDecor(isDark),
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(titleColor, primaryBlue),
-
-                  // --- REQUESTS SECTION ---
-                  _buildSectionHeader(
-                    "Active Requests",
-                    titleColor,
-                    primaryBlue,
-                    onViewAll: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ViewAllRequestsPage(requests: _requests),
+            child: RefreshIndicator(
+              onRefresh: _fetchRequests,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(titleColor, primaryBlue),
+                    _buildSectionHeader(
+                      "Active Requests",
+                      titleColor,
+                      primaryBlue,
+                      onViewAll: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ViewAllRequestsPage(requests: _requests),
+                        ),
                       ),
                     ),
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: requestDisplayCount,
-                    itemBuilder: (context, index) {
-                      final req = _requests[index];
-                      return InkWell(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                RequestDetailScreen(request: req),
-                          ),
+                    if (_isLoading)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: CircularProgressIndicator(),
                         ),
-                        child: RequestCard(
-                          req: req,
-                          isDark: isDark,
-                          accentColor: primaryBlue,
+                      )
+                    else if (_error != null)
+                      _buildErrorWidget(primaryBlue)
+                    else if (_requests.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Text("No requests found."),
                         ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // --- LEAVES SECTION ---
-                  _buildSectionHeader(
-                    "Leaves Request",
-                    titleColor,
-                    primaryBlue,
-                    onViewAll: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ViewAllLeavesPage(leaves: _leaves),
+                      )
+                    else
+                      _buildRequestList(isDark, primaryBlue),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                      "Leaves Request",
+                      titleColor,
+                      primaryBlue,
+                      onViewAll: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ViewAllLeavesPage(leaves: _leaves),
+                        ),
                       ),
                     ),
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: leaveDisplayCount,
-                    itemBuilder: (context, index) {
-                      final leaf = _leaves[index];
-                      return InkWell(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                LeaveDetailScreen(leave: leaf),
-                          ),
-                        ),
-                        child: LeaveCard(
-                          leaf: leaf,
-                          isDark: isDark,
-                          primaryColor: primaryBlue,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 100),
-                ],
+                    _buildLeaveList(isDark, primaryBlue),
+                    const SizedBox(height: 120),
+                  ],
+                ),
               ),
             ),
           ),
@@ -190,7 +178,84 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  // --- UI HELPER METHODS ---
+  Widget _buildRequestList(bool isDark, Color primaryBlue) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: _requests.length > 3 ? 3 : _requests.length,
+      itemBuilder: (context, index) {
+        final req = _requests[index];
+
+        final Map<String, dynamic> formattedReq = {
+          'id': 'REQ-${req['id']}',
+          'faculty': req['createdBy']?['name'] ?? 'Admin',
+          'date': (req['start_datetime'] ?? '').toString().split('T')[0],
+          // Apply the address formatting here
+          'pickup': _formatAddress(req['startLocation']),
+          'drop': _formatAddress(req['destinationLocation']),
+          'status': req['status'] ?? 'peding',
+          'vehicle': req['routeName'] ?? 'Custom Route',
+          'passengers': req['passengerCount'] ?? 0,
+          'capacity': 10,
+          'intermediateStops': req['intermediateStops'] ?? [],
+        };
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    RequestDetailScreen(request: formattedReq),
+              ),
+            ),
+            child: RequestCard(
+              req: formattedReq,
+              isDark: isDark,
+              accentColor: primaryBlue,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- UI Helpers ---
+  Widget _buildLeaveList(bool isDark, Color primaryBlue) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: _leaves.length,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12.0),
+        child: LeaveCard(
+          leaf: _leaves[index],
+          isDark: isDark,
+          primaryColor: primaryBlue,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget(Color primary) {
+    return Center(
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 40),
+          const SizedBox(height: 8),
+          Text(_error ?? "Error", style: TextStyle(color: Colors.red[300])),
+          TextButton(
+            onPressed: _fetchRequests,
+            child: Text("Retry", style: TextStyle(color: primary)),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildSectionHeader(
     String title,
@@ -271,18 +336,11 @@ class _RequestListPageState extends State<RequestListPage> {
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const NewRequestScreen()),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.all(12),
-            child: Icon(Icons.add_rounded, color: Colors.white, size: 28),
-          ),
+      child: IconButton(
+        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NewRequestScreen()),
         ),
       ),
     );
@@ -297,75 +355,6 @@ class _RequestListPageState extends State<RequestListPage> {
         backgroundColor: const Color(
           0xFF6366F1,
         ).withOpacity(isDark ? 0.05 : 0.03),
-      ),
-    );
-  }
-}
-
-// --- DETAIL SCREENS ---
-
-class RequestDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> request;
-  const RequestDetailScreen({super.key, required this.request});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Request Details: ${request['id']}")),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _infoTile("Faculty", request['faculty']),
-          _infoTile("Date", request['date']),
-          _infoTile("Pickup Location", request['pickup']),
-          _infoTile("Destination", request['drop']),
-          _infoTile("Vehicle Type", request['vehicle']),
-          _infoTile("Status", request['status']),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoTile(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const Divider(),
-        ],
-      ),
-    );
-  }
-}
-
-class LeaveDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> leave;
-  const LeaveDetailScreen({super.key, required this.leave});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Leave Details")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              leave['driver'],
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            Text("From ${leave['from']} to ${leave['to']}"),
-            const SizedBox(height: 20),
-            Chip(label: Text(leave['status'])),
-          ],
-        ),
       ),
     );
   }

@@ -188,9 +188,18 @@ class RequestCard extends StatelessWidget {
   }
 
   Widget _buildStatusBadge(String status) {
-    Color bColor = (status == 'Confirmed' || status == 'Approved')
-        ? Colors.green
-        : (status == 'Pending' ? Colors.orange : Colors.blue);
+    // Normalize status for comparison
+    final String s = status.toLowerCase();
+
+    Color bColor;
+    if (s == 'pending') {
+      bColor = Colors.orange; // Yellow/Orange for pending
+    } else if (s == 'rejected' || s == 'cancelled') {
+      bColor = Colors.red; // Red for negative states
+    } else {
+      bColor = Colors.green; // Green for Approved/Confirmed/Success
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -198,7 +207,8 @@ class RequestCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        status,
+        // Capitalize first letter for display
+        status[0].toUpperCase() + status.substring(1),
         style: TextStyle(
           color: bColor,
           fontSize: 10,
