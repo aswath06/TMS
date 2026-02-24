@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+// Components & Screens
 import 'package:tms/components/request_card.dart';
 import 'package:tms/components/leave_card.dart';
 import 'package:tms/screens/admin/request/ViewAllRequestsPage.dart';
 import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart';
 import 'package:tms/screens/admin/request/request_detail_screen.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
+
+// Stores & Constants
+import 'package:tms/store/user_store.dart';
+import 'package:tms/utils/api_constants.dart';
 
 class RequestListPage extends StatefulWidget {
   const RequestListPage({super.key});
@@ -21,6 +26,7 @@ class _RequestListPageState extends State<RequestListPage> {
   bool _isLoading = true;
   String? _error;
 
+  // Mock data for leaves (Static for now)
   final List<Map<String, dynamic>> _leaves = [
     {
       'driver': 'John Doe',
@@ -47,30 +53,44 @@ class _RequestListPageState extends State<RequestListPage> {
   /// Extracts the relevant part of the address (e.g., "Coimbatore, Coimbatore North")
   String _formatAddress(String? address) {
     if (address == null || address.isEmpty) return 'Unknown Location';
-
-    // Split by comma
     List<String> parts = address.split(',');
-
     if (parts.length >= 2) {
-      // Returns "Part1, Part2" (e.g., Coimbatore, Coimbatore North)
       return "${parts[0].trim()}, ${parts[1].trim()}";
     }
-
     return address;
   }
 
   Future<void> _fetchRequests() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
     try {
+      // 1. Retrieve the token from UserStore (Shared Preferences)
+      final String? token = await UserStore.getToken();
+
+      if (token == null) {
+        setState(() {
+          _error = "Session expired. Please login again.";
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 2. Build the URL using ApiConstants
+      final String requestUrl =
+          "${ApiConstants.baseUrl}/request/get-all?page=1&limit=10";
+
+      // 3. Execute HTTP GET with headers matching your curl
       final response = await http.get(
-        Uri.parse(
-          'https://18x50gz9-8055.inc1.devtunnels.ms/request/get-all?page=1&limit=10',
-        ),
+        Uri.parse(requestUrl),
         headers: {
           'Authorization':
-              'TMS eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IlN1cmVzaCBLYW5uYW4gUiBWIiwidXNlcl9uYW1lIjoiU3VyZXNoQDA1IiwiZW1haWwiOiJzdXJlc2hrYW5uYW4uY3MyM0BiaXRzYXRoeS5hYy5pbiIsInJvbGUiOiJUcmFuc3BvcnQgQWRtaW4iLCJzZXNzaW9uSWQiOiI5MjE0YTIzMy0wZDg2LTQ1Y2EtYWJiNi0yMTkyMzkzNDhkMzEiLCJ0eXBlIjoiV0VCIiwiaWF0IjoxNzcxNTgzNTU5LCJleHAiOjE3NzE2Njk5NTh9.BVN1XXSntfqi5QbHB5MpKQRExblVyRfBdB9Fj-1U02c',
+              'TMS $token', // Corrected format per curl requirements
+          'User-Agent': 'insomnia/12.3.0',
+          'Content-Type': 'application/json',
         },
       );
 
@@ -79,20 +99,25 @@ class _RequestListPageState extends State<RequestListPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         setState(() {
-          _requests = List<Map<String, dynamic>>.from(data['items']);
+          // Assuming the API structure is { "items": [...] }
+          _requests = List<Map<String, dynamic>>.from(data['items'] ?? []);
           _isLoading = false;
-          _error = null;
+        });
+      } else if (response.statusCode == 401) {
+        setState(() {
+          _error = "Unauthorized access. Please login again.";
+          _isLoading = false;
         });
       } else {
         setState(() {
-          _error = 'Server Error: ${response.statusCode}';
+          _error = 'Error: ${response.statusCode}';
           _isLoading = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = "Connection failed. Please check your internet.";
+        _error = "Connection failed. Please check your network.";
         _isLoading = false;
       });
     }
@@ -135,24 +160,7 @@ class _RequestListPageState extends State<RequestListPage> {
                         ),
                       ),
                     ),
-                    if (_isLoading)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (_error != null)
-                      _buildErrorWidget(primaryBlue)
-                    else if (_requests.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Text("No requests found."),
-                        ),
-                      )
-                    else
-                      _buildRequestList(isDark, primaryBlue),
+                    _buildMainContent(isDark, primaryBlue),
                     const SizedBox(height: 24),
                     _buildSectionHeader(
                       "Leaves Request",
@@ -178,6 +186,31 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
+  // --- Logic Helpers ---
+
+  Widget _buildMainContent(bool isDark, Color primaryBlue) {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    if (_error != null) {
+      return _buildErrorWidget(primaryBlue);
+    }
+    if (_requests.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: Text("No requests found."),
+        ),
+      );
+    }
+    return _buildRequestList(isDark, primaryBlue);
+  }
+
   Widget _buildRequestList(bool isDark, Color primaryBlue) {
     return ListView.builder(
       shrinkWrap: true,
@@ -187,14 +220,14 @@ class _RequestListPageState extends State<RequestListPage> {
       itemBuilder: (context, index) {
         final req = _requests[index];
 
+        // Normalizing API response to the format expected by RequestCard/DetailScreen
         final Map<String, dynamic> formattedReq = {
           'id': 'REQ-${req['id']}',
-          'faculty': req['createdBy']?['name'] ?? 'Admin',
+          'faculty': req['createdBy']?['name'] ?? 'Staff',
           'date': (req['start_datetime'] ?? '').toString().split('T')[0],
-          // Apply the address formatting here
           'pickup': _formatAddress(req['startLocation']),
           'drop': _formatAddress(req['destinationLocation']),
-          'status': req['status'] ?? 'peding',
+          'status': req['status'] ?? 'pending',
           'vehicle': req['routeName'] ?? 'Custom Route',
           'passengers': req['passengerCount'] ?? 0,
           'capacity': 10,
@@ -223,7 +256,8 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  // --- UI Helpers ---
+  // --- UI Layout Helpers ---
+
   Widget _buildLeaveList(bool isDark, Color primaryBlue) {
     return ListView.builder(
       shrinkWrap: true,
