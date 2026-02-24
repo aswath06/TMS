@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:tms/store/VehicleStore.dart';
 
 class AddVehiclePage extends StatefulWidget {
   const AddVehiclePage({super.key});
@@ -23,7 +25,71 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   DateTime? pollutionDate;
   DateTime? rcDate;
   DateTime? fitnessDate;
-  DateTime? nextServiceDate; // New State for Service Date
+  DateTime? nextServiceDate;
+
+  /// Handles the API submission logic
+  Future<void> _handleRegistration() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Check if all dates are selected
+    if (insuranceDate == null ||
+        pollutionDate == null ||
+        rcDate == null ||
+        fitnessDate == null ||
+        nextServiceDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select all maintenance dates")),
+      );
+      return;
+    }
+
+    // Show Loading Dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+      ),
+    );
+
+    // Prepare data as per curl requirements (yyyy-MM-dd)
+    final Map<String, dynamic> vehicleData = {
+      "vehicle_number": _noController.text.trim().toUpperCase(),
+      "vehicle_type": _selectedType,
+      "capacity": int.tryParse(_capacityController.text) ?? 0,
+      "current_kilometer": int.tryParse(_kmController.text) ?? 0,
+      "insurance_date": DateFormat('yyyy-MM-dd').format(insuranceDate!),
+      "pollution_date": DateFormat('yyyy-MM-dd').format(pollutionDate!),
+      "rc_date": DateFormat('yyyy-MM-dd').format(rcDate!),
+      "fc_date": DateFormat('yyyy-MM-dd').format(fitnessDate!),
+      "next_service_date": DateFormat('yyyy-MM-dd').format(nextServiceDate!),
+    };
+
+    try {
+      final vehicleStore = Provider.of<VehicleStore>(context, listen: false);
+      final success = await vehicleStore.addVehicle(vehicleData);
+
+      Navigator.pop(context); // Close loading dialog
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Vehicle registered successfully!")),
+        );
+        Navigator.pop(context); // Go back to vehicle list
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to register vehicle. Check your connection."),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("An error occurred: $e")));
+    }
+  }
 
   Future<void> _selectDate(BuildContext context, String type) async {
     final DateTime? picked = await showDatePicker(
@@ -50,7 +116,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         if (type == 'pol') pollutionDate = picked;
         if (type == 'rc') rcDate = picked;
         if (type == 'fit') fitnessDate = picked;
-        if (type == 'srv') nextServiceDate = picked; // Handle Service Date
+        if (type == 'srv') nextServiceDate = picked;
       });
     }
   }
@@ -91,7 +157,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               _buildTextField(
                 "Vehicle Number",
                 _noController,
-                "e.g. TS-09-EA-1234",
+                "e.g. TN-01-AA-1011",
                 Icons.badge_outlined,
                 isDark,
                 inputColor,
@@ -130,15 +196,12 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 inputColor,
                 isNumber: true,
               ),
-
               const SizedBox(height: 32),
               _buildSectionLabel(
                 "Compliance & Maintenance",
                 Icons.fact_check_outlined,
               ),
               const SizedBox(height: 12),
-
-              // Updated Grid to include Next Service
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -175,7 +238,6 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                     isDark,
                     inputColor,
                   ),
-                  // Added Next Service Tile
                   _buildDateTile(
                     "Next Service",
                     nextServiceDate,
@@ -186,18 +248,12 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Check if dates are selected if mandatory
-                      Navigator.pop(context);
-                    }
-                  },
+                  onPressed: _handleRegistration,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6366F1),
                     elevation: 0,

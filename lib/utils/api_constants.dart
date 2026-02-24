@@ -4,7 +4,7 @@ class ApiConstants {
   static const String login = "$baseUrl/auth/login-by-username";
   static const String forgotPassword = "$baseUrl/auth/forgot-password";
   static const String userMe = "$baseUrl/auth/user/me";
-  static const String getAllVehicles =
-      "$baseUrl/api/vehicles/get-all?";
-  static const String addVehicle = "$baseUrl/api/vehicles/add";
+  static const String getAllVehicles = "$baseUrl/api/vehicles/get-all?";
+  // Updated to match the curl path provided
+  static const String createVehicle = "$baseUrl/api/vehicles/create";
 }
