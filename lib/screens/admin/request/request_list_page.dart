@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 // Components & Screens
 import 'package:tms/components/request_card.dart';
@@ -10,9 +9,8 @@ import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart';
 import 'package:tms/screens/admin/request/request_detail_screen.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
-// Stores & Constants
-import 'package:tms/store/user_store.dart';
-import 'package:tms/utils/api_constants.dart';
+// Store
+import 'package:tms/store/request_store.dart';
 
 class RequestListPage extends StatefulWidget {
   const RequestListPage({super.key});
@@ -22,11 +20,7 @@ class RequestListPage extends StatefulWidget {
 }
 
 class _RequestListPageState extends State<RequestListPage> {
-  List<Map<String, dynamic>> _requests = [];
-  bool _isLoading = true;
-  String? _error;
-
-  // Mock data for leaves (Static for now)
+  // Mock data for leaves remains here for now as requested
   final List<Map<String, dynamic>> _leaves = [
     {
       'driver': 'John Doe',
@@ -47,84 +41,15 @@ class _RequestListPageState extends State<RequestListPage> {
   @override
   void initState() {
     super.initState();
-    _fetchRequests();
-  }
-
-  /// Extracts the relevant part of the address (e.g., "Coimbatore, Coimbatore North")
-  String _formatAddress(String? address) {
-    if (address == null || address.isEmpty) return 'Unknown Location';
-    List<String> parts = address.split(',');
-    if (parts.length >= 2) {
-      return "${parts[0].trim()}, ${parts[1].trim()}";
-    }
-    return address;
-  }
-
-  Future<void> _fetchRequests() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
+    // Initial fetch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RequestStore>().fetchRequests();
     });
-
-    try {
-      // 1. Retrieve the token from UserStore (Shared Preferences)
-      final String? token = await UserStore.getToken();
-
-      if (token == null) {
-        setState(() {
-          _error = "Session expired. Please login again.";
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 2. Build the URL using ApiConstants
-      final String requestUrl =
-          "${ApiConstants.baseUrl}/request/get-all?page=1&limit=10";
-
-      // 3. Execute HTTP GET with headers matching your curl
-      final response = await http.get(
-        Uri.parse(requestUrl),
-        headers: {
-          'Authorization':
-              'TMS $token', // Corrected format per curl requirements
-          'User-Agent': 'insomnia/12.3.0',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        setState(() {
-          // Assuming the API structure is { "items": [...] }
-          _requests = List<Map<String, dynamic>>.from(data['items'] ?? []);
-          _isLoading = false;
-        });
-      } else if (response.statusCode == 401) {
-        setState(() {
-          _error = "Unauthorized access. Please login again.";
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Error: ${response.statusCode}';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = "Connection failed. Please check your network.";
-        _isLoading = false;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<RequestStore>(); // Watch the store
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
@@ -139,7 +64,7 @@ class _RequestListPageState extends State<RequestListPage> {
           _buildBackgroundDecor(isDark),
           SafeArea(
             child: RefreshIndicator(
-              onRefresh: _fetchRequests,
+              onRefresh: () => store.fetchRequests(),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -156,11 +81,11 @@ class _RequestListPageState extends State<RequestListPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              ViewAllRequestsPage(requests: _requests),
+                              ViewAllRequestsPage(requests: store.requests),
                         ),
                       ),
                     ),
-                    _buildMainContent(isDark, primaryBlue),
+                    _buildMainContent(store, isDark, primaryBlue),
                     const SizedBox(height: 24),
                     _buildSectionHeader(
                       "Leaves Request",
@@ -186,10 +111,8 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  // --- Logic Helpers ---
-
-  Widget _buildMainContent(bool isDark, Color primaryBlue) {
-    if (_isLoading) {
+  Widget _buildMainContent(RequestStore store, bool isDark, Color primaryBlue) {
+    if (store.isLoading) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(40),
@@ -197,10 +120,10 @@ class _RequestListPageState extends State<RequestListPage> {
         ),
       );
     }
-    if (_error != null) {
-      return _buildErrorWidget(primaryBlue);
+    if (store.errorMessage != null) {
+      return _buildErrorWidget(store.errorMessage!, primaryBlue, store);
     }
-    if (_requests.isEmpty) {
+    if (store.requests.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(40),
@@ -208,32 +131,15 @@ class _RequestListPageState extends State<RequestListPage> {
         ),
       );
     }
-    return _buildRequestList(isDark, primaryBlue);
-  }
 
-  Widget _buildRequestList(bool isDark, Color primaryBlue) {
+    // Build the list from store data
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _requests.length > 3 ? 3 : _requests.length,
+      itemCount: store.requests.length > 3 ? 3 : store.requests.length,
       itemBuilder: (context, index) {
-        final req = _requests[index];
-
-        // Normalizing API response to the format expected by RequestCard/DetailScreen
-        final Map<String, dynamic> formattedReq = {
-          'id': 'REQ-${req['id']}',
-          'faculty': req['createdBy']?['name'] ?? 'Staff',
-          'date': (req['start_datetime'] ?? '').toString().split('T')[0],
-          'pickup': _formatAddress(req['startLocation']),
-          'drop': _formatAddress(req['destinationLocation']),
-          'status': req['status'] ?? 'pending',
-          'vehicle': req['routeName'] ?? 'Custom Route',
-          'passengers': req['passengerCount'] ?? 0,
-          'capacity': 10,
-          'intermediateStops': req['intermediateStops'] ?? [],
-        };
-
+        final req = store.requests[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: InkWell(
@@ -241,12 +147,11 @@ class _RequestListPageState extends State<RequestListPage> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    RequestDetailScreen(request: formattedReq),
+                builder: (context) => RequestDetailScreen(request: req),
               ),
             ),
             child: RequestCard(
-              req: formattedReq,
+              req: req,
               isDark: isDark,
               accentColor: primaryBlue,
             ),
@@ -256,7 +161,24 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  // --- UI Layout Helpers ---
+  Widget _buildErrorWidget(String message, Color primary, RequestStore store) {
+    return Center(
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 40),
+          const SizedBox(height: 8),
+          Text(message, style: TextStyle(color: Colors.red[300])),
+          TextButton(
+            onPressed: () => store.fetchRequests(),
+            child: Text("Retry", style: TextStyle(color: primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ... (Other UI helpers like _buildHeader, _buildSectionHeader, etc. remain the same as your original code)
+  // [Original UI code for _buildLeaveList, _buildHeader, _buildAddButton, _buildBackgroundDecor, _buildSectionHeader would go here]
 
   Widget _buildLeaveList(bool isDark, Color primaryBlue) {
     return ListView.builder(
@@ -271,22 +193,6 @@ class _RequestListPageState extends State<RequestListPage> {
           isDark: isDark,
           primaryColor: primaryBlue,
         ),
-      ),
-    );
-  }
-
-  Widget _buildErrorWidget(Color primary) {
-    return Center(
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 40),
-          const SizedBox(height: 8),
-          Text(_error ?? "Error", style: TextStyle(color: Colors.red[300])),
-          TextButton(
-            onPressed: _fetchRequests,
-            child: Text("Retry", style: TextStyle(color: primary)),
-          ),
-        ],
       ),
     );
   }

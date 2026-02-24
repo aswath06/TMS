@@ -19,6 +19,23 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     _filteredRequests = widget.requests;
   }
 
+  /// Helper to get consistent colors for status throughout the app
+  Color _getStatusColor(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('pending')) {
+      return const Color(0xFFF59E0B); // Amber/Orange
+    } else if (s.contains('vehicle') || s.contains('assign')) {
+      return const Color(0xFF3B82F6); // Professional Blue
+    } else if (s.contains('approved') ||
+        s.contains('confirm') ||
+        s.contains('success')) {
+      return const Color(0xFF10B981); // Emerald Green
+    } else if (s.contains('reject') || s.contains('cancel')) {
+      return const Color(0xFFEF4444); // Red
+    }
+    return const Color(0xFF64748B); // Slate/Grey default
+  }
+
   void _filterRequests(String query) {
     setState(() {
       _filteredRequests = widget.requests
@@ -68,65 +85,14 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
         actions: [
           IconButton(
             icon: Icon(Icons.history_rounded, color: titleColor),
-            onPressed: () {
-              // Action for history
-            },
+            onPressed: () {},
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          // Search Bar Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterRequests,
-                style: TextStyle(color: titleColor),
-                decoration: InputDecoration(
-                  hintText: "Search faculty or ID...",
-                  hintStyle: TextStyle(
-                    color: titleColor.withOpacity(0.4),
-                    fontSize: 14,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    color: primaryBlue,
-                    size: 22,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(
-                            Icons.clear_rounded,
-                            color: titleColor.withOpacity(0.4),
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterRequests("");
-                          },
-                        )
-                      : null,
-                ),
-              ),
-            ),
-          ),
-
-          // List Section
+          _buildSearchBar(cardColor, titleColor, primaryBlue, isDark),
           Expanded(
             child: _filteredRequests.isEmpty
                 ? _buildEmptyState(titleColor)
@@ -151,25 +117,57 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     );
   }
 
-  Widget _buildEmptyState(Color titleColor) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 60,
-            color: titleColor.withOpacity(0.2),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "No requests found",
-            style: TextStyle(
-              color: titleColor.withOpacity(0.5),
-              fontWeight: FontWeight.w600,
+  Widget _buildSearchBar(
+    Color cardColor,
+    Color titleColor,
+    Color primaryBlue,
+    bool isDark,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: _filterRequests,
+          style: TextStyle(color: titleColor),
+          decoration: InputDecoration(
+            hintText: "Search faculty or ID...",
+            hintStyle: TextStyle(
+              color: titleColor.withOpacity(0.4),
+              fontSize: 14,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: primaryBlue,
+              size: 22,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear_rounded,
+                      color: titleColor.withOpacity(0.4),
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      _filterRequests("");
+                    },
+                  )
+                : null,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -184,6 +182,8 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     final Color subColor = isDark
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
+    final String status = req['status'] ?? "Pending";
+    final Color statusColor = _getStatusColor(status);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -233,7 +233,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
                     ],
                   ),
                 ),
-                _buildStatusBadge(req['status']),
+                _buildStatusBadge(status, statusColor),
               ],
             ),
           ),
@@ -243,21 +243,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  children: [
-                    Icon(
-                      Icons.radio_button_checked_rounded,
-                      size: 18,
-                      color: acc,
-                    ),
-                    Container(
-                      width: 2,
-                      height: 35,
-                      color: acc.withOpacity(0.2),
-                    ),
-                    Icon(Icons.location_on_rounded, size: 20, color: acc),
-                  ],
-                ),
+                _buildTimeline(acc),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -294,30 +280,44 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-            decoration: BoxDecoration(
-              color: acc.withOpacity(0.05),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildFooterItem(
-                  Icons.people_outline_rounded,
-                  "${req['passengers'] ?? 0} Guests",
-                  subColor,
-                ),
-                _buildFooterItem(
-                  Icons.directions_bus_filled_rounded,
-                  "${req['vehicle'] ?? 'Vehicle'} (${req['capacity'] ?? 'N/A'} seats)",
-                  subColor,
-                ),
-              ],
-            ),
+          _buildFooter(req, subColor, acc),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeline(Color acc) {
+    return Column(
+      children: [
+        Icon(Icons.radio_button_checked_rounded, size: 18, color: acc),
+        Container(width: 2, height: 35, color: acc.withOpacity(0.2)),
+        Icon(Icons.location_on_rounded, size: 20, color: acc),
+      ],
+    );
+  }
+
+  Widget _buildFooter(Map<String, dynamic> req, Color subColor, Color acc) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: BoxDecoration(
+        color: acc.withOpacity(0.05),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildFooterItem(
+            Icons.people_outline_rounded,
+            "${req['passengers'] ?? 0} Guests",
+            subColor,
+          ),
+          _buildFooterItem(
+            Icons.directions_bus_filled_rounded,
+            "${req['vehicle'] ?? 'Not Assigned'} (${req['capacity'] ?? 'N/A'} seats)",
+            subColor,
           ),
         ],
       ),
@@ -341,23 +341,45 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
-    Color bColor = (status == 'Confirmed' || status == 'Approved')
-        ? Colors.green
-        : (status == 'Pending' ? Colors.orange : Colors.blue);
+  Widget _buildStatusBadge(String status, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: bColor.withOpacity(0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
       ),
       child: Text(
-        status,
+        status.toUpperCase(),
         style: TextStyle(
-          color: bColor,
+          color: color,
           fontSize: 10,
           fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(Color titleColor) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 60,
+            color: titleColor.withOpacity(0.2),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "No requests found",
+            style: TextStyle(
+              color: titleColor.withOpacity(0.5),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

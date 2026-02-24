@@ -34,7 +34,7 @@ class VehicleStore extends ChangeNotifier {
 
   // --- Actions ---
 
-  /// Initial Load
+  /// Initial Load or Refresh
   Future<void> fetchVehicles({bool forceRefresh = false}) async {
     if (_isLoading) return;
 
@@ -72,14 +72,17 @@ class VehicleStore extends ChangeNotifier {
     }
   }
 
-  /// Core Fetch Logic
+  /// Core Fetch Logic with Server-Side Search
   Future<void> _fetchPage(int page) async {
     final String? token = await UserStore.getToken();
 
-    // Dynamically build the URL with the page query parameter
-    final Uri uri = Uri.parse(
-      ApiConstants.getAllVehicles,
-    ).replace(queryParameters: {'page': page.toString()});
+    // Matching your curl: get-all?search={query}&page={page}
+    final Uri uri = Uri.parse(ApiConstants.getAllVehicles).replace(
+      queryParameters: {
+        'search': _searchQuery, // Server-side search support
+        'page': page.toString(),
+      },
+    );
 
     try {
       final response = await http.get(
@@ -100,7 +103,7 @@ class VehicleStore extends ChangeNotifier {
         if (page == 1) {
           _allVehicles = List.from(newData);
         } else {
-          // Add unique items only
+          // Prevent duplicates during infinite scroll
           for (var item in newData) {
             if (!_allVehicles.any((v) => v['id'] == item['id'])) {
               _allVehicles.add(item);
@@ -110,7 +113,7 @@ class VehicleStore extends ChangeNotifier {
 
         _hasMore = page < totalPagesFromApi && newData.isNotEmpty;
         _syncCategories();
-        _applyFilters();
+        _applyFilters(); // Apply local category filtering on top of server results
       }
     } catch (e) {
       debugPrint("Fetch Page Request Error: $e");
@@ -134,7 +137,7 @@ class VehicleStore extends ChangeNotifier {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        await fetchVehicles(); // Refresh list after successful add
+        await fetchVehicles();
         return true;
       } else {
         debugPrint("Add Vehicle Failed: ${response.body}");
@@ -158,9 +161,11 @@ class VehicleStore extends ChangeNotifier {
     _dynamicCategories = types.toList()..sort();
   }
 
+  /// Triggered when typing in search bar
   void updateSearch(String query) {
     _searchQuery = query;
-    _applyFilters();
+    // We fetch from page 1 again because the results set has changed
+    fetchVehicles();
   }
 
   void toggleCategory(String category) {
@@ -180,20 +185,16 @@ class VehicleStore extends ChangeNotifier {
 
   void _applyFilters() {
     _filteredVehicles = _allVehicles.where((v) {
-      final String plate = (v['vehicle_number'] ?? "").toString().toLowerCase();
       final String type = (v['vehicle_type'] ?? "").toString().toLowerCase();
 
-      final matchesSearch =
-          plate.contains(_searchQuery.toLowerCase()) ||
-          type.contains(_searchQuery.toLowerCase());
-
+      // Category filter remains client-side for immediate UI response
       final matchesCategory =
           _selectedCategories.contains("All") ||
           _selectedCategories.any(
             (cat) => cat.toLowerCase() == type.toLowerCase(),
           );
 
-      return matchesSearch && matchesCategory;
+      return matchesCategory;
     }).toList();
     notifyListeners();
   }

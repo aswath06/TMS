@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:provider/provider.dart'; // 1. Add Provider import
-import 'package:tms/store/VehicleStore.dart'; // 2. Import your Store
+import 'package:provider/provider.dart';
+
+// Stores
+import 'package:tms/store/VehicleStore.dart';
+import 'package:tms/store/request_store.dart'; // Import the new store
+
+// Utils
 import 'utils/routes.dart';
 
 void main() async {
@@ -28,12 +33,13 @@ void main() async {
   );
 
   runApp(
-    // 3. Wrap MyApp with MultiProvider to make stores accessible globally
+    // Added RequestStore to the global provider list
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => VehicleStore()),
-        // You can add more stores here later:
-        // ChangeNotifierProvider(create: (_) => UserStore()),
+        ChangeNotifierProvider(
+          create: (_) => RequestStore(),
+        ), // FIX: Registering RequestStore
       ],
       child: const MyApp(),
     ),
