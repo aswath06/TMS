@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tms/store/admin_dashboard_store.dart';
+import 'package:tms/store/driver_store.dart';
 import 'package:tms/screens/admin/add_driver_page.dart'; // Import Add Driver Page
 import 'package:tms/components/leave_card.dart';
 
@@ -29,63 +31,32 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     },
   ];
 
-  // Mock data for drivers
-  final List<Map<String, dynamic>> _drivers = [
-    {
-      'name': 'John Doe',
-      'phone': '+1 234 567 8900',
-      'kilometers': '1245 km',
-      'image':
-          'https://ui-avatars.com/api/?name=John+Doe&background=6366F1&color=fff',
-    },
-    {
-      'name': 'Mike Ross',
-      'phone': '+1 987 654 3210',
-      'kilometers': '890 km',
-      'image':
-          'https://ui-avatars.com/api/?name=Mike+Ross&background=10B981&color=fff',
-    },
-    {
-      'name': 'Sarah Smith',
-      'phone': '+1 555 123 4567',
-      'kilometers': '2304 km',
-      'image': null,
-    },
-    {
-      'name': 'David Wilson',
-      'phone': '+1 444 987 6543',
-      'kilometers': '310 km',
-      'image':
-          'https://ui-avatars.com/api/?name=David+Wilson&background=EF4444&color=fff',
-    },
-  ];
-
   String _sortType = 'A to Z'; // Default sorting
+  final ScrollController _scrollController = ScrollController();
 
   // Helper to parse 'kilometers' string to double for sorting
   double _parseKm(String kmString) {
     return double.tryParse(kmString.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
   }
 
-  void _sortDrivers(String sortType) {
-    setState(() {
-      _sortType = sortType;
-      if (sortType == 'A to Z') {
-        _drivers.sort((a, b) => a['name'].compareTo(b['name']));
-      } else if (sortType == 'Z to A') {
-        _drivers.sort((a, b) => b['name'].compareTo(a['name']));
-      } else if (sortType == 'Max Distance') {
-        _drivers.sort(
-          (a, b) =>
-              _parseKm(b['kilometers']).compareTo(_parseKm(a['kilometers'])),
-        );
-      } else if (sortType == 'Min Distance') {
-        _drivers.sort(
-          (a, b) =>
-              _parseKm(a['kilometers']).compareTo(_parseKm(b['kilometers'])),
-        );
-      }
-    });
+  void _sortLocalDrivers(List<Map<String, dynamic>> list, String sortType) {
+    if (sortType == 'A to Z') {
+      list.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+    } else if (sortType == 'Z to A') {
+      list.sort((a, b) => (b['name'] ?? '').compareTo(a['name'] ?? ''));
+    } else if (sortType == 'Max Distance') {
+      list.sort(
+        (a, b) => _parseKm(
+          b['kilometers']?.toString() ?? '0',
+        ).compareTo(_parseKm(a['kilometers']?.toString() ?? '0')),
+      );
+    } else if (sortType == 'Min Distance') {
+      list.sort(
+        (a, b) => _parseKm(
+          a['kilometers']?.toString() ?? '0',
+        ).compareTo(_parseKm(b['kilometers']?.toString() ?? '0')),
+      );
+    }
   }
 
   void _showFilterModal(BuildContext context, bool isDark) {
@@ -172,7 +143,10 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
         setModalState(() {
           _sortType = title;
         });
-        _sortDrivers(title);
+        Provider.of<DriverStore>(
+          context,
+          listen: false,
+        ).setSortType(title); // Update store's sort type
         Navigator.pop(context); // Close after selection
       },
       child: Container(
@@ -215,7 +189,26 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
   void initState() {
     super.initState();
     useAdminDashboardStore.fetchStats();
-    _sortDrivers(_sortType); // Apply default sorting on init
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<DriverStore>(
+        context,
+        listen: false,
+      ).fetchDrivers(forceRefresh: true);
+    });
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        Provider.of<DriverStore>(context, listen: false).fetchNextPage();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -241,9 +234,16 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () => useAdminDashboardStore.fetchStats(),
+          onRefresh: () async {
+            useAdminDashboardStore.fetchStats();
+            await Provider.of<DriverStore>(
+              context,
+              listen: false,
+            ).fetchDrivers(forceRefresh: true);
+          },
           color: primaryBlue,
           child: CustomScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               _buildAnimatedHeader(titleColor, primaryBlue),
@@ -495,92 +495,143 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
   }
 
   Widget _buildDriverList(bool isDark, Color surfaceColor) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: _drivers.length,
-      itemBuilder: (context, index) {
-        final driver = _drivers[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+    return Consumer<DriverStore>(
+      builder: (context, store, child) {
+        if (store.isLoading && store.drivers.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+          );
+        }
+
+        if (store.drivers.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Text(
+                "No drivers found.",
+                style: TextStyle(color: Colors.grey.shade500),
               ),
-            ],
+            ),
+          );
+        }
+
+        // Apply local sorting
+        final sortedDrivers = List<Map<String, dynamic>>.from(store.drivers);
+        _sortLocalDrivers(sortedDrivers, store.sortType);
+
+        return Column(
+          children: [
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: sortedDrivers.length,
+              itemBuilder: (context, index) {
+                final driver = sortedDrivers[index];
+                return _buildDriverCard(driver, isDark, surfaceColor);
+              },
+            ),
+            if (store.isFetchingNextPage)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.0),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDriverCard(
+    Map<String, dynamic> driver,
+    bool isDark,
+    Color surfaceColor,
+  ) {
+    // Generate a fallback kilometer string since API only gives experience_years initially
+    final String kmDisplay =
+        driver['kilometers']?.toString() ??
+        (driver['experience_years'] != null
+            ? '${(driver['experience_years'] * 1234)} km'
+            : '0 km');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Row(
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildDriverAvatar(driver, isDark),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  driver['name'] ?? 'Unknown',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  driver['phone'] ?? 'No Phone',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildDriverAvatar(driver, isDark),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      driver['name'],
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      driver['phone'],
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+              const Text(
+                "Distance",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              const SizedBox(height: 4),
+              Row(
                 children: [
-                  const Text(
-                    "Distance",
+                  const Icon(Icons.speed, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    kmDisplay,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.speed, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        driver['kilometers'],
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF1E293B),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 

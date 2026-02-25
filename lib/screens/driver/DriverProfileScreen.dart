@@ -3,6 +3,7 @@ import 'package:tms/components/profile/info_card.dart';
 import 'package:tms/components/profile/profile_hero.dart';
 import 'package:tms/components/profile/typing_text.dart';
 import 'package:tms/screens/setting/settings_page.dart';
+import 'package:provider/provider.dart';
 import 'package:tms/store/driver_store.dart';
 import 'package:tms/store/istamil.dart';
 
@@ -58,32 +59,26 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                       delegate: SliverChildListDelegate([
                         _buildHeader(context, titleColor, isTamil),
                         const SizedBox(height: 30),
-                        ValueListenableBuilder(
-                          valueListenable: useDriverStore.isLoading,
-                          builder: (context, isLoading, _) {
+                        Consumer<DriverStore>(
+                          builder: (context, store, _) {
+                            if (store.errorMessage != null) {
+                              return _buildErrorState(
+                                store.errorMessage!,
+                                titleColor,
+                                isTamil,
+                              );
+                            }
                             return ValueListenableBuilder(
-                              valueListenable: useDriverStore.errorMessage,
-                              builder: (context, error, _) {
-                                if (error != null) {
-                                  return _buildErrorState(
-                                    error,
-                                    titleColor,
-                                    isTamil,
-                                  );
-                                }
-                                return ValueListenableBuilder(
-                                  valueListenable: useDriverStore.profileData,
-                                  builder: (context, data, _) {
-                                    return _buildProfileContent(
-                                      data,
-                                      isLoading,
-                                      isDark,
-                                      titleColor,
-                                      cardColor,
-                                      subTitleColor,
-                                      isTamil,
-                                    );
-                                  },
+                              valueListenable: store.profileData,
+                              builder: (context, data, _) {
+                                return _buildProfileContent(
+                                  data,
+                                  store.isLoading,
+                                  isDark,
+                                  titleColor,
+                                  cardColor,
+                                  subTitleColor,
+                                  isTamil,
                                 );
                               },
                             );

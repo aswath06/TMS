@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 
 // Stores
 import 'package:tms/store/VehicleStore.dart';
-import 'package:tms/store/request_store.dart'; // Import the new store
+import 'package:tms/store/request_store.dart';
+import 'package:tms/store/driver_store.dart';
 
 // Utils
 import 'utils/routes.dart';
@@ -37,9 +38,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => VehicleStore()),
-        ChangeNotifierProvider(
-          create: (_) => RequestStore(),
-        ), // FIX: Registering RequestStore
+        ChangeNotifierProvider(create: (_) => RequestStore()),
+        ChangeNotifierProvider(create: (_) => DriverStore()),
       ],
       child: const MyApp(),
     ),

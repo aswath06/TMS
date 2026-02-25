@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:tms/store/driver_store.dart';
 
 class AddDriverPage extends StatefulWidget {
   const AddDriverPage({super.key});
@@ -12,7 +14,6 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _phoneCtrl = TextEditingController();
-  final TextEditingController _bloodGroupCtrl = TextEditingController();
   final TextEditingController _licenseCtrl = TextEditingController();
   final TextEditingController _expiryDateCtrl = TextEditingController();
   final TextEditingController _experienceCtrl = TextEditingController();
@@ -21,17 +22,76 @@ class _AddDriverPageState extends State<AddDriverPage> {
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
-    _bloodGroupCtrl.dispose();
     _licenseCtrl.dispose();
     _expiryDateCtrl.dispose();
     _experienceCtrl.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  bool _isLoading = false;
+
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Handle API Submission here
-      Navigator.pop(context);
+      setState(() {
+        _isLoading = true;
+      });
+
+      // API expects experience as an integer, default if empty or invalid
+      int experience = int.tryParse(_experienceCtrl.text) ?? 0;
+
+      // Construct a default email for the API from the name if needed (API requirement workaround)
+      String cleanName = _nameCtrl.text.trim().toLowerCase().replaceAll(
+        RegExp(r'\s+'),
+        '.',
+      );
+      if (cleanName.isEmpty) cleanName = 'driver';
+      String defaultEmail = '$cleanName@example.com';
+
+      // Format date snippet if they just enter MM/YYYY -> mock 1st of month
+      String formattedExpiry = _expiryDateCtrl.text;
+      if (formattedExpiry.contains('/')) {
+        final parts = formattedExpiry.split('/');
+        if (parts.length == 2) {
+          formattedExpiry = '${parts[1]}-${parts[0]}-01'; // YYYY-MM-DD
+        }
+      } else {
+        formattedExpiry = '2030-01-01'; // Fallback if no valid parsing
+      }
+
+      final Map<String, dynamic> driverData = {
+        "name": _nameCtrl.text.trim(),
+        "email": defaultEmail,
+        "password": "Driver@123", // Default per requirements
+        "role_id": 3,
+        "phone": _phoneCtrl.text.trim(),
+        "license_number": _licenseCtrl.text.trim(),
+        "license_expiry": formattedExpiry,
+        "experience_years": experience,
+      };
+
+      final success = await Provider.of<DriverStore>(
+        context,
+        listen: false,
+      ).addDriver(driverData);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Driver Registered Successfully!')),
+          );
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to Register Driver. Please check inputs.'),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -114,30 +174,13 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 inputColor,
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      "Phone Number",
-                      _phoneCtrl,
-                      "e.g. +123456789",
-                      Icons.phone_outlined,
-                      isDark,
-                      inputColor,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildTextField(
-                      "Blood Group",
-                      _bloodGroupCtrl,
-                      "e.g. O+",
-                      Icons.bloodtype_outlined,
-                      isDark,
-                      inputColor,
-                    ),
-                  ),
-                ],
+              _buildTextField(
+                "Phone Number",
+                _phoneCtrl,
+                "e.g. +123456789",
+                Icons.phone_outlined,
+                isDark,
+                inputColor,
               ),
               const SizedBox(height: 32),
 
@@ -184,7 +227,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 width: double.infinity,
                 height: 58,
                 child: ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6366F1),
                     elevation: 0,
@@ -192,14 +235,23 @@ class _AddDriverPageState extends State<AddDriverPage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text(
-                    "Register Driver",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "Register Driver",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),

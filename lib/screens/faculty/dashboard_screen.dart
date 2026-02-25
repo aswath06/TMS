@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -68,7 +69,12 @@ class DashboardScreen extends StatelessWidget {
 
                   _buildSectionTitle("Quick Actions", titleColor),
                   const SizedBox(height: 18),
-                  _buildQuickActions(primaryBlue, surfaceColor, isDark),
+                  _buildQuickActions(
+                    context,
+                    primaryBlue,
+                    surfaceColor,
+                    isDark,
+                  ),
                   const SizedBox(height: 36),
 
                   Row(
@@ -336,10 +342,26 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions(Color primaryBlue, Color surface, bool isDark) {
+  Widget _buildQuickActions(
+    BuildContext context,
+    Color primaryBlue,
+    Color surface,
+    bool isDark,
+  ) {
     return Row(
       children: [
-        _buildActionBtn("New Req", Icons.add_box_rounded, primaryBlue, surface),
+        _buildActionBtn(
+          "New Req",
+          Icons.add_box_rounded,
+          primaryBlue,
+          surface,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NewRequestScreen()),
+            );
+          },
+        ),
         const SizedBox(width: 15),
         _buildActionBtn(
           "Track",
@@ -362,32 +384,40 @@ class DashboardScreen extends StatelessWidget {
     String label,
     IconData icon,
     Color color,
-    Color surface,
-  ) {
+    Color surface, {
+    VoidCallback? onTap,
+  }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: color.withOpacity(0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-            ),
-          ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(26),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: color.withOpacity(0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
