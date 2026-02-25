@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../utils/routes.dart';
 import '../store/user_store.dart';
 import '../store/isdark.dart'; // Import Theme Store
 import '../store/istamil.dart'; // Import Language Store
+import '../utils/api_constants.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -65,32 +68,70 @@ class _SplashScreenState extends State<SplashScreen>
       LanguageStore.isTamil = isTamil;
     });
 
-    // 2. Wait for animation to finish a bit
+    // 2. Wait for animation to complete a bit
     await Future.delayed(const Duration(milliseconds: 2000));
 
-    // 3. Auth Logic
+    // 3. Read the stored token & role
     final String? token = await UserStore.getToken();
     final String? role = await UserStore.getRole();
     final bool isPinEnabled = prefs.getBool('isPinEnabled') ?? false;
 
     if (!mounted) return;
 
-    if (token != null && role != null) {
-      if (isPinEnabled) {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.lockScreen,
-          arguments: role,
-        );
-      } else {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.dashboard,
-          arguments: role,
-        );
-      }
-    } else {
+    // 4. No local token → go straight to login
+    if (token == null || role == null) {
       Navigator.pushReplacementNamed(context, AppRoutes.login);
+      return;
+    }
+
+    // 5. Validate the session server-side via /auth/user/me
+    bool sessionValid = false;
+    try {
+      final response = await http
+          .get(
+            Uri.parse(ApiConstants.userMe),
+            headers: {
+              'Authorization': 'TMS $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        // The API returns { data: { isLogin: bool, ... } }
+        final bool isLogin = decoded['data']?['isLogin'] == true;
+        sessionValid = isLogin;
+      }
+      // Any other status (401, 403, 500…) → sessionValid stays false
+    } catch (_) {
+      // Network timeout / offline → treat as invalid to be safe
+      sessionValid = false;
+    }
+
+    if (!mounted) return;
+
+    if (!sessionValid) {
+      // Clear stale / invalid session data
+      await UserStore.clear();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      return;
+    }
+
+    // 6. Session is valid → navigate to the right screen
+    if (isPinEnabled) {
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.lockScreen,
+        arguments: role,
+      );
+    } else {
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.dashboard,
+        arguments: role,
+      );
     }
   }
 

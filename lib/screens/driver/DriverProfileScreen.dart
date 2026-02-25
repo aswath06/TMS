@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/profile/info_card.dart';
 import 'package:tms/components/profile/profile_hero.dart';
+import 'package:tms/components/profile/typing_text.dart';
 import 'package:tms/screens/setting/settings_page.dart';
+import 'package:tms/store/driver_store.dart';
 import 'package:tms/store/istamil.dart';
 
 class DriverProfileScreen extends StatefulWidget {
@@ -12,6 +14,14 @@ class DriverProfileScreen extends StatefulWidget {
 }
 
 class _DriverProfileScreenState extends State<DriverProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (useDriverStore.profileData.value == null) {
+      useDriverStore.fetchProfile();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isTamil = LanguageStore.isTamil;
@@ -31,64 +41,61 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       body: Stack(
         children: [
           _buildBackgroundDecor(isDark),
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Column(
-                  children: [
-                    _buildHeader(context, titleColor, isTamil),
-                    const SizedBox(height: 30),
-
-                    ProfileHero(
-                      name: isTamil ? "ராஜேஷ் குமார்" : "Rajesh Kumar",
-                      subtitle: isTamil
-                          ? "ஓட்டுநர் • பேருந்து எண்: 12"
-                          : "Driver • Bus No: 12",
-                      cardColor: cardColor,
-                      titleColor: titleColor,
-                      subColor: subTitleColor,
-                      isDark: isDark,
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    _buildSectionTitle(
-                      isTamil ? "ஓட்டுநர் விவரங்கள்" : "Driver Details",
-                      titleColor,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDriverGrid(
-                      cardColor,
-                      titleColor,
-                      subTitleColor,
-                      isTamil,
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    _buildSectionTitle(
-                      isTamil ? "வருகை மற்றும் விடுப்பு" : "Attendance & Leave",
-                      titleColor,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildLeaveGrid(
-                      cardColor,
-                      titleColor,
-                      subTitleColor,
-                      isTamil,
-                    ),
-
-                    // --- ADDED PADDING HERE ---
-                    // This creates extra space so the bottom bar doesn't cover the content
-                    const SizedBox(height: 100),
-                  ],
-                ),
+          RefreshIndicator(
+            onRefresh: () => useDriverStore.fetchProfile(),
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
+              slivers: [
+                SliverSafeArea(
+                  sliver: SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _buildHeader(context, titleColor, isTamil),
+                        const SizedBox(height: 30),
+                        ValueListenableBuilder(
+                          valueListenable: useDriverStore.isLoading,
+                          builder: (context, isLoading, _) {
+                            return ValueListenableBuilder(
+                              valueListenable: useDriverStore.errorMessage,
+                              builder: (context, error, _) {
+                                if (error != null) {
+                                  return _buildErrorState(
+                                    error,
+                                    titleColor,
+                                    isTamil,
+                                  );
+                                }
+                                return ValueListenableBuilder(
+                                  valueListenable: useDriverStore.profileData,
+                                  builder: (context, data, _) {
+                                    return _buildProfileContent(
+                                      data,
+                                      isLoading,
+                                      isDark,
+                                      titleColor,
+                                      cardColor,
+                                      subTitleColor,
+                                      isTamil,
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 100),
+                      ]),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ],
             ),
           ),
         ],
@@ -96,8 +103,67 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     );
   }
 
-  // --- GRID BUILDERS ---
+  Widget _buildProfileContent(
+    Map<String, dynamic>? data,
+    bool isLoading,
+    bool isDark,
+    Color titleColor,
+    Color cardColor,
+    Color subColor,
+    bool isTamil,
+  ) {
+    final bool showTyping = isLoading && data == null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ProfileHero(
+          name: showTyping
+              ? "..."
+              : (data?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver")),
+          subtitle: showTyping
+              ? (isTamil ? "புதுப்பிக்கிறது..." : "Updating...")
+              : "${data?['role'] ?? (isTamil ? 'ஓட்டுநர்' : 'Driver')} • ${data?['user_name'] ?? ''}",
+          cardColor: cardColor,
+          titleColor: titleColor,
+          subColor: subColor,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 32),
+        _buildSectionTitle(
+          isTamil ? "ஓட்டுநர் விவரங்கள்" : "Driver Details",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildDriverGrid(
+          data,
+          isLoading,
+          cardColor,
+          titleColor,
+          subColor,
+          isTamil,
+        ),
+        const SizedBox(height: 32),
+        _buildSectionTitle(
+          isTamil ? "கணக்கு விவரங்கள்" : "Account Details",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildAccountGrid(
+          data,
+          isLoading,
+          cardColor,
+          titleColor,
+          subColor,
+          isTamil,
+        ),
+      ],
+    );
+  }
+
   Widget _buildDriverGrid(
+    Map<String, dynamic>? data,
+    bool isLoading,
     Color cardColor,
     Color titleColor,
     Color subColor,
@@ -105,34 +171,36 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   ) {
     final List<Map<String, dynamic>> items = [
       {
-        'title': isTamil ? 'பணியாளர் ஐடி' : 'Employee ID',
-        'val': 'DRV-2024-045',
+        'title': isTamil ? 'பெயர்' : 'Full Name',
+        'val': data?['name'],
         'icon': Icons.badge_rounded,
         'color': Colors.indigo,
       },
       {
-        'title': isTamil ? 'உரிம எண்' : 'License No.',
-        'val': 'TN-37-20150004',
+        'title': isTamil ? 'பணியிடம்' : 'Role',
+        'val': data?['role'],
         'icon': Icons.shutter_speed_rounded,
         'color': Colors.amber.shade700,
       },
       {
-        'title': isTamil ? 'அனுபவம்' : 'Experience',
-        'val': isTamil ? '12 ஆண்டுகள்' : '12 Years',
-        'icon': Icons.timeline_rounded,
+        'title': isTamil ? 'பயனர் பெயர்' : 'Username',
+        'val': data?['user_name'],
+        'icon': Icons.person_outline_rounded,
         'color': Colors.green,
       },
       {
         'title': isTamil ? 'தொலைபேசி' : 'Contact Info',
-        'val': '+91 98765 43210',
+        'val': data?['phone'] ?? (isTamil ? 'பதிவில்லை' : 'Not set'),
         'icon': Icons.phone_android_rounded,
         'color': Colors.blue,
       },
     ];
-    return _renderGrid(items, cardColor, titleColor, subColor);
+    return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
   }
 
-  Widget _buildLeaveGrid(
+  Widget _buildAccountGrid(
+    Map<String, dynamic>? data,
+    bool isLoading,
     Color cardColor,
     Color titleColor,
     Color subColor,
@@ -140,35 +208,38 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   ) {
     final List<Map<String, dynamic>> items = [
       {
-        'title': isTamil ? 'வருகை சதவீதம்' : 'Attendance',
-        'val': '94%',
-        'icon': Icons.pie_chart_rounded,
+        'title': isTamil ? 'மின்னஞ்சல்' : 'Email',
+        'val': data?['email'],
+        'icon': Icons.alternate_email_rounded,
         'color': Colors.teal,
       },
       {
-        'title': isTamil ? 'வேலை நாட்கள்' : 'Total Days',
-        'val': '240',
-        'icon': Icons.calendar_month_rounded,
+        'title': isTamil ? 'உள்நுழைவு' : 'Session',
+        'val': data?['isLogin'] == true
+            ? (isTamil ? 'செயலில்' : 'Active')
+            : (isTamil ? 'இல்லை' : 'Offline'),
+        'icon': Icons.circle,
+        'color': data?['isLogin'] == true ? Colors.green : Colors.red,
+      },
+      {
+        'title': isTamil ? 'வருகை சதவீதம்' : 'Attendance',
+        'val': '—',
+        'icon': Icons.pie_chart_rounded,
         'color': Colors.purple,
       },
       {
-        'title': isTamil ? 'வருகை தந்தவை' : 'Days Present',
-        'val': '226',
-        'icon': Icons.check_circle_outline_rounded,
-        'color': Colors.green,
-      },
-      {
-        'title': isTamil ? 'விடுப்பு நாட்கள்' : 'Days Absent',
-        'val': '14',
-        'icon': Icons.cancel_outlined,
+        'title': isTamil ? 'விடுப்பு நாட்கள்' : 'Leaves',
+        'val': '—',
+        'icon': Icons.calendar_month_rounded,
         'color': Colors.redAccent,
       },
     ];
-    return _renderGrid(items, cardColor, titleColor, subColor);
+    return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
   }
 
   Widget _renderGrid(
     List<Map<String, dynamic>> items,
+    bool isLoading,
     Color cardColor,
     Color titleColor,
     Color subColor,
@@ -180,22 +251,33 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1.4,
+        childAspectRatio: 1.3,
       ),
       itemCount: items.length,
-      itemBuilder: (context, i) => InfoCard(
-        title: items[i]['title'],
-        value: items[i]['val'],
-        icon: items[i]['icon'],
-        iconColor: items[i]['color'],
-        cardColor: cardColor,
-        titleColor: titleColor,
-        subColor: subColor,
-      ),
+      itemBuilder: (context, i) {
+        final item = items[i];
+        final bool isDataMissing = item['val'] == null && isLoading;
+        return InfoCard(
+          title: item['title'],
+          value: isDataMissing ? "" : (item['val'] ?? "—").toString(),
+          valueWidget: isDataMissing
+              ? TypingText(
+                  style: TextStyle(
+                    color: titleColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+          icon: item['icon'],
+          iconColor: item['color'],
+          cardColor: cardColor,
+          titleColor: titleColor,
+          subColor: subColor,
+        );
+      },
     );
   }
 
-  // --- UI HELPERS ---
   Widget _buildHeader(BuildContext context, Color titleColor, bool isTamil) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -212,7 +294,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
           onPressed: () async {
             await Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const SettingsPage()),
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
             );
             if (mounted) setState(() {});
           },
@@ -247,6 +329,22 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorState(String error, Color titleColor, bool isTamil) {
+    return Center(
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 10),
+          Text(error, style: TextStyle(color: titleColor)),
+          TextButton(
+            onPressed: () => useDriverStore.fetchProfile(),
+            child: Text(isTamil ? "மீண்டும் முயற்சி" : "Retry"),
+          ),
+        ],
+      ),
     );
   }
 

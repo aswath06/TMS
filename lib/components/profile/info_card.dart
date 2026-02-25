@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tms/screens/admin/AdminProfileScreen.dart';
+import 'package:tms/components/profile/typing_text.dart';
 
 class InfoCard extends StatelessWidget {
   final String title;
@@ -9,6 +9,7 @@ class InfoCard extends StatelessWidget {
   final Color cardColor;
   final Color titleColor;
   final Color subColor;
+  final TypingText? valueWidget;
 
   const InfoCard({
     super.key,
@@ -18,7 +19,8 @@ class InfoCard extends StatelessWidget {
     required this.iconColor,
     required this.cardColor,
     required this.titleColor,
-    required this.subColor, TypingText? valueWidget,
+    required this.subColor,
+    this.valueWidget,
   });
 
   @override
@@ -44,15 +46,16 @@ class InfoCard extends StatelessWidget {
               letterSpacing: 0.5,
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: titleColor,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
+          valueWidget ??
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: titleColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
         ],
       ),
     );

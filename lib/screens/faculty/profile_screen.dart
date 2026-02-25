@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:tms/components/profile/info_card.dart';
 import 'package:tms/components/profile/profile_hero.dart';
+import 'package:tms/components/profile/typing_text.dart';
 import 'package:tms/screens/setting/settings_page.dart';
+import 'package:tms/store/faculty_store.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (useFacultyStore.profileData.value == null) {
+      useFacultyStore.fetchProfile();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
@@ -24,34 +38,55 @@ class ProfileScreen extends StatelessWidget {
       body: Stack(
         children: [
           _buildBackgroundDecor(isDark),
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Column(
-                  children: [
-                    _buildHeader(context, titleColor),
-                    const SizedBox(height: 30),
-                    ProfileHero(
-                      name: "Dr. Sarah Jenkins",
-                      subtitle: "Senior Professor • Dept. of CSE",
-                      cardColor: cardColor,
-                      titleColor: titleColor,
-                      subColor: subTitleColor,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 32),
-                    _buildSectionTitle("Faculty Details", titleColor),
-                    const SizedBox(height: 16),
-                    _buildMenuGrid(cardColor, titleColor, subTitleColor),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+          RefreshIndicator(
+            onRefresh: () => useFacultyStore.fetchProfile(),
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
+              slivers: [
+                SliverSafeArea(
+                  sliver: SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _buildHeader(context, titleColor),
+                        const SizedBox(height: 30),
+                        ValueListenableBuilder(
+                          valueListenable: useFacultyStore.isLoading,
+                          builder: (context, isLoading, _) {
+                            return ValueListenableBuilder(
+                              valueListenable: useFacultyStore.errorMessage,
+                              builder: (context, error, _) {
+                                if (error != null) {
+                                  return _buildErrorState(error, titleColor);
+                                }
+                                return ValueListenableBuilder(
+                                  valueListenable: useFacultyStore.profileData,
+                                  builder: (context, data, _) {
+                                    return _buildProfileContent(
+                                      data,
+                                      isLoading,
+                                      isDark,
+                                      titleColor,
+                                      cardColor,
+                                      subTitleColor,
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              ],
             ),
           ),
         ],
@@ -59,31 +94,69 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuGrid(Color cardColor, Color titleColor, Color subColor) {
+  Widget _buildProfileContent(
+    Map<String, dynamic>? data,
+    bool isLoading,
+    bool isDark,
+    Color titleColor,
+    Color cardColor,
+    Color subColor,
+  ) {
+    final bool showTyping = isLoading && data == null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ProfileHero(
+          name: showTyping ? "..." : (data?['name'] ?? "Faculty User"),
+          subtitle: showTyping
+              ? "Updating..."
+              : "${data?['role'] ?? 'Faculty'} • ${data?['user_name'] ?? ''}",
+          cardColor: cardColor,
+          titleColor: titleColor,
+          subColor: subColor,
+          isDark: isDark,
+        ),
+        const SizedBox(height: 32),
+        _buildSectionTitle("Faculty Details", titleColor),
+        const SizedBox(height: 16),
+        _buildMenuGrid(data, isLoading, cardColor, titleColor, subColor),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  Widget _buildMenuGrid(
+    Map<String, dynamic>? data,
+    bool isLoading,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+  ) {
     final List<Map<String, dynamic>> items = [
       {
-        'title': 'Employee ID',
-        'val': 'FAC-2024-082',
-        'icon': Icons.badge_rounded,
+        'title': 'Email',
+        'val': data?['email'],
+        'icon': Icons.alternate_email_rounded,
+        'color': Colors.blue,
+      },
+      {
+        'title': 'Username',
+        'val': data?['user_name'],
+        'icon': Icons.person_outline_rounded,
         'color': Colors.indigo,
       },
       {
-        'title': 'Designation',
-        'val': 'Associate Head',
+        'title': 'Role',
+        'val': data?['role'] ?? 'Faculty',
         'icon': Icons.work_outline_rounded,
         'color': Colors.amber.shade700,
       },
       {
-        'title': 'Office Ext.',
-        'val': '+91 422 1234',
-        'icon': Icons.phone_in_talk_rounded,
+        'title': 'Status',
+        'val': data?['isLogin'] == true ? 'Active' : 'Offline',
+        'icon': Icons.check_circle_outline_rounded,
         'color': Colors.green,
-      },
-      {
-        'title': 'Official Email',
-        'val': 's.jenkins@bits.edu',
-        'icon': Icons.alternate_email_rounded,
-        'color': Colors.blue,
       },
     ];
 
@@ -94,18 +167,30 @@ class ProfileScreen extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1.4,
+        childAspectRatio: 1.3,
       ),
       itemCount: items.length,
-      itemBuilder: (context, i) => InfoCard(
-        title: items[i]['title'],
-        value: items[i]['val'],
-        icon: items[i]['icon'],
-        iconColor: items[i]['color'],
-        cardColor: cardColor,
-        titleColor: titleColor,
-        subColor: subColor,
-      ),
+      itemBuilder: (context, i) {
+        final item = items[i];
+        final bool isDataMissing = item['val'] == null && isLoading;
+        return InfoCard(
+          title: item['title'],
+          value: isDataMissing ? "" : (item['val'] ?? "—").toString(),
+          valueWidget: isDataMissing
+              ? TypingText(
+                  style: TextStyle(
+                    color: titleColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+          icon: item['icon'],
+          iconColor: item['color'],
+          cardColor: cardColor,
+          titleColor: titleColor,
+          subColor: subColor,
+        );
+      },
     );
   }
 
@@ -124,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
         IconButton(
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const SettingsPage()),
+            MaterialPageRoute(builder: (_) => const SettingsPage()),
           ),
           icon: Icon(
             Icons.settings_outlined,
@@ -157,6 +242,22 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorState(String error, Color titleColor) {
+    return Center(
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 10),
+          Text(error, style: TextStyle(color: titleColor)),
+          TextButton(
+            onPressed: () => useFacultyStore.fetchProfile(),
+            child: const Text("Retry"),
+          ),
+        ],
+      ),
     );
   }
 
