@@ -1,10 +1,11 @@
-import 'dart:convert'; // Added for JSON encoding
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:country_code_picker/country_code_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:tms/components/passenger_selector.dart';
 import 'package:tms/components/location_selector.dart';
+import 'package:tms/components/travel_plan_selector.dart';
+import 'package:tms/components/guest_details_form.dart';
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});
@@ -25,7 +26,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   // --- Location State ---
   double _totalDistance = 0.0;
   double _totalDuration = 0.0;
-  List<String> _selectedAddresses = []; // Captures the address strings
+  List<String> _selectedAddresses = [];
 
   // --- Controllers & Dynamic Lists ---
   final TextEditingController _specialReqController = TextEditingController();
@@ -96,7 +97,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      // Data Collection for API or Console
       final Map<String, dynamic> requestData = {
         "travel_info": {
           "type": _travelType,
@@ -124,17 +124,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         "submitted_at": DateTime.now().toIso8601String(),
       };
 
-      // --- Beautiful Console Logging ---
       debugPrint("================= SUBMISSION DATA =================");
-      debugPrint("TRAVEL TYPE: ${requestData['travel_info']['type']}");
-      debugPrint("LOCATIONS:");
-      for (var i = 0; i < _selectedAddresses.length; i++) {
-        debugPrint("  Stop ${i + 1}: ${_selectedAddresses[i]}");
-      }
-      debugPrint("STATS: ${_totalDistance}km | ${_totalDuration}mins");
-      debugPrint("VEHICLE: $_selectedVehicleType for $_passengerCount pax");
-      debugPrint("GUESTS: ${requestData['guests'].length}");
-      debugPrint("JSON PAYLOAD:");
       debugPrint(const JsonEncoder.withIndent('  ').convert(requestData));
       debugPrint("====================================================");
 
@@ -153,21 +143,19 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFF1F5F9);
+    final Color bgColor =
+        isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subTitleColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF64748B);
+    final Color subTitleColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF6366F1);
 
     return Scaffold(
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          _buildBackgroundDecor(isDark),
+          _buildBackgroundDecor(),
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -180,34 +168,26 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     children: [
                       _buildHeader(context, titleColor, primaryBlue),
                       const SizedBox(height: 32),
-
-                      _buildSectionTitle(
-                        "Travel Plan",
-                        titleColor,
-                        primaryBlue,
-                      ),
+                      _buildSectionHeader("Travel Plan", titleColor, primaryBlue),
                       const SizedBox(height: 16),
-                      _buildTypeSelector(
-                        primaryBlue,
-                        cardColor,
-                        titleColor,
-                        subTitleColor,
+                      TravelPlanSelector(
+                        travelType: _travelType,
+                        startDate: _startDate,
+                        endDate: _endDate,
+                        primaryBlue: primaryBlue,
+                        cardColor: cardColor,
+                        titleColor: titleColor,
+                        subTitleColor: subTitleColor,
+                        onTypeChanged: (type) =>
+                            setState(() => _travelType = type),
+                        onStartDateChanged: (date) =>
+                            setState(() => _startDate = date),
+                        onEndDateChanged: (date) =>
+                            setState(() => _endDate = date),
                       ),
-                      const SizedBox(height: 12),
-                      _buildDateRow(
-                        primaryBlue,
-                        cardColor,
-                        titleColor,
-                        subTitleColor,
-                      ),
-
                       const SizedBox(height: 32),
-
-                      _buildSectionTitle(
-                        "Route Details",
-                        titleColor,
-                        primaryBlue,
-                      ),
+                      _buildSectionHeader(
+                          "Route Details", titleColor, primaryBlue),
                       const SizedBox(height: 16),
                       LocationSelector(
                         cardColor: cardColor,
@@ -215,16 +195,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         accentColor: primaryBlue,
                         onChanged: (addresses, distance, duration) {
                           setState(() {
-                            _selectedAddresses =
-                                addresses; // Capturing locations
+                            _selectedAddresses = addresses;
                             _totalDistance = distance;
                             _totalDuration = duration;
                           });
                         },
                       ),
-
                       const SizedBox(height: 32),
-
                       PassengerSelector(
                         cardColor: cardColor,
                         titleColor: titleColor,
@@ -236,152 +213,32 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           setState(() {
                             _passengerCount = v;
                             if (_guestNameControllers.length > v) {
-                              _guestNameControllers = _guestNameControllers
-                                  .sublist(0, v);
-                              _guestPhoneControllers = _guestPhoneControllers
-                                  .sublist(0, v);
-                              _guestCountryCodes = _guestCountryCodes.sublist(
-                                0,
-                                v,
-                              );
+                              _guestNameControllers =
+                                  _guestNameControllers.sublist(0, v);
+                              _guestPhoneControllers =
+                                  _guestPhoneControllers.sublist(0, v);
+                              _guestCountryCodes =
+                                  _guestCountryCodes.sublist(0, v);
                             }
                           });
                         },
                       ),
-
                       const SizedBox(height: 24),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildSectionTitle(
-                            "Guest Details",
-                            titleColor,
-                            primaryBlue,
-                          ),
-                          if (_passengerCount > 5)
-                            TextButton.icon(
-                              onPressed: _handleBulkUpload,
-                              icon: const Icon(
-                                Icons.upload_file_rounded,
-                                size: 18,
-                              ),
-                              label: Text(
-                                "Bulk Upload",
-                                style: TextStyle(
-                                  color: primaryBlue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                          else if (_guestNameControllers.length <
-                              _passengerCount)
-                            TextButton.icon(
-                              onPressed: _addGuest,
-                              icon: const Icon(
-                                Icons.add_circle_outline,
-                                size: 18,
-                              ),
-                              label: Text(
-                                "Add Guest",
-                                style: TextStyle(
-                                  color: primaryBlue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
+                      GuestDetailsForm(
+                        nameControllers: _guestNameControllers,
+                        phoneControllers: _guestPhoneControllers,
+                        countryCodes: _guestCountryCodes,
+                        passengerCount: _passengerCount,
+                        cardColor: cardColor,
+                        titleColor: titleColor,
+                        primaryBlue: primaryBlue,
+                        bgColor: bgColor,
+                        onAddGuest: _addGuest,
+                        onRemoveGuest: _removeGuest,
+                        onBulkUpload: _handleBulkUpload,
                       ),
-                      const SizedBox(height: 16),
-                      ..._guestNameControllers.asMap().entries.map((entry) {
-                        int idx = entry.key;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: cardColor,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: titleColor.withOpacity(0.05),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _inputField(
-                                      "Guest ${idx + 1} Name",
-                                      Icons.person_outline,
-                                      cardColor,
-                                      titleColor,
-                                      controller: _guestNameControllers[idx],
-                                      primaryBlue: primaryBlue,
-                                      isName: true,
-                                    ),
-                                  ),
-                                  if (idx > 0)
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.remove_circle_outline,
-                                        color: Colors.redAccent,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => _removeGuest(idx),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: bgColor.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Row(
-                                  children: [
-                                    CountryCodePicker(
-                                      onChanged: (country) =>
-                                          _guestCountryCodes[idx] =
-                                              country.dialCode!,
-                                      initialSelection: 'IN',
-                                      favorite: const ['+91', 'US'],
-                                      textStyle: TextStyle(
-                                        color: titleColor,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      showFlagMain: true,
-                                      flagWidth: 20,
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    Container(
-                                      width: 1,
-                                      height: 20,
-                                      color: Colors.grey.withOpacity(0.3),
-                                    ),
-                                    Expanded(
-                                      child: _inputField(
-                                        "Phone Number",
-                                        Icons.phone_android_outlined,
-                                        Colors.transparent,
-                                        titleColor,
-                                        controller: _guestPhoneControllers[idx],
-                                        primaryBlue: primaryBlue,
-                                        isPhone: true,
-                                        noMargin: true,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-
                       const SizedBox(height: 32),
-
-                      _buildSectionTitle("Additional", titleColor, primaryBlue),
+                      _buildSectionHeader("Additional", titleColor, primaryBlue),
                       const SizedBox(height: 16),
                       _inputField(
                         "Special Requirements",
@@ -400,7 +257,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         controller: _luggageController,
                         primaryBlue: primaryBlue,
                       ),
-
                       const SizedBox(height: 40),
                       if (_totalDistance > 0) _buildEstimate(primaryBlue),
                       _buildSubmitButton(primaryBlue),
@@ -416,13 +272,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  // --- UI Helpers ---
-
-  Widget _buildHeader(
-    BuildContext context,
-    Color titleColor,
-    Color primaryBlue,
-  ) {
+  Widget _buildHeader(BuildContext context, Color titleColor, Color primaryBlue) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -433,11 +283,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Icon(
-                    Icons.arrow_back_ios,
-                    size: 18,
-                    color: primaryBlue,
-                  ),
+                  child: Icon(Icons.arrow_back_ios, size: 18, color: primaryBlue),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -471,7 +317,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title, Color titleColor, Color primaryBlue) {
+  Widget _buildSectionHeader(String title, Color titleColor, Color primaryBlue) {
     return Row(
       children: [
         Container(
@@ -528,123 +374,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           hintStyle: TextStyle(color: t.withOpacity(0.4), fontSize: 13),
           prefixIcon: Icon(i, size: 16, color: primaryBlue.withOpacity(0.7)),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 15,
-            horizontal: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeSelector(Color acc, Color card, Color txt, Color sub) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        children: ['One Way', 'Two Way', 'Multi Day'].map((type) {
-          bool sel = _travelType == type;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _travelType = type),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: sel ? acc : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    type,
-                    style: TextStyle(
-                      color: sel ? Colors.white : sub,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildDateRow(Color acc, Color card, Color txt, Color sub) {
-    return Row(
-      children: [
-        Expanded(
-          child: _dateTile(
-            "Start",
-            _startDate,
-            (d) => setState(() => _startDate = d),
-            acc,
-            card,
-            txt,
-            sub,
-          ),
-        ),
-        if (_travelType == 'Multi Day') ...[
-          const SizedBox(width: 8),
-          Expanded(
-            child: _dateTile(
-              "End",
-              _endDate,
-              (d) => setState(() => _endDate = d),
-              acc,
-              card,
-              txt,
-              sub,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _dateTile(
-    String l,
-    DateTime? d,
-    Function(DateTime) onP,
-    Color acc,
-    Color card,
-    Color txt,
-    Color sub,
-  ) {
-    return GestureDetector(
-      onTap: () async {
-        final p = await showDatePicker(
-          context: context,
-          initialDate: DateTime.now(),
-          firstDate: DateTime.now(),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
-        );
-        if (p != null) onP(p);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: card,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.calendar_month, size: 16, color: acc),
-            const SizedBox(width: 8),
-            Text(
-              d == null ? l : "${d.day}/${d.month}",
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: txt,
-              ),
-            ),
-          ],
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 15, horizontal: 12),
         ),
       ),
     );
@@ -663,10 +394,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         child: Text(
           "${_totalDistance.toStringAsFixed(1)} km  •  ${_totalDuration.toStringAsFixed(0)} mins",
           style: TextStyle(
-            color: acc,
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-          ),
+              color: acc, fontWeight: FontWeight.w800, fontSize: 13),
         ),
       ),
     );
@@ -680,9 +408,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryBlue,
           padding: const EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         ),
         child: const Text(
           "SUBMIT",
@@ -692,7 +419,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildBackgroundDecor(bool isDark) {
+  Widget _buildBackgroundDecor() {
     return Positioned.fill(
       child: Stack(
         children: [
