@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:tms/components/passenger_selector.dart';
 import 'package:tms/components/location_selector.dart';
 import 'package:tms/components/travel_plan_selector.dart';
 import 'package:tms/components/guest_details_form.dart';
+import 'package:tms/store/user_store.dart';
+import 'package:tms/utils/api_constants.dart';
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});
@@ -22,6 +25,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   int _passengerCount = 1;
   String _selectedVehicleType = 'Mini';
   DateTime? _startDate, _endDate;
+  bool _isSubmitting = false;
 
   // --- Location State ---
   double _totalDistance = 0.0;
@@ -29,6 +33,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   List<String> _selectedAddresses = [];
 
   // --- Controllers & Dynamic Lists ---
+  final TextEditingController _routeNameController = TextEditingController();
   final TextEditingController _specialReqController = TextEditingController();
   final TextEditingController _luggageController = TextEditingController();
 
@@ -40,6 +45,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   @override
   void dispose() {
+    _routeNameController.dispose();
     _specialReqController.dispose();
     _luggageController.dispose();
     for (var c in _guestNameControllers) {
@@ -88,24 +94,38 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         "name": _guestNameControllers[i].text.trim(),
         "country_code": _guestCountryCodes[i],
         "phone": _guestPhoneControllers[i].text.trim(),
-        "full_phone":
-            "${_guestCountryCodes[i]}${_guestPhoneControllers[i].text.trim()}",
       });
     }
     return guests;
   }
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      final Map<String, dynamic> requestData = {
+  /// Formats a [DateTime] to ISO-8601 string (e.g. "2026-02-17T09:00:00"),
+  /// matching the API's expected format.
+  String _toIso(DateTime dt) => DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(dt);
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all required fields")),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _showError("Session expired. Please login again.");
+        return;
+      }
+
+      final Map<String, dynamic> requestBody = {
         "travel_info": {
+          "route_name": _routeNameController.text.trim(),
           "type": _travelType,
-          "start_date": _startDate != null
-              ? DateFormat('yyyy-MM-dd').format(_startDate!)
-              : null,
-          "end_date": _endDate != null
-              ? DateFormat('yyyy-MM-dd').format(_endDate!)
-              : null,
+          "start_date": _startDate != null ? _toIso(_startDate!) : null,
+          "end_date": _endDate != null ? _toIso(_endDate!) : null,
         },
         "route_details": {
           "selected_locations": _selectedAddresses,
@@ -121,34 +141,71 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           "special_requirements": _specialReqController.text.trim(),
           "luggage_details": _luggageController.text.trim(),
         },
-        "submitted_at": DateTime.now().toIso8601String(),
       };
 
       debugPrint("================= SUBMISSION DATA =================");
-      debugPrint(const JsonEncoder.withIndent('  ').convert(requestData));
+      debugPrint(const JsonEncoder.withIndent('  ').convert(requestBody));
       debugPrint("====================================================");
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Request submitted successfully! Check console."),
-        ),
+      final response = await http.post(
+        Uri.parse(ApiConstants.createTransportRequest),
+        headers: {
+          'Authorization': 'TMS $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(requestBody),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all required fields")),
-      );
+
+      debugPrint("API Response [${response.statusCode}]: ${response.body}");
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Transport request submitted successfully!"),
+            backgroundColor: Color(0xFF22C55E),
+          ),
+        );
+        Navigator.pop(context, true); // pass `true` to trigger a refresh
+      } else {
+        // Try to parse a server message
+        String serverMsg = "Request failed (${response.statusCode})";
+        try {
+          final decoded = json.decode(response.body);
+          serverMsg = decoded['message'] ?? serverMsg;
+        } catch (_) {}
+        _showError(serverMsg);
+      }
+    } catch (e) {
+      debugPrint("Submit error: $e");
+      _showError("Network error. Please check your connection.");
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFEF4444),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor =
-        isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+    final Color bgColor = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF1F5F9);
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subTitleColor =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color subTitleColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF6366F1);
 
     return Scaffold(
@@ -168,8 +225,22 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     children: [
                       _buildHeader(context, titleColor, primaryBlue),
                       const SizedBox(height: 32),
-                      _buildSectionHeader("Travel Plan", titleColor, primaryBlue),
+                      _buildSectionHeader(
+                        "Travel Plan",
+                        titleColor,
+                        primaryBlue,
+                      ),
                       const SizedBox(height: 16),
+                      // Route Name field
+                      _inputField(
+                        "Route Name (e.g. Chennai to Bangalore)",
+                        Icons.route_rounded,
+                        cardColor,
+                        titleColor,
+                        controller: _routeNameController,
+                        primaryBlue: primaryBlue,
+                      ),
+                      const SizedBox(height: 8),
                       TravelPlanSelector(
                         travelType: _travelType,
                         startDate: _startDate,
@@ -187,7 +258,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       ),
                       const SizedBox(height: 32),
                       _buildSectionHeader(
-                          "Route Details", titleColor, primaryBlue),
+                        "Route Details",
+                        titleColor,
+                        primaryBlue,
+                      ),
                       const SizedBox(height: 16),
                       LocationSelector(
                         cardColor: cardColor,
@@ -213,12 +287,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           setState(() {
                             _passengerCount = v;
                             if (_guestNameControllers.length > v) {
-                              _guestNameControllers =
-                                  _guestNameControllers.sublist(0, v);
-                              _guestPhoneControllers =
-                                  _guestPhoneControllers.sublist(0, v);
-                              _guestCountryCodes =
-                                  _guestCountryCodes.sublist(0, v);
+                              _guestNameControllers = _guestNameControllers
+                                  .sublist(0, v);
+                              _guestPhoneControllers = _guestPhoneControllers
+                                  .sublist(0, v);
+                              _guestCountryCodes = _guestCountryCodes.sublist(
+                                0,
+                                v,
+                              );
                             }
                           });
                         },
@@ -238,7 +314,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         onBulkUpload: _handleBulkUpload,
                       ),
                       const SizedBox(height: 32),
-                      _buildSectionHeader("Additional", titleColor, primaryBlue),
+                      _buildSectionHeader(
+                        "Additional",
+                        titleColor,
+                        primaryBlue,
+                      ),
                       const SizedBox(height: 16),
                       _inputField(
                         "Special Requirements",
@@ -272,7 +352,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color titleColor, Color primaryBlue) {
+  Widget _buildHeader(
+    BuildContext context,
+    Color titleColor,
+    Color primaryBlue,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -283,7 +367,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Icon(Icons.arrow_back_ios, size: 18, color: primaryBlue),
+                  child: Icon(
+                    Icons.arrow_back_ios,
+                    size: 18,
+                    color: primaryBlue,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -317,7 +405,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, Color titleColor, Color primaryBlue) {
+  Widget _buildSectionHeader(
+    String title,
+    Color titleColor,
+    Color primaryBlue,
+  ) {
     return Row(
       children: [
         Container(
@@ -374,8 +466,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           hintStyle: TextStyle(color: t.withOpacity(0.4), fontSize: 13),
           prefixIcon: Icon(i, size: 16, color: primaryBlue.withOpacity(0.7)),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 15, horizontal: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 15,
+            horizontal: 12,
+          ),
         ),
       ),
     );
@@ -394,7 +488,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         child: Text(
           "${_totalDistance.toStringAsFixed(1)} km  •  ${_totalDuration.toStringAsFixed(0)} mins",
           style: TextStyle(
-              color: acc, fontWeight: FontWeight.w800, fontSize: 13),
+            color: acc,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -404,17 +501,31 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _submitForm,
+        onPressed: _isSubmitting ? null : _submitForm,
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryBlue,
+          disabledBackgroundColor: primaryBlue.withOpacity(0.5),
           padding: const EdgeInsets.symmetric(vertical: 18),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
         ),
-        child: const Text(
-          "SUBMIT",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-        ),
+        child: _isSubmitting
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : const Text(
+                "SUBMIT",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
       ),
     );
   }

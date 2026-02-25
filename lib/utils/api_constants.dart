@@ -14,5 +14,7 @@ class ApiConstants {
   // Requests (Added these for your RequestStore)
   static const String getAllRequests = "$baseUrl/request/get-all";
   static const String createRequest = "$baseUrl/request/create";
+  static const String createTransportRequest =
+      "$baseUrl/request/create-transport-request";
   static const String updateStatus = "$baseUrl/request/update-status";
 }
