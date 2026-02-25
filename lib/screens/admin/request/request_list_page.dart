@@ -3,9 +3,6 @@ import 'package:provider/provider.dart';
 
 // Components & Screens
 import 'package:tms/components/request_card.dart';
-import 'package:tms/components/leave_card.dart';
-import 'package:tms/screens/admin/request/ViewAllRequestsPage.dart';
-import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart';
 import 'package:tms/screens/admin/request/request_detail_screen.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
 
@@ -20,24 +17,6 @@ class RequestListPage extends StatefulWidget {
 }
 
 class _RequestListPageState extends State<RequestListPage> {
-  // Mock data for leaves remains here for now as requested
-  final List<Map<String, dynamic>> _leaves = [
-    {
-      'driver': 'John Doe',
-      'days': '3',
-      'from': 'Nov 01',
-      'to': 'Nov 03',
-      'status': 'Approved',
-    },
-    {
-      'driver': 'Mike Ross',
-      'days': '1',
-      'from': 'Nov 05',
-      'to': 'Nov 05',
-      'status': 'Pending',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -77,29 +56,8 @@ class _RequestListPageState extends State<RequestListPage> {
                       "Active Requests",
                       titleColor,
                       primaryBlue,
-                      onViewAll: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ViewAllRequestsPage(requests: store.requests),
-                        ),
-                      ),
                     ),
                     _buildMainContent(store, isDark, primaryBlue),
-                    const SizedBox(height: 24),
-                    _buildSectionHeader(
-                      "Leaves Request",
-                      titleColor,
-                      primaryBlue,
-                      onViewAll: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ViewAllLeavesPage(leaves: _leaves),
-                        ),
-                      ),
-                    ),
-                    _buildLeaveList(isDark, primaryBlue),
                     const SizedBox(height: 120),
                   ],
                 ),
@@ -137,7 +95,7 @@ class _RequestListPageState extends State<RequestListPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: store.requests.length > 3 ? 3 : store.requests.length,
+      itemCount: store.requests.length,
       itemBuilder: (context, index) {
         final req = store.requests[index];
         return Padding(
@@ -180,29 +138,11 @@ class _RequestListPageState extends State<RequestListPage> {
   // ... (Other UI helpers like _buildHeader, _buildSectionHeader, etc. remain the same as your original code)
   // [Original UI code for _buildLeaveList, _buildHeader, _buildAddButton, _buildBackgroundDecor, _buildSectionHeader would go here]
 
-  Widget _buildLeaveList(bool isDark, Color primaryBlue) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _leaves.length,
-      itemBuilder: (context, index) => Padding(
-        padding: const EdgeInsets.only(bottom: 12.0),
-        child: LeaveCard(
-          leaf: _leaves[index],
-          isDark: isDark,
-          primaryColor: primaryBlue,
-        ),
-      ),
-    );
-  }
-
   Widget _buildSectionHeader(
     String title,
     Color titleColor,
-    Color primaryBlue, {
-    required VoidCallback onViewAll,
-  }) {
+    Color primaryBlue,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 12, 12),
       child: Row(
@@ -214,13 +154,6 @@ class _RequestListPageState extends State<RequestListPage> {
               color: titleColor,
               fontWeight: FontWeight.w800,
               fontSize: 20,
-            ),
-          ),
-          TextButton(
-            onPressed: onViewAll,
-            child: Text(
-              "View All",
-              style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),
             ),
           ),
         ],
