@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:tms/screens/admin/admin_dashboard_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/auth/lock_screen.dart'; // Import the new LockScreen
 
 class AppRoutes {
+  static const String adminDashboard = '/admin-dashboard';
   static const String splash = '/';
   static const String login = '/login';
   static const String dashboard = '/dashboard';
@@ -27,6 +29,8 @@ class AppRoutes {
         // We pass the role to the lock screen so it knows where to go after success
         final role = settings.arguments as String? ?? 'faculty';
         return MaterialPageRoute(builder: (_) => LockScreen(role: role));
+      case adminDashboard:
+        return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
 
       case dashboard:
         final role = settings.arguments as String? ?? 'faculty';

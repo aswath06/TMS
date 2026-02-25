@@ -22,7 +22,12 @@ class CustomBottomBar extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      padding: EdgeInsets.fromLTRB(
+        items.length > 4 ? 12 : 20,
+        0,
+        items.length > 4 ? 12 : 20,
+        24,
+      ),
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Container(
         height: 72,
@@ -47,8 +52,8 @@ class CustomBottomBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.fastOutSlowIn,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
+                padding: EdgeInsets.symmetric(
+                  horizontal: items.length > 4 ? 12 : 16,
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
@@ -62,16 +67,16 @@ class CustomBottomBar extends StatelessWidget {
                     Icon(
                       isSelected ? items[index].activeIcon : items[index].icon,
                       color: isSelected ? brandColor : grayText,
-                      size: 26,
+                      size: items.length > 4 ? 24 : 26,
                     ),
                     if (isSelected) ...[
-                      const SizedBox(width: 10),
+                      SizedBox(width: items.length > 4 ? 6 : 10),
                       Text(
                         items[index].label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: brandColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: items.length > 4 ? 12 : 14,
                           letterSpacing: 0.3,
                         ),
                       ),
@@ -100,6 +105,11 @@ class CustomBottomBar extends StatelessWidget {
             Icons.local_shipping_outlined,
             Icons.local_shipping_rounded,
             'Vehicle',
+          ),
+          _NavItem(
+            Icons.people_outline_rounded,
+            Icons.people_rounded,
+            'Driver',
           ),
           _NavItem(
             Icons.person_outline_rounded,
