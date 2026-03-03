@@ -24,10 +24,7 @@ class AdminStore {
       final token = await UserStore.getToken();
       final response = await http.get(
         Uri.parse(ApiConstants.userMe),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {

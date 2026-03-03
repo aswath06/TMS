@@ -87,10 +87,7 @@ class VehicleStore extends ChangeNotifier {
     try {
       final response = await http.get(
         uri,
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {
@@ -127,10 +124,7 @@ class VehicleStore extends ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse(ApiConstants.createVehicle),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
         body: json.encode({
           "vehicles": [vehicleData],
         }),

@@ -31,15 +31,20 @@ class RequestStore extends ChangeNotifier {
       }
 
       // Using the base URL and endpoint pattern from your constants
-      final String url =
+      String url =
           "${ApiConstants.baseUrl}/request/get-all?page=$page&limit=$limit";
+
+      // Append user email for faculty requests as per requirement
+      final String? role = await UserStore.getRole();
+      final String? email = await UserStore.getEmail();
+
+      if (role != 'transport admin' && email != null) {
+        url += "&user=$email";
+      }
 
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {
@@ -66,11 +71,28 @@ class RequestStore extends ChangeNotifier {
   /// Formats raw API data into the UI-friendly Map used by RequestCard
   Map<String, dynamic> _formatRequest(dynamic req) {
     // Determine status for the UI color logic
-    String rawStatus = req['status'] ?? 'pending';
+    // The API returns status as an integer (e.g., 4, 6)
+    dynamic rawStatusValue = req['status'];
+    String rawStatus = 'Pending';
 
-    // If a vehicle is already attached in the nested object,
-    // we might want to override the status label for the UI
-    if (req['assignedVehicle'] != null &&
+    // Simple mapping of status codes if they are integers
+    if (rawStatusValue is int) {
+      switch (rawStatusValue) {
+        case 4:
+          rawStatus = 'Approved';
+          break;
+        case 6:
+          rawStatus = 'Completed';
+          break;
+        default:
+          rawStatus = 'Status $rawStatusValue';
+      }
+    } else if (rawStatusValue != null) {
+      rawStatus = rawStatusValue.toString();
+    }
+
+    // If a vehicle/driver is attached, we might want to update status label
+    if ((req['assignedVehicle'] != null || req['vehicleAssigned'] != null) &&
         rawStatus.toLowerCase() == 'approved') {
       rawStatus = 'Vehicle Assigned';
     }

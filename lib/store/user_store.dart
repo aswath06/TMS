@@ -27,6 +27,9 @@ class UserStore {
   static Future<String?> getRole() async =>
       (await SharedPreferences.getInstance()).getString(_keyRole);
 
+  static Future<String?> getEmail() async =>
+      (await SharedPreferences.getInstance()).getString(_keyEmail);
+
   // Clear data on logout
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();

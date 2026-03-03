@@ -54,10 +54,7 @@ class DriverStore extends ChangeNotifier {
           "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10";
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {
@@ -99,10 +96,7 @@ class DriverStore extends ChangeNotifier {
       final url = "${ApiConstants.baseUrl}/auth/register";
       final response = await http.post(
         Uri.parse(url),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
         body: json.encode(driverData),
       );
 
@@ -141,10 +135,7 @@ class DriverStore extends ChangeNotifier {
 
       final response = await http.get(
         Uri.parse(ApiConstants.userMe),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {

@@ -1,20 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
+import 'package:tms/store/request_store.dart';
+import 'package:tms/components/request_card.dart';
 
-class RequestsScreen extends StatelessWidget {
+class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
+
+  @override
+  State<RequestsScreen> createState() => _RequestsScreenState();
+}
+
+class _RequestsScreenState extends State<RequestsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch requests when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RequestStore>().fetchRequests();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     final double horizontalPadding = size.width * 0.06;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final store = context.watch<RequestStore>();
 
     // Theme Colors
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
-    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark
         ? const Color(0xFF94A3B8)
@@ -55,12 +72,15 @@ class RequestsScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          _buildQuickStatBadge("2 Active", primaryIndigo),
+                          _buildQuickStatBadge(
+                            "${store.requests.length} Total",
+                            primaryIndigo,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Manage your active transport requests",
+                        "Manage your transport requests",
                         style: TextStyle(
                           color: subColor,
                           fontSize: size.width > 400 ? 15 : 13,
@@ -73,54 +93,16 @@ class RequestsScreen extends StatelessWidget {
 
                 // --- CONTENT ---
                 Expanded(
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: 20,
+                  child: RefreshIndicator(
+                    onRefresh: () => store.fetchRequests(),
+                    child: _buildMainContent(
+                      store,
+                      isDark,
+                      primaryIndigo,
+                      horizontalPadding,
+                      titleColor,
+                      size,
                     ),
-                    children: [
-                      _buildSectionTitle(
-                        "In Progress",
-                        primaryIndigo,
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRequestCard(
-                        context,
-                        id: "TR-8821",
-                        type: "Official Visit",
-                        status: "Pending",
-                        statusColor: Colors.orange,
-                        date: "Feb 05, 2026",
-                        cardColor: cardColor,
-                        titleColor: titleColor,
-                        subColor: subColor,
-                        accent: primaryIndigo,
-                        screenWidth: size.width,
-                      ),
-                      const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        "Requires Attention",
-                        Colors.redAccent,
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRequestCard(
-                        context,
-                        id: "TR-6610",
-                        type: "Field Trip",
-                        status: "Clarification",
-                        statusColor: Colors.red,
-                        date: "Feb 03, 2026",
-                        cardColor: cardColor,
-                        titleColor: titleColor,
-                        subColor: subColor,
-                        accent: primaryIndigo,
-                        screenWidth: size.width,
-                      ),
-                      SizedBox(height: size.height * 0.2),
-                    ],
                   ),
                 ),
               ],
@@ -135,7 +117,6 @@ class RequestsScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 90, right: 8),
         child: FloatingActionButton.extended(
           onPressed: () {
-            // Smooth Navigation to New Request
             Navigator.push(
               context,
               PageRouteBuilder(
@@ -176,31 +157,91 @@ class RequestsScreen extends StatelessWidget {
     );
   }
 
-  // UI Helpers (Titles, Badges, Background)
-  Widget _buildSectionTitle(String title, Color accent, Color titleColor) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: accent,
-            borderRadius: BorderRadius.circular(10),
-          ),
+  Widget _buildMainContent(
+    RequestStore store,
+    bool isDark,
+    Color primaryIndigo,
+    double horizontalPadding,
+    Color titleColor,
+    Size size,
+  ) {
+    if (store.isLoading && store.requests.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (store.errorMessage != null && store.requests.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              store.errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            TextButton(
+              onPressed: () => store.fetchRequests(),
+              child: const Text("Retry"),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: titleColor,
-          ),
+      );
+    }
+
+    if (store.requests.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
-      ],
+        children: [
+          SizedBox(height: size.height * 0.2),
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.notes_rounded,
+                  size: 64,
+                  color: Colors.grey.withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "No requests found",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 20,
+      ),
+      itemCount: store.requests.length,
+      itemBuilder: (context, index) {
+        final req = store.requests[index];
+        return RequestCard(
+          req: req,
+          isDark: isDark,
+          accentColor: primaryIndigo,
+        );
+      },
     );
   }
 
+  // UI Helpers (Titles, Badges, Background)
   Widget _buildQuickStatBadge(String text, Color blue) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -214,134 +255,6 @@ class RequestsScreen extends StatelessWidget {
           color: blue,
           fontWeight: FontWeight.bold,
           fontSize: 12,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRequestCard(
-    BuildContext context, {
-    required String id,
-    required String type,
-    required String status,
-    required Color statusColor,
-    required String date,
-    required Color cardColor,
-    required Color titleColor,
-    required Color subColor,
-    required Color accent,
-    required double screenWidth,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: InkWell(
-          onTap: () {},
-          child: Padding(
-            padding: EdgeInsets.all(screenWidth > 400 ? 24 : 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      id,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: accent,
-                        fontSize: 14,
-                      ),
-                    ),
-                    _buildStatusBadge(status, statusColor),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  type,
-                  style: TextStyle(
-                    fontSize: screenWidth > 400 ? 20 : 18,
-                    fontWeight: FontWeight.w800,
-                    color: titleColor,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_rounded,
-                      size: 14,
-                      color: subColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      date,
-                      style: TextStyle(
-                        color: subColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Divider(height: 1, thickness: 0.5),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.edit_note_rounded, size: 20, color: accent),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Tap to modify request",
-                      style: TextStyle(
-                        fontSize: screenWidth > 400 ? 13 : 12,
-                        fontWeight: FontWeight.w700,
-                        color: titleColor,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 12,
-                      color: subColor.withOpacity(0.5),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.5,
         ),
       ),
     );

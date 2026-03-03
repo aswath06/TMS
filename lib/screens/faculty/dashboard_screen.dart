@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:tms/screens/faculty/request/new_request_screen.dart';
+import 'package:tms/store/request_store.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RequestStore>().fetchRequests();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final store = context.watch<RequestStore>();
 
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark
@@ -35,71 +51,79 @@ class DashboardScreen extends StatelessWidget {
           ),
 
           SafeArea(
-            // bottom: true ensures it respects the system nav bar
             bottom: true,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
+            child: RefreshIndicator(
+              onRefresh: () => store.fetchRequests(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 24),
 
-                  _buildHeader(
-                    "Aswath",
-                    titleColor,
-                    subColor,
-                    screenWidth,
-                    primaryBlue,
-                  ),
-                  const SizedBox(height: 32),
+                    _buildHeader(
+                      "Aswath",
+                      titleColor,
+                      subColor,
+                      screenWidth,
+                      primaryBlue,
+                    ),
+                    const SizedBox(height: 32),
 
-                  _buildSearchBar(isDark, subColor, surfaceColor, primaryBlue),
-                  const SizedBox(height: 36),
+                    _buildSearchBar(
+                      isDark,
+                      subColor,
+                      surfaceColor,
+                      primaryBlue,
+                    ),
+                    const SizedBox(height: 36),
 
-                  _buildSectionTitle("Operational Overview", titleColor),
-                  const SizedBox(height: 18),
-                  _buildStatusCards(
-                    primaryBlue,
-                    surfaceColor,
-                    isDark,
-                    screenWidth,
-                  ),
-                  const SizedBox(height: 36),
+                    _buildSectionTitle("Operational Overview", titleColor),
+                    const SizedBox(height: 18),
+                    _buildStatusCards(
+                      store,
+                      primaryBlue,
+                      surfaceColor,
+                      isDark,
+                      screenWidth,
+                    ),
+                    const SizedBox(height: 36),
 
-                  _buildSectionTitle("Quick Actions", titleColor),
-                  const SizedBox(height: 18),
-                  _buildQuickActions(
-                    context,
-                    primaryBlue,
-                    surfaceColor,
-                    isDark,
-                  ),
-                  const SizedBox(height: 36),
+                    _buildSectionTitle("Quick Actions", titleColor),
+                    const SizedBox(height: 18),
+                    _buildQuickActions(
+                      context,
+                      primaryBlue,
+                      surfaceColor,
+                      isDark,
+                    ),
+                    const SizedBox(height: 36),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildSectionTitle("Recent Notifications", titleColor),
-                      TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          "See All",
-                          style: TextStyle(
-                            color: primaryBlue,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSectionTitle("Recent Notifications", titleColor),
+                        TextButton(
+                          onPressed: () {},
+                          child: Text(
+                            "See All",
+                            style: TextStyle(
+                              color: primaryBlue,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  _buildNotificationList(primaryBlue, surfaceColor, isDark),
+                      ],
+                    ),
+                    _buildNotificationList(primaryBlue, surfaceColor, isDark),
 
-                  // ADDED: Significant bottom gap to ensure the last item
-                  // isn't flush against the screen edge.
-                  const SizedBox(height: 100),
-                ],
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
             ),
           ),
@@ -234,11 +258,20 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildStatusCards(
+    RequestStore store,
     Color primaryBlue,
     Color surface,
     bool isDark,
     double width,
   ) {
+    // Basic reactive Logic:
+    int pendingCount = store.requests
+        .where((r) => r['status'].toString().toLowerCase().contains('pending'))
+        .length;
+    String activeId = store.requests.isNotEmpty
+        ? store.requests.first['id']
+        : "None";
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -246,8 +279,8 @@ class DashboardScreen extends StatelessWidget {
         children: [
           _buildSummaryCard(
             "Active Now",
-            "TR-2041",
-            "En-route",
+            activeId,
+            "Service",
             Icons.map_rounded,
             primaryBlue,
             surface,
@@ -256,7 +289,7 @@ class DashboardScreen extends StatelessWidget {
           ),
           _buildSummaryCard(
             "Pending",
-            "02 Req",
+            "${pendingCount.toString().padLeft(2, '0')} Req",
             "Admin Review",
             Icons.watch_later_rounded,
             Colors.orangeAccent,
@@ -265,9 +298,9 @@ class DashboardScreen extends StatelessWidget {
             width,
           ),
           _buildSummaryCard(
-            "History",
-            "148 km",
-            "This week",
+            "Total",
+            "${store.requests.length} Req",
+            "Lifetime",
             Icons.bar_chart_rounded,
             Colors.teal.shade400,
             surface,

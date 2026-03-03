@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:tms/store/user_store.dart';
+import 'package:tms/utils/api_constants.dart';
 
 /// Store for Admin Dashboard statistics.
 /// Provides reactive ValueNotifiers that the UI can listen to.
@@ -24,13 +28,38 @@ class AdminDashboardStore {
     if (isLoading.value) return; // Prevent duplicate calls
     isLoading.value = true;
     try {
-      // TODO: Replace with actual API request logic.
-      // Placeholder data:
-      driversPresent.value = 12;
-      driversAbsent.value = 3;
-      totalKilometers.value = 4523.7;
-      movingBuses.value = 7;
-      servicesCount.value = 15;
+      final String? token = await UserStore.getToken();
+
+      // Fetch requests to get real-time operational data
+      final String url =
+          "${ApiConstants.baseUrl}/request/get-all?page=1&limit=100";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> items = data['items'] ?? [];
+
+        // Compute real statistics from fetched requests
+        servicesCount.value = items.length;
+        movingBuses.value = items
+            .where(
+              (req) =>
+                  req['status'] == 4 ||
+                  req['status'] == 6 ||
+                  (req['status'] ?? '').toString().toLowerCase() == 'approved',
+            )
+            .length;
+
+        // Still keep some placeholders for things not yet in requests API
+        driversPresent.value = 12;
+        driversAbsent.value = 3;
+        totalKilometers.value = 4523.7;
+      }
+    } catch (e) {
+      debugPrint("AdminDashboardStore Stats Fetch Error: $e");
     } finally {
       isLoading.value = false;
     }

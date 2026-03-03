@@ -9,7 +9,6 @@ import 'package:tms/components/app_branding.dart';
 import 'package:tms/store/user_store.dart';
 import 'package:tms/utils/validators.dart';
 import 'package:tms/utils/api_constants.dart';
-import "../../utils/routes.dart";
 import '../main_screen.dart' show MainScreen;
 
 class LoginScreen extends StatefulWidget {
