@@ -6,13 +6,19 @@ import 'package:tms/utils/api_constants.dart';
 
 class RequestStore extends ChangeNotifier {
   List<Map<String, dynamic>> _requests = [];
+  List<Map<String, dynamic>> _leaves = [];
   bool _isLoading = false;
+  bool _isLoadingLeaves = false;
   String? _errorMessage;
+  String? _leavesErrorMessage;
 
   // Getters
   List<Map<String, dynamic>> get requests => _requests;
+  List<Map<String, dynamic>> get leaves => _leaves;
   bool get isLoading => _isLoading;
+  bool get isLoadingLeaves => _isLoadingLeaves;
   String? get errorMessage => _errorMessage;
+  String? get leavesErrorMessage => _leavesErrorMessage;
 
   /// Fetches all requests with optional pagination
   Future<void> fetchRequests({int page = 1, int limit = 10}) async {
@@ -135,10 +141,174 @@ class RequestStore extends ChangeNotifier {
     }
   }
 
-  /// Optional: Clear requests on logout
+  /// Fetches all leaves with optional pagination
+  Future<void> fetchLeaves({int page = 1, int limit = 10}) async {
+    _isLoadingLeaves = true;
+    _leavesErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+
+      if (token == null) {
+        _leavesErrorMessage = "Session expired. Please login again.";
+        _isLoadingLeaves = false;
+        notifyListeners();
+        return;
+      }
+
+      String url =
+          "${ApiConstants.baseUrl}/api/leaves/get-all?page=$page&limit=$limit";
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          final List<dynamic> items = data['data'] ?? [];
+          _leaves = items.map((leave) => _formatLeave(leave)).toList();
+        } else {
+          _leavesErrorMessage = "Failed to fetch leaves.";
+        }
+      } else if (response.statusCode == 401) {
+        _leavesErrorMessage = "Unauthorized access. Please re-login.";
+      } else {
+        _leavesErrorMessage = "Server Error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _leavesErrorMessage = "Connection failed. Please check your network.";
+      debugPrint("RequestStore Leaves Error: $e");
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
+    }
+  }
+
+  /// Formats raw API leave data into the UI-friendly Map used by LeaveCard
+  Map<String, dynamic> _formatLeave(dynamic leave) {
+    String status = 'Pending';
+    if (leave['status'] is int) {
+      switch (leave['status']) {
+        case 1:
+          status = 'Pending';
+          break;
+        case 2:
+          status = 'Approved';
+          break;
+        case 3:
+          status = 'Rejected';
+          break;
+        default:
+          status = 'Unknown';
+      }
+    }
+
+    return {
+      'id': leave['id'],
+      'driver': leave['driver']?['name'] ?? 'Unknown Driver',
+      'from': _formatLeaveDate(leave['from_date']),
+      'to': _formatLeaveDate(leave['to_date']),
+      'days': leave['total_days']?.toString() ?? '0',
+      'status': status,
+      'reason': leave['reason'] ?? '',
+      'leave_type': leave['leave_type'],
+      'driver_details': leave['driver_details'],
+      'current_assignment': leave['current_assignment'],
+    };
+  }
+
+  /// Helper to format dates for leave display (e.g., "Mar 09")
+  String _formatLeaveDate(dynamic dateStr) {
+    if (dateStr == null || dateStr.toString().isEmpty) return 'No Date';
+    try {
+      final DateTime dt = DateTime.parse(dateStr.toString());
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return "${months[dt.month - 1]} ${dt.day.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return dateStr.toString().split('T')[0];
+    }
+  }
+
+  /// Creates a new leave request (Admin or Driver)
+  Future<bool> createLeave({
+    required int driverId,
+    required String fromDate,
+    required String toDate,
+    required String startTime,
+    required String endTime,
+    required int leaveType,
+    required String reason,
+  }) async {
+    _isLoadingLeaves = true;
+    _leavesErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _leavesErrorMessage = "Session expired.";
+        return false;
+      }
+
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}/api/leaves/create"),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({
+          "driver_id": driverId,
+          "from_date": fromDate,
+          "to_date": toDate,
+          "start_time": startTime,
+          "end_time": endTime,
+          "leave_type": leaveType,
+          "reason": reason,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          // Refresh the leave list after successful creation
+          await fetchLeaves();
+          return true;
+        } else {
+          _leavesErrorMessage = data['message'] ?? "Failed to create leave.";
+        }
+      } else {
+        _leavesErrorMessage = "Server error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _leavesErrorMessage = "Connection error.";
+      debugPrint("Create Leave Error: $e");
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
+    }
+    return false;
+  }
+
+  /// Optional: Clear requests and leaves on logout
   void clear() {
     _requests = [];
+    _leaves = [];
     _errorMessage = null;
+    _leavesErrorMessage = null;
     notifyListeners();
   }
 }

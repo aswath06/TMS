@@ -88,6 +88,38 @@ class DriverStore extends ChangeNotifier {
     await fetchDrivers();
   }
 
+  Future<Map<String, dynamic>?> checkLicense({
+    required String driverName,
+    required String frontPath,
+    required String backPath,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      final url = Uri.parse(ApiConstants.licenseCheck);
+      final request = http.MultipartRequest('POST', url);
+
+      request.headers.addAll(ApiConstants.getHeaders(token));
+      request.fields['driver_name'] = driverName;
+
+      request.files.add(await http.MultipartFile.fromPath('license_front', frontPath));
+      request.files.add(await http.MultipartFile.fromPath('license_back', backPath));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        debugPrint("License check failed: ${response.statusCode}");
+        debugPrint("Body: ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("License check error: $e");
+      return null;
+    }
+  }
+
   Future<bool> addDriver(Map<String, dynamic> driverData) async {
     try {
       final token = await UserStore.getToken();
@@ -157,6 +189,52 @@ class DriverStore extends ChangeNotifier {
     _currentPage = 1;
     _hasMore = true;
     notifyListeners();
+  }
+
+  // --- Status Helpers ---
+  String getStatusLabel(int status) {
+    switch (status) {
+      case 1:
+        return 'Available';
+      case 2:
+        return 'Assigned';
+      case 3:
+        return 'On Trip';
+      case 4:
+        return 'On Leave';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  Color getStatusColor(int status) {
+    switch (status) {
+      case 1:
+        return const Color(0xFF10B981); // Emerald
+      case 2:
+        return const Color(0xFF6366F1); // Indigo
+      case 3:
+        return const Color(0xFFF59E0B); // Amber
+      case 4:
+        return const Color(0xFFEF4444); // Red
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData getStatusIcon(int status) {
+    switch (status) {
+      case 1:
+        return Icons.check_circle_outline_rounded;
+      case 2:
+        return Icons.directions_bus_rounded; // Getting into/on bus surrogate
+      case 3:
+        return Icons.settings_input_component_rounded; // Steering wheel surrogate
+      case 4:
+        return Icons.home_work_rounded; // On leave / Home
+      default:
+        return Icons.help_outline_rounded;
+    }
   }
 }
 

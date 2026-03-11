@@ -49,6 +49,10 @@ class _LoginScreenState extends State<LoginScreen> {
         }),
       );
 
+      if (response.body.isEmpty) {
+        throw "Server returned an empty response. Please try again later.";
+      }
+
       final Map<String, dynamic> data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -111,6 +115,10 @@ class _LoginScreenState extends State<LoginScreen> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'idToken': idToken}),
       );
+
+      if (response.body.isEmpty) {
+        throw "Server returned an empty response. Please try again later.";
+      }
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);
 

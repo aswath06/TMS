@@ -19,7 +19,7 @@ class AdminDashboardScreen extends StatelessWidget {
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
     // Trigger stats fetch – the store uses a ValueNotifier so the UI reacts.
-    useAdminDashboardStore.fetchStats();
+    AdminDashboardStore().fetchStats();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -253,51 +253,77 @@ class AdminDashboardScreen extends StatelessWidget {
     bool isDark,
     double width,
   ) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ValueListenableBuilder<int>(
-            valueListenable: useAdminDashboardStore.driversPresent,
-            builder: (_, present, __) => ValueListenableBuilder<int>(
-              valueListenable: useAdminDashboardStore.driversAbsent,
-              builder: (_, absent, ___) {
-                final total = present + absent;
-                final double percent = total == 0 ? 0 : present / total;
-                return _buildGraphicalCard(
-                  title: 'Drivers Present',
-                  currentValue: present.toString(),
-                  totalValue: '/ $total',
-                  percent: percent,
-                  icon: Icons.groups_rounded,
-                  color: const Color(0xFF10B981), // Green
-                  surface: surface,
-                  isDark: isDark,
-                  width: width,
-                );
-              },
+        Row(
+          children: [
+            Expanded(
+              child: ValueListenableBuilder<int>(
+                valueListenable: AdminDashboardStore().driversPresent,
+                builder: (_, present, __) => ValueListenableBuilder<int>(
+                  valueListenable: AdminDashboardStore().driversOnLeave,
+                  builder: (_, onLeave, ___) {
+                    final total = present + onLeave;
+                    final double percent = total == 0 ? 0 : present / total;
+                    return _buildGraphicalCard(
+                      title: 'Drivers Present',
+                      currentValue: present.toString(),
+                      totalValue: '/ $total',
+                      percent: percent,
+                      icon: Icons.groups_rounded,
+                      color: const Color(0xFF10B981), // Green
+                      surface: surface,
+                      isDark: isDark,
+                      width: width,
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ValueListenableBuilder<int>(
+                valueListenable: AdminDashboardStore().driversOnLeave,
+                builder: (_, onLeave, __) => ValueListenableBuilder<int>(
+                  valueListenable: AdminDashboardStore().driversPresent,
+                  builder: (_, present, ___) {
+                    final total = present + onLeave;
+                    final double percent = total == 0 ? 0 : onLeave / total;
+                    return _buildGraphicalCard(
+                      title: 'Drivers On Leave',
+                      currentValue: onLeave.toString(),
+                      totalValue: '/ $total',
+                      percent: percent,
+                      icon: Icons.person_off_rounded,
+                      color: const Color(0xFFEF4444), // Red
+                      surface: surface,
+                      isDark: isDark,
+                      width: width,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: ValueListenableBuilder<int>(
-            valueListenable: useAdminDashboardStore.movingBuses,
-            builder: (_, buses, __) {
-              const int totalBuses = 20; // Example total
-              final double percent = buses / totalBuses;
-              return _buildGraphicalCard(
-                title: 'Buses Running',
-                currentValue: buses.toString(),
-                totalValue: ' Active',
-                percent: percent.clamp(0.0, 1.0),
-                icon: Icons.directions_bus_rounded,
-                color: const Color(0xFF3B82F6), // Blue
-                surface: surface,
-                isDark: isDark,
-                width: width,
-              );
-            },
-          ),
+        const SizedBox(height: 16),
+        ValueListenableBuilder<int>(
+          valueListenable: AdminDashboardStore().movingBuses,
+          builder: (_, buses, __) {
+            const int totalBuses = 20; // Example total
+            final double percent = buses / totalBuses;
+            return _buildGraphicalCard(
+              title: 'Buses Currently Running',
+              currentValue: buses.toString(),
+              totalValue: ' Active Fleet',
+              percent: percent.clamp(0.0, 1.0),
+              icon: Icons.directions_bus_rounded,
+              color: const Color(0xFF3B82F6), // Blue
+              surface: surface,
+              isDark: isDark,
+              width: width,
+            );
+          },
         ),
       ],
     );

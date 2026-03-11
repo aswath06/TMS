@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:tms/store/driver_store.dart';
 import 'package:tms/store/istamil.dart';
+import 'package:tms/store/request_store.dart';
+import 'package:tms/store/user_store.dart';
 
 class ApplyLeavePage extends StatefulWidget {
   const ApplyLeavePage({super.key});
@@ -17,6 +21,17 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   DateTime? _endDate;
 
   final Color primaryBlue = const Color(0xFF6366F1);
+  
+  @override
+  void initState() {
+    super.initState();
+    // Ensure profile is loaded for ID
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (DriverStore().profileData.value == null) {
+        DriverStore().fetchProfile();
+      }
+    });
+  }
 
   // --- Helper: Calculate Days Difference ---
   String _getDaysDifference(bool isTamil) {
@@ -446,33 +461,72 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Widget _buildSubmitButton(bool isTamil) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate() &&
-              _startDate != null &&
-              _endDate != null) {
-            Navigator.pop(context);
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBlue,
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+    return Consumer<RequestStore>(
+      builder: (context, store, child) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: store.isLoadingLeaves ? null : () async {
+              if (_formKey.currentState!.validate() &&
+                  _startDate != null &&
+                  _endDate != null) {
+                
+                final String fromDate = DateFormat('yyyy-MM-dd').format(_startDate!);
+                final String toDate = DateFormat('yyyy-MM-dd').format(_endDate!);
+                final String startTime = DateFormat('HH:mm').format(_startDate!);
+                final String endTime = DateFormat('HH:mm').format(_endDate!);
+
+                // Get current user ID from DriverStore profile data
+                final profile = DriverStore().profileData.value;
+                final int driverId = profile?['id'] ?? 0;
+
+                final success = await store.createLeave(
+                  driverId: driverId,
+                  fromDate: fromDate,
+                  toDate: toDate,
+                  startTime: startTime,
+                  endTime: endTime,
+                  leaveType: 4, // Default to 'Other' for driver self-apply, or add picker
+                  reason: _reasonController.text,
+                );
+
+                if (success && mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(isTamil ? "விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது" : "Application Submitted Successfully")),
+                  );
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(store.leavesErrorMessage ?? (isTamil ? "பிழை ஏற்பட்டது" : "An error occurred"))),
+                  );
+                }
+              } else if (_startDate == null || _endDate == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(isTamil ? "தேதியைத் தேர்ந்தெடுக்கவும்" : "Please select dates-time")),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryBlue,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+            ),
+            child: store.isLoadingLeaves 
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Text(
+                  isTamil ? "விண்ணப்பிக்கவும்" : "SUBMIT APPLICATION",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
           ),
-          elevation: 0,
-        ),
-        child: Text(
-          isTamil ? "விண்ணப்பிக்கவும்" : "SUBMIT APPLICATION",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ),
+        );
+      }
     );
   }
 

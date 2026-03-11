@@ -22,6 +22,13 @@ class ApiConstants {
       "$baseUrl/request/create-transport-request";
   static const String updateStatus = "$baseUrl/request/update-status";
 
+  // Leaves
+  static const String getAllLeaves = "$baseUrl/api/leaves/get-all";
+  static const String getTodayDriverCount = "$baseUrl/api/leaves/today-driver-count";
+
+  // OCR
+  static const String licenseCheck = "$baseUrl/api/drivers/license-check";
+
   // Centralized headers for DevTunnels and common requirements
   static Map<String, String> getHeaders(String? token) {
     return {
@@ -31,4 +38,11 @@ class ApiConstants {
       bypassHeaderKey: bypassHeaderValue,
     };
   }
+
+  static const Map<String, int> DRIVER_STATUS = {
+    'AVAILABLE': 1,
+    'ASSIGNED': 2,
+    'ON_TRIP': 3,
+    'ON_LEAVE': 4,
+  };
 }

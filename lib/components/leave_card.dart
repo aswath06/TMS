@@ -77,6 +77,8 @@ class LeaveCard extends StatelessWidget {
         ? Colors.green
         : status == 'Pending'
         ? Colors.orange
+        : status == 'Rejected'
+        ? Colors.red
         : Colors.blue;
 
     return Container(
