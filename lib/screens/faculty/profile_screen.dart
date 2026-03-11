@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:tms/components/profile/info_card.dart';
-import 'package:tms/components/profile/profile_hero.dart';
-import 'package:tms/components/profile/typing_text.dart';
-import 'package:tms/screens/setting/settings_page.dart';
-import 'package:tms/store/faculty_store.dart';
+import 'package:tripzo/components/profile/info_card.dart';
+import 'package:tripzo/components/profile/profile_hero.dart';
+import 'package:tripzo/components/profile/typing_text.dart';
+import 'package:tripzo/screens/setting/settings_page.dart';
+import 'package:tripzo/store/faculty_store.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

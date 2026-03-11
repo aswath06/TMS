@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/screens/admin/vechiles/add_vehicle_page.dart';
-import 'package:tms/store/VehicleStore.dart';
-import 'package:tms/components/fleet/vehicle_card.dart';
-import 'package:tms/components/fleet/stat_card.dart';
+import 'package:tripzo/screens/admin/vechiles/add_vehicle_page.dart';
+import 'package:tripzo/store/VehicleStore.dart';
+import 'package:tripzo/components/fleet/vehicle_card.dart';
+import 'package:tripzo/components/fleet/stat_card.dart';
 
 class VehiclePage extends StatefulWidget {
   const VehiclePage({super.key});

@@ -3,12 +3,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:tms/components/custom_button.dart';
-import 'package:tms/components/custom_input.dart';
-import 'package:tms/components/app_branding.dart';
-import 'package:tms/store/user_store.dart';
-import 'package:tms/utils/validators.dart';
-import 'package:tms/utils/api_constants.dart';
+import 'package:tripzo/components/custom_button.dart';
+import 'package:tripzo/components/custom_input.dart';
+import 'package:tripzo/components/app_branding.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/validators.dart';
+import 'package:tripzo/utils/api_constants.dart';
 import '../main_screen.dart' show MainScreen;
 
 class LoginScreen extends StatefulWidget {

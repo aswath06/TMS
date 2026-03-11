@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/components/leave_card.dart';
-import 'package:tms/store/admin_dashboard_store.dart';
-import 'package:tms/store/driver_store.dart';
-import 'package:tms/store/request_store.dart';
+import 'package:tripzo/components/leave_card.dart';
+import 'package:tripzo/store/admin_dashboard_store.dart';
+import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/request_store.dart';
 
 class ViewAllLeavesPage extends StatefulWidget {
   final List<Map<String, dynamic>> leaves;
@@ -93,7 +93,12 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded, color: titleColor, size: 28),
-            onPressed: () => _showApplyLeaveBottomSheet(context, isDark, primaryBlue, cardColor),
+            onPressed: () => _showApplyLeaveBottomSheet(
+              context,
+              isDark,
+              primaryBlue,
+              cardColor,
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -102,7 +107,7 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
         builder: (context, store, child) {
           // Use leaves from store instead of widget.leaves if we want reactivity
           final currentLeaves = store.leaves;
-          
+
           // Re-apply local filtering logic to store leaves
           final filtered = currentLeaves.where((leaf) {
             if (_selectedFilter != 'All' && leaf['status'] != _selectedFilter) {
@@ -131,7 +136,10 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
               children: [
                 // Search Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -141,7 +149,9 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                                color: Colors.black.withOpacity(
+                                  isDark ? 0.2 : 0.05,
+                                ),
                                 blurRadius: 15,
                                 offset: const Offset(0, 5),
                               ),
@@ -149,7 +159,9 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
                           ),
                           child: TextField(
                             controller: _searchController,
-                            onChanged: (val) => setState(() {}), // Trigger UI update for local filtering
+                            onChanged: (val) => setState(
+                              () {},
+                            ), // Trigger UI update for local filtering
                             style: TextStyle(color: titleColor),
                             decoration: InputDecoration(
                               hintText: "Search driver name or date...",
@@ -184,8 +196,12 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
                       ),
                       const SizedBox(width: 12),
                       GestureDetector(
-                        onTap: () =>
-                            _showFilterModal(context, isDark, primaryBlue, cardColor),
+                        onTap: () => _showFilterModal(
+                          context,
+                          isDark,
+                          primaryBlue,
+                          cardColor,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -238,7 +254,11 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
                                 _selectedFilter = 'All';
                               });
                             },
-                            child: Icon(Icons.close, color: primaryBlue, size: 16),
+                            child: Icon(
+                              Icons.close,
+                              color: primaryBlue,
+                              size: 16,
+                            ),
                           ),
                         ],
                       ),
@@ -256,7 +276,8 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
                             horizontal: 20,
                             vertical: 10,
                           ),
-                          physics: const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
+                          physics:
+                              const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
                           itemCount: filtered.length,
                           itemBuilder: (context, index) {
                             return LeaveCard(
@@ -504,7 +525,10 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
         _filteredDrivers = driverStore.drivers;
       } else {
         _filteredDrivers = driverStore.drivers
-            .where((d) => (d['name'] ?? "").toLowerCase().contains(query.toLowerCase()))
+            .where(
+              (d) =>
+                  (d['name'] ?? "").toLowerCase().contains(query.toLowerCase()),
+            )
             .toList();
       }
     });
@@ -516,7 +540,8 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.75, // Adjust height as needed
+      height:
+          MediaQuery.of(context).size.height * 0.75, // Adjust height as needed
       margin: EdgeInsets.only(top: 100), // Ensure it's not full screen
       padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomPadding),
       decoration: BoxDecoration(
@@ -571,31 +596,49 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
             GestureDetector(
               onTap: () => _showDriverPicker(),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: widget.cardColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: _selectedDriver != null ? widget.primaryBlue : Colors.grey.withOpacity(0.2),
+                    color: _selectedDriver != null
+                        ? widget.primaryBlue
+                        : Colors.grey.withOpacity(0.2),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      _selectedDriver != null ? Icons.person_rounded : Icons.person_search_rounded,
-                      color: _selectedDriver != null ? widget.primaryBlue : Colors.grey,
+                      _selectedDriver != null
+                          ? Icons.person_rounded
+                          : Icons.person_search_rounded,
+                      color: _selectedDriver != null
+                          ? widget.primaryBlue
+                          : Colors.grey,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _selectedDriver != null ? _selectedDriver!['name'] : "Choose a driver...",
+                        _selectedDriver != null
+                            ? _selectedDriver!['name']
+                            : "Choose a driver...",
                         style: TextStyle(
-                          color: _selectedDriver != null ? titleColor : Colors.grey,
-                          fontWeight: _selectedDriver != null ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedDriver != null
+                              ? titleColor
+                              : Colors.grey,
+                          fontWeight: _selectedDriver != null
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Colors.grey,
+                    ),
                   ],
                 ),
               ),
@@ -609,19 +652,26 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
             GestureDetector(
               onTap: _pickDateRange,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: widget.cardColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: _startDate != null ? widget.primaryBlue : Colors.grey.withOpacity(0.2),
+                    color: _startDate != null
+                        ? widget.primaryBlue
+                        : Colors.grey.withOpacity(0.2),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.date_range_rounded,
-                      color: _startDate != null ? widget.primaryBlue : Colors.grey,
+                      color: _startDate != null
+                          ? widget.primaryBlue
+                          : Colors.grey,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -631,11 +681,16 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
                             : "Choose dates...",
                         style: TextStyle(
                           color: _startDate != null ? titleColor : Colors.grey,
-                          fontWeight: _startDate != null ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: _startDate != null
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Colors.grey,
+                    ),
                   ],
                 ),
               ),
@@ -687,13 +742,13 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
                   value: _selectedLeaveType,
                   isExpanded: true,
                   icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                  style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: titleColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                   onChanged: (val) => setState(() => _selectedLeaveType = val!),
                   items: _leaveTypes.entries.map((e) {
-                    return DropdownMenuItem(
-                      value: e.key,
-                      child: Text(e.value),
-                    );
+                    return DropdownMenuItem(value: e.key, child: Text(e.value));
                   }).toList(),
                 ),
               ),
@@ -734,12 +789,18 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
                 onPressed: _submitLeave,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: widget.primaryBlue,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
                 child: const Text(
                   "Submit Application",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
@@ -752,7 +813,11 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey,
+      ),
     );
   }
 
@@ -769,7 +834,11 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
         ),
         child: Row(
           children: [
-            Icon(Icons.access_time_rounded, size: 16, color: widget.primaryBlue),
+            Icon(
+              Icons.access_time_rounded,
+              size: 16,
+              color: widget.primaryBlue,
+            ),
             const SizedBox(width: 8),
             Text(
               time == null ? "Select" : time.format(context),
@@ -791,8 +860,10 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startTime = picked;
-        else _endTime = picked;
+        if (isStart)
+          _startTime = picked;
+        else
+          _endTime = picked;
       });
     }
   }
@@ -807,22 +878,24 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
           : null,
       builder: (context, child) {
         return Theme(
-          data: widget.isDark ? ThemeData.dark().copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: widget.primaryBlue,
-              onPrimary: Colors.white,
-              surface: widget.cardColor,
-              onSurface: Colors.white,
-            ),
-            dialogBackgroundColor: widget.cardColor,
-          ) : ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
-              primary: widget.primaryBlue,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
+          data: widget.isDark
+              ? ThemeData.dark().copyWith(
+                  colorScheme: ColorScheme.dark(
+                    primary: widget.primaryBlue,
+                    onPrimary: Colors.white,
+                    surface: widget.cardColor,
+                    onSurface: Colors.white,
+                  ),
+                  dialogBackgroundColor: widget.cardColor,
+                )
+              : ThemeData.light().copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: widget.primaryBlue,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+                ),
           child: child!,
         );
       },
@@ -843,25 +916,36 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final titleColor = widget.isDark ? Colors.white : const Color(0xFF1E293B);
+            final titleColor = widget.isDark
+                ? Colors.white
+                : const Color(0xFF1E293B);
             return Container(
               height: MediaQuery.of(context).size.height * 0.5,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
               ),
               child: Column(
                 children: [
                   TextField(
                     onChanged: (val) {
                       setModalState(() {
-                        final driverStore = Provider.of<DriverStore>(context, listen: false);
+                        final driverStore = Provider.of<DriverStore>(
+                          context,
+                          listen: false,
+                        );
                         if (val.isEmpty) {
                           _filteredDrivers = driverStore.drivers;
                         } else {
                           _filteredDrivers = driverStore.drivers
-                              .where((d) => (d['name'] ?? "").toLowerCase().contains(val.toLowerCase()))
+                              .where(
+                                (d) => (d['name'] ?? "").toLowerCase().contains(
+                                  val.toLowerCase(),
+                                ),
+                              )
                               .toList();
                         }
                       });
@@ -884,8 +968,14 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
                       itemBuilder: (context, index) {
                         final d = _filteredDrivers[index];
                         return ListTile(
-                          title: Text(d['name'] ?? "Unknown", style: TextStyle(color: titleColor)),
-                          subtitle: Text(d['phone'] ?? "", style: const TextStyle(color: Colors.grey)),
+                          title: Text(
+                            d['name'] ?? "Unknown",
+                            style: TextStyle(color: titleColor),
+                          ),
+                          subtitle: Text(
+                            d['phone'] ?? "",
+                            style: const TextStyle(color: Colors.grey),
+                          ),
                           onTap: () {
                             setState(() => _selectedDriver = d);
                             Navigator.pop(context);
@@ -904,8 +994,12 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
   }
 
   void _submitLeave() async {
-    if (_selectedDriver == null || _startDate == null || _endDate == null || 
-        _startTime == null || _endTime == null || _reasonController.text.isEmpty) {
+    if (_selectedDriver == null ||
+        _startDate == null ||
+        _endDate == null ||
+        _startTime == null ||
+        _endTime == null ||
+        _reasonController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill all fields including time")),
       );
@@ -913,10 +1007,12 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
     }
 
     final requestStore = Provider.of<RequestStore>(context, listen: false);
-    
+
     // Format time to HH:mm for the API
-    final String startStr = "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}";
-    final String endStr = "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}";
+    final String startStr =
+        "${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}";
+    final String endStr =
+        "${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}";
 
     final success = await requestStore.createLeave(
       driverId: _selectedDriver!['id'],
@@ -935,7 +1031,11 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(requestStore.leavesErrorMessage ?? "Failed to apply leave")),
+        SnackBar(
+          content: Text(
+            requestStore.leavesErrorMessage ?? "Failed to apply leave",
+          ),
+        ),
       );
     }
   }

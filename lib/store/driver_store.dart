@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:tms/store/user_store.dart';
-import 'package:tms/utils/api_constants.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class DriverStore extends ChangeNotifier {
   // Singleton
@@ -101,8 +101,12 @@ class DriverStore extends ChangeNotifier {
       request.headers.addAll(ApiConstants.getHeaders(token));
       request.fields['driver_name'] = driverName;
 
-      request.files.add(await http.MultipartFile.fromPath('license_front', frontPath));
-      request.files.add(await http.MultipartFile.fromPath('license_back', backPath));
+      request.files.add(
+        await http.MultipartFile.fromPath('license_front', frontPath),
+      );
+      request.files.add(
+        await http.MultipartFile.fromPath('license_back', backPath),
+      );
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -229,7 +233,8 @@ class DriverStore extends ChangeNotifier {
       case 2:
         return Icons.directions_bus_rounded; // Getting into/on bus surrogate
       case 3:
-        return Icons.settings_input_component_rounded; // Steering wheel surrogate
+        return Icons
+            .settings_input_component_rounded; // Steering wheel surrogate
       case 4:
         return Icons.home_work_rounded; // On leave / Home
       default:

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:tms/screens/setting/SecuritySettingsPage.dart';
-import 'package:tms/store/istamil.dart';
-import 'package:tms/store/isdark.dart'; // Import the new theme store
+import 'package:tripzo/screens/setting/SecuritySettingsPage.dart';
+import 'package:tripzo/store/istamil.dart';
+import 'package:tripzo/store/isdark.dart'; // Import the new theme store
 import 'scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/screens/faculty/request/new_request_screen.dart';
-import 'package:tms/store/request_store.dart';
+import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/store/request_store.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});

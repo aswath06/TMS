@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:tms/components/passenger_selector.dart';
-import 'package:tms/components/location_selector.dart';
-import 'package:tms/components/travel_plan_selector.dart';
-import 'package:tms/components/guest_details_form.dart';
-import 'package:tms/store/user_store.dart';
-import 'package:tms/utils/api_constants.dart';
+import 'package:tripzo/components/passenger_selector.dart';
+import 'package:tripzo/components/location_selector.dart';
+import 'package:tripzo/components/travel_plan_selector.dart';
+import 'package:tripzo/components/guest_details_form.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tms/screens/faculty/missions/mission_details_screen.dart';
-import 'package:tms/screens/faculty/missions/mission_history_screen.dart';
+import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
+import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 
 class MissionsScreen extends StatelessWidget {
   const MissionsScreen({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/screens/faculty/request/new_request_screen.dart';
-import 'package:tms/store/request_store.dart';
-import 'package:tms/components/request_card.dart';
+import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/components/request_card.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});

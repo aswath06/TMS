@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tms/store/istamil.dart'; // Ensure this path is correct
+import 'package:tripzo/store/istamil.dart'; // Ensure this path is correct
 
 class DriverDutiesScreen extends StatelessWidget {
   const DriverDutiesScreen({super.key});

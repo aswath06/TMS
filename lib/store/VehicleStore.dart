@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:tms/store/user_store.dart';
-import 'package:tms/utils/api_constants.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class VehicleStore extends ChangeNotifier {
   List<dynamic> _allVehicles = [];

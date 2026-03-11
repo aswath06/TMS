@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:http/http.dart' as http;
-import 'package:tms/store/user_store.dart';
-import 'package:tms/store/istamil.dart'; // Import Language Store
-import 'package:tms/store/isdark.dart'; // Import Theme Store
-import 'package:tms/utils/api_constants.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/store/istamil.dart'; // Import Language Store
+import 'package:tripzo/store/isdark.dart'; // Import Theme Store
+import 'package:tripzo/utils/api_constants.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});

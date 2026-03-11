@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:tms/components/custom_button.dart';
-import 'package:tms/components/custom_input.dart';
-import 'package:tms/components/app_branding.dart';
-import 'package:tms/utils/validators.dart';
+import 'package:tripzo/components/custom_button.dart';
+import 'package:tripzo/components/custom_input.dart';
+import 'package:tripzo/components/app_branding.dart';
+import 'package:tripzo/utils/validators.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});

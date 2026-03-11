@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/store/VehicleStore.dart';
+import 'package:tripzo/store/VehicleStore.dart';
 
 class AddVehiclePage extends StatefulWidget {
   const AddVehiclePage({super.key});

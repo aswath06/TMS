@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/store/driver_store.dart';
+import 'package:tripzo/store/driver_store.dart';
 
 class AddDriverPage extends StatefulWidget {
   const AddDriverPage({super.key});
@@ -21,7 +21,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   final TextEditingController _expiryDateCtrl = TextEditingController();
   final TextEditingController _experienceCtrl = TextEditingController();
   final TextEditingController _addressCtrl = TextEditingController();
-  
+
   String? _frontPath;
   String? _backPath;
   bool _isCheckingLicense = false;
@@ -57,7 +57,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
         }
       });
 
-      if (_frontPath != null && _backPath != null && _nameCtrl.text.isNotEmpty) {
+      if (_frontPath != null &&
+          _backPath != null &&
+          _nameCtrl.text.isNotEmpty) {
         _performLicenseCheck();
       }
     }
@@ -65,7 +67,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
   void _performLicenseCheck() async {
     setState(() => _isCheckingLicense = true);
-    
+
     final store = Provider.of<DriverStore>(context, listen: false);
     final result = await store.checkLicense(
       driverName: _nameCtrl.text.trim(),
@@ -79,7 +81,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
       _licenseCtrl.text = result['license_number'] ?? _licenseCtrl.text;
       _addressCtrl.text = result['extracted_address'] ?? _addressCtrl.text;
       _expiryDateCtrl.text = result['validity_date'] ?? _expiryDateCtrl.text;
-      
+
       // Mapping vehicle code
       final vCode = (result['vehicle_code'] ?? "").toString().toUpperCase();
       if (vCode.contains("MCWG")) {
@@ -92,10 +94,14 @@ class _AddDriverPageState extends State<AddDriverPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['name_match'] == true 
-              ? "License verified: Name matches!" 
-              : "License extracted (Name mismatch: ${result['extracted_name']})"),
-          backgroundColor: result['name_match'] == true ? Colors.green : Colors.orange,
+          content: Text(
+            result['name_match'] == true
+                ? "License verified: Name matches!"
+                : "License extracted (Name mismatch: ${result['extracted_name']})",
+          ),
+          backgroundColor: result['name_match'] == true
+              ? Colors.green
+              : Colors.orange,
         ),
       );
     } else {
@@ -109,7 +115,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
     // If OCR is in progress, block submission
     if (_isCheckingLicense) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please wait, license extraction is in progress...")),
+        const SnackBar(
+          content: Text("Please wait, license extraction is in progress..."),
+        ),
       );
       return;
     }
@@ -118,13 +126,19 @@ class _AddDriverPageState extends State<AddDriverPage> {
     if (_isAutoUpload) {
       if (_frontPath == null || _backPath == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please upload both sides of the license first.")),
+          const SnackBar(
+            content: Text("Please upload both sides of the license first."),
+          ),
         );
         return;
       }
       if (_licenseCtrl.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("License details not extracted. Please try re-uploading or switch to manual input.")),
+          const SnackBar(
+            content: Text(
+              "License details not extracted. Please try re-uploading or switch to manual input.",
+            ),
+          ),
         );
         return;
       }
@@ -224,7 +238,10 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: primaryBlue.withOpacity(0.2), width: 2),
+                    border: Border.all(
+                      color: primaryBlue.withOpacity(0.2),
+                      width: 2,
+                    ),
                   ),
                   child: Stack(
                     children: [
@@ -268,128 +285,121 @@ class _AddDriverPageState extends State<AddDriverPage> {
               ),
               const SizedBox(height: 40),
 
-              _buildSectionCard(
-                "Personal details",
-                isDark,
-                inputColor,
-                [
-                  _buildTextField(
-                    "Full Name",
-                    _nameCtrl,
-                    "e.g. John Doe",
-                    Icons.badge_outlined,
-                    isDark,
-                    inputColor,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    "Phone Number",
-                    _phoneCtrl,
-                    "e.g. +123456789",
-                    Icons.phone_iphone_rounded,
-                    isDark,
-                    inputColor,
-                  ),
-                ],
-              ),
+              _buildSectionCard("Personal details", isDark, inputColor, [
+                _buildTextField(
+                  "Full Name",
+                  _nameCtrl,
+                  "e.g. John Doe",
+                  Icons.badge_outlined,
+                  isDark,
+                  inputColor,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  "Phone Number",
+                  _phoneCtrl,
+                  "e.g. +123456789",
+                  Icons.phone_iphone_rounded,
+                  isDark,
+                  inputColor,
+                ),
+              ]),
               const SizedBox(height: 24),
 
-              _buildSectionCard(
-                "License extraction",
-                isDark,
-                inputColor,
-                [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Sync from License",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: titleColor,
-                            ),
-                          ),
-                          Text(
-                            "Extract data from image",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: titleColor.withOpacity(0.5),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Switch.adaptive(
-                        value: _isAutoUpload,
-                        activeColor: primaryBlue,
-                        onChanged: (val) => setState(() => _isAutoUpload = val),
-                      ),
-                    ],
-                  ),
-                  if (_isAutoUpload) ...[
-                    const SizedBox(height: 24),
-                    Row(
+              _buildSectionCard("License extraction", isDark, inputColor, [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _buildPremiumImageSelector(
-                            "Front Side",
-                            _frontPath,
-                            () => _pickLicenseImage(true),
-                            isDark,
-                            primaryBlue,
+                        Text(
+                          "Sync from License",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildPremiumImageSelector(
-                            "Back Side",
-                            _backPath,
-                            () => _pickLicenseImage(false),
-                            isDark,
-                            primaryBlue,
+                        Text(
+                          "Extract data from image",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: titleColor.withOpacity(0.5),
                           ),
                         ),
                       ],
                     ),
-                    if (_isCheckingLicense) ...[
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: primaryBlue.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: primaryBlue.withOpacity(0.1)),
+                    Switch.adaptive(
+                      value: _isAutoUpload,
+                      activeColor: primaryBlue,
+                      onChanged: (val) => setState(() => _isAutoUpload = val),
+                    ),
+                  ],
+                ),
+                if (_isAutoUpload) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPremiumImageSelector(
+                          "Front Side",
+                          _frontPath,
+                          () => _pickLicenseImage(true),
+                          isDark,
+                          primaryBlue,
                         ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: primaryBlue,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              "Processing License OCR...",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: primaryBlue,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildPremiumImageSelector(
+                          "Back Side",
+                          _backPath,
+                          () => _pickLicenseImage(false),
+                          isDark,
+                          primaryBlue,
                         ),
                       ),
                     ],
+                  ),
+                  if (_isCheckingLicense) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: primaryBlue.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: primaryBlue,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Processing License OCR...",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: primaryBlue,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ],
-              ),
+              ]),
               const SizedBox(height: 24),
 
               _buildSectionCard(
@@ -404,7 +414,8 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     Icons.contact_emergency_outlined,
                     isDark,
                     inputColor,
-                    isExtracting: _isCheckingLicense && _licenseCtrl.text.isEmpty,
+                    isExtracting:
+                        _isCheckingLicense && _licenseCtrl.text.isEmpty,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -414,7 +425,8 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     Icons.event_available_rounded,
                     isDark,
                     inputColor,
-                    isExtracting: _isCheckingLicense && _expiryDateCtrl.text.isEmpty,
+                    isExtracting:
+                        _isCheckingLicense && _expiryDateCtrl.text.isEmpty,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -424,7 +436,8 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     Icons.home_work_outlined,
                     isDark,
                     inputColor,
-                    isExtracting: _isCheckingLicense && _addressCtrl.text.isEmpty,
+                    isExtracting:
+                        _isCheckingLicense && _addressCtrl.text.isEmpty,
                   ),
                   const SizedBox(height: 20),
                   _buildDropdownField(
@@ -465,7 +478,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: (_isLoading || _isCheckingLicense) ? null : _submit,
+                    onPressed: (_isLoading || _isCheckingLicense)
+                        ? null
+                        : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
                       foregroundColor: Colors.white,
@@ -485,7 +500,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
                             ),
                           )
                         : Text(
-                            _isCheckingLicense ? "Extracting Details..." : "Complete Registration",
+                            _isCheckingLicense
+                                ? "Extracting Details..."
+                                : "Complete Registration",
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
@@ -503,7 +520,12 @@ class _AddDriverPageState extends State<AddDriverPage> {
     );
   }
 
-  Widget _buildSectionCard(String title, bool isDark, Color fill, List<Widget> children) {
+  Widget _buildSectionCard(
+    String title,
+    bool isDark,
+    Color fill,
+    List<Widget> children,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -525,7 +547,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
             color: fill,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+              color: isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.black.withOpacity(0.03),
             ),
             boxShadow: [
               BoxShadow(
@@ -561,17 +585,24 @@ class _AddDriverPageState extends State<AddDriverPage> {
             height: 120,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: path != null ? Colors.transparent : (isDark ? Colors.black26 : Colors.grey.shade50),
+              color: path != null
+                  ? Colors.transparent
+                  : (isDark ? Colors.black26 : Colors.grey.shade50),
               borderRadius: BorderRadius.circular(20),
-              image: path != null 
-                  ? DecorationImage(image: FileImage(File(path)), fit: BoxFit.cover) 
+              image: path != null
+                  ? DecorationImage(
+                      image: FileImage(File(path)),
+                      fit: BoxFit.cover,
+                    )
                   : null,
               border: Border.all(
-                color: path != null 
-                    ? const Color(0xFF10B981) 
+                color: path != null
+                    ? const Color(0xFF10B981)
                     : primary.withOpacity(0.2),
                 width: 2,
-                style: path != null ? BorderStyle.solid : BorderStyle.solid, // Custom paint could do dashed
+                style: path != null
+                    ? BorderStyle.solid
+                    : BorderStyle.solid, // Custom paint could do dashed
               ),
             ),
             child: Stack(
@@ -581,7 +612,11 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_photo_alternate_rounded, size: 32, color: primary),
+                        Icon(
+                          Icons.add_photo_alternate_rounded,
+                          size: 32,
+                          color: primary,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           label,
@@ -604,7 +639,11 @@ class _AddDriverPageState extends State<AddDriverPage> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: Color(0xFF10B981),
+                        size: 20,
+                      ),
                     ),
                   ),
               ],
@@ -673,17 +712,25 @@ class _AddDriverPageState extends State<AddDriverPage> {
               prefixIcon: Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.all(12),
-                child: isExtracting 
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
-                    )
-                  : Icon(icon, color: const Color(0xFF6366F1), size: 22),
+                child: isExtracting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF6366F1),
+                        ),
+                      )
+                    : Icon(icon, color: const Color(0xFF6366F1), size: 22),
               ),
               filled: true,
-              fillColor: isDark ? Colors.black.withOpacity(0.2) : Colors.grey.shade50,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              fillColor: isDark
+                  ? Colors.black.withOpacity(0.2)
+                  : Colors.grey.shade50,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
@@ -694,11 +741,17 @@ class _AddDriverPageState extends State<AddDriverPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFF6366F1),
+                  width: 1.5,
+                ),
               ),
             ),
             validator: (v) {
-              if (_isAutoUpload && (label == "License Number" || label == "Expiry Date" || label == "Address")) {
+              if (_isAutoUpload &&
+                  (label == "License Number" ||
+                      label == "Expiry Date" ||
+                      label == "Address")) {
                 return null;
               }
               return (v == null || v.isEmpty) ? "Field required" : null;
@@ -740,7 +793,10 @@ class _AddDriverPageState extends State<AddDriverPage> {
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6366F1)),
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFF6366F1),
+              ),
               style: TextStyle(
                 color: isDark ? Colors.white : Colors.black,
                 fontSize: 15,
@@ -753,7 +809,11 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   value: type,
                   child: Row(
                     children: [
-                      Icon(icon, size: 20, color: const Color(0xFF6366F1).withOpacity(0.7)),
+                      Icon(
+                        icon,
+                        size: 20,
+                        color: const Color(0xFF6366F1).withOpacity(0.7),
+                      ),
                       const SizedBox(width: 12),
                       Text(type),
                     ],

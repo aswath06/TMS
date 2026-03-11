@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tms/screens/driver/apply_leave_page.dart';
-import 'package:tms/store/istamil.dart';
+import 'package:tripzo/screens/driver/apply_leave_page.dart';
+import 'package:tripzo/store/istamil.dart';
 
 class DriverLeaveScreen extends StatefulWidget {
   const DriverLeaveScreen({super.key});

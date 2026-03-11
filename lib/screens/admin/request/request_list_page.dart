@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 // Components & Screens
-import 'package:tms/components/request_card.dart';
-import 'package:tms/screens/admin/request/request_detail_screen.dart';
-import 'package:tms/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/components/request_card.dart';
+import 'package:tripzo/screens/admin/request/request_detail_screen.dart';
+import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 
 // Store
-import 'package:tms/store/request_store.dart';
+import 'package:tripzo/store/request_store.dart';
 
 class RequestListPage extends StatefulWidget {
   const RequestListPage({super.key});

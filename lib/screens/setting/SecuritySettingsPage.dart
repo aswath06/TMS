@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tms/store/isdark.dart'; // Ensure this path is correct
+import 'package:tripzo/store/isdark.dart'; // Ensure this path is correct
 
 class SecuritySettingsPage extends StatefulWidget {
   const SecuritySettingsPage({super.key});

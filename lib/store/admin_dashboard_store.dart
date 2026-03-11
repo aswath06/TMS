@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'package:tms/store/user_store.dart';
-import 'package:tms/utils/api_constants.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 /// Store for Admin Dashboard statistics.
 /// Provides reactive ValueNotifiers that the UI can listen to.
@@ -60,7 +60,9 @@ class AdminDashboardStore {
         // Still keep some placeholders for things not yet in requests API
         totalKilometers.value = 4523.7;
       } else {
-        debugPrint("AdminDashboardStore FetchStats failed: ${response.statusCode}");
+        debugPrint(
+          "AdminDashboardStore FetchStats failed: ${response.statusCode}",
+        );
       }
     } catch (e) {
       debugPrint("AdminDashboardStore Stats Fetch Error: $e");
@@ -73,9 +75,12 @@ class AdminDashboardStore {
     try {
       final String? token = await UserStore.getToken();
       final String dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      
+
       // Sending GET with body via http.Request
-      final request = http.Request('GET', Uri.parse(ApiConstants.getTodayDriverCount));
+      final request = http.Request(
+        'GET',
+        Uri.parse(ApiConstants.getTodayDriverCount),
+      );
       request.headers.addAll(ApiConstants.getHeaders(token));
       request.body = json.encode({"date": dateStr});
 

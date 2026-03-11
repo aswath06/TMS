@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tms/components/profile/typing_text.dart';
+import 'package:tripzo/components/profile/typing_text.dart';
 
 class InfoCard extends StatelessWidget {
   final String title;

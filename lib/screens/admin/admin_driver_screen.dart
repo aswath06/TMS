@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/store/admin_dashboard_store.dart';
-import 'package:tms/store/driver_store.dart';
-import 'package:tms/store/request_store.dart';
-import 'package:tms/screens/admin/add_driver_page.dart'; // Import Add Driver Page
-import 'package:tms/screens/admin/request/ViewAllLeavesPage.dart';
-import 'package:tms/screens/admin/admin_driver_detail_screen.dart';
-import 'package:tms/components/leave_card.dart';
+import 'package:tripzo/store/admin_dashboard_store.dart';
+import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/screens/admin/add_driver_page.dart'; // Import Add Driver Page
+import 'package:tripzo/screens/admin/request/ViewAllLeavesPage.dart';
+import 'package:tripzo/screens/admin/admin_driver_detail_screen.dart';
+import 'package:tripzo/components/leave_card.dart';
 
 class AdminDriverScreen extends StatefulWidget {
   const AdminDriverScreen({super.key});
@@ -342,7 +342,11 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
           ),
           Text(
             title,
-            style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -1072,7 +1076,9 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1E293B),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1084,7 +1090,9 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.1),
                           shape: BoxShape.circle,
-                          border: Border.all(color: statusColor.withOpacity(0.2)),
+                          border: Border.all(
+                            color: statusColor.withOpacity(0.2),
+                          ),
                         ),
                         child: Icon(
                           store.getStatusIcon(status),

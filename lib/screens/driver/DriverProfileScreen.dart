@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:tms/components/profile/info_card.dart';
-import 'package:tms/components/profile/profile_hero.dart';
-import 'package:tms/components/profile/typing_text.dart';
-import 'package:tms/screens/setting/settings_page.dart';
+import 'package:tripzo/components/profile/info_card.dart';
+import 'package:tripzo/components/profile/profile_hero.dart';
+import 'package:tripzo/components/profile/typing_text.dart';
+import 'package:tripzo/screens/setting/settings_page.dart';
 import 'package:provider/provider.dart';
-import 'package:tms/store/driver_store.dart';
-import 'package:tms/store/istamil.dart';
+import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/istamil.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   const DriverProfileScreen({super.key});

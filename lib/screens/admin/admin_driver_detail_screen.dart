@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:tms/store/driver_store.dart';
+import 'package:tripzo/store/driver_store.dart';
 import 'package:provider/provider.dart';
 
 class AdminDriverDetailScreen extends StatelessWidget {
@@ -11,7 +11,9 @@ class AdminDriverDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+    final Color bgColor = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF1F5F9);
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
@@ -41,7 +43,14 @@ class AdminDriverDetailScreen extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            _buildProfileHero(context, isDark, surfaceColor, primaryBlue, statusLabel, statusColor),
+            _buildProfileHero(
+              context,
+              isDark,
+              surfaceColor,
+              primaryBlue,
+              statusLabel,
+              statusColor,
+            ),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -50,21 +59,53 @@ class AdminDriverDetailScreen extends StatelessWidget {
                 children: [
                   _buildSectionTitle("Personal Information", titleColor),
                   const SizedBox(height: 16),
-                  _buildInfoGrid([
-                    _InfoItem(Icons.person, "Full Name", driver['name'] ?? 'N/A'),
-                    _InfoItem(Icons.phone, "Phone", driver['phone'] ?? 'N/A'),
-                    _InfoItem(Icons.email, "Email", driver['email'] ?? 'N/A'),
-                    _InfoItem(Icons.bloodtype, "Blood Group", driver['blood_group'] ?? 'N/A'),
-                  ], surfaceColor, isDark),
+                  _buildInfoGrid(
+                    [
+                      _InfoItem(
+                        Icons.person,
+                        "Full Name",
+                        driver['name'] ?? 'N/A',
+                      ),
+                      _InfoItem(Icons.phone, "Phone", driver['phone'] ?? 'N/A'),
+                      _InfoItem(Icons.email, "Email", driver['email'] ?? 'N/A'),
+                      _InfoItem(
+                        Icons.bloodtype,
+                        "Blood Group",
+                        driver['blood_group'] ?? 'N/A',
+                      ),
+                    ],
+                    surfaceColor,
+                    isDark,
+                  ),
                   const SizedBox(height: 32),
                   _buildSectionTitle("Professional Details", titleColor),
                   const SizedBox(height: 16),
-                  _buildInfoGrid([
-                    _InfoItem(Icons.badge, "License No", driver['license_number'] ?? 'N/A'),
-                    _InfoItem(Icons.event, "License Expiry", _formatDate(driver['license_expiry'])),
-                    _InfoItem(Icons.history, "Experience", "${driver['experience_years'] ?? 0} Years"),
-                    _InfoItem(Icons.payments, "Salary", "₹${driver['salary'] ?? '0.00'}"),
-                  ], surfaceColor, isDark),
+                  _buildInfoGrid(
+                    [
+                      _InfoItem(
+                        Icons.badge,
+                        "License No",
+                        driver['license_number'] ?? 'N/A',
+                      ),
+                      _InfoItem(
+                        Icons.event,
+                        "License Expiry",
+                        _formatDate(driver['license_expiry']),
+                      ),
+                      _InfoItem(
+                        Icons.history,
+                        "Experience",
+                        "${driver['experience_years'] ?? 0} Years",
+                      ),
+                      _InfoItem(
+                        Icons.payments,
+                        "Salary",
+                        "₹${driver['salary'] ?? '0.00'}",
+                      ),
+                    ],
+                    surfaceColor,
+                    isDark,
+                  ),
                   const SizedBox(height: 32),
                   _buildSectionTitle("Statistics", titleColor),
                   const SizedBox(height: 16),
@@ -79,7 +120,14 @@ class AdminDriverDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileHero(BuildContext context, bool isDark, Color surfaceColor, Color primaryBlue, String statusLabel, Color statusColor) {
+  Widget _buildProfileHero(
+    BuildContext context,
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    String statusLabel,
+    Color statusColor,
+  ) {
     final store = useDriverStore;
     final status = driver['status'] ?? 1;
 
@@ -117,7 +165,11 @@ class AdminDriverDetailScreen extends StatelessWidget {
                 child: Center(
                   child: Text(
                     _getInitials(driver['name'] ?? ''),
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -130,8 +182,15 @@ class AdminDriverDetailScreen extends StatelessWidget {
                 child: Container(
                   width: 32,
                   height: 32,
-                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                  child: Icon(store.getStatusIcon(status), color: Colors.white, size: 18),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    store.getStatusIcon(status),
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
               ),
             ],
@@ -148,7 +207,11 @@ class AdminDriverDetailScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             "@${driver['user_name'] ?? 'username'}",
-            style: const TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 16),
           Container(
@@ -165,7 +228,11 @@ class AdminDriverDetailScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   statusLabel,
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
@@ -189,13 +256,21 @@ class AdminDriverDetailScreen extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           title,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildInfoGrid(List<_InfoItem> items, Color surfaceColor, bool isDark) {
+  Widget _buildInfoGrid(
+    List<_InfoItem> items,
+    Color surfaceColor,
+    bool isDark,
+  ) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -227,7 +302,11 @@ class AdminDriverDetailScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     item.label,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -277,7 +356,14 @@ class AdminDriverDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color, Color surfaceColor, bool isDark) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    Color surfaceColor,
+    bool isDark,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -291,7 +377,10 @@ class AdminDriverDetailScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 12),
@@ -305,7 +394,11 @@ class AdminDriverDetailScreen extends StatelessWidget {
           ),
           Text(
             label,
-            style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

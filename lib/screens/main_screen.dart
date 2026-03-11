@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:tms/screens/admin/admin_dashboard_screen.dart';
-import 'package:tms/screens/admin/AdminProfileScreen.dart';
-import 'package:tms/screens/admin/request/request_list_page.dart';
-import 'package:tms/screens/admin/vechiles/vechile_page.dart'; // Ensure path is correct
-import 'package:tms/screens/admin/admin_driver_screen.dart';
+import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
+import 'package:tripzo/screens/admin/AdminProfileScreen.dart';
+import 'package:tripzo/screens/admin/request/request_list_page.dart';
+import 'package:tripzo/screens/admin/vechiles/vechile_page.dart'; // Ensure path is correct
+import 'package:tripzo/screens/admin/admin_driver_screen.dart';
 // Driver Screens
-import 'package:tms/screens/driver/DriverLeaveScreen.dart';
-import 'package:tms/screens/driver/DriverProfileScreen.dart';
-import 'package:tms/screens/driver/driver_duties_screen.dart';
-import 'package:tms/screens/driver/driver_routes_screen.dart';
+import 'package:tripzo/screens/driver/DriverLeaveScreen.dart';
+import 'package:tripzo/screens/driver/DriverProfileScreen.dart';
+import 'package:tripzo/screens/driver/driver_duties_screen.dart';
+import 'package:tripzo/screens/driver/driver_routes_screen.dart';
 // Faculty/Admin Screens
 import 'faculty/profile_screen.dart';
 import 'faculty/missions_screen.dart';

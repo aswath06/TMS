@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tms/screens/admin/admin_dashboard_screen.dart';
+import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_screen.dart';

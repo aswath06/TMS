@@ -4,9 +4,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 // Stores
-import 'package:tms/store/VehicleStore.dart';
-import 'package:tms/store/request_store.dart';
-import 'package:tms/store/driver_store.dart';
+import 'package:tripzo/store/VehicleStore.dart';
+import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/store/driver_store.dart';
 
 // Utils
 import 'utils/routes.dart';

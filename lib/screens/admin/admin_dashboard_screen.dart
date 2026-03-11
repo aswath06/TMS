@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tms/store/admin_dashboard_store.dart';
-import 'package:tms/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/store/admin_dashboard_store.dart';
+import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends StatelessWidget {

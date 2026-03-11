@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:tms/store/istamil.dart'; // Ensure this path is correct
+import 'package:tripzo/store/istamil.dart'; // Ensure this path is correct
 
 class DriverRoutesScreen extends StatefulWidget {
   const DriverRoutesScreen({super.key});
