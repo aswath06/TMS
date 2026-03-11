@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 
+final useDriverStore = DriverStore();
+
 class DriverStore extends ChangeNotifier {
   // Singleton
   static final DriverStore _instance = DriverStore._internal();
@@ -242,6 +244,3 @@ class DriverStore extends ChangeNotifier {
     }
   }
 }
-
-// Global singleton shortcut
-final useDriverStore = DriverStore();

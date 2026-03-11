@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:tripzo/components/custom_button.dart';
 import 'package:tripzo/components/custom_input.dart';
 import 'package:tripzo/components/app_branding.dart';
+import 'package:tripzo/components/auth/login_error_dialog.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/validators.dart';
 import 'package:tripzo/utils/api_constants.dart';
@@ -82,9 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint("LOGIN ERROR: $e");
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        LoginErrorDialog.show(context, message: e.toString());
       }
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);
@@ -150,9 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint("GOOGLE LOGIN ERROR: $error");
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
+        LoginErrorDialog.show(context, message: error.toString());
       }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);

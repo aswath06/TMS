@@ -38,8 +38,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => VehicleStore()),
-        ChangeNotifierProvider(create: (_) => RequestStore()),
-        ChangeNotifierProvider(create: (_) => DriverStore()),
+        ChangeNotifierProvider(create: (_) => useRequestStore),
+        ChangeNotifierProvider(create: (_) => useDriverStore),
       ],
       child: const MyApp(),
     ),
@@ -53,7 +53,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'TMS Pro',
+      title: 'TripZo',
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: null,

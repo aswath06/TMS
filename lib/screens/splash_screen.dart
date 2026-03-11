@@ -205,13 +205,25 @@ class _SplashScreenState extends State<SplashScreen>
                         children: [
                           _buildLogoIcon(isSmallScreen, isDark),
                           SizedBox(height: size.height * 0.04),
-                          Text(
-                            "TMS",
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 48 : 60,
-                              fontWeight: FontWeight.w900,
-                              color: titleColor,
-                              letterSpacing: 12,
+                          RichText(
+                            text: TextSpan(
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 48 : 60,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 12,
+                              ),
+                              children: [
+                                const TextSpan(
+                                  text: "Trip",
+                                  style: TextStyle(color: Color(0xFF4F46E5)),
+                                ),
+                                TextSpan(
+                                  text: "Zo",
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -256,7 +268,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Widget _buildLogoIcon(bool isSmall, bool isDark) {
     return Container(
-      padding: EdgeInsets.all(isSmall ? 24 : 32),
+      padding: EdgeInsets.all(isSmall ? 16 : 20),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: BoxShape.circle,
@@ -268,17 +280,11 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ],
       ),
-      child: ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF818CF8)],
-        ).createShader(bounds),
-        child: Icon(
-          Icons.local_shipping_rounded,
-          size: isSmall ? 64 : 84,
-          color: Colors.white, // Colors.white is needed for ShaderMask to work
-        ),
+      child: Image.asset(
+        'assets/TripZo.png',
+        width: isSmall ? 100 : 140,
+        height: isSmall ? 100 : 140,
+        fit: BoxFit.contain,
       ),
     );
   }

@@ -23,21 +23,32 @@ class AppBranding extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.local_shipping_rounded,
-              size: 52,
-              color: Color(0xFF4F46E5),
+            child: Image.asset(
+              'assets/TripZo.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
             ),
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
-          "TMS",
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF0F172A),
-            letterSpacing: 8,
+        RichText(
+          text: const TextSpan(
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 8,
+            ),
+            children: [
+              TextSpan(
+                text: "Trip",
+                style: TextStyle(color: Color(0xFF4F46E5)),
+              ),
+              TextSpan(
+                text: "Zo",
+                style: TextStyle(color: Colors.black),
+              ),
+            ],
           ),
         ),
         const Text(

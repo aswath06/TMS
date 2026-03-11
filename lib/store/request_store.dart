@@ -4,10 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 
+final useRequestStore = RequestStore();
+
 class RequestStore extends ChangeNotifier {
   List<Map<String, dynamic>> _requests = [];
   List<Map<String, dynamic>> _leaves = [];
+  Map<String, dynamic>? _currentRequest;
   bool _isLoading = false;
+  bool _isFetchingDetails = false;
   bool _isLoadingLeaves = false;
   String? _errorMessage;
   String? _leavesErrorMessage;
@@ -15,7 +19,9 @@ class RequestStore extends ChangeNotifier {
   // Getters
   List<Map<String, dynamic>> get requests => _requests;
   List<Map<String, dynamic>> get leaves => _leaves;
+  Map<String, dynamic>? get currentRequest => _currentRequest;
   bool get isLoading => _isLoading;
+  bool get isFetchingDetails => _isFetchingDetails;
   bool get isLoadingLeaves => _isLoadingLeaves;
   String? get errorMessage => _errorMessage;
   String? get leavesErrorMessage => _leavesErrorMessage;
@@ -70,6 +76,43 @@ class RequestStore extends ChangeNotifier {
       debugPrint("RequestStore Error: $e");
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetches a single request by ID
+  Future<void> fetchRequestById(int id) async {
+    _isFetchingDetails = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _errorMessage = "Session expired.";
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse("${ApiConstants.getRequestById}$id"),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          _currentRequest = data['data'];
+        } else {
+          _errorMessage = data['message'] ?? "Failed to fetch request details.";
+        }
+      } else {
+        _errorMessage = "Server Error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _errorMessage = "Connection error.";
+      debugPrint("fetchRequestById Error: $e");
+    } finally {
+      _isFetchingDetails = false;
       notifyListeners();
     }
   }
