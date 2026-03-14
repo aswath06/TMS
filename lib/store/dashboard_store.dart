@@ -8,6 +8,7 @@ class DashboardState {
   final int totalRoutes;
   final int pendingRoutes;
   final int activeRoutes;
+  final List<Map<String, dynamic>> history;
   final bool isLoading;
   final String? error;
 
@@ -15,6 +16,7 @@ class DashboardState {
     this.totalRoutes = 0,
     this.pendingRoutes = 0,
     this.activeRoutes = 0,
+    this.history = const [],
     this.isLoading = false,
     this.error,
   });
@@ -23,6 +25,7 @@ class DashboardState {
     int? totalRoutes,
     int? pendingRoutes,
     int? activeRoutes,
+    List<Map<String, dynamic>>? history,
     bool? isLoading,
     String? error,
   }) {
@@ -30,6 +33,7 @@ class DashboardState {
       totalRoutes: totalRoutes ?? this.totalRoutes,
       pendingRoutes: pendingRoutes ?? this.pendingRoutes,
       activeRoutes: activeRoutes ?? this.activeRoutes,
+      history: history ?? this.history,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -79,6 +83,60 @@ class DashboardStore extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  Future<void> fetchHistory({int page = 1, int limit = 10}) async {
+    _state = _state.copyWith(isLoading: true, error: null);
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+      final String? email = await UserStore.getEmail();
+      
+      // status=8 is Completed
+      String url = "${ApiConstants.baseUrl}/request/get-all?page=$page&limit=$limit&status=8";
+      if (email != null) {
+        url += "&user=$email";
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List<dynamic> items = data['items'] ?? [];
+        
+        final formattedHistory = items.map((req) => _formatHistoryItem(req)).toList();
+        
+        _state = _state.copyWith(
+          history: page == 1 ? formattedHistory : [..._state.history, ...formattedHistory],
+          isLoading: false,
+        );
+      } else {
+        _state = _state.copyWith(isLoading: false, error: "Failed to fetch history");
+      }
+    } catch (e) {
+      _state = _state.copyWith(isLoading: false, error: "Network error fetching history");
+    }
+    notifyListeners();
+  }
+
+  Map<String, dynamic> _formatHistoryItem(dynamic req) {
+    return {
+      'id': 'REQ-${req['id']}',
+      'dbId': req['id'],
+      'routeName': req['routeName'] ?? 'Unknown Route',
+      'date': req['start_datetime']?.toString().split('T')[0] ?? 'No Date',
+      'pickup': req['startLocation'] ?? 'Unknown',
+      'drop': req['destinationLocation'] ?? 'Unknown',
+      'passengers': req['passengerCount'] ?? 0,
+      'status': 'Completed',
+      'rawStatus': 8,
+      'vehicle': req['assignedVehicle']?['model'] ?? 'N/A',
+      'intermediateStops': req['intermediateStops'] ?? [],
+    };
   }
 }
 

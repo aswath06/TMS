@@ -5,6 +5,7 @@ import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -442,6 +443,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Icons.history_rounded,
           Colors.blueGrey,
           surface,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MissionHistoryScreen()),
+            );
+          },
         ),
       ],
     );

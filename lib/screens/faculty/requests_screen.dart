@@ -116,8 +116,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
       floatingActionButton: Container(
         margin: const EdgeInsets.only(bottom: 90, right: 8),
         child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            final result = await Navigator.push(
               context,
               PageRouteBuilder(
                 pageBuilder: (context, animation, secondaryAnimation) =>
@@ -136,6 +136,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     },
               ),
             );
+            
+            if (result == true) {
+              context.read<RequestStore>().fetchRequests();
+            }
           },
           elevation: 6,
           backgroundColor: primaryIndigo,

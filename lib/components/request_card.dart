@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 
 class RequestCard extends StatelessWidget {
   final Map<String, dynamic> req;
@@ -20,21 +21,56 @@ class RequestCard extends StatelessWidget {
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    final String s = (req['status'] ?? 'Pending').toLowerCase();
+    Color bColor;
+    if (s == 'pending') {
+      bColor = Colors.orange;
+    } else if (s == 'rejected' || s == 'cancelled') {
+      bColor = Colors.red;
+    } else {
+      bColor = Colors.green;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MissionDetailsScreen(
+              missionTitle: req['routeName'] ?? 'Unknown Route',
+              time: req['date'] ?? '',
+              driverName: 'no driver assigned',
+              driverPhone: 'no driver assigned',
+              vehicleInfo: 'no driver assigned',
+              capacity: "${req['passengers'] ?? 0} Guests",
+              pathType: 'ONE WAY',
+              status: req['status'] ?? 'Pending',
+              statusColor: bColor,
+              requestId: req['id']?.toString() ?? '',
+              rawStatus: req['rawStatus'] ?? 1,
+              stops: [
+                {'location': req['pickup'] ?? 'Unknown', 'eta': ''},
+                {'location': req['drop'] ?? 'Unknown', 'eta': ''},
+              ],
+            ),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
           // Header: Faculty & ID
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -167,8 +203,9 @@ class RequestCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFooterItem(IconData icon, String label, Color color) {
     return Row(

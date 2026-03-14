@@ -55,6 +55,9 @@ dependencies:
   qr_flutter: ^4.1.0
   zustand: ^0.0.5
   flutter_zustand: ^0.0.5
+  url_launcher: ^6.3.2
+  encrypt: ^5.0.3
+  crypto: ^3.0.3
 
 flutter_launcher_icons:
   android: "launcher_icon"

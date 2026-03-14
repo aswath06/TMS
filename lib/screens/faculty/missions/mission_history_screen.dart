@@ -1,7 +1,9 @@
+import 'package:tripzo/store/dashboard_store.dart';
+import 'package:tripzo/store/admin_dashboard_store.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'mission_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tripzo/store/request_store.dart';
-import 'mission_details_screen.dart';
 
 class MissionHistoryScreen extends StatefulWidget {
   const MissionHistoryScreen({super.key});
@@ -13,13 +15,41 @@ class MissionHistoryScreen extends StatefulWidget {
 class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  String _role = "faculty";
+  int _currentPage = 1;
+  bool _isInit = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    final role = await UserStore.getRole() ?? "faculty";
+    if (mounted) {
+      setState(() {
+        _role = role;
+      });
+      _fetchHistory(refresh: true);
+    }
+  }
+
+  Future<void> _fetchHistory({bool refresh = false}) async {
+    if (refresh) _currentPage = 1;
+    if (_role == "admin" || _role == "admin_fleet") {
+      await useAdminDashboardStore.fetchHistory(page: _currentPage);
+    } else {
+      await dashboardStore.fetchHistory(page: _currentPage);
+    }
+    _isInit = false;
+  }
+
+  void _loadMore() {
+    setState(() {
+      _currentPage++;
     });
+    _fetchHistory();
   }
 
   @override
@@ -35,44 +65,61 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
 
-    final store = context.watch<RequestStore>();
-    final completedMissions = store.requests
-        .where((req) => req['rawStatus'] == 8)
-        .where((req) =>
-            req['pickup']
-                .toString()
-                .toLowerCase()
-                .contains(_searchQuery.toLowerCase()) ||
-            req['drop']
-                .toString()
-                .toLowerCase()
-                .contains(_searchQuery.toLowerCase()) ||
-            req['vehicle']
-                .toString()
-                .toLowerCase()
-                .contains(_searchQuery.toLowerCase()))
-        .toList();
+    final bool isAdmin = _role == "admin" || _role == "admin_fleet";
+    final bool isFacultyLoading = context.watch<DashboardStore>().state.isLoading;
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          _buildBackgroundDecor(isDark),
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  child: _buildHeader(context, titleColor),
-                ),
-                Expanded(
-                  child: store.isLoading && completedMissions.isEmpty
-                      ? const Center(child: CircularProgressIndicator())
-                      : RefreshIndicator(
-                          onRefresh: () => store.fetchRequests(),
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: useAdminDashboardStore.history,
+      builder: (context, adminHistory, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: useAdminDashboardStore.isLoading,
+          builder: (context, isAdminLoading, _) {
+            final List<Map<String, dynamic>> historyItems = isAdmin 
+                ? adminHistory 
+                : context.watch<DashboardStore>().state.history;
+            
+            final bool isLoading = isAdmin ? isAdminLoading : isFacultyLoading;
+
+            final completedMissions = historyItems
+                .where((req) =>
+                    req['routeName']
+                        .toString()
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()) ||
+                    req['pickup']
+                        .toString()
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()) ||
+                    req['drop']
+                        .toString()
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()) ||
+                    req['vehicle']
+                        .toString()
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()))
+                .toList();
+
+            return Scaffold(
+              backgroundColor: bgColor,
+              body: Stack(
+                children: [
+                  _buildBackgroundDecor(isDark),
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          child: _buildHeader(context, titleColor),
+                        ),
+                        Expanded(
+                          child: isLoading && completedMissions.isEmpty
+                              ? const Center(child: CircularProgressIndicator())
+                              : RefreshIndicator(
+                                  onRefresh: () => _fetchHistory(refresh: true),
                           child: SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(
                               parent: BouncingScrollPhysics(),
@@ -109,59 +156,78 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                                         ),
                                       ),
                                     )
-                                  else
-                                    ...completedMissions.map((mission) {
-                                      return GestureDetector(
-                                        onTap: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => MissionDetailsScreen(
-                                              missionTitle: mission['vehicle'] ?? "Mission",
-                                              time: mission['date'] ?? "TBD",
-                                              driverName: "N/A",
-                                              driverPhone: "N/A",
-                                              vehicleInfo: mission['vehicle'] ?? "N/A",
-                                              capacity: mission['passengers'].toString(),
-                                              pathType: "History",
-                                              stops: [
-                                                {'location': mission['pickup'] ?? "Start", 'eta': "Start"},
-                                                if (mission['intermediateStops'] is List)
-                                                  ...(mission['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': "Transit"}),
-                                                {'location': mission['drop'] ?? "End", 'eta': "End"},
-                                              ],
-                                              status: "Completed",
-                                              statusColor: Colors.green,
-                                              requestId: mission['dbId']?.toString() ?? "",
-                                              rawStatus: mission['rawStatus'] ?? 8,
+                                    else ...[
+                                      ...completedMissions.map((mission) {
+                                        return GestureDetector(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => MissionDetailsScreen(
+                                                missionTitle: mission['routeName'] ?? "Mission",
+                                                time: mission['date'] ?? "TBD",
+                                                driverName: "no driver assigned",
+                                                driverPhone: "n/a",
+                                                vehicleInfo: mission['vehicle'] ?? "n/a",
+                                                capacity: mission['passengers'].toString(),
+                                                pathType: "History",
+                                                stops: [
+                                                  {'location': mission['pickup'] ?? "Start", 'eta': "Start"},
+                                                  if (mission['intermediateStops'] is List)
+                                                    ...(mission['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': "Transit"}),
+                                                  {'location': mission['drop'] ?? "End", 'eta': "End"},
+                                                ],
+                                                status: "Completed",
+                                                statusColor: Colors.green,
+                                                requestId: mission['dbId']?.toString() ?? "",
+                                                rawStatus: mission['rawStatus'] ?? 8,
+                                              ),
+                                            ),
+                                          ),
+                                          child: _buildHistoryCard(
+                                            title: mission['routeName'] ?? "Mission",
+                                            date: mission['date'] ?? "TBD",
+                                            driver: mission['vehicle'] ?? "N/A",
+                                            pathType: "Completed",
+                                            stops: (mission['intermediateStops'] as List).length + 2,
+                                            distance: "N/A",
+                                            cardColor: cardColor,
+                                            titleColor: titleColor,
+                                            subColor: subColor,
+                                            primaryBlue: primaryBlue,
+                                          ),
+                                        );
+                                      }).toList(),
+                                      const SizedBox(height: 20),
+                                      if (completedMissions.isNotEmpty)
+                                        Center(
+                                          child: TextButton(
+                                            onPressed: isLoading ? null : _loadMore,
+                                            child: Text(
+                                              isLoading ? "Loading..." : "Load More",
+                                              style: TextStyle(
+                                                color: primaryBlue,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                        child: _buildHistoryCard(
-                                          title: mission['vehicle'] ?? "Mission",
-                                          date: mission['date'] ?? "TBD",
-                                          driver: "N/A",
-                                          pathType: "Completed",
-                                          stops: (mission['intermediateStops'] as List).length + 2,
-                                          distance: "N/A",
-                                          cardColor: cardColor,
-                                          titleColor: titleColor,
-                                          subColor: subColor,
-                                          primaryBlue: primaryBlue,
-                                        ),
-                                      );
-                                    }).toList(),
+                                    ],
                                   const SizedBox(height: 40),
                                 ],
                               ),
                             ),
                           ),
                         ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+                      ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

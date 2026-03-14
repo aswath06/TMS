@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
+import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/user_store.dart';
@@ -22,17 +23,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (useFacultyStore.profileData.value == null) {
       useFacultyStore.fetchProfile();
     }
-    
+
     // Listen for remote logouts
     useFacultyStore.errorMessage.addListener(_handleAuthError);
   }
 
   void _handleAuthError() async {
     if (useFacultyStore.errorMessage.value == "SESSION_EXPIRED") {
-       useFacultyStore.errorMessage.removeListener(_handleAuthError);
-       await UserStore.clear();
-       if (!mounted) return;
-       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      useFacultyStore.errorMessage.removeListener(_handleAuthError);
+      await UserStore.clear();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }
   }
 
@@ -86,7 +87,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       return FutureBuilder<String?>(
                         future: UserStore.getName(),
                         builder: (context, snapshot) {
-                          final String displayName = data?['name'] ?? snapshot.data ?? "Admin";
+                          final String displayName =
+                              data?['name'] ?? snapshot.data ?? "Admin";
                           return _buildHeader(
                             displayName,
                             titleColor,
@@ -515,6 +517,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Icons.history_rounded,
           Colors.blueGrey,
           surface,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MissionHistoryScreen(),
+              ),
+            );
+          },
         ),
       ],
     );

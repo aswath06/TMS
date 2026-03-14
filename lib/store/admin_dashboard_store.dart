@@ -22,6 +22,7 @@ class AdminDashboardStore {
   final ValueNotifier<double> totalKilometers = ValueNotifier<double>(0.0);
   final ValueNotifier<int> movingBuses = ValueNotifier<int>(0);
   final ValueNotifier<int> servicesCount = ValueNotifier<int>(0);
+  final ValueNotifier<List<Map<String, dynamic>>> history = ValueNotifier<List<Map<String, dynamic>>>([]);
 
   /// Fetch statistics from backend.
   /// Currently populates with placeholder data; replace with real API calls later.
@@ -102,6 +103,50 @@ class AdminDashboardStore {
       }
     } catch (e) {
       debugPrint("AdminDashboardStore Today Driver Count Error: $e");
+    }
+  }
+
+  Future<void> fetchHistory({int page = 1, int limit = 10}) async {
+    isLoading.value = true;
+    try {
+      final String? token = await UserStore.getToken();
+      
+      // status=8 is Completed, fetch all for admin
+      final String url = "${ApiConstants.baseUrl}/request/get-all?page=$page&limit=$limit&status=8";
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> items = data['items'] ?? [];
+        
+        final List<Map<String, dynamic>> formattedHistory = items.map((req) => {
+          'id': 'REQ-${req['id']}',
+          'dbId': req['id'],
+          'routeName': req['routeName'] ?? 'Unknown Route',
+          'date': req['start_datetime']?.toString().split('T')[0] ?? 'No Date',
+          'pickup': req['startLocation'] ?? 'Unknown',
+          'drop': req['destinationLocation'] ?? 'Unknown',
+          'passengers': req['passengerCount'] ?? 0,
+          'status': 'Completed',
+          'rawStatus': 8,
+          'vehicle': req['assignedVehicle']?['model'] ?? 'N/A',
+          'intermediateStops': req['intermediateStops'] ?? [],
+        }).toList();
+
+        if (page == 1) {
+          history.value = formattedHistory;
+        } else {
+          history.value = [...history.value, ...formattedHistory];
+        }
+      }
+    } catch (e) {
+      debugPrint("AdminDashboardStore History Fetch Error: $e");
+    } finally {
+      isLoading.value = false;
     }
   }
 }

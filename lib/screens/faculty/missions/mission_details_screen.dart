@@ -1,11 +1,15 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:tripzo/screens/faculty/missions/reassign_guest_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/crypto_utils.dart';
 
 class MissionDetailsScreen extends StatefulWidget {
   final String missionTitle,
@@ -400,12 +404,10 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   void _showOtpModal(String otp, String title) {
-    showGeneralDialog(
+    showDialog(
       context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.9),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, animation, secondaryAnimation) {
+      barrierDismissible: true,
+      builder: (context) {
         return _OtpFullScreenOverlay(
           otp: otp,
           title: title,
@@ -489,6 +491,43 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           _buildRemarks(cardColor, titleColor, subColor, primaryBlue),
                           if (showApproveDecline) ...[
                             const SizedBox(height: 32),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _isLoadingOtp || _isApproving ? null : () async {
+                                  final schedules = _missionData?['schedules'] as List?;
+                                  if (schedules == null || schedules.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No schedules to manage.")));
+                                    return;
+                                  }
+                                  
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => ReassignGuestScreen(
+                                      initialSchedules: schedules,
+                                      routeId: widget.requestId,
+                                      defaultRemark: _missionData?['faculty_remark'] ?? '',
+                                    )),
+                                  );
+
+                                  if (result == true) {
+                                    _fetchMissionDetails();
+                                  }
+                                },
+                                icon: const Icon(Icons.manage_accounts_rounded),
+                                label: const Text(
+                                  "MANAGE & REASSIGN GUESTS",
+                                  style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  side: BorderSide(color: primaryBlue, width: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  foregroundColor: primaryBlue,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                             Row(
                               children: [
                                 Expanded(
@@ -496,9 +535,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                     onPressed: _isLoadingOtp || _isApproving ? null : () => _showRemarkModal(false),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.transparent,
-                                      padding: const EdgeInsets.symmetric(vertical: 22),
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24),
+                                        borderRadius: BorderRadius.circular(16),
                                         side: const BorderSide(color: Colors.red, width: 2),
                                       ),
                                       elevation: 0,
@@ -506,7 +545,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                     child: const Text(
                                       "DECLINE",
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w900,
                                         color: Colors.red,
                                         letterSpacing: 2,
@@ -520,25 +559,25 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                     onPressed: _isLoadingOtp || _isApproving ? null : () => _showRemarkModal(true),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green,
-                                      padding: const EdgeInsets.symmetric(vertical: 22),
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
                                       elevation: 0,
                                     ),
                                     child: _isApproving
                                         ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
+                                            height: 16,
+                                            width: 16,
                                             child: CircularProgressIndicator(
                                               color: Colors.white,
-                                              strokeWidth: 2.5,
+                                              strokeWidth: 2,
                                             ),
                                           )
                                         : const Text(
                                             "APPROVE",
                                             style: TextStyle(
-                                              fontSize: 16,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.w900,
                                               color: Colors.white,
                                               letterSpacing: 2,
@@ -838,7 +877,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildDriverCard(Color cardColor, Color blue, Color sub, String dName, String dPhone) {
-    final bool isNotAssigned = dName == "Driver Not Assigned";
+    final bool isNotAssigned = dName == "no driver assigned" || dName == "Driver Not Assigned";
     final Color nameColor = isNotAssigned ? Colors.redAccent : (cardColor == Colors.white ? Colors.black87 : Colors.white);
     final Color phoneColor = isNotAssigned ? Colors.redAccent.withOpacity(0.7) : sub;
 
@@ -942,10 +981,10 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         final vehicle = schedule['vehicle'];
         final guests = schedule['guests'] as List?;
         
-        final dName = driver?['name'] ?? "Driver Not Assigned";
-        final dPhone = driver?['phone'] ?? "N/A";
-        final vInfo = vehicle != null ? "${vehicle['vehicle_type']} (${vehicle['vehicle_number']})" : "Vehicle Not Assigned";
-        final vCap = vehicle != null ? "${vehicle['vehicle_capacity']} Seats" : "N/A";
+        final dName = driver?['name'] ?? "no driver assigned";
+        final dPhone = driver?['phone'] ?? "n/a";
+        final vInfo = vehicle != null ? "${vehicle['vehicle_type']} (${vehicle['vehicle_number']})" : "no driver assigned";
+        final vCap = vehicle != null ? "${vehicle['vehicle_capacity']} Seats" : "n/a";
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
@@ -962,30 +1001,57 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: subColor.withOpacity(0.8), letterSpacing: 0.5),
                 ),
                 const SizedBox(height: 8),
-                ...guests.map((g) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: blue.withOpacity(0.1), shape: BoxShape.circle),
-                        child: Icon(Icons.person, size: 14, color: blue),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                           g['name'] ?? "Unknown", 
-                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
+                ...guests.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final g = entry.value;
+                  final phone = g['phone'];
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: blue.withOpacity(0.1), shape: BoxShape.circle),
+                          child: Text(
+                            "${i + 1}",
+                            style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
+                          ),
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text("Seat ${g['seat_number']}", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: subColor)),
-                      ),
-                    ],
-                  ),
-                )),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                g['name'] ?? "Unknown", 
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
+                              ),
+                              Text(
+                                phone ?? 'No Phone',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: subColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (phone != null && phone.toString().isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.phone_in_talk_rounded, color: Colors.green, size: 20),
+                            onPressed: () async {
+                              final Uri url = Uri.parse("tel:$phone");
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url);
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
+                                }
+                              }
+                            },
+                          )
+                      ],
+                    ),
+                  );
+                }),
               ]
             ],
           ),
@@ -1308,137 +1374,142 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top -
-                    MediaQuery.of(context).padding.bottom - 40,
+    final String decryptedOtp = CryptoUtils.decryptOTP(widget.otp);
+
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(40),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: Colors.white, size: 32),
-                      onPressed: _close,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: const Color(0xFF6366F1).withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.qr_code_2_rounded,
-                        color: Colors.white, size: 48),
+                        color: Color(0xFF6366F1), size: 24),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded,
+                        color: Colors.grey, size: 28),
+                    onPressed: _close,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "Driver must scan this code within the time limit",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 40),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(40),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.3),
-                          blurRadius: 40,
-                        ),
-                      ],
-                    ),
-                    child: QrImageView(
-                      data: widget.otp,
-                      version: QrVersions.auto,
-                      size: MediaQuery.of(context).size.width * 0.6,
-                      gapless: false,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Colors.black,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  const Text(
-                    "OTP CODE",
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 3,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.otp,
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 60),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.timer_outlined,
-                            color: Colors.white, size: 20),
-                        const SizedBox(width: 10),
-                        Text(
-                          "Expires in $_secondsLeft seconds",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                 ],
               ),
-            ),
+              const SizedBox(height: 20),
+              Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF0F172A),
+                  letterSpacing: -0.5,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Driver scans this code to verify",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              const SizedBox(height: 30),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                ),
+                child: QrImageView(
+                  data: widget.otp, // Encrypted value for scanning
+                  version: QrVersions.auto,
+                  size: MediaQuery.of(context).size.width * 0.5,
+                  gapless: false,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: Colors.black,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              const Text(
+                "OTP CODE",
+                style: TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                decryptedOtp, // Decrypted value for visual confirmation
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF6366F1),
+                  letterSpacing: 6,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              const SizedBox(height: 30),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer_outlined,
+                        color: Color(0xFF6366F1), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      "$_secondsLeft seconds remaining",
+                      style: const TextStyle(
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
