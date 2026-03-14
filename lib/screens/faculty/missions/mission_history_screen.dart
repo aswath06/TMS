@@ -180,6 +180,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                                                 statusColor: Colors.green,
                                                 requestId: mission['dbId']?.toString() ?? "",
                                                 rawStatus: mission['rawStatus'] ?? 8,
+                                                creatorName: mission['faculty'] ?? "Faculty Member",
                                               ),
                                             ),
                                           ),
@@ -187,6 +188,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                                             title: mission['routeName'] ?? "Mission",
                                             date: mission['date'] ?? "TBD",
                                             driver: mission['vehicle'] ?? "N/A",
+                                            creator: mission['faculty'] ?? "Faculty Member",
                                             pathType: "Completed",
                                             stops: (mission['intermediateStops'] as List).length + 2,
                                             distance: "N/A",
@@ -377,6 +379,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     required String title,
     required String date,
     required String driver,
+    required String creator,
     required String pathType,
     required int stops,
     required String distance,
@@ -432,8 +435,31 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                 ),
               ),
               const Spacer(),
+              Icon(Icons.person_outline_rounded, size: 12, color: subColor.withOpacity(0.5)),
+              const SizedBox(width: 4),
               Text(
-                "$stops stops • $distance",
+                creator,
+                style: TextStyle(
+                  color: subColor.withOpacity(0.7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "$stops stops",
+                style: TextStyle(
+                  color: subColor.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                distance,
                 style: TextStyle(
                   color: subColor.withOpacity(0.7),
                   fontSize: 12,

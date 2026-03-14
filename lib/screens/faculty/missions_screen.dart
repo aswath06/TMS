@@ -166,6 +166,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
                                   status: mission['status'] ?? "Active",
                                   statusColor: _getStatusColor(mission['rawStatus']),
                                   primaryBlue: primaryBlue,
+                                  creatorName: mission['faculty'] ?? "Faculty Member",
                                 );
                               },
                             ),
@@ -233,6 +234,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
     required Color primaryBlue,
     required String requestId,
     required int rawStatus,
+    required String creatorName,
   }) {
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -251,6 +253,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
             statusColor: statusColor,
             requestId: requestId,
             rawStatus: rawStatus,
+            creatorName: creatorName,
           ),
         ),
       ),
@@ -312,6 +315,29 @@ class _MissionsScreenState extends State<MissionsScreen> {
             Text(
               missionTitle,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 14, color: subColor),
+                const SizedBox(width: 4),
+                Text(
+                  "Created by: ",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  creatorName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: primaryBlue,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             _buildDriverMinimal(primaryBlue, driverName, vehicleInfo, subColor),

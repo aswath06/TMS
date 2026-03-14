@@ -33,24 +33,31 @@ class RequestCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        final String drName = req['driverName'] ?? 'no driver assigned';
+        final String drPhone = req['driverPhone'] ?? 'no driver assigned';
+        final String vInfo = req['vehicleInfo'] ?? req['vehicle'] ?? 'no driver assigned';
+        
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => MissionDetailsScreen(
               missionTitle: req['routeName'] ?? 'Unknown Route',
               time: req['date'] ?? '',
-              driverName: 'no driver assigned',
-              driverPhone: 'no driver assigned',
-              vehicleInfo: 'no driver assigned',
-              capacity: "${req['passengers'] ?? 0} Guests",
+              driverName: drName,
+              driverPhone: drPhone,
+              vehicleInfo: vInfo,
+              capacity: req['passengers'] != null ? "${req['passengers']} Guests" : "N/A",
               pathType: 'ONE WAY',
               status: req['status'] ?? 'Pending',
               statusColor: bColor,
-              requestId: req['id']?.toString() ?? '',
+              requestId: req['dbId']?.toString() ?? req['id']?.toString() ?? '',
               rawStatus: req['rawStatus'] ?? 1,
+              creatorName: req['faculty'] ?? 'Staff Member',
               stops: [
-                {'location': req['pickup'] ?? 'Unknown', 'eta': ''},
-                {'location': req['drop'] ?? 'Unknown', 'eta': ''},
+                {'location': req['pickup'] ?? 'Unknown', 'eta': 'Start'},
+                if (req['intermediateStops'] is List)
+                  ...(req['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': 'Transit'}),
+                {'location': req['drop'] ?? 'Unknown', 'eta': 'End'},
               ],
             ),
           ),
@@ -90,13 +97,29 @@ class RequestCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        req['routeName'] ?? 'Unknown Route',
-                        style: TextStyle(
-                          color: titleColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              req['routeName'] ?? 'Unknown Route',
+                              style: TextStyle(
+                                color: titleColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            req['date'] ?? '',
+                            style: TextStyle(
+                              color: subColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         req['id'] ?? 'N/A',
@@ -162,14 +185,6 @@ class RequestCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Text(
-                  req['date'] ?? '',
-                  style: TextStyle(
-                    color: subColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
                   ),
                 ),
               ],

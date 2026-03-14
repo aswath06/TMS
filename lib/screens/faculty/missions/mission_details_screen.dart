@@ -20,7 +20,8 @@ class MissionDetailsScreen extends StatefulWidget {
       capacity,
       pathType,
       status,
-      requestId;
+      requestId,
+      creatorName;
   final int rawStatus;
   final List<Map<String, String>> stops;
   final Color statusColor;
@@ -39,6 +40,7 @@ class MissionDetailsScreen extends StatefulWidget {
     required this.statusColor,
     required this.requestId,
     required this.rawStatus,
+    this.creatorName = "Faculty Member",
   });
 
   @override
@@ -120,9 +122,12 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         }
       }
 
+      final String? role = await UserStore.getRole();
+      final bool isAdmin = role?.toLowerCase() == 'admin';
+
       final body = {
         "route_id": int.tryParse(widget.requestId) ?? 0,
-        "faculty_remarks": remark.trim().isEmpty ? "Approved via Mobile App" : remark.trim(),
+        isAdmin ? "admin_remarks" : "faculty_remarks": remark.trim().isEmpty ? "Approved via Mobile App" : remark.trim(),
         "allocations": allocations,
       };
 
@@ -139,7 +144,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       final respData = jsonDecode(response.body);
       if (response.statusCode == 200 && respData['success'] != false) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Mission Approved Successfully"), backgroundColor: Colors.green),
+          SnackBar(content: Text("${isAdmin ? 'Admin' : 'Mission'} Approved Successfully"), backgroundColor: Colors.green),
         );
         await _fetchMissionDetails();
       } else {
@@ -162,8 +167,12 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     );
   }
 
-  void _showRemarkModal(bool isApprove) {
+  void _showRemarkModal(bool isApprove) async {
+    final String? role = await UserStore.getRole();
+    final bool isAdmin = role?.toLowerCase() == 'admin';
+    
     final TextEditingController remarkController = TextEditingController();
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -182,7 +191,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isApprove ? "Approve Mission" : "Decline Mission",
+                  isApprove ? (isAdmin ? "Admin Approval" : "Approve Mission") : (isAdmin ? "Admin Decline" : "Decline Mission"),
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 8),
@@ -501,12 +510,18 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                     return;
                                   }
                                   
+                                  final String? role = await UserStore.getRole();
+                                  final bool isAdmin = role?.toLowerCase() == 'admin';
+
+                                  if (!mounted) return;
                                   final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => ReassignGuestScreen(
                                       initialSchedules: schedules,
                                       routeId: widget.requestId,
-                                      defaultRemark: _missionData?['faculty_remark'] ?? '',
+                                      defaultRemark: isAdmin 
+                                          ? (_missionData?['admin_remark'] ?? '') 
+                                          : (_missionData?['faculty_remark'] ?? ''),
                                     )),
                                   );
 
@@ -516,7 +531,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                 },
                                 icon: const Icon(Icons.manage_accounts_rounded),
                                 label: const Text(
-                                  "MANAGE & REASSIGN GUESTS",
+                                  "MANAGE & ALLOCATIONS",
                                   style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1),
                                 ),
                                 style: OutlinedButton.styleFrom(
@@ -736,14 +751,31 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            widget.pathType.toUpperCase(),
-            style: TextStyle(
-              color: subColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-              letterSpacing: 1.5,
-            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                widget.pathType.toUpperCase(),
+                style: TextStyle(
+                  color: subColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.person_pin_rounded, size: 14, color: subColor.withOpacity(0.6)),
+              const SizedBox(width: 4),
+              Text(
+                widget.creatorName.toUpperCase(),
+                style: TextStyle(
+                  color: subColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
+import 'package:tripzo/components/request_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -163,7 +164,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     _buildNotificationList(primaryBlue, surfaceColor, isDark),
-
+                    const SizedBox(height: 36),
+                    _buildSectionTitle("Active Missions", titleColor),
+                    const SizedBox(height: 18),
+                    _buildActiveMissions(context, primaryBlue, isDark),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -602,6 +606,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: color,
         letterSpacing: -0.8,
       ),
+    );
+  }
+
+  Widget _buildActiveMissions(BuildContext context, Color primaryBlue, bool isDark) {
+    final store = context.watch<RequestStore>();
+    
+    if (store.isLoading && store.requests.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (store.requests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text(
+            "No active missions",
+            style: TextStyle(color: Colors.grey.shade500),
+          ),
+        ),
+      );
+    }
+
+    // Show top 2 active missions (same as requested earlier "for the fcauly 2")
+    final activeReqs = store.requests.take(2).toList();
+
+    return Column(
+      children: activeReqs.map((req) => RequestCard(
+        req: req,
+        isDark: isDark,
+        accentColor: primaryBlue,
+      )).toList(),
     );
   }
 }

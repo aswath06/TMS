@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-// Components & Screens
-import 'package:tripzo/components/request_card.dart';
-import 'package:tripzo/screens/admin/request/request_detail_screen.dart';
-import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
-
-// Store
 import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
+import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
+import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 
 class RequestListPage extends StatefulWidget {
   const RequestListPage({super.key});
@@ -20,7 +16,6 @@ class _RequestListPageState extends State<RequestListPage> {
   @override
   void initState() {
     super.initState();
-    // Initial fetch
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RequestStore>().fetchRequests();
     });
@@ -28,206 +23,455 @@ class _RequestListPageState extends State<RequestListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<RequestStore>(); // Watch the store
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF8FAFC);
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
-    final Color primaryBlue = const Color(0xFF6366F1);
+
+    final store = context.watch<RequestStore>();
+    
+    // Admin sees all requests in this list, or we can filter for missions if preferred.
+    // Given the request is to make it similar to "faculty mission page", 
+    // we'll focus on similar statuses but maybe show all for admin.
+    final missionStatuses = [1, 2, 3, 4, 5, 6, 7, 9]; 
+    final missions = store.requests
+        .where((req) => missionStatuses.contains(req['rawStatus']))
+        .toList();
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          _buildBackgroundDecor(isDark),
-          SafeArea(
-            child: RefreshIndicator(
-              onRefresh: () => store.fetchRequests(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(titleColor, primaryBlue),
-                    _buildSectionHeader(
-                      "Active Requests",
-                      titleColor,
-                      primaryBlue,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.explore_rounded,
+                            color: primaryBlue,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Missions",
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                              letterSpacing: -0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const NewRequestScreen(),
+                              ),
+                            ),
+                            icon: Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: primaryBlue,
+                              size: 26,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MissionHistoryScreen(),
+                              ),
+                            ),
+                            icon: Icon(
+                              Icons.history_rounded,
+                              color: subColor,
+                              size: 26,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Manage and monitor all fleet missions",
+                    style: TextStyle(
+                      color: subColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
-                    _buildMainContent(store, isDark, primaryBlue),
-                    const SizedBox(height: 120),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: store.isLoading && missions.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: () => store.fetchRequests(),
+                      child: missions.isEmpty
+                          ? ListView(
+                              children: [
+                                SizedBox(
+                                  height: MediaQuery.of(context).size.height * 0.3,
+                                ),
+                                Center(
+                                  child: Text(
+                                    "No active missions",
+                                    style: TextStyle(
+                                      color: subColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                              itemCount: missions.length,
+                              itemBuilder: (context, index) {
+                                final mission = missions[index];
+                                return _buildMissionCard(
+                                  context,
+                                  cardColor: cardColor,
+                                  titleColor: titleColor,
+                                  subColor: subColor,
+                                  requestId: mission['dbId']?.toString() ?? mission['id']?.toString() ?? "",
+                                  rawStatus: mission['rawStatus'] ?? 0,
+                                  missionTitle: mission['vehicle'] ?? "Transport Request",
+                                  time: mission['date'] ?? "TBD",
+                                  driverName: mission['driverName'] ?? "No Driver",
+                                  driverPhone: mission['driverPhone'] ?? "N/A",
+                                  vehicleInfo: mission['vehicleInfo'] ?? mission['vehicle'] ?? "Pending",
+                                  capacity: mission['passengers'].toString(),
+                                  pathType: "Admin View",
+                                  detailedStops: [
+                                    {
+                                      'location': mission['pickup'] ?? "Start",
+                                      'eta': "Start",
+                                      'type': 'Pickup',
+                                    },
+                                    if (mission['intermediateStops'] is List)
+                                    ... (mission['intermediateStops'] as List).map((s) => {
+                                      'location': s.toString(),
+                                      'eta': "Transit",
+                                      'type': 'Transit',
+                                    }),
+                                    {
+                                      'location': mission['drop'] ?? "Destination",
+                                      'eta': "End",
+                                      'type': 'Drop',
+                                    },
+                                  ],
+                                  status: mission['status'] ?? "Active",
+                                  statusColor: _getStatusColor(mission['rawStatus']),
+                                  primaryBlue: primaryBlue,
+                                  creatorName: mission['faculty'] ?? "Unknown Faculty",
+                                );
+                              },
+                            ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(int? status) {
+    switch (status) {
+      case 2:
+      case 5:
+        return Colors.blue;
+      case 4:
+        return Colors.indigo;
+      case 7:
+        return Colors.green;
+      case 9:
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  Widget _buildMissionCard(
+    BuildContext context, {
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required String missionTitle,
+    required String time,
+    required String driverName,
+    required String driverPhone,
+    required String vehicleInfo,
+    required String capacity,
+    required String pathType,
+    required List<Map<String, String>> detailedStops,
+    required String status,
+    required Color statusColor,
+    required Color primaryBlue,
+    required String requestId,
+    required int rawStatus,
+    required String creatorName,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MissionDetailsScreen(
+            missionTitle: missionTitle,
+            time: time,
+            driverName: driverName,
+            driverPhone: driverPhone,
+            vehicleInfo: vehicleInfo,
+            capacity: capacity,
+            pathType: pathType,
+            stops: detailedStops,
+            status: status,
+            statusColor: statusColor,
+            requestId: requestId,
+            rawStatus: rawStatus,
+            creatorName: creatorName,
+          ),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 18, color: primaryBlue),
+                    const SizedBox(width: 6),
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
                   ],
                 ),
-              ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              missionTitle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 14, color: subColor),
+                const SizedBox(width: 4),
+                Text(
+                  "Created by: ",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  creatorName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: primaryBlue,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildDriverMinimal(primaryBlue, driverName, vehicleInfo, subColor),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "STOP SEQUENCE",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.grey,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                Text(
+                  pathType.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: primaryBlue,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...detailedStops
+                .asMap()
+                .entries
+                .map(
+                  (entry) => _buildSimpleTimelineRow(
+                    entry.key,
+                    entry.value['location']!,
+                    entry.key == detailedStops.length - 1,
+                    primaryBlue,
+                    titleColor,
+                    subColor,
+                  ),
+                )
+                .toList(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMainContent(RequestStore store, bool isDark, Color primaryBlue) {
-    if (store.isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-    if (store.errorMessage != null) {
-      return _buildErrorWidget(store.errorMessage!, primaryBlue, store);
-    }
-    if (store.requests.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: Text("No requests found."),
-        ),
-      );
-    }
-
-    // Build the list from store data
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: store.requests.length,
-      itemBuilder: (context, index) {
-        final req = store.requests[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RequestDetailScreen(request: req),
-              ),
-            ),
-            child: RequestCard(
-              req: req,
-              isDark: isDark,
-              accentColor: primaryBlue,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildErrorWidget(String message, Color primary, RequestStore store) {
-    return Center(
-      child: Column(
+  Widget _buildDriverMinimal(Color blue, String name, String info, Color sub) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: blue.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: blue.withOpacity(0.1)),
+      ),
+      child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 40),
-          const SizedBox(height: 8),
-          Text(message, style: TextStyle(color: Colors.red[300])),
-          TextButton(
-            onPressed: () => store.fetchRequests(),
-            child: Text("Retry", style: TextStyle(color: primary)),
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: blue,
+            child: const Icon(Icons.person, size: 18, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(info, style: TextStyle(fontSize: 12, color: sub)),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: sub.withOpacity(0.5),
           ),
         ],
       ),
     );
   }
 
-  // ... (Other UI helpers like _buildHeader, _buildSectionHeader, etc. remain the same as your original code)
-  // [Original UI code for _buildLeaveList, _buildHeader, _buildAddButton, _buildBackgroundDecor, _buildSectionHeader would go here]
-
-  Widget _buildSectionHeader(
-    String title,
-    Color titleColor,
-    Color primaryBlue,
+  Widget _buildSimpleTimelineRow(
+    int idx,
+    String stop,
+    bool isLast,
+    Color blue,
+    Color title,
+    Color sub,
   ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 12, 12),
+    return IntrinsicHeight(
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: titleColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(Color titleColor, Color primaryBlue) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "TRANSPORT SYSTEM",
-                style: TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w900,
-                  color: primaryBlue.withOpacity(0.8),
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: idx == 0 ? blue : Colors.transparent,
+                  border: Border.all(
+                    color: idx == 0 ? blue : Colors.grey.shade400,
+                    width: 2.5,
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                "Dashboard",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: titleColor,
+              if (!isLast)
+                Expanded(
+                  child: Container(width: 2, color: Colors.grey.shade300),
                 ),
-              ),
             ],
           ),
-          _buildAddButton(primaryBlue),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddButton(Color primary) {
-    return Container(
-      decoration: BoxDecoration(
-        color: primary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: primary.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
+              child: Text(
+                stop,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: idx == 0 ? title : sub,
+                  fontWeight: idx == 0 ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-      child: IconButton(
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const NewRequestScreen()),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackgroundDecor(bool isDark) {
-    return Positioned(
-      top: -80,
-      right: -80,
-      child: CircleAvatar(
-        radius: 180,
-        backgroundColor: const Color(
-          0xFF6366F1,
-        ).withOpacity(isDark ? 0.05 : 0.03),
       ),
     );
   }
