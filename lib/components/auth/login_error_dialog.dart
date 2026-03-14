@@ -5,6 +5,7 @@ class LoginErrorDialog extends StatelessWidget {
   final String message;
   final IconData icon;
   final Color baseColor;
+  final VoidCallback? onRetry;
 
   const LoginErrorDialog({
     super.key,
@@ -12,18 +13,24 @@ class LoginErrorDialog extends StatelessWidget {
     required this.message,
     required this.icon,
     required this.baseColor,
+    this.onRetry,
   });
 
   static void show(
     BuildContext context, {
     required String message,
+    VoidCallback? onRetry,
   }) {
     String finalTitle = "Login Failed";
     String finalMessage = message;
     IconData finalIcon = Icons.error_outline_rounded;
     Color finalColor = const Color(0xFFEF4444); // Default Red
 
-    if (message.toLowerCase().contains("another device")) {
+    if (message.toLowerCase().contains("network error")) {
+      finalTitle = "Network Error";
+      finalIcon = Icons.wifi_off_rounded;
+      finalColor = const Color(0xFF6366F1); // Indigo
+    } else if (message.toLowerCase().contains("another device")) {
       finalTitle = "Session Active";
       finalIcon = Icons.devices_other_rounded;
       finalColor = const Color(0xFFF59E0B); // Amber
@@ -42,6 +49,7 @@ class LoginErrorDialog extends StatelessWidget {
         message: finalMessage,
         icon: finalIcon,
         baseColor: finalColor,
+        onRetry: onRetry,
       ),
     );
   }
@@ -83,36 +91,77 @@ class LoginErrorDialog extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
-              color: const Color(0xFF64748B),
+              color: Color(0xFF64748B),
               height: 1.5,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: baseColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.all(20),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          if (onRetry != null) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onRetry!();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: baseColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(20),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-              ),
-              child: const Text(
-                "Understood",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                child: const Text(
+                  "Retry Now",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  "Dismiss",
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ] else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: baseColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(20),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  "Understood",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

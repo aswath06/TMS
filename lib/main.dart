@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/dashboard_store.dart';
 
 // Utils
 import 'utils/routes.dart';
@@ -34,12 +35,12 @@ void main() async {
   );
 
   runApp(
-    // Added RequestStore to the global provider list
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => VehicleStore()),
-        ChangeNotifierProvider(create: (_) => useRequestStore),
-        ChangeNotifierProvider(create: (_) => useDriverStore),
+        ChangeNotifierProvider.value(value: useRequestStore),
+        ChangeNotifierProvider.value(value: useDriverStore),
+        ChangeNotifierProvider.value(value: dashboardStore),
       ],
       child: const MyApp(),
     ),

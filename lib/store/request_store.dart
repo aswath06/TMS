@@ -117,34 +117,29 @@ class RequestStore extends ChangeNotifier {
     }
   }
 
+  static const Map<int, String> RouteStatus = {
+    1: "Pending",
+    2: "Vehicle Assigned",
+    3: "Vehicle Reassigned",
+    4: "Vehicle Approved",
+    5: "Driver Assigned",
+    6: "Driver Reassigned",
+    7: "Started",
+    8: "Completed",
+    9: "Cancelled",
+  };
+
   /// Formats raw API data into the UI-friendly Map used by RequestCard
   Map<String, dynamic> _formatRequest(dynamic req) {
     // Determine status for the UI color logic
-    // The API returns status as an integer (e.g., 4, 6)
-    dynamic rawStatusValue = req['status'];
-    String rawStatus = 'Pending';
-
-    // Simple mapping of status codes if they are integers
-    if (rawStatusValue is int) {
-      switch (rawStatusValue) {
-        case 4:
-          rawStatus = 'Approved';
-          break;
-        case 6:
-          rawStatus = 'Completed';
-          break;
-        default:
-          rawStatus = 'Status $rawStatusValue';
-      }
-    } else if (rawStatusValue != null) {
-      rawStatus = rawStatusValue.toString();
+    int rawStatusInt = 1;
+    if (req['status'] is int) {
+      rawStatusInt = req['status'];
+    } else if (req['status'] != null) {
+      rawStatusInt = int.tryParse(req['status'].toString()) ?? 1;
     }
 
-    // If a vehicle/driver is attached, we might want to update status label
-    if ((req['assignedVehicle'] != null || req['vehicleAssigned'] != null) &&
-        rawStatus.toLowerCase() == 'approved') {
-      rawStatus = 'Vehicle Assigned';
-    }
+    String statusString = RouteStatus[rawStatusInt] ?? 'Unknown';
 
     return {
       'id': 'REQ-${req['id']}',
@@ -153,7 +148,9 @@ class RequestStore extends ChangeNotifier {
       'date': _formatDate(req['start_datetime']),
       'pickup': _formatAddress(req['startLocation']),
       'drop': _formatAddress(req['destinationLocation']),
-      'status': rawStatus,
+      'status': statusString,
+      'rawStatus': rawStatusInt,
+      'routeName': req['routeName'] ?? 'Unknown Route',
       'vehicle':
           req['assignedVehicle']?['model'] ??
           req['routeName'] ??

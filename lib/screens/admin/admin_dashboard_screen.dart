@@ -1,10 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/store/faculty_store.dart';
+import 'package:tripzo/store/user_store.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger stats fetch
+    AdminDashboardStore().fetchStats();
+    // Trigger profile fetch for name
+    if (useFacultyStore.profileData.value == null) {
+      useFacultyStore.fetchProfile();
+    }
+    
+    // Listen for remote logouts
+    useFacultyStore.errorMessage.addListener(_handleAuthError);
+  }
+
+  void _handleAuthError() async {
+    if (useFacultyStore.errorMessage.value == "SESSION_EXPIRED") {
+       useFacultyStore.errorMessage.removeListener(_handleAuthError);
+       await UserStore.clear();
+       if (!mounted) return;
+       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
+  @override
+  void dispose() {
+    useFacultyStore.errorMessage.removeListener(_handleAuthError);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +53,6 @@ class AdminDashboardScreen extends StatelessWidget {
         : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-
-    // Trigger stats fetch – the store uses a ValueNotifier so the UI reacts.
-    AdminDashboardStore().fetchStats();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -47,12 +80,23 @@ class AdminDashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24),
-                  _buildHeader(
-                    'Aswath',
-                    titleColor,
-                    subColor,
-                    screenWidth,
-                    primaryBlue,
+                  ValueListenableBuilder(
+                    valueListenable: useFacultyStore.profileData,
+                    builder: (context, data, _) {
+                      return FutureBuilder<String?>(
+                        future: UserStore.getName(),
+                        builder: (context, snapshot) {
+                          final String displayName = data?['name'] ?? snapshot.data ?? "Admin";
+                          return _buildHeader(
+                            displayName,
+                            titleColor,
+                            subColor,
+                            screenWidth,
+                            primaryBlue,
+                          );
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(height: 32),
                   _buildSearchBar(isDark, subColor, surfaceColor, primaryBlue),

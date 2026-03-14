@@ -190,7 +190,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
       );
     }
 
-    if (store.requests.isEmpty) {
+    final List<Map<String, dynamic>> pendingRequests =
+        store.requests.where((req) => req['rawStatus'] == 1).toList();
+
+    if (pendingRequests.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
@@ -207,7 +210,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "No requests found",
+                  "No pending requests",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -229,9 +232,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
         horizontal: horizontalPadding,
         vertical: 20,
       ),
-      itemCount: store.requests.length,
+      itemCount: pendingRequests.length,
       itemBuilder: (context, index) {
-        final req = store.requests[index];
+        final req = pendingRequests[index];
         return RequestCard(
           req: req,
           isDark: isDark,

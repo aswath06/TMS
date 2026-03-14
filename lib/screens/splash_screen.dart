@@ -62,77 +62,60 @@ class _SplashScreenState extends State<SplashScreen>
     final prefs = await SharedPreferences.getInstance();
 
     // 1. Sync Theme and Language before navigating
-    setState(() {
-      ThemeStore.isDark = prefs.getBool('isDark') ?? false;
-      bool isTamil = prefs.getBool('isTamil') ?? false;
-      LanguageStore.isTamil = isTamil;
-    });
+    if (mounted) {
+      setState(() {
+        ThemeStore.isDark = prefs.getBool('isDark') ?? false;
+        bool isTamil = prefs.getBool('isTamil') ?? false;
+        LanguageStore.isTamil = isTamil;
+      });
+    }
 
-    // 2. Wait for animation to complete a bit
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // 2. Start the minimum display timer AND the API call in parallel
+    final Future<bool> authCheck = _checkSession(prefs);
+    await Future.delayed(const Duration(milliseconds: 2500));
 
-    // 3. Read the stored token & role
-    final String? token = await UserStore.getToken();
+    // 3. Wait for the API check to settle (it might already be done)
+    final bool sessionValid = await authCheck;
+
+    if (!mounted) return;
+
+    // 4. Navigate based on result
     final String? role = await UserStore.getRole();
     final bool isPinEnabled = prefs.getBool('isPinEnabled') ?? false;
 
-    if (!mounted) return;
-
-    // 4. No local token → go straight to login
-    if (token == null || role == null) {
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
-      return;
-    }
-
-    // 5. Validate the session server-side via /auth/user/me
-    bool sessionValid = false;
-    try {
-      final response = await http
-          .get(
-            Uri.parse(ApiConstants.userMe),
-            headers: {
-              'Authorization': 'TMS $token',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        // The API returns { data: { isLogin: bool, ... } }
-        final bool isLogin = decoded['data']?['isLogin'] == true;
-        sessionValid = isLogin;
-      }
-      // Any other status (401, 403, 500…) → sessionValid stays false
-    } catch (_) {
-      // Network timeout / offline → treat as invalid to be safe
-      sessionValid = false;
-    }
-
-    if (!mounted) return;
-
-    if (!sessionValid) {
-      // Clear stale / invalid session data
+    if (!sessionValid || role == null) {
+      // If session is invalid, clear and go to login
       await UserStore.clear();
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.login);
-      return;
-    }
-
-    // 6. Session is valid → navigate to the right screen
-    if (isPinEnabled) {
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.lockScreen,
-        arguments: role,
-      );
     } else {
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.dashboard,
-        arguments: role,
-      );
+      // Navigation to correct landing page
+      if (isPinEnabled) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.lockScreen,
+          arguments: role,
+        );
+      } else {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.dashboard,
+          arguments: role,
+        );
+      }
     }
+  }
+
+  /// Helper to check session locally
+  Future<bool> _checkSession(SharedPreferences prefs) async {
+    final String? token = await UserStore.getToken();
+    final String? role = await UserStore.getRole();
+    
+    // If token and role exist, we consider the local session valid
+    if (token != null && token.isNotEmpty && role != null && role.isNotEmpty) {
+      return true;
+    }
+    return false;
   }
 
   @override

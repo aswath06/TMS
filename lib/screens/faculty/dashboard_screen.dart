@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/store/dashboard_store.dart';
+import 'package:tripzo/store/user_store.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,7 +19,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RequestStore>().fetchRequests();
+      dashboardStore.fetchStats();
+      if (useFacultyStore.profileData.value == null) {
+        useFacultyStore.fetchProfile();
+      }
     });
+
+    // Listen for remote logouts
+    useFacultyStore.errorMessage.addListener(_handleAuthError);
+  }
+
+  void _handleAuthError() async {
+    if (useFacultyStore.errorMessage.value == "SESSION_EXPIRED") {
+       useFacultyStore.errorMessage.removeListener(_handleAuthError);
+       await UserStore.clear();
+       if (!mounted) return;
+       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
+  @override
+  void dispose() {
+    useFacultyStore.errorMessage.removeListener(_handleAuthError);
+    super.dispose();
   }
 
   @override
@@ -53,7 +78,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SafeArea(
             bottom: true,
             child: RefreshIndicator(
-              onRefresh: () => store.fetchRequests(),
+              onRefresh: () async {
+                await store.fetchRequests();
+                await dashboardStore.fetchStats();
+              },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -64,12 +92,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     const SizedBox(height: 24),
 
-                    _buildHeader(
-                      "Aswath",
-                      titleColor,
-                      subColor,
-                      screenWidth,
-                      primaryBlue,
+                    ValueListenableBuilder(
+                      valueListenable: useFacultyStore.profileData,
+                      builder: (context, data, _) {
+                        return FutureBuilder<String?>(
+                          future: UserStore.getName(),
+                          builder: (context, snapshot) {
+                            final String displayName = data?['name'] ?? snapshot.data ?? "Faculty";
+                            return _buildHeader(
+                              displayName,
+                              titleColor,
+                              subColor,
+                              screenWidth,
+                              primaryBlue,
+                            );
+                          },
+                        );
+                      }
                     ),
                     const SizedBox(height: 32),
 
@@ -83,13 +122,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     _buildSectionTitle("Operational Overview", titleColor),
                     const SizedBox(height: 18),
+                    
+                    // Stats section with Zustand listener
                     _buildStatusCards(
-                      store,
+                      context.watch<DashboardStore>().state,
                       primaryBlue,
                       surfaceColor,
                       isDark,
                       screenWidth,
                     ),
+                    
                     const SizedBox(height: 36),
 
                     _buildSectionTitle("Quick Actions", titleColor),
@@ -258,20 +300,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStatusCards(
-    RequestStore store,
+    DashboardState stats,
     Color primaryBlue,
     Color surface,
     bool isDark,
     double width,
   ) {
-    // Basic reactive Logic:
-    int pendingCount = store.requests
-        .where((r) => r['status'].toString().toLowerCase().contains('pending'))
-        .length;
-    String activeId = store.requests.isNotEmpty
-        ? store.requests.first['id']
-        : "None";
-
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -279,8 +313,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           _buildSummaryCard(
             "Active Now",
-            activeId,
-            "Service",
+            "${stats.activeRoutes.toString().padLeft(2, '0')} Routes",
+            "In Progress",
             Icons.map_rounded,
             primaryBlue,
             surface,
@@ -289,8 +323,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           _buildSummaryCard(
             "Pending",
-            "${pendingCount.toString().padLeft(2, '0')} Req",
-            "Admin Review",
+            "${stats.pendingRoutes.toString().padLeft(2, '0')} Req",
+            "Awaiting Approval",
             Icons.watch_later_rounded,
             Colors.orangeAccent,
             surface,
@@ -299,8 +333,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           _buildSummaryCard(
             "Total",
-            "${store.requests.length} Req",
-            "Lifetime",
+            "${stats.totalRoutes} Req",
+            "Assigned Routes",
             Icons.bar_chart_rounded,
             Colors.teal.shade400,
             surface,

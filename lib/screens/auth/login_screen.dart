@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await http.post(
         Uri.parse(ApiConstants.login),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.getHeaders(null),
         body: jsonEncode({
           "identifier": _emailController.text.trim(),
           "password": _passwordController.text.trim(),
@@ -81,9 +81,22 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint("LOGIN ERROR: $e");
+      String errorMessage = e.toString();
+      bool isNetworkError = false;
+
+      if (errorMessage.contains("SocketException") || 
+          errorMessage.contains("Connection failed") ||
+          errorMessage.contains("ClientException")) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+        isNetworkError = true;
+      }
 
       if (mounted) {
-        LoginErrorDialog.show(context, message: e.toString());
+        LoginErrorDialog.show(
+          context, 
+          message: errorMessage,
+          onRetry: isNetworkError ? _handleLogin : null,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);
@@ -111,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final response = await http.post(
         Uri.parse(ApiConstants.googleLogin),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.getHeaders(null),
         body: jsonEncode({'idToken': idToken}),
       );
 

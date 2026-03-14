@@ -13,7 +13,7 @@ import 'package:tripzo/screens/driver/driver_routes_screen.dart';
 import 'faculty/profile_screen.dart';
 import 'faculty/missions_screen.dart';
 import 'faculty/dashboard_screen.dart';
-import 'faculty/requests_screen.dart' hide MissionsScreen;
+import 'faculty/requests_screen.dart';
 
 import '../components/custom_bottom_bar.dart';
 

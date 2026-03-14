@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 
-class MissionsScreen extends StatelessWidget {
+class MissionsScreen extends StatefulWidget {
   const MissionsScreen({super.key});
+
+  @override
+  State<MissionsScreen> createState() => _MissionsScreenState();
+}
+
+class _MissionsScreenState extends State<MissionsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RequestStore>().fetchRequests();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,14 +29,18 @@ class MissionsScreen extends StatelessWidget {
         : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF4F46E5);
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-
-    // Standardized Background Color
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF8FAFC);
 
+    final store = context.watch<RequestStore>();
+    final missionStatuses = [2, 3, 4, 5, 6, 7, 9];
+    final missions = store.requests
+        .where((req) => missionStatuses.contains(req['rawStatus']))
+        .toList();
+
     return Scaffold(
-      backgroundColor: bgColor, // Updated from transparent to match history
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,90 +100,97 @@ class MissionsScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                children: [
-                  _buildDateBucket("Today • Feb 06", primaryBlue),
-                  _buildMissionCard(
-                    context,
-                    cardColor: cardColor,
-                    titleColor: titleColor,
-                    subColor: subColor,
-                    missionTitle: "Airport Reception",
-                    time: "09:00 AM",
-                    driverName: "John Doe",
-                    driverPhone: "+91 98765 43210",
-                    vehicleInfo: "White Innova (TN-01-AV-1234)",
-                    capacity: "6 Seater",
-                    pathType: "Two-Way",
-                    detailedStops: [
-                      {
-                        'location': 'Main Campus',
-                        'eta': '09:00 AM',
-                        'type': 'Pickup Point',
-                      },
-                      {
-                        'location': 'Terminal 2',
-                        'eta': '09:25 AM',
-                        'type': 'Transit',
-                      },
-                      {
-                        'location': 'Faculty Guest House',
-                        'eta': '09:45 AM',
-                        'type': 'Drop Point',
-                      },
-                    ],
-                    status: "Active",
-                    statusColor: Colors.green,
-                    primaryBlue: primaryBlue,
-                  ),
-                  const SizedBox(height: 28),
-                  _buildDateBucket("Monday • Feb 10", primaryBlue),
-                  _buildMissionCard(
-                    context,
-                    cardColor: cardColor,
-                    titleColor: titleColor,
-                    subColor: subColor,
-                    missionTitle: "Conference Shuttle",
-                    time: "07:30 AM",
-                    driverName: "Robert Smith",
-                    driverPhone: "+91 88888 77777",
-                    vehicleInfo: "SML Bus (TN-01-BQ-5678)",
-                    capacity: "32 Seater",
-                    pathType: "Multi-Path",
-                    detailedStops: [
-                      {
-                        'location': 'Housing Block A',
-                        'eta': '07:30 AM',
-                        'type': 'Pickup',
-                      },
-                      {
-                        'location': 'Admin Square',
-                        'eta': '07:45 AM',
-                        'type': 'Transit',
-                      },
-                      {
-                        'location': 'Convention Center',
-                        'eta': '08:00 AM',
-                        'type': 'Final Drop',
-                      },
-                    ],
-                    status: "Scheduled",
-                    statusColor: Colors.blue,
-                    primaryBlue: primaryBlue,
-                  ),
-                  const SizedBox(height: 110),
-                ],
-              ),
+              child: store.isLoading && missions.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: () => store.fetchRequests(),
+                      child: missions.isEmpty
+                          ? ListView(
+                              children: [
+                                SizedBox(
+                                  height: MediaQuery.of(context).size.height * 0.3,
+                                ),
+                                Center(
+                                  child: Text(
+                                    "No active missions",
+                                    style: TextStyle(
+                                      color: subColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                              itemCount: missions.length,
+                              itemBuilder: (context, index) {
+                                final mission = missions[index];
+                                // Map mission data to card helper
+                                return _buildMissionCard(
+                                  context,
+                                  cardColor: cardColor,
+                                  titleColor: titleColor,
+                                  subColor: subColor,
+                                  requestId: mission['dbId']?.toString() ?? "",
+                                  rawStatus: mission['rawStatus'] ?? 0,
+                                  missionTitle: mission['vehicle'] ?? "Transport Request",
+                                  time: mission['date'] ?? "TBD",
+                                  driverName: "Driver Assigned", // Detailed info would need more API mapping
+                                  driverPhone: "N/A",
+                                  vehicleInfo: mission['vehicle'] ?? "Pending",
+                                  capacity: mission['passengers'].toString(),
+                                  pathType: "One-Way", // Assuming default for now
+                                  detailedStops: [
+                                    {
+                                      'location': mission['pickup'] ?? "Start",
+                                      'eta': "Start",
+                                      'type': 'Pickup',
+                                    },
+                                    if (mission['intermediateStops'] is List)
+                                    ... (mission['intermediateStops'] as List).map((s) => {
+                                      'location': s.toString(),
+                                      'eta': "Transit",
+                                      'type': 'Transit',
+                                    }),
+                                    {
+                                      'location': mission['drop'] ?? "Destination",
+                                      'eta': "End",
+                                      'type': 'Drop',
+                                    },
+                                  ],
+                                  status: mission['status'] ?? "Active",
+                                  statusColor: _getStatusColor(mission['rawStatus']),
+                                  primaryBlue: primaryBlue,
+                                );
+                              },
+                            ),
+                    ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Color _getStatusColor(int? status) {
+    switch (status) {
+      case 2:
+      case 5:
+        return Colors.blue;
+      case 4:
+        return Colors.indigo;
+      case 7:
+        return Colors.green;
+      case 9:
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
   }
 
   // ... (Keeping your existing helper methods _buildDateBucket, _buildMissionCard, etc.)
@@ -205,6 +231,8 @@ class MissionsScreen extends StatelessWidget {
     required String status,
     required Color statusColor,
     required Color primaryBlue,
+    required String requestId,
+    required int rawStatus,
   }) {
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -221,6 +249,8 @@ class MissionsScreen extends StatelessWidget {
             stops: detailedStops,
             status: status,
             statusColor: statusColor,
+            requestId: requestId,
+            rawStatus: rawStatus,
           ),
         ),
       ),

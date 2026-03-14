@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:tripzo/store/request_store.dart';
+import 'mission_details_screen.dart';
 
 class MissionHistoryScreen extends StatefulWidget {
   const MissionHistoryScreen({super.key});
@@ -12,6 +15,14 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
   String _searchQuery = "";
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RequestStore>().fetchRequests();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -23,6 +34,24 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
+
+    final store = context.watch<RequestStore>();
+    final completedMissions = store.requests
+        .where((req) => req['rawStatus'] == 8)
+        .where((req) =>
+            req['pickup']
+                .toString()
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()) ||
+            req['drop']
+                .toString()
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()) ||
+            req['vehicle']
+                .toString()
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()))
+        .toList();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -40,72 +69,93 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                   child: _buildHeader(context, titleColor),
                 ),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          _buildSummaryCard(
-                            cardColor,
-                            titleColor,
-                            subColor,
-                            primaryBlue,
+                  child: store.isLoading && completedMissions.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : RefreshIndicator(
+                          onRefresh: () => store.fetchRequests(),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(
+                              parent: BouncingScrollPhysics(),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 20),
+                                  _buildSummaryCard(
+                                    cardColor,
+                                    titleColor,
+                                    subColor,
+                                    primaryBlue,
+                                    completedMissions.length,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildSearchField(isDark, subColor, cardColor),
+                                  const SizedBox(height: 32),
+                                  _buildSectionTitle(
+                                    "Completed Missions",
+                                    primaryBlue,
+                                    titleColor,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (completedMissions.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 40),
+                                      child: Center(
+                                        child: Text(
+                                          "No completed missions found",
+                                          style: TextStyle(color: subColor),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    ...completedMissions.map((mission) {
+                                      return GestureDetector(
+                                        onTap: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => MissionDetailsScreen(
+                                              missionTitle: mission['vehicle'] ?? "Mission",
+                                              time: mission['date'] ?? "TBD",
+                                              driverName: "N/A",
+                                              driverPhone: "N/A",
+                                              vehicleInfo: mission['vehicle'] ?? "N/A",
+                                              capacity: mission['passengers'].toString(),
+                                              pathType: "History",
+                                              stops: [
+                                                {'location': mission['pickup'] ?? "Start", 'eta': "Start"},
+                                                if (mission['intermediateStops'] is List)
+                                                  ...(mission['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': "Transit"}),
+                                                {'location': mission['drop'] ?? "End", 'eta': "End"},
+                                              ],
+                                              status: "Completed",
+                                              statusColor: Colors.green,
+                                              requestId: mission['dbId']?.toString() ?? "",
+                                              rawStatus: mission['rawStatus'] ?? 8,
+                                            ),
+                                          ),
+                                        ),
+                                        child: _buildHistoryCard(
+                                          title: mission['vehicle'] ?? "Mission",
+                                          date: mission['date'] ?? "TBD",
+                                          driver: "N/A",
+                                          pathType: "Completed",
+                                          stops: (mission['intermediateStops'] as List).length + 2,
+                                          distance: "N/A",
+                                          cardColor: cardColor,
+                                          titleColor: titleColor,
+                                          subColor: subColor,
+                                          primaryBlue: primaryBlue,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                          _buildSearchField(isDark, subColor, cardColor),
-                          const SizedBox(height: 32),
-                          _buildSectionTitle(
-                            "Monthly Archives",
-                            primaryBlue,
-                            titleColor,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildHistoryDateBucket("February 2026", subColor),
-                          _buildHistoryCard(
-                            title: "VIP Delegation Pickup",
-                            date: "Feb 05",
-                            driver: "Mark Spencer",
-                            pathType: "One-Way",
-                            stops: 2,
-                            distance: "12.4 km",
-                            cardColor: cardColor,
-                            titleColor: titleColor,
-                            subColor: subColor,
-                            primaryBlue: primaryBlue,
-                          ),
-                          _buildHistoryCard(
-                            title: "Faculty Seminar Shuttle",
-                            date: "Feb 04",
-                            driver: "Sarah Jenkins",
-                            pathType: "Multi-Path",
-                            stops: 5,
-                            distance: "42.0 km",
-                            cardColor: cardColor,
-                            titleColor: titleColor,
-                            subColor: subColor,
-                            primaryBlue: primaryBlue,
-                          ),
-                          _buildHistoryDateBucket("January 2026", subColor),
-                          _buildHistoryCard(
-                            title: "Campus to Airport",
-                            date: "Jan 28",
-                            driver: "John Doe",
-                            pathType: "Two-Way",
-                            stops: 3,
-                            distance: "28.5 km",
-                            cardColor: cardColor,
-                            titleColor: titleColor,
-                            subColor: subColor,
-                            primaryBlue: primaryBlue,
-                          ),
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
+                        ),
                 ),
               ],
             ),
@@ -148,6 +198,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     Color title,
     Color sub,
     Color blue,
+    int totalMissions,
   ) {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -165,9 +216,9 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem("24", "Missions", blue, title),
-          _buildStatItem("156", "Stops", blue, title),
-          _buildStatItem("1.2k", "Kms", blue, title),
+          _buildStatItem(totalMissions.toString(), "Missions", blue, title),
+          _buildStatItem("-", "Stops", blue, title), // Could be calculated if needed
+          _buildStatItem("-", "Kms", blue, title),
         ],
       ),
     );

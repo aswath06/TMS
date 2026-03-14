@@ -55,7 +55,7 @@ class RequestCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        req['faculty'] ?? 'N/A',
+                        req['routeName'] ?? 'Unknown Route',
                         style: TextStyle(
                           color: titleColor,
                           fontWeight: FontWeight.bold,
@@ -153,13 +153,13 @@ class RequestCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildFooterItem(
-                  Icons.group_outlined,
-                  "${req['passengers'] ?? 0} Guests",
+                  Icons.person_pin_rounded,
+                  req['faculty'] ?? 'Staff Member',
                   subColor,
                 ),
                 _buildFooterItem(
-                  Icons.directions_car_filled_outlined,
-                  "${req['vehicle'] ?? 'Vehicle'} (${req['capacity'] ?? '0'})",
+                  Icons.group_outlined,
+                  "${req['passengers'] ?? 0} Guests",
                   subColor,
                 ),
               ],

@@ -52,6 +52,9 @@ dependencies:
   fl_chart: ^1.1.1
   intl: ^0.18.1
   shimmer: ^3.0.0
+  qr_flutter: ^4.1.0
+  zustand: ^0.0.5
+  flutter_zustand: ^0.0.5
 
 flutter_launcher_icons:
   android: "launcher_icon"

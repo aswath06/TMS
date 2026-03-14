@@ -53,10 +53,7 @@ class _ScannerPageState extends State<ScannerPage>
 
       final response = await http.post(
         Uri.parse("${ApiConstants.baseUrl}/auth/web-login-approve"),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "TMS $token",
-        },
+        headers: ApiConstants.getHeaders(token),
         body: jsonEncode({"sessionId": scannedSessionId, "accessHours": hours}),
       );
 

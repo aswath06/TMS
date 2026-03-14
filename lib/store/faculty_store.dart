@@ -33,9 +33,21 @@ class FacultyStore {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
+        
+        // Remote logout check
+        if (decoded['data'] != null && decoded['data']['isLogin'] == false) {
+           errorMessage.value = "SESSION_EXPIRED";
+           return;
+        }
+
         profileData.value = decoded['data'];
+        
+        // Persist name for dashboards
+        if (decoded['data'] != null && decoded['data']['name'] != null) {
+          await UserStore.saveName(decoded['data']['name']);
+        }
       } else if (response.statusCode == 401) {
-        errorMessage.value = "Unauthorized. Please login again.";
+        errorMessage.value = "SESSION_EXPIRED";
       } else {
         errorMessage.value = "Error: ${response.statusCode}";
       }
