@@ -306,12 +306,18 @@ class DriverStore extends ChangeNotifier {
 
     try {
       final token = await UserStore.getToken();
+      final userId = await UserStore.getUserId();
+      
       if (token == null) {
         _leavesError = "Session expired.";
         return;
       }
 
-      final url = "${ApiConstants.baseUrl}/api/leaves/get-all?page=1&limit=10";
+      String url = "${ApiConstants.baseUrl}/api/leaves/get-all?page=1&limit=10";
+      if (userId != null) {
+        url += "&user_id=$userId";
+      }
+
       debugPrint("--- Fetching Leave History ---");
       debugPrint("URL: $url");
       debugPrint("Headers: ${ApiConstants.getHeaders(token)}");
