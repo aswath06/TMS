@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:tripzo/screens/faculty/missions/reassign_guest_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -1638,39 +1639,109 @@ class _SwipeToConfirm extends StatefulWidget {
   State<_SwipeToConfirm> createState() => _SwipeToConfirmState();
 }
 
-class _SwipeToConfirmState extends State<_SwipeToConfirm> {
+class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProviderStateMixin {
   double _dragValue = 0;
   bool _isConfirmed = false;
+  late AnimationController _vibeController;
+  final List<_SmokeParticle> _smoke = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _vibeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+  }
+
+  @override
+  void dispose() {
+    _vibeController.dispose();
+    super.dispose();
+  }
+
+  void _addSmoke(double position) {
+    if (_smoke.length < 15) {
+      setState(() {
+        _smoke.add(_SmokeParticle(position));
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width - 40;
-    const double knobSize = 60;
+    const double knobSize = 64;
     final double maxDrag = width - knobSize - 8;
 
+    // Pulse smoke logic
+    if (_dragValue > 10 && _dragValue < maxDrag) {
+      _addSmoke(_dragValue + knobSize / 2);
+    }
+
+    // Update smoke particles
+    _smoke.removeWhere((p) => p.isDead);
+    for (var p in _smoke) p.update();
+
     return Container(
-      height: 70,
+      height: 72,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(35),
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(36),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
       child: Stack(
+        alignment: Alignment.center,
         children: [
-          Center(
-            child: Text(
-              widget.label,
-              style: const TextStyle(
-                color: Color(0xFF6366F1),
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
-                fontSize: 14,
+          // Road markings
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(
+              12,
+              (index) => Container(
+                width: 12,
+                height: 2,
+                decoration: BoxDecoration(
+                  color: Colors.yellow.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(1),
+                ),
               ),
             ),
           ),
+
+          // Smoke particles
+          ..._smoke.map((p) => Positioned(
+            left: 4 + p.position - (p.size * p.progress / 2),
+            top: 25 + p.offsetY,
+            child: Opacity(
+              opacity: p.opacity,
+              child: Container(
+                width: p.size * p.progress,
+                height: p.size * p.progress,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.4),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          )),
+          
+          Text(
+            widget.label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.3),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+              fontSize: 10,
+            ),
+          ),
+          
           Positioned(
             left: 4 + _dragValue,
-            top: 5,
+            top: 4,
             child: GestureDetector(
               onHorizontalDragUpdate: (details) {
                 if (_isConfirmed) return;
@@ -1678,22 +1749,30 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> {
                   _dragValue += details.delta.dx;
                   if (_dragValue < 0) _dragValue = 0;
                   if (_dragValue > maxDrag) _dragValue = maxDrag;
+                  
+                  if (_dragValue > 10 && !_vibeController.isAnimating) {
+                    _vibeController.repeat(reverse: true);
+                  } else if (_dragValue <= 10) {
+                    _vibeController.stop();
+                  }
                 });
               },
               onHorizontalDragEnd: (details) {
                 if (_isConfirmed) return;
-                if (_dragValue >= maxDrag * 0.8) {
+                _vibeController.stop();
+                
+                if (_dragValue >= maxDrag * 0.85) {
                   setState(() {
                     _dragValue = maxDrag;
                     _isConfirmed = true;
                   });
                   widget.onConfirm();
-                  // Reset after a delay
                   Future.delayed(const Duration(seconds: 1), () {
                     if (mounted) {
                       setState(() {
                         _dragValue = 0;
                         _isConfirmed = false;
+                        _smoke.clear();
                       });
                     }
                   });
@@ -1703,27 +1782,54 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> {
                   });
                 }
               },
-              child: Container(
-                width: knobSize,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+              child: AnimatedBuilder(
+                animation: _vibeController,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, _vibeController.value * 2),
+                    child: child,
+                  );
+                },
+                child: Container(
+                  width: knobSize,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withOpacity(0.5),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 30),
                 ),
-                child: const Icon(Icons.local_shipping_rounded, color: Colors.white),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _SmokeParticle {
+  double position;
+  double progress = 0.1;
+  double opacity = 0.5;
+  double offsetY = 0;
+  double size = 20;
+  bool isDead = false;
+
+  _SmokeParticle(this.position);
+
+  void update() {
+    progress += 0.05;
+    opacity = (opacity - 0.02).clamp(0.0, 1.0);
+    offsetY -= 1.5;
+    if (opacity <= 0) isDead = true;
   }
 }
 
@@ -1754,12 +1860,8 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
 
   @override
   void dispose() {
-    for (var c in _controllers) {
-      c.dispose();
-    }
-    for (var f in _focusNodes) {
-      f.dispose();
-    }
+    for (var c in _controllers) c.dispose();
+    for (var f in _focusNodes) f.dispose();
     super.dispose();
   }
 
@@ -1788,7 +1890,12 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? "Verified Successfully"), backgroundColor: Colors.green),
+            SnackBar(
+              content: Text(data['message'] ?? "Verified Successfully"),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
           );
           widget.onSuccess();
         }
@@ -1797,8 +1904,20 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
+        // Find topmost scaffold or use current to show above modal
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            dismissDirection: DismissDirection.up,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 120,
+              left: 20,
+              right: 20,
+            ),
+          ),
         );
       }
     } finally {
@@ -1830,59 +1949,82 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       decoration: BoxDecoration(
         color: widget.bgColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+        borderRadius: BorderRadius.circular(40),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.2), borderRadius: BorderRadius.circular(10))),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(height: 24),
             Text(
-              "Enter OTP CODE",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: widget.titleColor, letterSpacing: -0.5),
+              "OTP Verification",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: widget.titleColor,
+                letterSpacing: -0.8,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              widget.isStart ? "Verify starting of mission" : "Verify completion of mission",
-              style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+              widget.isStart ? "Verify start of mission" : "Verify end of mission",
+              style: TextStyle(
+                color: widget.titleColor.withOpacity(0.6),
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 32),
             if (_isScanning)
               Container(
                 height: 200,
                 width: double.infinity,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.black),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: Colors.black,
+                  border: Border.all(color: const Color(0xFF6366F1), width: 2),
+                ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(22),
                   child: MobileScanner(onDetect: _onDetect),
                 ),
               )
             else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(6, (i) => _buildOtpField(i)),
+              FittedBox(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(6, (i) => _buildOtpField(i)),
+                ),
               ),
             const SizedBox(height: 32),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: TextButton.icon(
                     onPressed: () => setState(() => _isScanning = !_isScanning),
                     icon: Icon(_isScanning ? Icons.keyboard_rounded : Icons.qr_code_scanner_rounded),
-                    label: Text(_isScanning ? "TYPE OTP" : "SCAN OTP", style: const TextStyle(fontWeight: FontWeight.w900)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
+                    label: Text(_isScanning ? "MANUAL" : "SCAN QR"),
+                    style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF6366F1),
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF6366F1), width: 2)),
-                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                      ),
                     ),
                   ),
                 ),
@@ -1900,13 +2042,23 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
                       elevation: 0,
                     ),
                     child: _isVerifying
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                        : const Text("VERIFY", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                          )
+                        : const Text(
+                            "VERIFY",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 2,
+                            ),
+                          ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -1915,30 +2067,49 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
 
   Widget _buildOtpField(int index) {
     return Container(
-      width: 45,
-      height: 55,
+      width: 48,
+      height: 60,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _focusNodes[index].hasFocus ? const Color(0xFF6366F1) : Colors.transparent, width: 2),
+        color: const Color(0xFF6366F1).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _focusNodes[index].hasFocus ? const Color(0xFF6366F1) : Colors.transparent,
+          width: 2,
+        ),
       ),
-      child: TextField(
-        controller: _controllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 1,
-        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
-        decoration: const InputDecoration(counterText: "", border: InputBorder.none),
-        onChanged: (value) {
-          if (value.isNotEmpty) {
-            if (index < 5) _focusNodes[index + 1].requestFocus();
-            else _focusNodes[index].unfocus();
-          } else if (value.isEmpty && index > 0) {
+      child: KeyboardListener(
+        focusNode: FocusNode(), // Captures key events
+        onKeyEvent: (event) {
+          if (event is KeyDownEvent && 
+              event.logicalKey == LogicalKeyboardKey.backspace &&
+              _controllers[index].text.isEmpty && 
+              index > 0) {
             _focusNodes[index - 1].requestFocus();
+            _controllers[index - 1].clear();
           }
         },
+        child: TextField(
+          controller: _controllers[index],
+          focusNode: _focusNodes[index],
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          maxLength: 1,
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+          decoration: const InputDecoration(counterText: "", border: InputBorder.none),
+          onChanged: (value) {
+            if (value.isNotEmpty) {
+              if (index < 5) {
+                _focusNodes[index + 1].requestFocus();
+              } else {
+                _focusNodes[index].unfocus();
+              }
+            } else if (value.isEmpty && index > 0) {
+              // Standard delete handling if field just became empty
+              _focusNodes[index - 1].requestFocus();
+            }
+          },
+        ),
       ),
     );
   }

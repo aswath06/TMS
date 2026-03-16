@@ -8,7 +8,7 @@ import 'package:tripzo/screens/admin/admin_driver_screen.dart';
 import 'package:tripzo/screens/driver/DriverLeaveScreen.dart';
 import 'package:tripzo/screens/driver/DriverProfileScreen.dart';
 import 'package:tripzo/screens/driver/driver_duties_screen.dart';
-import 'package:tripzo/screens/driver/completed_routes_screen.dart';
+import 'package:tripzo/screens/driver/driver_routes_screen.dart';
 // Faculty/Admin Screens
 import 'faculty/profile_screen.dart';
 import 'faculty/missions_screen.dart';
@@ -62,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
       default:  
         return [
           const DriverDutiesScreen(),
-          const DriverCompletedRoutesScreen(),
+          const DriverRoutesScreen(),
           const DriverLeaveScreen(),
           const DriverProfileScreen(),
         ];

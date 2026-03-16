@@ -44,17 +44,18 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             child: Consumer<DriverStore>(
               builder: (context, store, _) {
                 final profile = store.profileData.value;
-                final allMissions = List<Map<String, dynamic>>.from(store.missions);
+                final allTasksList = List<Map<String, dynamic>>.from(store.missions);
                 
-                // Sort missions by date/time
-                allMissions.sort((a, b) {
+                // Filter for non-completed missions and sort by date/time
+                final upcoming = allTasksList.where((m) => (m['status'] ?? 0) < 8).toList();
+                upcoming.sort((a, b) {
                   final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
                   final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
                   return aTime.compareTo(bTime);
                 });
 
-                // Only show the first (nearest) mission
-                final missions = allMissions.isNotEmpty ? [allMissions.first] : [];
+                // Only show the first (nearest) upcoming mission on the dashboard
+                final priorityMissions = upcoming.isNotEmpty ? [upcoming.first] : [];
                 final String driverName = profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver");
 
                 return RefreshIndicator(
@@ -71,16 +72,16 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                         const SizedBox(height: 24),
                         _buildHeader(driverName, titleColor, subColor, screenWidth, primaryBlue, isTamil),
                         const SizedBox(height: 32),
-                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, missions),
+                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList),
                         const SizedBox(height: 36),
                         _buildSectionTitle(isTamil ? "இன்றைய பணிகள்" : "Your Assignments", titleColor),
                         const SizedBox(height: 18),
-                        if (store.isLoadingMissions && missions.isEmpty)
+                        if (store.isLoadingMissions && priorityMissions.isEmpty)
                           const Center(child: CircularProgressIndicator())
-                        else if (missions.isEmpty)
+                        else if (priorityMissions.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else
-                          ...missions.map((m) => _buildMissionCard(
+                          ...priorityMissions.map((m) => _buildMissionCard(
                                 context: context,
                                 mission: m,
                                 surface: surfaceColor,
@@ -177,8 +178,8 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     );
   }
 
-  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List missions) {
-    final pendingCount = missions.where((m) => m['status'] < 7).length;
+  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList) {
+    final pendingCount = missionList.where((m) => m['status'] < 7).length;
     return Row(
       children: [
         _statItem(
@@ -192,7 +193,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         const SizedBox(width: 16),
         _statItem(
           label: isTamil ? "முடிந்தது" : "Completed",
-          value: missions.where((m) => m['status'] >= 7).length.toString().padLeft(2, '0'),
+          value: missionList.where((m) => m['status'] >= 7).length.toString().padLeft(2, '0'),
           icon: Icons.verified_user_rounded,
           accentColor: Colors.tealAccent.shade700,
           surface: surface,

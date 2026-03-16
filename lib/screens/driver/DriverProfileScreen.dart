@@ -167,16 +167,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         ),
         const SizedBox(height: 32),
 
-        if (routes.isNotEmpty) ...[
-          _buildSectionTitle(
-            isTamil ? "வரவிருக்கும் பயணங்கள்" : "Upcoming Routes",
-            titleColor,
-          ),
-          const SizedBox(height: 16),
-          ...routes.take(3).map((r) => _buildSimpleRouteCard(r, cardColor, titleColor, subColor, isTamil)),
-          const SizedBox(height: 32),
-        ],
-
         _buildSectionTitle(
           isTamil ? "கணக்கு விவரங்கள்" : "Account Details",
           titleColor,

@@ -39,7 +39,13 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
           SafeArea(
             child: Consumer<DriverStore>(
               builder: (context, store, _) {
-                final completedMissions = store.missions.where((m) => (m['status'] ?? 0) >= 8).toList();
+                final allMissions = List<Map<String, dynamic>>.from(store.missions);
+                allMissions.sort((a, b) {
+                  final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
+                  final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
+                  return bTime.compareTo(aTime); // Latest first for history
+                });
+                final completedMissions = allMissions.where((m) => (m['status'] ?? 0) >= 8).toList();
 
                 return RefreshIndicator(
                   onRefresh: () async {
@@ -154,9 +160,10 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
     final String routeName = mission['routeName'] ?? "Unknown Route";
     final String pickup = mission['startLocation'] ?? 'Unknown';
     final String drop = mission['destinationLocation'] ?? 'Unknown';
-    final String time = _formatDate(mission['start_datetime']);
+    final String time = _formatDate(mission['start_datetime'] ?? mission['startDate']);
     final int rawStatus = mission['status'] ?? 0;
     
+    // Status Logic - Always Completed here
     String statusStr = isTamil ? "முடிந்தது" : "Completed";
     Color statusColor = Colors.green;
 
@@ -223,6 +230,15 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
             ),
             const SizedBox(height: 18),
             Text(routeName, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: titleColor)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.person_pin_circle_rounded, size: 14, color: subColor),
+                const SizedBox(width: 4),
+                Text("${isTamil ? 'உருவாக்கியவர்' : 'Created by'}: ", style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600)),
+                Text(mission['createdBy']?['name'] ?? "Admin", style: TextStyle(fontSize: 12, color: primary, fontWeight: FontWeight.w800)),
+              ],
+            ),
             const SizedBox(height: 20),
             _buildTimeline(pickup, drop, primary, titleColor),
             const SizedBox(height: 24),
