@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
+import 'package:tripzo/components/common/structural_loading.dart';
 
 class DriverLeaveScreen extends StatefulWidget {
   const DriverLeaveScreen({super.key});
@@ -96,10 +97,7 @@ class _DriverLeaveScreenState extends State<DriverLeaveScreen> {
                         const SizedBox(height: 16),
                         
                         if (store.isLoadingLeaves && store.leaves.isEmpty)
-                          const Center(child: Padding(
-                            padding: EdgeInsets.all(20.0),
-                            child: CircularProgressIndicator(),
-                          ))
+                          const StructuralLoading()
                         else if (store.leavesError != null)
                           _buildErrorState(store.leavesError!, isTamil, isDark)
                         else if (store.leaves.isEmpty)

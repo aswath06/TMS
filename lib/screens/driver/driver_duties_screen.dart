@@ -44,7 +44,17 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             child: Consumer<DriverStore>(
               builder: (context, store, _) {
                 final profile = store.profileData.value;
-                final missions = store.missions;
+                final allMissions = List<Map<String, dynamic>>.from(store.missions);
+                
+                // Sort missions by date/time
+                allMissions.sort((a, b) {
+                  final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
+                  final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
+                  return aTime.compareTo(bTime);
+                });
+
+                // Only show the first (nearest) mission
+                final missions = allMissions.isNotEmpty ? [allMissions.first] : [];
                 final String driverName = profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver");
 
                 return RefreshIndicator(
@@ -336,38 +346,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                 _iconInfo(Icons.group_rounded, "${mission['passengerCount']} ${isTamil ? 'பயணிகள்' : 'Guests'}", isDark),
               ],
             ),
-            if (rawStatus == 6 || rawStatus == 7) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => VerifyMissionScreen(
-                        requestId: mission['id'].toString(),
-                        isStart: rawStatus == 6,
-                      ),
-                    ),
-                  ).then((val) {
-                    if (val == true) {
-                      useDriverStore.fetchMissions();
-                    }
-                  }),
-                  icon: Icon(rawStatus == 6 ? Icons.qr_code_scanner_rounded : Icons.check_circle_rounded, color: Colors.white, size: 20),
-                  label: Text(
-                    rawStatus == 6 ? "START OTP" : "ARRIVED OTP",
-                    style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: rawStatus == 6 ? const Color(0xFF6366F1) : Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
+            // OTP Button removed as per requirement (only show in details screen)
           ],
         ),
       ),
