@@ -1042,6 +1042,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildVehicleDetails(Color cardColor, Color blue, Color sub, String vInfo, String cap) {
+    String vType = vInfo;
+    String vNumber = "";
+    if (vInfo.contains('(')) {
+      vType = vInfo.split('(')[0].trim();
+      vNumber = vInfo.split('(')[1].replaceAll(')', '').trim();
+    }
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -1052,15 +1059,23 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         ],
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildEnhancedSmallInfo(
             Icons.directions_car_filled_rounded,
-            vInfo.split('(')[0],
+            vType,
             "VEHICLE",
             blue,
             sub,
           ),
-          const SizedBox(width: 40),
+          if (vNumber.isNotEmpty)
+            _buildEnhancedSmallInfo(
+              Icons.tag_rounded,
+              vNumber,
+              "PLATE NO",
+              blue,
+              sub,
+            ),
            _buildEnhancedSmallInfo(
             Icons.groups_rounded,
             cap,
@@ -1117,50 +1132,86 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   final i = entry.key;
                   final g = entry.value;
                   final phone = g['phone'];
+                  final status = g['status']?.toString().toUpperCase() ?? "UNKNOWN";
+                  final Color statusColor = status == "ACTIVE" ? Colors.green : Colors.orange;
 
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: blue.withOpacity(0.1), shape: BoxShape.circle),
-                          child: Text(
-                            "${i + 1}",
-                            style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: blue.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: blue.withOpacity(0.05)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: blue.withOpacity(0.1), shape: BoxShape.circle),
+                            child: Text(
+                              "${i + 1}",
+                              style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                g['name'] ?? "Unknown", 
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
-                              ),
-                              Text(
-                                phone ?? 'No Phone',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: subColor),
-                              ),
-                            ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        g['name'] ?? "Unknown", 
+                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        status,
+                                        style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.phone_rounded, size: 12, color: subColor.withOpacity(0.7)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      phone ?? 'No Phone',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subColor),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        if (phone != null && phone.toString().isNotEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.phone_in_talk_rounded, color: Colors.green, size: 20),
-                            onPressed: () async {
-                              final Uri url = Uri.parse("tel:$phone");
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(url);
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
+                          if (phone != null && phone.toString().isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.phone_in_talk_rounded, color: Colors.green, size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () async {
+                                final Uri url = Uri.parse("tel:$phone");
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url);
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
+                                  }
                                 }
-                              }
-                            },
-                          )
-                      ],
+                              },
+                            )
+                        ],
+                      ),
                     ),
                   );
                 }),

@@ -43,6 +43,7 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> {
     setState(() => _isVerifying = true);
     try {
       final String? token = await UserStore.getToken();
+      final int? driverId = await UserStore.getUserId();
       
       // Encrypt the OTP before sending
       final encryptedOtp = CryptoUtils.encryptOTP(otp);
@@ -51,13 +52,16 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> {
           ? "${ApiConstants.baseUrl}/request/start-route"
           : "${ApiConstants.baseUrl}/request/complete-route-otp";
       
+      final body = {
+        "route_id": int.tryParse(widget.requestId) ?? 0,
+        "driver_id": driverId,
+        "otp": encryptedOtp,
+      };
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({
-          "route_id": int.tryParse(widget.requestId) ?? 0,
-          "otp": encryptedOtp,
-        }),
+        body: jsonEncode(body),
       );
 
       final data = jsonDecode(response.body);

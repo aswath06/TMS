@@ -274,7 +274,9 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             time: time,
             driverName: "You",
             driverPhone: "",
-            vehicleInfo: "Vehicle #${mission['vehicleAssigned']}",
+            vehicleInfo: mission['vehiclePlate'] != null 
+                ? "${mission['vehicleType'] ?? 'Vehicle'} (${mission['vehiclePlate']})" 
+                : "Vehicle #${mission['vehicleAssigned']}",
             capacity: "${mission['passengerCount']} Guests",
             passengerCount: mission['passengerCount']?.toString() ?? "0",
             pathType: mission['travelType'] ?? "One-Way",
@@ -344,6 +346,11 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _iconInfo(Icons.assignment_ind_rounded, id, isDark),
+                 _iconInfo(
+                  Icons.directions_car_filled_rounded, 
+                  mission['vehiclePlate'] ?? "Vehicle #${mission['vehicleAssigned']}", 
+                  isDark
+                ),
                 _iconInfo(Icons.group_rounded, "${mission['passengerCount']} ${isTamil ? 'பயணிகள்' : 'Guests'}", isDark),
               ],
             ),
