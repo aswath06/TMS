@@ -121,9 +121,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         const SizedBox(height: 16),
         _buildMenuGrid(data, isLoading, cardColor, titleColor, subColor),
         const SizedBox(height: 32),
-        _buildSectionTitle("Administrative Files", titleColor),
-        const SizedBox(height: 16),
-        _buildFileSection(cardColor, titleColor, subColor),
+        // _buildSectionTitle("Administrative Files", titleColor),
+        // const SizedBox(height: 16),
+        // _buildFileSection(cardColor, titleColor, subColor),
       ],
     );
   }
@@ -253,27 +253,27 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
-  Widget _buildFileSection(Color cardColor, Color titleColor, Color subColor) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.picture_as_pdf, color: Colors.red),
-          const SizedBox(width: 16),
-          Text(
-            "Access_Logs.pdf",
-            style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
-          ),
-          const Spacer(),
-          Icon(Icons.download, color: subColor),
-        ],
-      ),
-    );
+  // Widget _buildFileSection(Color cardColor, Color titleColor, Color subColor) {
+  //   return Container(
+  //     width: double.infinity,
+  //     padding: const EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       color: cardColor,
+  //       borderRadius: BorderRadius.circular(16),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         const Icon(Icons.picture_as_pdf, color: Colors.red),
+  //         const SizedBox(width: 16),
+  //         Text(
+  //           "Access_Logs.pdf",
+  //           style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+  //         ),
+  //         const Spacer(),
+  //         Icon(Icons.download, color: subColor),
+  //       ],
+  //     ),
+  //   );
   }
 
   Widget _buildBackgroundDecor(bool isDark) {
@@ -292,4 +292,3 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       ),
     );
   }
-}

@@ -64,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
           token: token,
           role: user['role'] ?? 'faculty',
           email: user['email'],
+          id: user['id'] ?? 0,
         );
 
         if (mounted) {
@@ -142,6 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
           token: jwtToken,
           role: userData['role'] ?? 'faculty',
           email: userData['email'],
+          id: userData['id'] ?? 0,
         );
 
         if (mounted) {

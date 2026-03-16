@@ -10,6 +10,8 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
+import 'package:tripzo/screens/driver/verify_mission_screen.dart';
+
 
 class MissionDetailsScreen extends StatefulWidget {
   final String missionTitle,
@@ -18,6 +20,7 @@ class MissionDetailsScreen extends StatefulWidget {
       driverPhone,
       vehicleInfo,
       capacity,
+      passengerCount,
       pathType,
       status,
       requestId,
@@ -34,6 +37,7 @@ class MissionDetailsScreen extends StatefulWidget {
     required this.driverPhone,
     required this.vehicleInfo,
     required this.capacity,
+    this.passengerCount = "0",
     required this.pathType,
     required this.stops,
     required this.status,
@@ -42,6 +46,7 @@ class MissionDetailsScreen extends StatefulWidget {
     required this.rawStatus,
     this.creatorName = "Faculty Member",
   });
+
 
   @override
   State<MissionDetailsScreen> createState() => _MissionDetailsScreenState();
@@ -63,6 +68,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Map<String, dynamic>? _missionData;
   bool _isFetchingDetails = true;
   bool _isApproving = false;
+  String? _userRole;
+
 
   @override
   void initState() {
@@ -76,8 +83,15 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMissionDetails();
       _loadMapData();
+      _fetchUserRole();
     });
   }
+
+  Future<void> _fetchUserRole() async {
+    final role = await UserStore.getRole();
+    if (mounted) setState(() => _userRole = role);
+  }
+
 
   Future<void> _fetchMissionDetails() async {
     setState(() => _isFetchingDetails = true);
@@ -362,9 +376,30 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Future<void> _handleAction() async {
     setState(() => _isLoadingOtp = true);
     try {
+      final String? role = await UserStore.getRole();
+      final bool isDriver = role?.toLowerCase() == 'driver';
+
+      if (isDriver) {
+        final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyMissionScreen(
+              requestId: widget.requestId,
+              isStart: currentStatus == 5 || currentStatus == 6,
+            ),
+          ),
+        );
+        if (result == true) {
+          _fetchMissionDetails();
+        }
+        return;
+      }
+
       final String? token = await UserStore.getToken();
       final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
       final isStart = currentStatus == 5 || currentStatus == 6;
+
       final endpoint = isStart
           ? "${ApiConstants.baseUrl}/request/generate-start-otp"
           : "${ApiConstants.baseUrl}/request/generate-end-otp";
@@ -440,9 +475,18 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final Color primaryBlue = const Color(0xFF6366F1);
 
     final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
+    
+    final bool isDriver = _userRole?.toLowerCase() == 'driver';
+
     final showAction =
+
         currentStatus == 5 || currentStatus == 6 || currentStatus == 7;
-    final actionLabel = currentStatus == 7 ? "End Activity" : "Start Activity";
+    
+    String actionLabel = currentStatus == 7 ? "End Activity" : "Start Activity";
+    if (isDriver) {
+      actionLabel = currentStatus == 7 ? "ARRIVED OTP" : "START OTP";
+    }
+
     final showApproveDecline = currentStatus == 2 || currentStatus == 3;
 
     return Scaffold(
@@ -467,7 +511,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeroCard(cardColor, titleColor, subColor),
+                          _buildHeroCard(cardColor, titleColor, subColor, primaryBlue),
                           const SizedBox(height: 32),
                           _buildTripMetrics(cardColor, primaryBlue, subColor),
                           const SizedBox(height: 32),
@@ -688,7 +732,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     );
   }
 
-  Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor) {
+  Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(26),
@@ -751,7 +795,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             ),
           ),
           const SizedBox(height: 8),
-          const SizedBox(height: 8),
           Row(
             children: [
               Text(
@@ -777,8 +820,55 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildMetric(Icons.groups_rounded, widget.passengerCount, "GUESTS", primaryBlue, subColor),
+              const SizedBox(width: 48),
+              _buildMetric(Icons.alt_route_rounded, widget.stops.length.toString(), "STOPS", primaryBlue, subColor),
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMetric(IconData icon, String value, String label, Color blue, Color sub) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: blue.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: blue, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: sub.withOpacity(0.6),
+                letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

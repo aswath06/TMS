@@ -245,7 +245,8 @@ class _RequestListPageState extends State<RequestListPage> {
             driverName: driverName,
             driverPhone: driverPhone,
             vehicleInfo: vehicleInfo,
-            capacity: capacity,
+            capacity: capacity, // Keep for vehicle capacity label if needed
+            passengerCount: capacity, // Using the capacity variable which stores passengers count here
             pathType: pathType,
             stops: detailedStops,
             status: status,

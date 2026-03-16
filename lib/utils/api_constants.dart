@@ -29,6 +29,8 @@ class ApiConstants {
 
   // OCR
   static const String licenseCheck = "$baseUrl/api/drivers/license-check";
+  static const String getDriverMissions = "$baseUrl/api/drivers/drive-routes";
+  static const String driverDashboard = "$baseUrl/api/drivers/driver-dashboard/";
 
   // Centralized headers for DevTunnels and common requirements
   static Map<String, String> getHeaders(String? token) {

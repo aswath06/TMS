@@ -21,4 +21,19 @@ class CryptoUtils {
       return encryptedOtp;
     }
   }
+
+  static String encryptOTP(String otp) {
+    if (otp.isEmpty) return "";
+    try {
+      final keyBytes = sha256.convert(utf8.encode(_secretKey)).bytes;
+      final key = encrypt.Key(Uint8List.fromList(keyBytes));
+      final iv = encrypt.IV(Uint8List(16));
+
+      final encrypter = encrypt.Encrypter(encrypt.AES(key, mode: encrypt.AESMode.cbc));
+      final encrypted = encrypter.encrypt(otp, iv: iv);
+      return encrypted.base16;
+    } catch (e) {
+      return otp;
+    }
+  }
 }

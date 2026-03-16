@@ -14,6 +14,8 @@ class DriverStore extends ChangeNotifier {
 
   // Observable state for original profile endpoint
   final ValueNotifier<Map<String, dynamic>?> profileData = ValueNotifier(null);
+  final ValueNotifier<Map<String, dynamic>?> ongoingTask = ValueNotifier(null);
+  final ValueNotifier<List<dynamic>> upcomingRoutes = ValueNotifier([]);
 
   // List state
   List<Map<String, dynamic>> _drivers = [];
@@ -25,8 +27,40 @@ class DriverStore extends ChangeNotifier {
   bool _isFetchingNextPage = false;
   bool get isFetchingNextPage => _isFetchingNextPage;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
+  // Mission State
+  List<Map<String, dynamic>> _missions = [];
+  List<Map<String, dynamic>> get missions => _missions;
+  bool _isLoadingMissions = false;
+  bool get isLoadingMissions => _isLoadingMissions;
+
+  // Leave State
+  List<Map<String, dynamic>> _leaves = [];
+  List<Map<String, dynamic>> get leaves => _leaves;
+  bool _isLoadingLeaves = false;
+  bool get isLoadingLeaves => _isLoadingLeaves;
+
+  static const Map<int, String> LEAVE_TYPE = {
+    1: "Sick",
+    2: "Casual",
+    3: "Emergency",
+    4: "Other",
+  };
+
+  String? _profileError;
+  String? get profileError => _profileError;
+
+  String? _missionsError;
+  String? get missionsError => _missionsError;
+
+  String? _leavesError;
+  String? get leavesError => _leavesError;
+
+  String? _driversError;
+  String? get driversError => _driversError;
+
+  @Deprecated('Use domain-specific error getters')
+  String? get errorMessage =>
+      _profileError ?? _missionsError ?? _leavesError ?? _driversError;
 
   int _currentPage = 1;
   bool _hasMore = true;
@@ -37,7 +71,7 @@ class DriverStore extends ChangeNotifier {
       _hasMore = true;
       _drivers.clear();
       _isLoading = true;
-      _errorMessage = null;
+      _driversError = null;
       notifyListeners();
     } else {
       if (!_hasMore || _isFetchingNextPage || _isLoading) return;
@@ -48,7 +82,7 @@ class DriverStore extends ChangeNotifier {
     try {
       final token = await UserStore.getToken();
       if (token == null) {
-        _errorMessage = "Session expired. Please login again.";
+        _driversError = "Session expired. Please login again.";
         return;
       }
 
@@ -75,10 +109,10 @@ class DriverStore extends ChangeNotifier {
 
         _drivers.addAll(newDrivers);
       } else {
-        _errorMessage = "Failed to load drivers.";
+        _driversError = "Failed to load drivers.";
       }
     } catch (e) {
-      _errorMessage = "Network error: $e";
+      _driversError = "Network error: $e";
     } finally {
       _isLoading = false;
       _isFetchingNextPage = false;
@@ -162,35 +196,153 @@ class DriverStore extends ChangeNotifier {
 
   Future<void> fetchProfile() async {
     _isLoading = true;
-    _errorMessage = null;
+    _profileError = null;
+    notifyListeners();
 
     try {
       final token = await UserStore.getToken();
       if (token == null) {
-        _errorMessage = "Session expired.";
+        _profileError = "Session expired.";
+        return;
+      }
+
+      // 1. Fetch Basic Profile First (Repair Logic & Fallback Data)
+      final basicResponse = await http.get(
+        Uri.parse(ApiConstants.userMe),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      Map<String, dynamic>? basicData;
+      int? recoveredId;
+
+      if (basicResponse.statusCode == 200) {
+        final decoded = json.decode(basicResponse.body);
+        basicData = decoded['data'];
+        recoveredId = basicData?['id'];
+
+        // Repair missing ID in UserStore if found
+        if (recoveredId != null) {
+          await UserStore.saveUserId(recoveredId);
+        }
+      }
+
+      // 2. Attempt Driver Dashboard Fetch
+      final userId = recoveredId ?? await UserStore.getUserId();
+
+      if (userId != null) {
+        final url = "${ApiConstants.driverDashboard}$userId";
+        final dashResponse = await http.get(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token),
+        );
+
+        if (dashResponse.statusCode == 200) {
+          final decoded = json.decode(dashResponse.body);
+          if (decoded['success'] == true) {
+            profileData.value = decoded['driverData'];
+            ongoingTask.value = decoded['ongoingTask'];
+            upcomingRoutes.value = decoded['upcomingRoutes'] ?? [];
+            return; // Successfully fetched full dashboard
+          }
+        }
+      }
+
+      // 3. Fallback to basic profile if dashboard restricted or ID still missing
+      if (basicData != null) {
+        profileData.value = basicData;
+        ongoingTask.value = null;
+        upcomingRoutes.value = [];
+      } else {
+        _profileError = "Failed to load profile data.";
+      }
+    } catch (e) {
+      _profileError = "Network connection failed: $e";
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchMissions() async {
+    _isLoadingMissions = true;
+    _missionsError = null;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        _missionsError = "Session expired.";
         return;
       }
 
       final response = await http.get(
-        Uri.parse(ApiConstants.userMe),
+        Uri.parse(ApiConstants.getDriverMissions),
         headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        profileData.value = decoded['data'];
+        if (decoded['success'] == true) {
+          final List<dynamic> items = decoded['items'] ?? [];
+          _missions = items.map((e) => e as Map<String, dynamic>).toList();
+        } else {
+          _missionsError = decoded['message'] ?? "Failed to fetch missions";
+        }
+      } else {
+        _missionsError = "Server error: ${response.statusCode}";
       }
     } catch (e) {
-      _errorMessage = "Network connection failed.";
+      _missionsError = "Connection error: $e";
     } finally {
-      _isLoading = false;
+      _isLoadingMissions = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchLeaves() async {
+    _isLoadingLeaves = true;
+    _leavesError = null;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        _leavesError = "Session expired.";
+        return;
+      }
+
+      final url = "${ApiConstants.baseUrl}/api/leaves/get-all?page=1&limit=10";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final List<dynamic> data = decoded['data'] ?? [];
+          _leaves = data.map((e) => e as Map<String, dynamic>).toList();
+        } else {
+          _leavesError = decoded['message'] ?? "Failed to fetch leaves";
+        }
+      } else {
+        _leavesError = "Server error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _leavesError = "Connection error: $e";
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
     }
   }
 
   void reset() {
     profileData.value = null;
     _isLoading = false;
-    _errorMessage = null;
+    _profileError = null;
+    _missionsError = null;
+    _leavesError = null;
+    _driversError = null;
     _drivers.clear();
     _currentPage = 1;
     _hasMore = true;

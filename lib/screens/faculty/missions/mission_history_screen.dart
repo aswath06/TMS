@@ -169,6 +169,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                                                 driverPhone: "n/a",
                                                 vehicleInfo: mission['vehicle'] ?? "n/a",
                                                 capacity: mission['passengers'].toString(),
+                                                passengerCount: mission['passengers'].toString(),
                                                 pathType: "History",
                                                 stops: [
                                                   {'location': mission['pickup'] ?? "Start", 'eta': "Start"},

@@ -3,21 +3,19 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
-import 'package:tripzo/screens/driver/verify_mission_screen.dart';
 
-class DriverDutiesScreen extends StatefulWidget {
-  const DriverDutiesScreen({super.key});
+class DriverCompletedRoutesScreen extends StatefulWidget {
+  const DriverCompletedRoutesScreen({super.key});
 
   @override
-  State<DriverDutiesScreen> createState() => _DriverDutiesScreenState();
+  State<DriverCompletedRoutesScreen> createState() => _DriverCompletedRoutesScreenState();
 }
 
-class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
+class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScreen> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      useDriverStore.fetchProfile();
       useDriverStore.fetchMissions();
     });
   }
@@ -29,9 +27,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF64748B);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
@@ -43,13 +39,10 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
           SafeArea(
             child: Consumer<DriverStore>(
               builder: (context, store, _) {
-                final profile = store.profileData.value;
-                final missions = store.missions;
-                final String driverName = profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver");
+                final completedMissions = store.missions.where((m) => (m['status'] ?? 0) >= 8).toList();
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    await store.fetchProfile();
                     await store.fetchMissions();
                   },
                   child: SingleChildScrollView(
@@ -59,18 +52,18 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 24),
-                        _buildHeader(driverName, titleColor, subColor, screenWidth, primaryBlue, isTamil),
+                        _buildHeader(isTamil, titleColor, screenWidth, primaryBlue),
                         const SizedBox(height: 32),
-                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, missions),
-                        const SizedBox(height: 36),
-                        _buildSectionTitle(isTamil ? "இன்றைய பணிகள்" : "Your Assignments", titleColor),
+                        _buildSectionTitle(isTamil ? "முழுமையான பயணங்கள்" : "Completed Journeys", titleColor),
                         const SizedBox(height: 18),
-                        if (store.isLoadingMissions && missions.isEmpty)
+                        if (store.isLoadingMissions && completedMissions.isEmpty)
                           const Center(child: CircularProgressIndicator())
-                        else if (missions.isEmpty)
+                        else if (store.missionsError != null)
+                          _buildErrorState(store.missionsError!, isTamil, isDark, primaryBlue)
+                        else if (completedMissions.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else
-                          ...missions.map((m) => _buildMissionCard(
+                          ...completedMissions.map((m) => _buildMissionCard(
                                 context: context,
                                 mission: m,
                                 surface: surfaceColor,
@@ -99,10 +92,10 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         padding: const EdgeInsets.only(top: 40),
         child: Column(
           children: [
-            Icon(Icons.assignment_turned_in_rounded, size: 64, color: subColor.withOpacity(0.3)),
+            Icon(Icons.history_rounded, size: 64, color: subColor.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
-              isTamil ? "பணிகள் எதுவும் இல்லை" : "No assignments for today",
+              isTamil ? "பூர்த்தியடைந்த பயணங்கள் எதுவும் இல்லை" : "No completed journeys yet",
               style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
             ),
           ],
@@ -114,7 +107,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
   Widget _buildBackgroundDecor(bool isDark, Color primaryBlue) {
     return Positioned(
       top: -50,
-      right: -50,
+      left: -50,
       child: Container(
         width: 250,
         height: 250,
@@ -126,96 +119,20 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     );
   }
 
-  Widget _buildHeader(String name, Color titleColor, Color subColor, double width, Color primary, bool isTamil) {
-    return Row(
+  Widget _buildHeader(bool isTamil, Color titleColor, double width, Color primary) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  isTamil ? "நிலை: பணியில்" : "STATUS: Active Duty",
-                  style: TextStyle(fontSize: 10, color: primary, fontWeight: FontWeight.w900, letterSpacing: 1.0),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isTamil ? "வணக்கம், $name" : "Hello, $name",
-                style: TextStyle(fontSize: width * 0.07, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -1.2),
-              ),
-            ],
-          ),
+        Text(
+          isTamil ? "பயண வரலாறு" : "Route History",
+          style: TextStyle(fontSize: width * 0.08, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -1.2),
         ),
-        Hero(
-          tag: 'driver_avatar',
-          child: CircleAvatar(
-            radius: width * 0.065,
-            backgroundColor: primary,
-            child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundImage: NetworkImage("https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff"),
-            ),
-          ),
+        const SizedBox(height: 4),
+        Text(
+          isTamil ? "உங்கள் பூர்த்தியடைந்த பயணங்கள்" : "Tracks of your finished assignments",
+          style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
         ),
       ],
-    );
-  }
-
-  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List missions) {
-    final pendingCount = missions.where((m) => m['status'] < 7).length;
-    return Row(
-      children: [
-        _statItem(
-          label: isTamil ? "நிலுவையில்" : "Pending",
-          value: pendingCount.toString().padLeft(2, '0'),
-          icon: Icons.assignment_late_rounded,
-          accentColor: Colors.orangeAccent,
-          surface: surface,
-          isDark: isDark,
-        ),
-        const SizedBox(width: 16),
-        _statItem(
-          label: isTamil ? "முடிந்தது" : "Completed",
-          value: missions.where((m) => m['status'] >= 7).length.toString().padLeft(2, '0'),
-          icon: Icons.verified_user_rounded,
-          accentColor: Colors.tealAccent.shade700,
-          surface: surface,
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _statItem({required String label, required String value, required IconData icon, required Color accentColor, required Color surface, required bool isDark}) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: accentColor.withOpacity(0.1), shape: BoxShape.circle),
-              child: Icon(icon, color: accentColor, size: 20),
-            ),
-            const SizedBox(height: 16),
-            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A))),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
     );
   }
 
@@ -240,19 +157,8 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     final String time = _formatDate(mission['start_datetime']);
     final int rawStatus = mission['status'] ?? 0;
     
-    // Status Logic
-    String statusStr = "Unknown";
-    Color statusColor = Colors.grey;
-    if (rawStatus == 6) {
-      statusStr = isTamil ? "செயலில்" : "Assigned";
-      statusColor = Colors.blue;
-    } else if (rawStatus == 7) {
-      statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
-      statusColor = Colors.orange;
-    } else if (rawStatus >= 8) {
-      statusStr = isTamil ? "முடிந்தது" : "Completed";
-      statusColor = Colors.green;
-    }
+    String statusStr = isTamil ? "முடிந்தது" : "Completed";
+    Color statusColor = Colors.green;
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -303,7 +209,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.schedule_rounded, size: 14, color: primary),
+                    Icon(Icons.event_available_rounded, size: 14, color: primary),
                     const SizedBox(width: 6),
                     Text(time, style: TextStyle(fontWeight: FontWeight.w800, color: subColor, fontSize: 13)),
                   ],
@@ -317,15 +223,6 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             ),
             const SizedBox(height: 18),
             Text(routeName, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: titleColor)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.person_pin_circle_rounded, size: 14, color: subColor),
-                const SizedBox(width: 4),
-                Text("${isTamil ? 'உருவாக்கியவர்' : 'Created by'}: ", style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600)),
-                Text(mission['createdBy']?['name'] ?? "Admin", style: TextStyle(fontSize: 12, color: primary, fontWeight: FontWeight.w800)),
-              ],
-            ),
             const SizedBox(height: 20),
             _buildTimeline(pickup, drop, primary, titleColor),
             const SizedBox(height: 24),
@@ -336,38 +233,6 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                 _iconInfo(Icons.group_rounded, "${mission['passengerCount']} ${isTamil ? 'பயணிகள்' : 'Guests'}", isDark),
               ],
             ),
-            if (rawStatus == 6 || rawStatus == 7) ...[
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => VerifyMissionScreen(
-                        requestId: mission['id'].toString(),
-                        isStart: rawStatus == 6,
-                      ),
-                    ),
-                  ).then((val) {
-                    if (val == true) {
-                      useDriverStore.fetchMissions();
-                    }
-                  }),
-                  icon: Icon(rawStatus == 6 ? Icons.qr_code_scanner_rounded : Icons.check_circle_rounded, color: Colors.white, size: 20),
-                  label: Text(
-                    rawStatus == 6 ? "START OTP" : "ARRIVED OTP",
-                    style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: rawStatus == 6 ? const Color(0xFF6366F1) : Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -414,9 +279,32 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     try {
       final dt = DateTime.parse(dateStr);
       final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return "${dt.day} ${months[dt.month - 1]}, ${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+      return "${dt.day} ${months[dt.month - 1]}, ${dt.year}";
     } catch (_) {
       return dateStr;
     }
+  }
+
+  Widget _buildErrorState(String error, bool isTamil, bool isDark, Color primary) {
+    return Center(
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => useDriverStore.fetchMissions(),
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(isTamil ? "மீண்டும் முயற்சி" : "RETRY"),
+            style: TextButton.styleFrom(foregroundColor: primary),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -247,6 +247,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
             driverPhone: driverPhone,
             vehicleInfo: vehicleInfo,
             capacity: capacity,
+            passengerCount: capacity,
             pathType: pathType,
             stops: detailedStops,
             status: status,

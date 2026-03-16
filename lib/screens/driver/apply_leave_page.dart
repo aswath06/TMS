@@ -19,6 +19,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
 
   DateTime? _startDate;
   DateTime? _endDate;
+  int _selectedLeaveType = 1; // Default to Sick
 
   final Color primaryBlue = const Color(0xFF6366F1);
 
@@ -131,6 +132,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         subTitleColor,
                         isTamil,
                       ),
+
+                      const SizedBox(height: 32),
+
+                      _buildSectionTitle(
+                        isTamil ? "விடுப்பு வகை" : "Leave Type",
+                        titleColor,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildLeaveTypeSelector(cardColor, titleColor, isTamil),
 
                       const SizedBox(height: 32),
 
@@ -460,6 +470,55 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
     );
   }
 
+  Widget _buildLeaveTypeSelector(Color card, Color txt, bool isTamil) {
+    // 1: Sick, 2: Casual, 3: Emergency, 4: Other
+    final types = [
+      {'id': 1, 'en': 'Sick', 'ta': 'மருத்துவ'},
+      {'id': 2, 'en': 'Casual', 'ta': 'தற்செயல்'},
+      {'id': 3, 'en': 'Emergency', 'ta': 'அவசர'},
+      {'id': 4, 'en': 'Other', 'ta': 'மற்றவை'},
+    ];
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: types.map((type) {
+        final bool isSelected = _selectedLeaveType == type['id'];
+        return GestureDetector(
+          onTap: () => setState(() => _selectedLeaveType = type['id'] as int),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? primaryBlue : card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? primaryBlue : primaryBlue.withOpacity(0.1),
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: primaryBlue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : [],
+            ),
+            child: Text(
+              isTamil ? type['ta'] as String : type['en'] as String,
+              style: TextStyle(
+                color: isSelected ? Colors.white : txt.withOpacity(0.7),
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildSubmitButton(bool isTamil) {
     return Consumer<RequestStore>(
       builder: (context, store, child) {
@@ -495,8 +554,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         toDate: toDate,
                         startTime: startTime,
                         endTime: endTime,
-                        leaveType:
-                            4, // Default to 'Other' for driver self-apply, or add picker
+                        leaveType: _selectedLeaveType,
                         reason: _reasonController.text,
                       );
 

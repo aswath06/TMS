@@ -7,18 +7,21 @@ class UserStore {
   static const String _keyEmail = 'user_email';
   static const String _keyName = 'user_name';
   static const String _keyLoginDate = 'login_date';
+  static const String _keyUserId = 'user_id';
 
   // Save all user data at once
   static Future<void> saveUserData({
     required String token,
     required String role,
     required String email,
+    required int id,
     String? name,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyToken, token);
     await prefs.setString(_keyRole, role.toLowerCase());
     await prefs.setString(_keyEmail, email);
+    await prefs.setInt(_keyUserId, id);
     if (name != null) await prefs.setString(_keyName, name);
     await prefs.setString(_keyLoginDate, DateTime.now().toIso8601String());
   }
@@ -26,6 +29,14 @@ class UserStore {
   // Getters
   static Future<String?> getToken() async =>
       (await SharedPreferences.getInstance()).getString(_keyToken);
+  
+  static Future<int?> getUserId() async =>
+      (await SharedPreferences.getInstance()).getInt(_keyUserId);
+
+  static Future<void> saveUserId(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyUserId, id);
+  }
 
   static Future<String?> getRole() async =>
       (await SharedPreferences.getInstance()).getString(_keyRole);
