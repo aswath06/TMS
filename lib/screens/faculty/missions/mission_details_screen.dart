@@ -11,6 +11,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/screens/driver/verify_mission_screen.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -447,6 +448,29 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     }
   }
 
+  void _showOtpInputModal() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
+    final isStart = currentStatus == 5 || currentStatus == 6;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _OtpBottomSheet(
+        requestId: widget.requestId,
+        isStart: isStart,
+        bgColor: bgColor,
+        titleColor: titleColor,
+        onSuccess: () {
+          _fetchMissionDetails();
+        },
+      ),
+    );
+  }
+
   void _showOtpModal(String otp, String title) {
     showDialog(
       context: context,
@@ -660,46 +684,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               bottom: 20,
               left: 20,
               right: 20,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryBlue.withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: _isLoadingOtp ? null : _handleAction,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    padding: const EdgeInsets.symmetric(vertical: 22),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoadingOtp
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : Text(
-                          actionLabel.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                ),
+              child: _SwipeToConfirm(
+                label: actionLabel.toUpperCase(),
+                onConfirm: () {
+                  _showOtpInputModal();
+                },
               ),
             ),
         ],
@@ -1634,6 +1623,322 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SwipeToConfirm extends StatefulWidget {
+  final String label;
+  final VoidCallback onConfirm;
+
+  const _SwipeToConfirm({required this.label, required this.onConfirm});
+
+  @override
+  State<_SwipeToConfirm> createState() => _SwipeToConfirmState();
+}
+
+class _SwipeToConfirmState extends State<_SwipeToConfirm> {
+  double _dragValue = 0;
+  bool _isConfirmed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final double width = MediaQuery.of(context).size.width - 40;
+    const double knobSize = 60;
+    final double maxDrag = width - knobSize - 8;
+
+    return Container(
+      height: 70,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF6366F1).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(35),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              widget.label,
+              style: const TextStyle(
+                color: Color(0xFF6366F1),
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 4 + _dragValue,
+            top: 5,
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                if (_isConfirmed) return;
+                setState(() {
+                  _dragValue += details.delta.dx;
+                  if (_dragValue < 0) _dragValue = 0;
+                  if (_dragValue > maxDrag) _dragValue = maxDrag;
+                });
+              },
+              onHorizontalDragEnd: (details) {
+                if (_isConfirmed) return;
+                if (_dragValue >= maxDrag * 0.8) {
+                  setState(() {
+                    _dragValue = maxDrag;
+                    _isConfirmed = true;
+                  });
+                  widget.onConfirm();
+                  // Reset after a delay
+                  Future.delayed(const Duration(seconds: 1), () {
+                    if (mounted) {
+                      setState(() {
+                        _dragValue = 0;
+                        _isConfirmed = false;
+                      });
+                    }
+                  });
+                } else {
+                  setState(() {
+                    _dragValue = 0;
+                  });
+                }
+              },
+              child: Container(
+                width: knobSize,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.local_shipping_rounded, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OtpBottomSheet extends StatefulWidget {
+  final String requestId;
+  final bool isStart;
+  final Color bgColor;
+  final Color titleColor;
+  final VoidCallback onSuccess;
+
+  const _OtpBottomSheet({
+    required this.requestId,
+    required this.isStart,
+    required this.bgColor,
+    required this.titleColor,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_OtpBottomSheet> createState() => _OtpBottomSheetState();
+}
+
+class _OtpBottomSheetState extends State<_OtpBottomSheet> {
+  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
+  bool _isVerifying = false;
+  bool _isScanning = false;
+
+  @override
+  void dispose() {
+    for (var c in _controllers) {
+      c.dispose();
+    }
+    for (var f in _focusNodes) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _verifyOtp(String otp) async {
+    if (otp.length != 6) return;
+    setState(() => _isVerifying = true);
+    try {
+      final String? token = await UserStore.getToken();
+      final encryptedOtp = CryptoUtils.encryptOTP(otp);
+      
+      final url = widget.isStart 
+          ? "${ApiConstants.baseUrl}/request/start-route"
+          : "${ApiConstants.baseUrl}/request/complete-route-otp";
+      
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode({
+          "route_id": int.tryParse(widget.requestId) ?? 0,
+          "otp": encryptedOtp,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? "Verified Successfully"), backgroundColor: Colors.green),
+          );
+          widget.onSuccess();
+        }
+      } else {
+        throw data['message'] ?? "Verification failed";
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
+    }
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_isVerifying) return;
+    final List<Barcode> barcodes = capture.barcodes;
+    for (final barcode in barcodes) {
+      final code = barcode.rawValue;
+      if (code != null) {
+        final decrypted = CryptoUtils.decryptOTP(code);
+        if (decrypted.length == 6 && int.tryParse(decrypted) != null) {
+          setState(() {
+            _isScanning = false;
+            for (int i = 0; i < 6; i++) {
+              _controllers[i].text = decrypted[i];
+            }
+          });
+          _verifyOtp(decrypted);
+          break;
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: widget.bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.2), borderRadius: BorderRadius.circular(10))),
+            const SizedBox(height: 24),
+            Text(
+              "Enter OTP CODE",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: widget.titleColor, letterSpacing: -0.5),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.isStart ? "Verify starting of mission" : "Verify completion of mission",
+              style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 32),
+            if (_isScanning)
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.black),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: MobileScanner(onDetect: _onDetect),
+                ),
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(6, (i) => _buildOtpField(i)),
+              ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => setState(() => _isScanning = !_isScanning),
+                    icon: Icon(_isScanning ? Icons.keyboard_rounded : Icons.qr_code_scanner_rounded),
+                    label: Text(_isScanning ? "TYPE OTP" : "SCAN OTP", style: const TextStyle(fontWeight: FontWeight.w900)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: const Color(0xFF6366F1),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF6366F1), width: 2)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isVerifying || _isScanning ? null : () {
+                      final otp = _controllers.map((c) => c.text).join();
+                      _verifyOtp(otp);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                    child: _isVerifying
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                        : const Text("VERIFY", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOtpField(int index) {
+    return Container(
+      width: 45,
+      height: 55,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _focusNodes[index].hasFocus ? const Color(0xFF6366F1) : Colors.transparent, width: 2),
+      ),
+      child: TextField(
+        controller: _controllers[index],
+        focusNode: _focusNodes[index],
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        maxLength: 1,
+        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+        decoration: const InputDecoration(counterText: "", border: InputBorder.none),
+        onChanged: (value) {
+          if (value.isNotEmpty) {
+            if (index < 5) _focusNodes[index + 1].requestFocus();
+            else _focusNodes[index].unfocus();
+          } else if (value.isEmpty && index > 0) {
+            _focusNodes[index - 1].requestFocus();
+          }
+        },
       ),
     );
   }
