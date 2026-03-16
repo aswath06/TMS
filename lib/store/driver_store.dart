@@ -312,10 +312,17 @@ class DriverStore extends ChangeNotifier {
       }
 
       final url = "${ApiConstants.baseUrl}/api/leaves/get-all?page=1&limit=10";
+      debugPrint("--- Fetching Leave History ---");
+      debugPrint("URL: $url");
+      debugPrint("Headers: ${ApiConstants.getHeaders(token)}");
+
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
+
+      debugPrint("Response Status: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -334,6 +341,11 @@ class DriverStore extends ChangeNotifier {
       _isLoadingLeaves = false;
       notifyListeners();
     }
+  }
+
+  void resetLeavesError() {
+    _leavesError = null;
+    notifyListeners();
   }
 
   void reset() {
@@ -393,6 +405,64 @@ class DriverStore extends ChangeNotifier {
         return Icons.home_work_rounded; // On leave / Home
       default:
         return Icons.help_outline_rounded;
+    }
+  }
+
+  Future<bool> createLeave({
+    required String fromDate,
+    required String toDate,
+    required int leaveType,
+    required String reason,
+  }) async {
+    _isLoadingLeaves = true;
+    _leavesError = null;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        _leavesError = "Session expired.";
+        return false;
+      }
+
+      final payload = {
+        "from_date": fromDate,
+        "to_date": toDate,
+        "leave_type": leaveType,
+        "reason": reason,
+      };
+
+      debugPrint("API Request: ${ApiConstants.createLeave}");
+      debugPrint("Payload: ${json.encode(payload)}");
+
+      final response = await http.post(
+        Uri.parse(ApiConstants.createLeave),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(payload),
+      );
+
+      debugPrint("API Response Status: ${response.statusCode}");
+      debugPrint("API Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          fetchLeaves(); // Refresh list after creation
+          return true;
+        } else {
+          _leavesError = decoded['message'] ?? "Failed to create leave";
+          return false;
+        }
+      } else {
+        _leavesError = "Server Error: ${response.statusCode}";
+        return false;
+      }
+    } catch (e) {
+      _leavesError = "Network error: $e";
+      return false;
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
     }
   }
 }

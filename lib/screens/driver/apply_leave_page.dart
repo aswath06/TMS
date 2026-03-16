@@ -49,15 +49,23 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Future<void> _pickDateTime(BuildContext context, bool isStart) async {
+    final DateTime initialDate = isStart
+        ? (_startDate ?? DateTime.now())
+        : (_endDate ?? (_startDate?.add(const Duration(days: 1)) ?? DateTime.now()));
+
+    final DateTime firstDate = isStart
+        ? DateTime.now()
+        : (_startDate?.add(const Duration(minutes: 1)) ?? DateTime.now());
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
+      firstDate: firstDate,
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) => Theme(
-        data: Theme.of(
-          context,
-        ).copyWith(colorScheme: ColorScheme.light(primary: primaryBlue)),
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.light(primary: primaryBlue),
+        ),
         child: child!,
       ),
     );
@@ -65,7 +73,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: TimeOfDay.fromDateTime(initialDate),
       );
 
       if (pickedTime != null) {
@@ -77,11 +85,18 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
             pickedTime.hour,
             pickedTime.minute,
           );
+
           if (isStart) {
             _startDate = fullDateTime;
+            // If end date exists and is now before start date, clear it
+            if (_endDate != null && _endDate!.isBefore(_startDate!)) {
+              _endDate = null;
+            }
           } else {
             _endDate = fullDateTime;
           }
+          // Clear any previous error when dates are changed
+          useDriverStore.resetLeavesError();
         });
       }
     }
@@ -161,7 +176,52 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         isTamil: isTamil,
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 32),
+
+                      // --- API Error Feedback Area ---
+                      ListenableBuilder(
+                        listenable: useDriverStore,
+                        builder: (context, child) {
+                          if (useDriverStore.leavesError == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 24),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.red.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    useDriverStore.leavesError!,
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
                       _buildSubmitButton(isTamil),
                       const SizedBox(height: 50),
                     ],
@@ -520,40 +580,48 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Widget _buildSubmitButton(bool isTamil) {
-    return Consumer<RequestStore>(
-      builder: (context, store, child) {
+    return ListenableBuilder(
+      listenable: useDriverStore,
+      builder: (context, child) {
         return SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: store.isLoadingLeaves
+            onPressed: useDriverStore.isLoadingLeaves
                 ? null
                 : () async {
                     if (_formKey.currentState!.validate() &&
                         _startDate != null &&
                         _endDate != null) {
+                      
+                      if (!_endDate!.isAfter(_startDate!)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isTamil
+                                  ? "முடிவுத் தேதி தொடக்கத் தேதிக்கு பிறகு இருக்க வேண்டும்"
+                                  : "End date must be after start date",
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
                       final String fromDate = DateFormat(
                         'yyyy-MM-dd',
                       ).format(_startDate!);
                       final String toDate = DateFormat(
                         'yyyy-MM-dd',
                       ).format(_endDate!);
-                      final String startTime = DateFormat(
-                        'HH:mm',
-                      ).format(_startDate!);
-                      final String endTime = DateFormat(
-                        'HH:mm',
-                      ).format(_endDate!);
 
-                      // Get current user ID from DriverStore profile data
-                      final profile = DriverStore().profileData.value;
-                      final int driverId = profile?['id'] ?? 0;
+                      debugPrint("--- Submitting Leave Application ---");
+                      debugPrint("From Date: $fromDate");
+                      debugPrint("To Date: $toDate");
+                      debugPrint("Leave Type ID: $_selectedLeaveType");
+                      debugPrint("Reason: ${_reasonController.text}");
 
-                      final success = await store.createLeave(
-                        driverId: driverId,
+                      final success = await useDriverStore.createLeave(
                         fromDate: fromDate,
                         toDate: toDate,
-                        startTime: startTime,
-                        endTime: endTime,
                         leaveType: _selectedLeaveType,
                         reason: _reasonController.text,
                       );
@@ -573,7 +641,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              store.leavesErrorMessage ??
+                              useDriverStore.leavesError ??
                                   (isTamil
                                       ? "பிழை ஏற்பட்டது"
                                       : "An error occurred"),
@@ -601,7 +669,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
               ),
               elevation: 0,
             ),
-            child: store.isLoadingLeaves
+            child: useDriverStore.isLoadingLeaves
                 ? const SizedBox(
                     height: 20,
                     width: 20,
