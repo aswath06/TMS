@@ -167,7 +167,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     // Status Logic
     String statusStr = "Unknown";
     Color statusColor = Colors.grey;
-    if (rawStatus == 6) {
+    if (rawStatus == 5 || rawStatus == 6) {
       statusStr = isTamil ? "செயலில்" : "Assigned";
       statusColor = Colors.blue;
     } else if (rawStatus == 7) {

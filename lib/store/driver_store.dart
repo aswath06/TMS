@@ -467,7 +467,12 @@ class DriverStore extends ChangeNotifier {
           return false;
         }
       } else {
-        _leavesError = "Server Error: ${response.statusCode}";
+        try {
+          final decoded = json.decode(response.body);
+          _leavesError = decoded['message'] ?? "Server Error: ${response.statusCode}";
+        } catch (_) {
+          _leavesError = "Server Error: ${response.statusCode}";
+        }
         return false;
       }
     } catch (e) {

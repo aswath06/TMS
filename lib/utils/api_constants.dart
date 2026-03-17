@@ -24,6 +24,8 @@ class ApiConstants {
   static const String getRequestById = "$baseUrl/request/get-by-id/";
   static const String startRoute = "$baseUrl/request/start-route";
   static const String completeRouteOtp = "$baseUrl/request/complete-route-otp";
+  static const String generateStartOtp = "$baseUrl/request/generate-start-otp";
+  static const String generateEndOtp = "$baseUrl/request/generate-end-otp";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";

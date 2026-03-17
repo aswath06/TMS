@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
-import 'package:tripzo/store/request_store.dart';
-import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class ApplyLeavePage extends StatefulWidget {
   const ApplyLeavePage({super.key});
@@ -70,7 +68,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
       ),
     );
 
-    if (pickedDate != null) {
+    if (pickedDate != null && mounted) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
         initialTime: TimeOfDay.fromDateTime(initialDate),
@@ -594,14 +592,12 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         _endDate != null) {
                       
                       if (!_endDate!.isAfter(_startDate!)) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isTamil
-                                  ? "முடிவுத் தேதி தொடக்கத் தேதிக்கு பிறகு இருக்க வேண்டும்"
-                                  : "End date must be after start date",
-                            ),
-                          ),
+                        showTopToast(
+                          context,
+                          isTamil
+                              ? "முடிவுத் தேதி தொடக்கத் தேதிக்கு பிறகு இருக்க வேண்டும்"
+                              : "End date must be after start date",
+                          isError: true,
                         );
                         return;
                       }
@@ -626,38 +622,33 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         reason: _reasonController.text,
                       );
 
-                      if (success && mounted) {
+                      if (!context.mounted) return;
+
+                      if (success) {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isTamil
-                                  ? "விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது"
-                                  : "Application Submitted Successfully",
-                            ),
-                          ),
+                        showTopToast(
+                          context,
+                          isTamil
+                              ? "விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது"
+                              : "Application Submitted Successfully",
                         );
-                      } else if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              useDriverStore.leavesError ??
-                                  (isTamil
-                                      ? "பிழை ஏற்பட்டது"
-                                      : "An error occurred"),
-                            ),
-                          ),
+                      } else {
+                        showTopToast(
+                          context,
+                          useDriverStore.leavesError ??
+                              (isTamil
+                                  ? "பிழை ஏற்பட்டது"
+                                  : "An error occurred"),
+                          isError: true,
                         );
                       }
                     } else if (_startDate == null || _endDate == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isTamil
-                                ? "தேதியைத் தேர்ந்தெடுக்கவும்"
-                                : "Please select dates-time",
-                          ),
-                        ),
+                      showTopToast(
+                        context,
+                        isTamil
+                            ? "தேதியைத் தேர்ந்தெடுக்கவும்"
+                            : "Please select dates-time",
+                        isError: true,
                       );
                     }
                   },
