@@ -1,30 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ThemeStore {
+class ThemeStore extends ChangeNotifier {
   static bool isDark = false;
-  static VoidCallback? onThemeChanged;
+  
+  // Singleton pattern for use with Provider
+  static final ThemeStore _instance = ThemeStore._internal();
+  factory ThemeStore() => _instance;
+  ThemeStore._internal();
 
   // Key used to store the value in local storage
   static const String _themeKey = 'isDark';
 
   /// Loads the saved theme from local storage
-  static Future<void> loadTheme() async {
+  Future<void> loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     isDark = prefs.getBool(_themeKey) ?? false;
-    if (onThemeChanged != null) onThemeChanged!();
+    notifyListeners();
   }
 
   /// Sets the theme and persists it to local storage
-  static Future<void> setTheme(bool value) async {
+  Future<void> setTheme(bool value) async {
     isDark = value;
 
     // Save to local storage
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_themeKey, value);
 
-    if (onThemeChanged != null) {
-      onThemeChanged!();
-    }
+    notifyListeners();
   }
 }
+
+// Global instance for convenience
+final themeStore = ThemeStore();

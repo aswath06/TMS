@@ -8,6 +8,7 @@ import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';
+import 'package:tripzo/store/isdark.dart';
 
 // Utils
 import 'utils/routes.dart';
@@ -23,6 +24,9 @@ void main() async {
   } catch (e) {
     debugPrint("Locale initialization error: $e");
   }
+
+  // Load theme and other persistent data
+  await themeStore.loadTheme();
 
   // Premium Edge-to-Edge System UI
   SystemChrome.setSystemUIOverlayStyle(
@@ -41,6 +45,7 @@ void main() async {
         ChangeNotifierProvider.value(value: useRequestStore),
         ChangeNotifierProvider.value(value: useDriverStore),
         ChangeNotifierProvider.value(value: dashboardStore),
+        ChangeNotifierProvider.value(value: themeStore),
       ],
       child: const MyApp(),
     ),
@@ -52,9 +57,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeStore>(context);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'TripZo',
+      themeMode: ThemeStore.isDark ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: null,
@@ -63,6 +71,7 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF4F46E5),
           surface: const Color(0xFFF8FAFC),
           onSurface: const Color(0xFF0F172A),
+          brightness: Brightness.light,
         ),
         textTheme: const TextTheme(
           displayLarge: TextStyle(
@@ -84,6 +93,42 @@ class MyApp extends StatelessWidget {
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: Color(0xFF0F172A),
+          ),
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        fontFamily: null,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF4F46E5),
+          primary: const Color(0xFF6366F1),
+          surface: const Color(0xFF0F172A),
+          onSurface: Colors.white,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.0,
+            color: Colors.white,
+          ),
+          headlineMedium: TextStyle(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            color: Colors.white,
+          ),
+          titleLarge: TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
+          bodyMedium: TextStyle(fontWeight: FontWeight.w500, color: Colors.white),
+        ),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          centerTitle: false,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
           ),
         ),
       ),

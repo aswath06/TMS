@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/SecuritySettingsPage.dart';
 import 'package:tripzo/store/istamil.dart';
-import 'package:tripzo/store/isdark.dart'; // Import the new theme store
+import 'package:tripzo/store/isdark.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:provider/provider.dart';
 import 'scanner_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -13,15 +15,34 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
+  String _userRole = "";
 
   // Sync initial state with the Global Stores
   String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final role = await UserStore.getRole();
+    if (mounted) {
+      setState(() {
+        _userRole = role ?? "";
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Determine current states from global stores
     final bool isTamil = LanguageStore.isTamil;
-    final bool isDark = ThemeStore.isDark; // Driven by the store
+    
+    // Listen to theme changes
+    final themeStore = Provider.of<ThemeStore>(context);
+    final bool isDark = ThemeStore.isDark;
 
     // Dynamic Colors based on Store state
     final Color bgColor = isDark
@@ -81,27 +102,28 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 16),
                     _buildThemeSelector(
-                      isDark,
+                      themeStore,
                       cardColor,
                       subTitleColor,
                       primaryBlue,
                       isTamil,
                     ),
 
-                    const SizedBox(height: 32),
-
-                    // --- LOCALIZATION ---
-                    _buildSectionTitle(
-                      isTamil ? "மொழி" : "Localization",
-                      titleColor,
-                      primaryBlue,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildLanguageSelector(
-                      cardColor,
-                      subTitleColor,
-                      primaryBlue,
-                    ),
+                    // --- LOCALIZATION (ONLY FOR DRIVERS) ---
+                    if (_userRole.toLowerCase() == "driver") ...[
+                      const SizedBox(height: 32),
+                      _buildSectionTitle(
+                        isTamil ? "மொழி" : "Localization",
+                        titleColor,
+                        primaryBlue,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildLanguageSelector(
+                        cardColor,
+                        subTitleColor,
+                        primaryBlue,
+                      ),
+                    ],
 
                     const SizedBox(height: 32),
 
@@ -198,12 +220,13 @@ class _SettingsPageState extends State<SettingsPage> {
   // --- THEME SELECTOR ---
   // --- THEME SELECTOR ---
   Widget _buildThemeSelector(
-    bool isDark,
+    ThemeStore themeStore,
     Color cardColor,
     Color subColor,
     Color primaryBlue,
     bool isTamil,
   ) {
+    final bool isDark = ThemeStore.isDark;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -215,15 +238,14 @@ class _SettingsPageState extends State<SettingsPage> {
           Expanded(
             child: GestureDetector(
               onTap: () async {
-                // 1. Await the async work outside of setState
-                await ThemeStore.setTheme(false);
-                // 2. Update UI only if the widget is still in the tree
+                // Use the instance method setTheme
+                await themeStore.setTheme(false);
                 if (mounted) setState(() {});
               },
               child: _buildThemeOption(
                 isTamil ? "பகல்" : "Light Mode",
                 Icons.light_mode_outlined,
-                !ThemeStore.isDark,
+                !isDark,
                 subColor,
                 primaryBlue,
               ),
@@ -232,15 +254,14 @@ class _SettingsPageState extends State<SettingsPage> {
           Expanded(
             child: GestureDetector(
               onTap: () async {
-                // 1. Await the async work outside of setState
-                await ThemeStore.setTheme(true);
-                // 2. Update UI
+                // Use the instance method setTheme
+                await themeStore.setTheme(true);
                 if (mounted) setState(() {});
               },
               child: _buildThemeOption(
                 isTamil ? "இரவு" : "Dark Mode",
                 Icons.dark_mode_outlined,
-                ThemeStore.isDark,
+                isDark,
                 subColor,
                 primaryBlue,
               ),

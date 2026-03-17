@@ -4,6 +4,7 @@ import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:http/http.dart' as http;
+import 'package:tripzo/store/driver_store.dart';
 import 'dart:convert';
 
 class VerifyMissionScreen extends StatefulWidget {
@@ -42,41 +43,24 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> {
 
     setState(() => _isVerifying = true);
     try {
-      final String? token = await UserStore.getToken();
-      final int? driverId = await UserStore.getUserId();
-      
-      // Encrypt the OTP before sending
-      final encryptedOtp = CryptoUtils.encryptOTP(otp);
-      
-      final url = widget.isStart 
-          ? "${ApiConstants.baseUrl}/request/start-route"
-          : "${ApiConstants.baseUrl}/request/complete-route-otp";
-      
-      final body = {
-        "route_id": int.tryParse(widget.requestId) ?? 0,
-        "driver_id": driverId,
-        "otp": encryptedOtp,
-      };
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-        body: jsonEncode(body),
+      final result = await useDriverStore.verifyRouteOtp(
+        routeId: int.tryParse(widget.requestId) ?? 0,
+        otp: otp,
+        isStart: widget.isStart,
       );
 
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
+      if (result['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['message'] ?? "Mission ${widget.isStart ? 'Started' : 'Completed'} Successfully"),
+              content: Text(result['message']),
               backgroundColor: Colors.green,
             ),
           );
           Navigator.pop(context, true);
         }
       } else {
-        throw data['message'] ?? "Verification failed";
+        throw result['message'];
       }
     } catch (e) {
       if (mounted) {

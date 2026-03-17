@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/screens/driver/verify_mission_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -1920,29 +1921,18 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
     if (otp.length != 6) return;
     setState(() => _isVerifying = true);
     try {
-      final String? token = await UserStore.getToken();
-      final encryptedOtp = CryptoUtils.encryptOTP(otp);
-      
-      final url = widget.isStart 
-          ? "${ApiConstants.baseUrl}/request/start-route"
-          : "${ApiConstants.baseUrl}/request/complete-route-otp";
-      
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({
-          "route_id": int.tryParse(widget.requestId) ?? 0,
-          "otp": encryptedOtp,
-        }),
+      final result = await useDriverStore.verifyRouteOtp(
+        routeId: int.tryParse(widget.requestId) ?? 0,
+        otp: otp,
+        isStart: widget.isStart,
       );
 
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
+      if (result['success'] == true) {
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['message'] ?? "Verified Successfully"),
+              content: Text(result['message']),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1951,11 +1941,10 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
           widget.onSuccess();
         }
       } else {
-        throw data['message'] ?? "Verification failed";
+        throw result['message'];
       }
     } catch (e) {
       if (mounted) {
-        // Find topmost scaffold or use current to show above modal
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

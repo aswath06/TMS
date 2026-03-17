@@ -22,6 +22,8 @@ class ApiConstants {
       "$baseUrl/request/create-transport-request";
   static const String updateStatus = "$baseUrl/request/update-status";
   static const String getRequestById = "$baseUrl/request/get-by-id/";
+  static const String startRoute = "$baseUrl/request/start-route";
+  static const String completeRouteOtp = "$baseUrl/request/complete-route-otp";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";

@@ -8,6 +8,7 @@ class UserStore {
   static const String _keyName = 'user_name';
   static const String _keyLoginDate = 'login_date';
   static const String _keyUserId = 'user_id';
+  static const String _keyDriverId = 'driver_id';
 
   // Save all user data at once
   static Future<void> saveUserData({
@@ -32,6 +33,14 @@ class UserStore {
   
   static Future<int?> getUserId() async =>
       (await SharedPreferences.getInstance()).getInt(_keyUserId);
+
+  static Future<int?> getDriverId() async =>
+      (await SharedPreferences.getInstance()).getInt(_keyDriverId);
+
+  static Future<void> saveDriverId(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyDriverId, id);
+  }
 
   static Future<void> saveUserId(int id) async {
     final prefs = await SharedPreferences.getInstance();

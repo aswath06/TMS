@@ -57,8 +57,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     bool isLoading = false;
     bool isVisible = false;
 
-    // Use current store state for modal
-    final bool isDark = ThemeStore.isDark;
+    // Use current theme brightness for modal
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color modalBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
@@ -143,7 +143,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     bool isSuccess = false;
     bool isVisible = false;
 
-    final bool isDark = ThemeStore.isDark;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color modalBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
@@ -376,8 +376,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine current dark state from Global Store
-    final bool isDark = ThemeStore.isDark;
+    // Determine current dark state from Theme
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
@@ -458,7 +458,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     VoidCallback? onTileTap,
     bool isEnabled = true,
   }) {
-    final bool isDark = ThemeStore.isDark;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isEnabled ? 1.0 : 0.5,

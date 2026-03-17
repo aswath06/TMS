@@ -210,6 +210,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           ),
         ),
+        const SizedBox(width: 20), // ADDED SPACING
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
@@ -428,6 +429,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Icon(icon, color: color, size: 28),
               ),
+              const SizedBox(width: 8), // ADDED SPACING
               Stack(
                 alignment: Alignment.center,
                 children: [

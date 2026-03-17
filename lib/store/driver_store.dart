@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/crypto_utils.dart';
 
 final useDriverStore = DriverStore();
 
@@ -242,6 +243,12 @@ class DriverStore extends ChangeNotifier {
             profileData.value = decoded['driverData'];
             ongoingTask.value = decoded['ongoingTask'];
             upcomingRoutes.value = decoded['upcomingRoutes'] ?? [];
+            
+            // Extract and save driver_id if present
+            final driverId = decoded['driverData']?['driver_id'];
+            if (driverId != null) {
+              await UserStore.saveDriverId(driverId);
+            }
             return; // Successfully fetched full dashboard
           }
         }
@@ -469,6 +476,57 @@ class DriverStore extends ChangeNotifier {
     } finally {
       _isLoadingLeaves = false;
       notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyRouteOtp({
+    required int routeId,
+    required String otp,
+    required bool isStart,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      final driverId = await UserStore.getDriverId();
+      
+      if (token == null || driverId == null) {
+        return {"success": false, "message": "Session expired or Driver ID missing"};
+      }
+
+      final encryptedOtp = CryptoUtils.encryptOTP(otp);
+      final url = isStart ? ApiConstants.startRoute : ApiConstants.completeRouteOtp;
+
+      final body = {
+        "route_id": routeId,
+        "driver_id": driverId,
+        "otp": encryptedOtp,
+      };
+
+      debugPrint("--- [DEBUG] STARTING OTP VERIFICATION ---");
+      debugPrint("curl --location '$url' \\");
+      final headers = ApiConstants.getHeaders(token);
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("--data '${jsonEncode(body)}'");
+      debugPrint("------------------------------------------");
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode(body),
+      );
+
+      debugPrint("OTP Verification - Status Code: ${response.statusCode}");
+      debugPrint("OTP Verification - Response: ${response.body}");
+
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": decoded['message'] ?? "Operation successful"};
+      } else {
+        return {"success": false, "message": decoded['message'] ?? "Verification failed"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Network error: $e"};
     }
   }
 }
