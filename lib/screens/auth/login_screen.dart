@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:tripzo/components/custom_button.dart';
 import 'package:tripzo/components/custom_input.dart';
@@ -34,14 +36,23 @@ class _LoginScreenState extends State<LoginScreen> {
     hostedDomain: 'bitsathy.ac.in',
   );
 
+  // ✅ Bypass SSL certificate verification for DevTunnels (dev only)
+  IOClient _createHttpClient() {
+    final httpClient = HttpClient()
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+    return IOClient(httpClient);
+  }
+
   // ✅ UPDATED REAL LOGIN
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoggingIn = true);
 
+    final client = _createHttpClient();
     try {
-      final response = await http.post(
+      final response = await client.post(
         Uri.parse(ApiConstants.login),
         headers: ApiConstants.getHeaders(null),
         body: jsonEncode({
@@ -85,27 +96,31 @@ class _LoginScreenState extends State<LoginScreen> {
       String errorMessage = e.toString();
       bool isNetworkError = false;
 
-      if (errorMessage.contains("SocketException") || 
+      if (errorMessage.contains("SocketException") ||
           errorMessage.contains("Connection failed") ||
-          errorMessage.contains("ClientException")) {
+          errorMessage.contains("ClientException") ||
+          errorMessage.contains("HandshakeException") ||
+          errorMessage.contains("CERTIFICATE_VERIFY_FAILED")) {
         errorMessage = "Network error. Please check your internet connection and try again.";
         isNetworkError = true;
       }
 
       if (mounted) {
         LoginErrorDialog.show(
-          context, 
+          context,
           message: errorMessage,
           onRetry: isNetworkError ? _handleLogin : null,
         );
       }
     } finally {
+      client.close();
       if (mounted) setState(() => _isLoggingIn = false);
     }
   }
 
-  // ✅ GOOGLE LOGIN (unchanged)
+  // ✅ GOOGLE LOGIN with SSL bypass
   Future<void> _handleGoogleSignIn() async {
+    final client = _createHttpClient();
     try {
       setState(() => _isGoogleLoading = true);
 
@@ -123,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final String? idToken = googleAuth.idToken;
       if (idToken == null) throw "Failed to retrieve ID Token.";
 
-      final response = await http.post(
+      final response = await client.post(
         Uri.parse(ApiConstants.googleLogin),
         headers: ApiConstants.getHeaders(null),
         body: jsonEncode({'idToken': idToken}),
@@ -167,6 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
         LoginErrorDialog.show(context, message: error.toString());
       }
     } finally {
+      client.close();
       if (mounted) setState(() => _isGoogleLoading = false);
     }
   }

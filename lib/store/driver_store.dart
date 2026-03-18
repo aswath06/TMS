@@ -40,6 +40,16 @@ class DriverStore extends ChangeNotifier {
   bool _isLoadingLeaves = false;
   bool get isLoadingLeaves => _isLoadingLeaves;
 
+  // Maintenance Data
+  List<Map<String, dynamic>> _fuelBunks = [];
+  List<Map<String, dynamic>> get fuelBunks => _fuelBunks;
+
+  List<Map<String, dynamic>> _serviceShops = [];
+  List<Map<String, dynamic>> get serviceShops => _serviceShops;
+
+  bool _isLoadingMaintenance = false;
+  bool get isLoadingMaintenance => _isLoadingMaintenance;
+
   static const Map<int, String> LEAVE_TYPE = {
     1: "Sick",
     2: "Casual",
@@ -532,6 +542,103 @@ class DriverStore extends ChangeNotifier {
       }
     } catch (e) {
       return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  // Maintenance Submissions
+  Future<Map<String, dynamic>> submitFuelEntry(Map<String, dynamic> data, String? proofPath) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = Uri.parse(ApiConstants.fuelEntry);
+      final request = http.MultipartRequest('POST', url);
+      request.headers.addAll(ApiConstants.getHeaders(token));
+
+      data.forEach((key, value) {
+        request.fields[key] = value.toString();
+      });
+
+      if (proofPath != null) {
+        request.files.add(await http.MultipartFile.fromPath('proof', proofPath));
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final decoded = json.decode(response.body);
+
+      return {
+        "success": response.statusCode == 200 || response.statusCode == 201,
+        "message": decoded['message'] ?? (response.statusCode == 200 ? "Success" : "Failed")
+      };
+    } catch (e) {
+      return {"success": false, "message": "Error: $e"};
+    }
+  }
+
+  Future<Map<String, dynamic>> submitServiceEntry(Map<String, dynamic> data, String? proofPath) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = Uri.parse(ApiConstants.serviceEntry);
+      final request = http.MultipartRequest('POST', url);
+      request.headers.addAll(ApiConstants.getHeaders(token));
+
+      data.forEach((key, value) {
+        request.fields[key] = value.toString();
+      });
+
+      if (proofPath != null) {
+        request.files.add(await http.MultipartFile.fromPath('proof', proofPath));
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final decoded = json.decode(response.body);
+
+      return {
+        "success": response.statusCode == 200 || response.statusCode == 201,
+        "message": decoded['message'] ?? (response.statusCode == 200 ? "Success" : "Failed")
+      };
+    } catch (e) {
+      return {"success": false, "message": "Error: $e"};
+    }
+  }
+
+  Future<void> fetchFuelBunks() async {
+    _isLoadingMaintenance = true;
+    notifyListeners();
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(Uri.parse(ApiConstants.getVehicleBunks), headers: ApiConstants.getHeaders(token));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        _fuelBunks = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+      }
+    } catch (e) {
+      debugPrint("Fetch Bunks Error: $e");
+    } finally {
+      _isLoadingMaintenance = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchServiceShops() async {
+    _isLoadingMaintenance = true;
+    notifyListeners();
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(Uri.parse(ApiConstants.getServiceShops), headers: ApiConstants.getHeaders(token));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        _serviceShops = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+      }
+    } catch (e) {
+      debugPrint("Fetch Shops Error: $e");
+    } finally {
+      _isLoadingMaintenance = false;
+      notifyListeners();
     }
   }
 }

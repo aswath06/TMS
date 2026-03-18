@@ -4,6 +4,11 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/verify_mission_screen.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:tripzo/store/VehicleStore.dart';
+import 'package:tripzo/screens/driver/maintenance/fuel_page.dart';
+import 'package:tripzo/screens/driver/maintenance/service_page.dart';
 
 class DriverDutiesScreen extends StatefulWidget {
   const DriverDutiesScreen({super.key});
@@ -20,6 +25,11 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
       useDriverStore.fetchProfile();
       useDriverStore.fetchMissions();
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
@@ -91,6 +101,8 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                                 isDark: isDark,
                                 isTamil: isTamil,
                               )),
+                        const SizedBox(height: 36),
+                        _buildMaintenanceSections(context, isDark, primaryBlue, surfaceColor, titleColor, subColor, isTamil),
                         const SizedBox(height: 100),
                       ],
                     ),
@@ -395,6 +407,100 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
       ],
     );
   }
+
+  Widget _buildMaintenanceSections(BuildContext context, bool isDark, Color primary, Color surface, Color titleColor, Color subColor, bool isTamil) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(isTamil ? "பராமரிப்பு" : "Maintenance", titleColor),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: _buildNavigationCard(
+                context: context,
+                title: isTamil ? "எரிபொருள்" : "Fuel Entry",
+                subtitle: isTamil ? "பதிவு செய்யவும்" : "Log Refill",
+                icon: Icons.local_gas_station_rounded,
+                color: const Color(0xFF3B82F6),
+                isDark: isDark,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelPage())),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildNavigationCard(
+                context: context,
+                title: isTamil ? "சேவை" : "Service Entry",
+                subtitle: isTamil ? "பதிவு செய்யவும்" : "Log Maintenance",
+                icon: Icons.home_repair_service_rounded,
+                color: const Color(0xFF10B981),
+                isDark: isDark,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ServicePage())),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavigationCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, color.withOpacity(0.8)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   String _formatDate(String? dateStr) {
     if (dateStr == null) return "TBD";

@@ -36,6 +36,11 @@ class ApiConstants {
   static const String licenseCheck = "$baseUrl/api/drivers/license-check";
   static const String getDriverMissions = "$baseUrl/api/drivers/drive-routes";
   static const String driverDashboard = "$baseUrl/api/drivers/driver-dashboard/";
+   // Maintenance
+   static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";
+   static const String serviceEntry = "$baseUrl/api/maintenance/service-entry";
+   static const String getVehicleBunks = "$baseUrl/api/maintenance/get-bunks";
+  static const String getServiceShops = "$baseUrl/api/maintenance/get-shops";
 
   // Centralized headers for DevTunnels and common requirements
   static Map<String, String> getHeaders(String? token) {
