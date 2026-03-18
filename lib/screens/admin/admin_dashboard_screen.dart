@@ -400,7 +400,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required double width,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(32),
@@ -422,23 +422,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Icon(icon, color: color, size: 22),
               ),
-              const SizedBox(width: 8), // ADDED SPACING
               Stack(
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 54,
-                    height: 54,
+                    width: 46,
+                    height: 46,
                     child: CircularProgressIndicator(
                       value: percent,
-                      strokeWidth: 6,
+                      strokeWidth: 5,
                       backgroundColor: color.withOpacity(0.15),
                       valueColor: AlwaysStoppedAnimation<Color>(color),
                       strokeCap: StrokeCap.round,
@@ -447,7 +446,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Text(
                     '${(percent * 100).toInt()}%',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: isDark ? Colors.white : Colors.black,
                     ),
@@ -456,29 +455,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                currentValue,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: width * 0.085,
-                  letterSpacing: -1.0,
-                  color: isDark ? Colors.white : Colors.black,
-                  height: 1,
+              Flexible(
+                child: Text(
+                  currentValue,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: width * 0.07,
+                    letterSpacing: -1.0,
+                    color: isDark ? Colors.white : Colors.black,
+                    height: 1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  totalValue,
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    totalValue,
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
@@ -489,9 +494,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             title,
             style: const TextStyle(
               color: Colors.grey,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
