@@ -3,6 +3,7 @@ import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'mission_details_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 
 class MissionHistoryScreen extends StatefulWidget {
@@ -117,7 +118,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                         ),
                         Expanded(
                           child: isLoading && completedMissions.isEmpty
-                              ? const Center(child: CircularProgressIndicator())
+                              ? _buildHistorySkeleton(isDark)
                               : RefreshIndicator(
                                   onRefresh: () => _fetchHistory(refresh: true),
                           child: SingleChildScrollView(
@@ -231,6 +232,120 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
           },
         );
       },
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  SHIMMER SKELETON – mirrors the history page structure
+  // ══════════════════════════════════════════════════════════
+  Widget _buildHistorySkeleton(bool isDark) {
+    final Color base = isDark ? const Color(0xFF1E293B) : Colors.grey.shade300;
+    final Color highlight = isDark ? const Color(0xFF334155) : Colors.grey.shade100;
+
+    Widget bone({
+      double width = double.infinity,
+      double height = 14,
+      double radius = 8,
+    }) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+    }
+
+    Widget historyCardSkeleton() {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date + badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                bone(width: 90, height: 12, radius: 6),
+                bone(width: 65, height: 20, radius: 8),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Title
+            bone(width: 180, height: 17, radius: 9),
+            const SizedBox(height: 16),
+            // Driver + creator row
+            Row(
+              children: [
+                bone(width: 14, height: 14, radius: 7),
+                const SizedBox(width: 6),
+                bone(width: 100, height: 13, radius: 7),
+                const Spacer(),
+                bone(width: 80, height: 11, radius: 6),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Stops + distance
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                bone(width: 60, height: 12, radius: 6),
+                bone(width: 50, height: 12, radius: 6),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Shimmer.fromColors(
+      baseColor: base,
+      highlightColor: highlight,
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            // Summary card skeleton
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(3, (_) {
+                  return Column(
+                    children: [
+                      bone(width: 40, height: 22, radius: 8),
+                      const SizedBox(height: 4),
+                      bone(width: 50, height: 10, radius: 5),
+                    ],
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Search bar skeleton
+            bone(height: 48, radius: 20),
+            const SizedBox(height: 32),
+            // Section title
+            bone(width: 170, height: 18, radius: 9),
+            const SizedBox(height: 16),
+            // History cards
+            ...List.generate(4, (_) => historyCardSkeleton()),
+          ],
+        ),
+      ),
     );
   }
 

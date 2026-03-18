@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -94,6 +95,15 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Future<void> _fetchUserRole() async {
     final role = await UserStore.getRole();
     if (mounted) setState(() => _userRole = role);
+  }
+
+  /// Pull-to-refresh handler — re-fetches all data in parallel.
+  Future<void> _refreshData() async {
+    await Future.wait([
+      _fetchMissionDetails(),
+      _loadMapData(),
+      _fetchUserRole(),
+    ]);
   }
 
 
@@ -523,8 +533,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: _isFetchingDetails 
-          ? const Center(child: CircularProgressIndicator())
+      body: _isFetchingDetails
+          ? _buildShimmerSkeleton(isDark, bgColor, cardColor)
           : Stack(
         children: [
           _buildBackgroundDecor(isDark),
@@ -536,7 +546,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   child: _buildHeader(context, titleColor),
                 ),
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: RefreshIndicator(
+                    onRefresh: _refreshData,
+                    color: primaryBlue,
+                    backgroundColor: cardColor,
+                    displacement: 40,
+                    strokeWidth: 2.5,
+                    child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 10, 20, 100), // Extra bottom padding
@@ -683,6 +699,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       ),
                     ),
                   ),
+                  ),
                 ),
               ],
             ),
@@ -701,6 +718,195 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             ),
         ],
       ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  SHIMMER SKELETON – mirrors the actual page structure
+  // ══════════════════════════════════════════════════════════
+  Widget _buildShimmerSkeleton(bool isDark, Color bgColor, Color cardColor) {
+    final Color base = isDark ? const Color(0xFF1E293B) : Colors.grey.shade300;
+    final Color highlight = isDark ? const Color(0xFF334155) : Colors.grey.shade100;
+
+    Widget bone({
+      double width = double.infinity,
+      double height = 14,
+      double radius = 8,
+    }) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        _buildBackgroundDecor(isDark),
+        SafeArea(
+          child: Shimmer.fromColors(
+            baseColor: base,
+            highlightColor: highlight,
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Header skeleton ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      bone(width: 36, height: 36, radius: 12),
+                      bone(width: 140, height: 20, radius: 10),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Hero card skeleton ──
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(26),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            bone(width: 80, height: 26, radius: 12),
+                            bone(width: 100, height: 16, radius: 8),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        bone(width: 200, height: 24, radius: 10),
+                        const SizedBox(height: 10),
+                        bone(width: 120, height: 14, radius: 8),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            bone(width: 32, height: 32, radius: 16),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                bone(width: 110, height: 14, radius: 7),
+                                const SizedBox(height: 6),
+                                bone(width: 80, height: 11, radius: 6),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // ── Trip metrics row skeleton ──
+                  Row(
+                    children: List.generate(3, (_) {
+                      return Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // ── Section title ──
+                  bone(width: 160, height: 16, radius: 8),
+                  const SizedBox(height: 16),
+
+                  // ── Map skeleton ──
+                  Container(
+                    width: double.infinity,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // ── Checkpoints section title ──
+                  bone(width: 180, height: 16, radius: 8),
+                  const SizedBox(height: 20),
+
+                  // ── Checkpoint items skeleton ──
+                  ...List.generate(3, (i) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        children: [
+                          bone(width: 28, height: 28, radius: 14),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                bone(height: 14, width: 160, radius: 7),
+                                const SizedBox(height: 6),
+                                bone(height: 10, width: 100, radius: 6),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 32),
+
+                  // ── Resource section title ──
+                  bone(width: 150, height: 16, radius: 8),
+                  const SizedBox(height: 16),
+
+                  // ── Resource cards skeleton ──
+                  ...List.generate(2, (_) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          bone(width: 40, height: 40, radius: 12),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                bone(height: 14, radius: 7),
+                                const SizedBox(height: 8),
+                                bone(height: 10, width: 120, radius: 6),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
@@ -101,7 +102,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
             ),
             Expanded(
               child: store.isLoading && missions.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _buildMissionsSkeleton(isDark, cardColor)
                   : RefreshIndicator(
                       onRefresh: () => store.fetchRequests(),
                       child: missions.isEmpty
@@ -174,6 +175,115 @@ class _MissionsScreenState extends State<MissionsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════
+  //  SHIMMER SKELETON – mirrors mission card list layout
+  // ══════════════════════════════════════════════════════
+  Widget _buildMissionsSkeleton(bool isDark, Color cardColor) {
+    final Color base = isDark ? const Color(0xFF1E293B) : Colors.grey.shade300;
+    final Color highlight = isDark ? const Color(0xFF334155) : Colors.grey.shade100;
+
+    Widget bone({
+      double width = double.infinity,
+      double height = 14,
+      double radius = 8,
+    }) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+    }
+
+    Widget skeletonCard() {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Time + status badge row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(children: [
+                  bone(width: 18, height: 18, radius: 9),
+                  const SizedBox(width: 6),
+                  bone(width: 90, height: 16, radius: 8),
+                ]),
+                bone(width: 70, height: 24, radius: 10),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Title
+            bone(width: 200, height: 20, radius: 10),
+            const SizedBox(height: 12),
+            // Creator
+            bone(width: 160, height: 12, radius: 6),
+            const SizedBox(height: 16),
+            // Driver bar
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  bone(width: 32, height: 32, radius: 16),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        bone(width: 110, height: 14, radius: 7),
+                        const SizedBox(height: 6),
+                        bone(width: 80, height: 11, radius: 6),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Stop sequence label
+            bone(width: 120, height: 10, radius: 5),
+            const SizedBox(height: 14),
+            // Timeline rows
+            ...List.generate(3, (i) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  children: [
+                    bone(width: 14, height: 14, radius: 7),
+                    const SizedBox(width: 16),
+                    bone(width: 160, height: 14, radius: 7),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    return Shimmer.fromColors(
+      baseColor: base,
+      highlightColor: highlight,
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        children: List.generate(3, (_) => skeletonCard()),
       ),
     );
   }

@@ -132,6 +132,7 @@ class RequestCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
                 _buildStatusBadge(req['status'] ?? 'Pending'),
               ],
             ),
