@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to upload fuel bill images.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to capture fuel bill images.</string>
 </dict>
 </plist>

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class ApplyLeavePage extends StatefulWidget {
   const ApplyLeavePage({super.key});
@@ -51,52 +52,26 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
         ? (_startDate ?? DateTime.now())
         : (_endDate ?? (_startDate?.add(const Duration(days: 1)) ?? DateTime.now()));
 
-    final DateTime firstDate = isStart
-        ? DateTime.now()
-        : (_startDate?.add(const Duration(minutes: 1)) ?? DateTime.now());
-
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
-      firstDate: firstDate,
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(primary: primaryBlue),
-        ),
-        child: child!,
-      ),
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
+      initialDate: initialDate,
+      minDate: isStart ? DateTime.now() : (_startDate ?? DateTime.now()),
+      showTime: true,
+      accent: primaryBlue,
     );
 
-    if (pickedDate != null && mounted) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(initialDate),
-      );
-
-      if (pickedTime != null) {
-        setState(() {
-          final fullDateTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-
-          if (isStart) {
-            _startDate = fullDateTime;
-            // If end date exists and is now before start date, clear it
-            if (_endDate != null && _endDate!.isBefore(_startDate!)) {
-              _endDate = null;
-            }
-          } else {
-            _endDate = fullDateTime;
+    if (picked != null && mounted) {
+      setState(() {
+        if (isStart) {
+          _startDate = picked;
+          if (_endDate != null && _endDate!.isBefore(_startDate!)) {
+            _endDate = null;
           }
-          // Clear any previous error when dates are changed
-          useDriverStore.resetLeavesError();
-        });
-      }
+        } else {
+          _endDate = picked;
+        }
+        useDriverStore.resetLeavesError();
+      });
     }
   }
 
@@ -138,7 +113,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                       ),
                       const SizedBox(height: 16),
 
-                      // --- Date Selection Area ---
                       _buildDateSelectionArea(
                         cardColor,
                         titleColor,
@@ -176,7 +150,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
 
                       const SizedBox(height: 32),
 
-                      // --- API Error Feedback Area ---
                       ListenableBuilder(
                         listenable: useDriverStore,
                         builder: (context, child) {
@@ -250,7 +223,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
           sub,
         ),
 
-        // --- Duration Indicator ---
         if (_startDate != null && _endDate != null)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -343,7 +315,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                // Date Container
                 Expanded(
                   flex: 2,
                   child: _dateTimeBox(
@@ -355,7 +326,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Time Container
                 Expanded(
                   flex: 1,
                   child: _dateTimeBox(
@@ -402,8 +372,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
       ),
     );
   }
-
-  // --- Reuse Standard Components ---
 
   Widget _buildHeader(BuildContext context, Color titleColor, bool isTamil) {
     return Row(
@@ -529,7 +497,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Widget _buildLeaveTypeSelector(Color card, Color txt, bool isTamil) {
-    // 1: Sick, 2: Casual, 3: Emergency, 4: Other
     final types = [
       {'id': 1, 'en': 'Sick', 'ta': 'மருத்துவ'},
       {'id': 2, 'en': 'Casual', 'ta': 'தற்செயல்'},
@@ -608,12 +575,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                       final String toDate = DateFormat(
                         'yyyy-MM-dd',
                       ).format(_endDate!);
-
-                      debugPrint("--- Submitting Leave Application ---");
-                      debugPrint("From Date: $fromDate");
-                      debugPrint("To Date: $toDate");
-                      debugPrint("Leave Type ID: $_selectedLeaveType");
-                      debugPrint("Reason: ${_reasonController.text}");
 
                       final success = await useDriverStore.createLeave(
                         fromDate: fromDate,

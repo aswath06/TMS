@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/request_store.dart';
@@ -178,11 +179,11 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
   }
 
   Future<void> _selectDriverDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
       initialDate: _selectedDriverDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
+      minDate: DateTime(2000),
+      showTime: false,
     );
     if (picked != null && picked != _selectedDriverDate) {
       setState(() {

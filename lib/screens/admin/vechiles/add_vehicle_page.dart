@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/store/VehicleStore.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class AddVehiclePage extends StatefulWidget {
   const AddVehiclePage({super.key});
@@ -92,23 +93,11 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   }
 
   Future<void> _selectDate(BuildContext context, String type) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2010),
-      lastDate: DateTime(2040),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6366F1),
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      minDate: DateTime(2010),
+      showTime: false,
     );
     if (picked != null) {
       setState(() {

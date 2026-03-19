@@ -5,6 +5,7 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class ServicePage extends StatefulWidget {
   const ServicePage({super.key});
@@ -475,17 +476,11 @@ class _ServicePageState extends State<ServicePage> with SingleTickerProviderStat
   Widget _buildDateField(BuildContext ctx, bool isDark, Color accent, DateTime date, Function(DateTime) onPicked) {
     return InkWell(
       onTap: () async {
-        final picked = await showDatePicker(
-          context: ctx,
+        final picked = await CustomDateTimePicker.show(
+          ctx,
           initialDate: date,
-          firstDate: DateTime(2000),
-          lastDate: DateTime(2100),
-          builder: (ctx, child) => Theme(
-            data: Theme.of(ctx).copyWith(
-              colorScheme: ColorScheme.fromSeed(seedColor: accent, brightness: isDark ? Brightness.dark : Brightness.light),
-            ),
-            child: child!,
-          ),
+          minDate: DateTime(2000),
+          showTime: false,
         );
         if (picked != null) onPicked(picked);
       },

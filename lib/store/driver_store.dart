@@ -565,11 +565,16 @@ class DriverStore extends ChangeNotifier {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      final decoded = json.decode(response.body);
+      
+      String? errorMessage;
+      try {
+        final decoded = json.decode(response.body);
+        errorMessage = decoded['message'];
+      } catch (_) {}
 
       return {
         "success": response.statusCode == 200 || response.statusCode == 201,
-        "message": decoded['message'] ?? (response.statusCode == 200 ? "Success" : "Failed")
+        "message": errorMessage ?? (response.statusCode == 200 ? "Success" : "Failed to log fuel entry")
       };
     } catch (e) {
       return {"success": false, "message": "Error: $e"};
@@ -595,11 +600,16 @@ class DriverStore extends ChangeNotifier {
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      final decoded = json.decode(response.body);
+      
+      String? errorMessage;
+      try {
+        final decoded = json.decode(response.body);
+        errorMessage = decoded['message'];
+      } catch (_) {}
 
       return {
         "success": response.statusCode == 200 || response.statusCode == 201,
-        "message": decoded['message'] ?? (response.statusCode == 200 ? "Success" : "Failed")
+        "message": errorMessage ?? (response.statusCode == 200 ? "Success" : "Failed to log service entry")
       };
     } catch (e) {
       return {"success": false, "message": "Error: $e"};

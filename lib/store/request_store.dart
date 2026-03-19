@@ -250,13 +250,20 @@ class RequestStore extends ChangeNotifier {
     return {
       'id': leave['id'],
       'driver': leave['driver']?['name'] ?? 'Unknown Driver',
+      'driver_full': leave['driver'], // Full driver object (id, name, email)
       'from': _formatLeaveDate(leave['from_date']),
       'to': _formatLeaveDate(leave['to_date']),
+      'from_raw': leave['from_date'],
+      'to_raw': leave['to_date'],
       'days': leave['total_days']?.toString() ?? '0',
       'status': status,
+      'rawStatus': leave['status'],
       'reason': leave['reason'] ?? '',
       'leave_type': leave['leave_type'],
       'driver_details': leave['driver_details'],
+      'approver': leave['approver'], // Full approver object (id, name)
+      'approved_at': leave['approved_at'],
+      'created_at': leave['created_at'],
       'current_assignment': leave['current_assignment'],
     };
   }
@@ -336,6 +343,56 @@ class RequestStore extends ChangeNotifier {
     } catch (e) {
       _leavesErrorMessage = "Connection error.";
       debugPrint("Create Leave Error: $e");
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
+    }
+    return false;
+  }
+
+  /// Updates the status of a leave request (Approve/Reject)
+  Future<bool> updateLeaveStatus(int leaveId, int status) async {
+    _isLoadingLeaves = true;
+    _leavesErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _leavesErrorMessage = "Session expired.";
+        return false;
+      }
+
+      final response = await http.put(
+        Uri.parse("${ApiConstants.updateLeaveStatus}$leaveId"),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({"status": status}),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          // Update the local list to reflect the change immediately
+          final index = _leaves.indexWhere((l) => l['id'] == leaveId);
+          if (index != -1) {
+            String statusStr = 'Pending';
+            if (status == 2) statusStr = 'Approved';
+            else if (status == 3) statusStr = 'Rejected';
+            
+            _leaves[index]['status'] = statusStr;
+            _leaves[index]['rawStatus'] = status;
+          }
+          notifyListeners();
+          return true;
+        } else {
+          _leavesErrorMessage = data['message'] ?? "Failed to update status.";
+        }
+      } else {
+        _leavesErrorMessage = "Server error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _leavesErrorMessage = "Connection error.";
+      debugPrint("Update Leave Status Error: $e");
     } finally {
       _isLoadingLeaves = false;
       notifyListeners();

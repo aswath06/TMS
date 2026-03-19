@@ -14,6 +14,14 @@ class ApiConstants {
   // Vehicles
   static const String getAllVehicles = "$baseUrl/api/vehicles/get-all";
   static const String createVehicle = "$baseUrl/api/vehicles/create";
+  static const String vehicleDashboard =
+      "$baseUrl/api/vehicles/vehicle-dashboard/";
+  static const String serviceTypes = "$baseUrl/api/vehicles/service-types";
+  static const String serviceShops = "$baseUrl/api/vehicles/shops";
+  static const String vehicleMaintenance =
+      "$baseUrl/api/vehicles/vehicle-maintenance";
+  static const String fuelBunks = "$baseUrl/api/vehicles/fuel-bunk";
+  static const String fuelLog = "$baseUrl/api/vehicles/fuel-log";
 
   // Requests (Added these for your RequestStore)
   static const String getAllRequests = "$baseUrl/request/get-all";
@@ -30,6 +38,7 @@ class ApiConstants {
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";
   static const String createLeave = "$baseUrl/api/leaves/create";
+  static const String updateLeaveStatus = "$baseUrl/api/leaves/status/";
   static const String getTodayDriverCount = "$baseUrl/api/leaves/today-driver-count";
 
   // OCR

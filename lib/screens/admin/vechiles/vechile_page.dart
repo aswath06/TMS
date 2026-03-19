@@ -4,6 +4,7 @@ import 'package:tripzo/screens/admin/vechiles/add_vehicle_page.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/components/fleet/vehicle_card.dart';
 import 'package:tripzo/components/fleet/stat_card.dart';
+import 'package:tripzo/screens/admin/vechiles/vehicle_detail_page.dart';
 
 class VehiclePage extends StatefulWidget {
   const VehiclePage({super.key});
@@ -148,11 +149,26 @@ class _VehiclePageState extends State<VehiclePage> {
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => FadeInWidget(
-            child: VehicleCard(
-              vehicle: list[index],
-              cardColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-              titleColor: titleColor,
-              subColor: subColor,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VehicleDetailScreen(
+                        vehicleId: list[index]['id'],
+                      ),
+                    ),
+                  );
+                },
+                child: VehicleCard(
+                  vehicle: list[index],
+                  cardColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  titleColor: titleColor,
+                  subColor: subColor,
+                ),
+              ),
             ),
           ),
           childCount: list.length,

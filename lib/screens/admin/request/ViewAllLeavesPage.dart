@@ -1006,6 +1006,8 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     final requestStore = Provider.of<RequestStore>(context, listen: false);
 
     // Format time to HH:mm for the API
@@ -1024,19 +1026,21 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
       reason: _reasonController.text,
     );
 
-    if (success) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Leave applied successfully")),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            requestStore.leavesErrorMessage ?? "Failed to apply leave",
+    if (mounted) {
+      if (success) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text("Leave applied successfully")),
+        );
+        navigator.pop();
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              requestStore.leavesErrorMessage ?? "Failed to apply leave",
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 }
