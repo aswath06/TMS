@@ -45,6 +45,8 @@ class ApiConstants {
   static const String licenseCheck = "$baseUrl/api/drivers/license-check";
   static const String getDriverMissions = "$baseUrl/api/drivers/drive-routes";
   static const String driverDashboard = "$baseUrl/api/drivers/driver-dashboard/";
+  static const String driverVehicles = "$baseUrl/api/drivers/drive-vehicles";
+  static const String verifyFuelBill = "$baseUrl/api/vehicles/verify-fuel-bill";
    // Maintenance
    static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";
    static const String serviceEntry = "$baseUrl/api/maintenance/service-entry";

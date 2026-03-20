@@ -78,7 +78,51 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
   Future<void> _pickImage() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
-      allowMultiple: false,
+      allowMultiple: false, 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
     );
     if (result != null && result.files.single.path != null) {
       setState(() => _billImage = File(result.files.single.path!));
