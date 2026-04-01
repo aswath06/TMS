@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/store/driver_store.dart';
 
 class AddDriverPage extends StatefulWidget {
@@ -21,6 +22,25 @@ class _AddDriverPageState extends State<AddDriverPage> {
   final TextEditingController _expiryDateCtrl = TextEditingController();
   final TextEditingController _experienceCtrl = TextEditingController();
   final TextEditingController _addressCtrl = TextEditingController();
+  final TextEditingController _ageCtrl = TextEditingController();
+  final TextEditingController _bloodGroupCtrl = TextEditingController();
+  final TextEditingController _emergencyNameCtrl = TextEditingController();
+  final TextEditingController _emergencyPhoneCtrl = TextEditingController();
+  final TextEditingController _joiningDateCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _passwordCtrl = TextEditingController();
+
+  String _selectedBloodGroup = 'O+';
+  final List<String> _bloodGroups = [
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'AB+',
+    'AB-',
+    'O+',
+    'O-'
+  ];
 
   String? _frontPath;
   String? _backPath;
@@ -36,6 +56,13 @@ class _AddDriverPageState extends State<AddDriverPage> {
     _expiryDateCtrl.dispose();
     _experienceCtrl.dispose();
     _addressCtrl.dispose();
+    _ageCtrl.dispose();
+    _bloodGroupCtrl.dispose();
+    _emergencyNameCtrl.dispose();
+    _emergencyPhoneCtrl.dispose();
+    _joiningDateCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -111,6 +138,64 @@ class _AddDriverPageState extends State<AddDriverPage> {
     }
   }
 
+  Future<void> _selectExpiryDate() async {
+    DateTime? initialDate;
+    if (_expiryDateCtrl.text.isNotEmpty) {
+      try {
+        initialDate = DateFormat("dd-MM-yyyy").parse(_expiryDateCtrl.text);
+      } catch (_) {
+        initialDate = DateTime.now();
+      }
+    }
+
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
+      initialDate: initialDate ?? DateTime.now(),
+      minDate: DateTime.now(),
+      showTime: false,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _expiryDateCtrl.text = DateFormat("dd-MM-yyyy").format(picked);
+      });
+    }
+  }
+
+  Future<void> _selectJoiningDate() async {
+    DateTime? initialDate;
+    if (_joiningDateCtrl.text.isNotEmpty) {
+      try {
+        initialDate = DateFormat("dd-MM-yyyy").parse(_joiningDateCtrl.text);
+      } catch (_) {
+        initialDate = DateTime.now();
+      }
+    }
+
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
+      initialDate: initialDate ?? DateTime.now(),
+      minDate: DateTime(2000),
+      showTime: false,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _joiningDateCtrl.text = DateFormat("dd-MM-yyyy").format(picked);
+      });
+    }
+  }
+
+  String _formatDate(String ddMmYyyy) {
+    try {
+      final parts = ddMmYyyy.split('-');
+      if (parts.length == 3) {
+        return "${parts[2]}-${parts[1]}-${parts[0]}";
+      }
+    } catch (_) {}
+    return ddMmYyyy;
+  }
+
   void _submit() async {
     // If OCR is in progress, block submission
     if (_isCheckingLicense) {
@@ -149,29 +234,32 @@ class _AddDriverPageState extends State<AddDriverPage> {
         _isLoading = true;
       });
 
-      int experience = int.tryParse(_experienceCtrl.text) ?? 0;
-
-      String cleanName = _nameCtrl.text.trim().toLowerCase().replaceAll(
-        RegExp(r'\s+'),
-        '.',
-      );
-      if (cleanName.isEmpty) cleanName = 'driver';
-      String defaultEmail = '$cleanName@example.com';
+      final int experience = int.tryParse(_experienceCtrl.text) ?? 0;
+      final int age = int.tryParse(_ageCtrl.text) ?? 25;
 
       final Map<String, dynamic> driverData = {
+        "role_id": 4, // 4 as per curl (Admin Driver role)
         "name": _nameCtrl.text.trim(),
-        "email": defaultEmail,
-        "password": "Driver@123",
-        "role_id": 3,
+        "email": _emailCtrl.text.trim(),
         "phone": _phoneCtrl.text.trim(),
+        "password": _passwordCtrl.text.trim().isEmpty
+            ? "Driver@123"
+            : _passwordCtrl.text.trim(),
+        "status": "ACTIVE",
+        "push_notification_enabled": false,
+        "age": age,
         "license_number": _licenseCtrl.text.trim(),
-        "license_expiry": _expiryDateCtrl.text.trim(),
+        "license_expiry_date": _formatDate(_expiryDateCtrl.text.trim()),
         "experience_years": experience,
+        "blood_group": _selectedBloodGroup,
         "address": _addressCtrl.text.trim(),
-        "vehicle_type": _selectedVehicleType.toLowerCase(),
+        "emergency_contact_name": _emergencyNameCtrl.text.trim(),
+        "emergency_contact_phone": _emergencyPhoneCtrl.text.trim(),
+        "joining_date": _formatDate(_joiningDateCtrl.text.trim()),
+        "driver_status": "AVAILABLE"
       };
 
-      final success = await Provider.of<DriverStore>(
+      final response = await Provider.of<DriverStore>(
         context,
         listen: false,
       ).addDriver(driverData);
@@ -181,17 +269,18 @@ class _AddDriverPageState extends State<AddDriverPage> {
           _isLoading = false;
         });
 
+        final bool success = response['success'] ?? false;
+        final String message = response['message'] ?? (success ? 'Success' : 'Failed');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Driver Registered Successfully!')),
-          );
           Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to Register Driver. Please check inputs.'),
-            ),
-          );
         }
       }
     }
@@ -289,10 +378,29 @@ class _AddDriverPageState extends State<AddDriverPage> {
                 _buildTextField(
                   "Full Name",
                   _nameCtrl,
-                  "e.g. John Doe",
+                  "e.g. Karthick Raja",
                   Icons.badge_outlined,
                   isDark,
                   inputColor,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  "Email Address",
+                  _emailCtrl,
+                  "e.g. karthick.r@bitsathy.ac.in",
+                  Icons.email_outlined,
+                  isDark,
+                  inputColor,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  "Password",
+                  _passwordCtrl,
+                  "Choose a login password",
+                  Icons.lock_outline_rounded,
+                  isDark,
+                  inputColor,
+                  isPassword: true,
                 ),
                 const SizedBox(height: 20),
                 _buildTextField(
@@ -302,6 +410,34 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   Icons.phone_iphone_rounded,
                   isDark,
                   inputColor,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField(
+                        "Age",
+                        _ageCtrl,
+                        "e.g. 27",
+                        Icons.numbers_rounded,
+                        isDark,
+                        inputColor,
+                        isNumber: true,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDropdownField(
+                        "Blood Group",
+                        _selectedBloodGroup,
+                        _bloodGroups,
+                        (val) => setState(() => _selectedBloodGroup = val!),
+                        Icons.bloodtype_outlined,
+                        isDark,
+                        inputColor,
+                      ),
+                    ),
+                  ],
                 ),
               ]),
               const SizedBox(height: 24),
@@ -427,6 +563,8 @@ class _AddDriverPageState extends State<AddDriverPage> {
                     inputColor,
                     isExtracting:
                         _isCheckingLicense && _expiryDateCtrl.text.isEmpty,
+                    readOnly: true,
+                    onTap: _selectExpiryDate,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
@@ -461,6 +599,41 @@ class _AddDriverPageState extends State<AddDriverPage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+
+              _buildSectionCard("Employment Details", isDark, inputColor, [
+                _buildTextField(
+                  "Joining Date",
+                  _joiningDateCtrl,
+                  "DD-MM-YYYY",
+                  Icons.calendar_today_rounded,
+                  isDark,
+                  inputColor,
+                  readOnly: true,
+                  onTap: _selectJoiningDate,
+                ),
+              ]),
+              const SizedBox(height: 24),
+
+              _buildSectionCard("Emergency Contact", isDark, inputColor, [
+                _buildTextField(
+                  "Person Name",
+                  _emergencyNameCtrl,
+                  "Relative or friend",
+                  Icons.person_pin_outlined,
+                  isDark,
+                  inputColor,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  "Emergency Phone",
+                  _emergencyPhoneCtrl,
+                  "e.g. +123456789",
+                  Icons.contact_phone_outlined,
+                  isDark,
+                  inputColor,
+                ),
+              ]),
               const SizedBox(height: 48),
 
               SizedBox(
@@ -663,6 +836,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
     Color fill, {
     bool isNumber = false,
     bool isExtracting = false,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    bool isPassword = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,7 +872,9 @@ class _AddDriverPageState extends State<AddDriverPage> {
           child: TextFormField(
             controller: controller,
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-            readOnly: isExtracting,
+            obscureText: isPassword,
+            readOnly: readOnly || isExtracting,
+            onTap: isExtracting ? null : onTap,
             style: TextStyle(
               color: isDark ? Colors.white : Colors.black,
               fontSize: 15,

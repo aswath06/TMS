@@ -171,26 +171,62 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  Future<bool> addDriver(Map<String, dynamic> driverData) async {
+  Future<Map<String, dynamic>> addDriver(Map<String, dynamic> driverData) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return false;
+      if (token == null) {
+        return {"success": false, "message": "Session expired"};
+      }
 
       final url = "${ApiConstants.baseUrl}/auth/register";
+      debugPrint("--- [DEBUG] REGISTER DRIVER ---");
+      debugPrint("URL: $url");
+      debugPrint("Payload: ${json.encode(driverData)}");
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
         body: json.encode(driverData),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Refresh the list after successful add
-        await fetchDrivers(forceRefresh: true);
-        return true;
+      debugPrint("Response Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+
+      Map<String, dynamic> decoded = {};
+      if (response.body.isNotEmpty) {
+        try {
+          decoded = json.decode(response.body);
+        } catch (e) {
+          debugPrint("Failed to decode response: $e");
+        }
       }
-      return false;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchDrivers(forceRefresh: true);
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Driver Registered Successfully!"
+        };
+      }
+
+      // Handle common status codes with specific messages
+      String errorMsg = decoded['message'] ?? "Failed to Register Driver.";
+      if (response.statusCode == 502) {
+        errorMsg = "Server is currently unavailable (502 Bad Gateway).";
+      } else if (response.statusCode == 500) {
+        errorMsg = "Internal Server Error (500). Please contact support.";
+      } else if (response.statusCode == 404) {
+        errorMsg = "Registration endpoint not found (404).";
+      }
+
+      return {
+        "success": false,
+        "message": errorMsg,
+        "statusCode": response.statusCode
+      };
     } catch (e) {
-      return false;
+      debugPrint("Network error in addDriver: $e");
+      return {"success": false, "message": "Network error: Connection failed."};
     }
   }
 
@@ -385,8 +421,20 @@ class DriverStore extends ChangeNotifier {
   }
 
   // --- Status Helpers ---
-  String getStatusLabel(int status) {
-    switch (status) {
+  int normalizeStatus(dynamic status) {
+    if (status is int) return status;
+    if (status is String) {
+      final String upper = status.toUpperCase();
+      if (ApiConstants.DRIVER_STATUS.containsKey(upper)) {
+        return ApiConstants.DRIVER_STATUS[upper]!;
+      }
+    }
+    return 1; // Default to Available
+  }
+
+  String getStatusLabel(dynamic status) {
+    final int s = normalizeStatus(status);
+    switch (s) {
       case 1:
         return 'Available';
       case 2:
@@ -400,8 +448,9 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  Color getStatusColor(int status) {
-    switch (status) {
+  Color getStatusColor(dynamic status) {
+    final int s = normalizeStatus(status);
+    switch (s) {
       case 1:
         return const Color(0xFF10B981); // Emerald
       case 2:
@@ -415,17 +464,17 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  IconData getStatusIcon(int status) {
-    switch (status) {
+  IconData getStatusIcon(dynamic status) {
+    final int s = normalizeStatus(status);
+    switch (s) {
       case 1:
         return Icons.check_circle_outline_rounded;
       case 2:
-        return Icons.directions_bus_rounded; // Getting into/on bus surrogate
+        return Icons.directions_bus_rounded;
       case 3:
-        return Icons
-            .settings_input_component_rounded; // Steering wheel surrogate
+        return Icons.settings_input_component_rounded;
       case 4:
-        return Icons.home_work_rounded; // On leave / Home
+        return Icons.home_work_rounded;
       default:
         return Icons.help_outline_rounded;
     }

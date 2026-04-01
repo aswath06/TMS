@@ -26,6 +26,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
   final TextEditingController _driverSearchController = TextEditingController();
   String _driverFilter = 'All'; // All, Available, Assigned, On Trip, On Leave
   DateTime? _selectedDriverDate;
+  bool _isDriverSearchVisible = false; // Visibility state for search bar
 
   // Helper to parse 'kilometers' string to double for sorting
   double _parseKm(String kmString) {
@@ -40,14 +41,22 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     } else if (sortType == 'Max Distance') {
       list.sort(
         (a, b) => _parseKm(
-          b['kilometers']?.toString() ?? '0',
-        ).compareTo(_parseKm(a['kilometers']?.toString() ?? '0')),
+          b['total_kilometer_drive']?.toString() ?? '0',
+        ).compareTo(_parseKm(a['total_kilometer_drive']?.toString() ?? '0')),
       );
     } else if (sortType == 'Min Distance') {
       list.sort(
         (a, b) => _parseKm(
-          a['kilometers']?.toString() ?? '0',
-        ).compareTo(_parseKm(b['kilometers']?.toString() ?? '0')),
+          a['total_kilometer_drive']?.toString() ?? '0',
+        ).compareTo(_parseKm(b['total_kilometer_drive']?.toString() ?? '0')),
+      );
+    } else if (sortType == 'Max Experience') {
+      list.sort(
+        (a, b) => (b['experience_years'] ?? 0).compareTo(a['experience_years'] ?? 0),
+      );
+    } else if (sortType == 'Min Experience') {
+      list.sort(
+        (a, b) => (a['experience_years'] ?? 0).compareTo(b['experience_years'] ?? 0),
       );
     }
   }
@@ -58,6 +67,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // Allow dynamic height
       backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
@@ -70,52 +80,67 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                   top: Radius.circular(24),
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Filter & Sort",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildRadioOption(
-                    "A to Z",
-                    setModalState,
-                    primaryBlue,
-                    surfaceColor,
-                  ),
-                  _buildRadioOption(
-                    "Z to A",
-                    setModalState,
-                    primaryBlue,
-                    surfaceColor,
-                  ),
-                  _buildRadioOption(
-                    "Max Distance",
-                    setModalState,
-                    primaryBlue,
-                    surfaceColor,
-                  ),
-                  _buildRadioOption(
-                    "Min Distance",
-                    setModalState,
-                    primaryBlue,
-                    surfaceColor,
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Filter & Sort",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildRadioOption(
+                      "A to Z",
+                      setModalState,
+                      primaryBlue,
+                      surfaceColor,
+                    ),
+                    _buildRadioOption(
+                      "Z to A",
+                      setModalState,
+                      primaryBlue,
+                      surfaceColor,
+                    ),
+                    _buildRadioOption(
+                      "Max Distance",
+                      setModalState,
+                      primaryBlue,
+                      surfaceColor,
+                    ),
+                    _buildRadioOption(
+                      "Min Distance",
+                      setModalState,
+                      primaryBlue,
+                      surfaceColor,
+                    ),
+                    _buildRadioOption(
+                      "Max Experience",
+                      setModalState,
+                      primaryBlue,
+                      surfaceColor,
+                    ),
+                    _buildRadioOption(
+                      "Min Experience",
+                      setModalState,
+                      primaryBlue,
+                      surfaceColor,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             );
           },
@@ -198,6 +223,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // Allow dynamic height
       backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
@@ -210,100 +236,103 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                   top: Radius.circular(24),
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Filter Drivers",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _buildDriverFilterChip(
-                        "All",
-                        Icons.group_outlined,
-                        setModalState,
-                        primaryBlue,
-                        surfaceColor,
-                      ),
-                      _buildDriverFilterChip(
-                        "Available",
-                        useDriverStore.getStatusIcon(1),
-                        setModalState,
-                        primaryBlue,
-                        surfaceColor,
-                      ),
-                      _buildDriverFilterChip(
-                        "Assigned",
-                        useDriverStore.getStatusIcon(2),
-                        setModalState,
-                        primaryBlue,
-                        surfaceColor,
-                      ),
-                      _buildDriverFilterChip(
-                        "On Trip",
-                        useDriverStore.getStatusIcon(3),
-                        setModalState,
-                        primaryBlue,
-                        surfaceColor,
-                      ),
-                      _buildDriverFilterChip(
-                        "On Leave",
-                        useDriverStore.getStatusIcon(4),
-                        setModalState,
-                        primaryBlue,
-                        surfaceColor,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    "Today's Overview",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildModalStat(
-                          "Present Today",
-                          AdminDashboardStore().driversPresent.value.toString(),
-                          Icons.check_circle_rounded,
-                          const Color(0xFF10B981),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Filter Drivers",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _buildDriverFilterChip(
+                          "All",
+                          Icons.group_outlined,
+                          setModalState,
+                          primaryBlue,
                           surfaceColor,
-                          isDark,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildModalStat(
+                        _buildDriverFilterChip(
+                          "Available",
+                          useDriverStore.getStatusIcon(1),
+                          setModalState,
+                          primaryBlue,
+                          surfaceColor,
+                        ),
+                        _buildDriverFilterChip(
+                          "Assigned",
+                          useDriverStore.getStatusIcon(2),
+                          setModalState,
+                          primaryBlue,
+                          surfaceColor,
+                        ),
+                        _buildDriverFilterChip(
+                          "On Trip",
+                          useDriverStore.getStatusIcon(3),
+                          setModalState,
+                          primaryBlue,
+                          surfaceColor,
+                        ),
+                        _buildDriverFilterChip(
                           "On Leave",
-                          AdminDashboardStore().driversOnLeave.value.toString(),
-                          Icons.cancel_rounded,
-                          const Color(0xFFEF4444),
+                          useDriverStore.getStatusIcon(4),
+                          setModalState,
+                          primaryBlue,
                           surfaceColor,
-                          isDark,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      "Today's Overview",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildModalStat(
+                            "Present Today",
+                            AdminDashboardStore().driversPresent.value.toString(),
+                            Icons.check_circle_rounded,
+                            const Color(0xFF10B981),
+                            surfaceColor,
+                            isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildModalStat(
+                            "On Leave",
+                            AdminDashboardStore().driversOnLeave.value.toString(),
+                            Icons.cancel_rounded,
+                            const Color(0xFFEF4444),
+                            surfaceColor,
+                            isDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             );
           },
@@ -417,14 +446,17 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     AdminDashboardStore().fetchStats();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<DriverStore>(
-        context,
-        listen: false,
-      ).fetchDrivers(forceRefresh: true);
-      Provider.of<RequestStore>(
-        context,
-        listen: false,
-      ).fetchLeaves(page: 1, limit: 10);
+      final driverStore = Provider.of<DriverStore>(context, listen: false);
+      final requestStore = Provider.of<RequestStore>(context, listen: false);
+
+      // Only fetch if data is missing or empty to avoid redundant loading on navigation
+      if (driverStore.drivers.isEmpty) {
+        driverStore.fetchDrivers();
+      }
+
+      if (requestStore.leaves.isEmpty) {
+        requestStore.fetchLeaves(page: 1, limit: 10);
+      }
     });
 
     _scrollController.addListener(() {
@@ -496,6 +528,8 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                       primaryBlue,
                       isDark,
                     ),
+                    if (_isDriverSearchVisible)
+                      _buildDriverSearchBar(isDark, surfaceColor),
                     _buildDriverList(isDark, surfaceColor),
                     const SizedBox(height: 120),
                   ]),
@@ -814,17 +848,47 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
               fontSize: 20,
             ),
           ),
-          InkWell(
-            onTap: () => _showFilterModal(context, isDark),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(0.1),
+          Row(
+            children: [
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _isDriverSearchVisible = !_isDriverSearchVisible;
+                    if (!_isDriverSearchVisible) {
+                      _driverSearchController.clear();
+                    }
+                  });
+                },
                 borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _isDriverSearchVisible
+                        ? primaryBlue.withOpacity(0.2)
+                        : primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _isDriverSearchVisible ? Icons.search_off : Icons.search,
+                    color: primaryBlue,
+                    size: 20,
+                  ),
+                ),
               ),
-              child: Icon(Icons.tune, color: primaryBlue, size: 20),
-            ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => _showFilterModal(context, isDark),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.tune, color: primaryBlue, size: 20),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -996,8 +1060,19 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
           );
         }
 
-        // Apply local sorting
-        final sortedDrivers = List<Map<String, dynamic>>.from(store.drivers);
+        // Apply local searching and sorting
+        final query = _driverSearchController.text.toLowerCase();
+        final filteredDrivers = store.drivers.where((driver) {
+          final name = (driver['name'] ?? '').toString().toLowerCase();
+          final code = (driver['employee_code'] ?? '').toString().toLowerCase();
+          final phone = (driver['phone_number'] ?? '').toString().toLowerCase();
+
+          return name.contains(query) ||
+              code.contains(query) ||
+              phone.contains(query);
+        }).toList();
+
+        final sortedDrivers = List<Map<String, dynamic>>.from(filteredDrivers);
         _sortLocalDrivers(sortedDrivers, store.sortType);
 
         return Column(
@@ -1029,11 +1104,14 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     Color surfaceColor,
   ) {
     final store = Provider.of<DriverStore>(context, listen: false);
-    final status = driver['status'] ?? 1;
+    final status = driver['status'] ?? 'AVAILABLE';
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);
 
     final String kmDisplay = "${driver['total_kilometer_drive'] ?? 0} km";
+    final String employeeCode = driver['employee_code'] ?? 'N/A';
+    final int experience = driver['experience_years'] ?? 0;
+    final int routes = driver['total_routes'] ?? 0;
 
     return GestureDetector(
       onTap: () {
@@ -1045,108 +1123,200 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: surfaceColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Row(
-          children: [
-            _buildDriverAvatar(driver, isDark),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          driver['name'] ?? 'Unknown',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF1E293B),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: statusColor.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Icon(
-                          store.getStatusIcon(status),
-                          size: 16,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    driver['phone'] ?? 'No Phone',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text(
-                  "Distance",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.speed, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                      kmDisplay,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    _buildDriverAvatar(driver, isDark),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  driver['name'] ?? 'Unknown',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1E293B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      store.getStatusIcon(status),
+                                      size: 12,
+                                      color: statusColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      statusLabel,
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.phone_outlined,
+                                size: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                driver['phone'] ?? 'No Phone',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.02)
+                      : const Color(0xFFF8FAFC),
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withOpacity(0.03),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildQuickStat(
+                      Icons.history,
+                      "$experience Yrs",
+                      "Exp",
+                      isDark,
+                    ),
+                    _buildQuickStat(
+                      Icons.speed,
+                      kmDisplay,
+                      "Distance",
+                      isDark,
+                    ),
+                    _buildQuickStat(
+                      Icons.route_outlined,
+                      "$routes",
+                      "Routes",
+                      isDark,
+                    ),
+                    _buildQuickStat(
+                      Icons.bloodtype_outlined,
+                      driver['blood_group'] ?? 'N/A',
+                      "Blood",
+                      isDark,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStat(
+    IconData icon,
+    String value,
+    String label,
+    bool isDark,
+  ) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: const Color(0xFF6366F1).withOpacity(0.7),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF1E293B),
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey.shade500,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
