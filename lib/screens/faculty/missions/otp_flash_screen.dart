@@ -227,14 +227,21 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                           ),
                           const SizedBox(height: 8),
 
-                          // OTP Display with Gradeint Text (Simulated with rich style)
-                          Text(
-                            decryptedOtp,
-                            style: TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.w900,
-                              color: textColor,
-                              letterSpacing: 12,
+                          // OTP Display in a box below QR
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: accentColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              decryptedOtp,
+                              style: TextStyle(
+                                fontSize: 42,
+                                fontWeight: FontWeight.w900,
+                                color: textColor,
+                                letterSpacing: 8,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 32),

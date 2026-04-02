@@ -16,6 +16,7 @@ import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/screens/driver/verify_mission_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
+import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -74,6 +75,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   bool _isFetchingDetails = true;
   bool _isApproving = false;
   String? _userRole;
+  bool _isMapReady = false;
 
 
   @override
@@ -111,7 +113,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     setState(() => _isFetchingDetails = true);
     try {
       final token = await UserStore.getToken();
-      final url = "${ApiConstants.baseUrl}/request/get-by-id/${widget.requestId}";
+      final url = "${ApiConstants.getRouteById}${widget.requestId}";
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -136,16 +138,27 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     try {
       final token = await UserStore.getToken();
       List<Map<String, dynamic>> allocations = [];
-      final schedules = _missionData?['schedules'] as List?;
-      if (schedules != null) {
-        for (var schedule in schedules) {
-          final vehicleId = schedule['vehicle']?['id'];
-          final guests = schedule['guests'] as List?;
-          if (vehicleId != null && guests != null) {
-            allocations.add({
-              "vehicle_id": vehicleId,
-              "guest_ids": guests.map((g) => g['id']).toList(),
-            });
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      
+      if (tripInstances != null) {
+        for (var trip in tripInstances) {
+          final legs = trip['legs'] as List?;
+          if (legs != null) {
+            for (var leg in legs) {
+              final assignments = leg['assignments'] as List?;
+              if (assignments != null) {
+                for (var assignment in assignments) {
+                  final vehicleId = assignment['vehicle']?['id'];
+                  final passengers = assignment['passengers'] as List?;
+                  if (vehicleId != null && passengers != null) {
+                    allocations.add({
+                      "vehicle_id": vehicleId,
+                      "guest_ids": passengers.map((p) => p['passenger_id']).toList(),
+                    });
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -171,16 +184,19 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
       final respData = jsonDecode(response.body);
       if (response.statusCode == 200 && respData['success'] != false) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("${isAdmin ? 'Admin' : 'Mission'} Approved Successfully"), backgroundColor: Colors.green),
         );
         await _fetchMissionDetails();
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(respData['message'] ?? "Failed to approve"), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
       );
@@ -190,6 +206,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   void _handleDecline(String remark) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Declined with remark: $remark"), backgroundColor: Colors.orange),
     );
@@ -234,7 +251,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   decoration: InputDecoration(
                     hintText: "Enter your remarks here...",
                     filled: true,
-                    fillColor: Colors.grey.withOpacity(0.05),
+                    fillColor: Colors.grey.withValues(alpha: 0.05),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(color: Colors.grey, width: 0.5),
@@ -312,7 +329,10 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             ),
           ];
         });
-        _mapController.move(stopCoords.first, 12);
+        
+        if (_isMapReady) {
+          _mapController.move(stopCoords.first, 12);
+        }
       }
     } catch (e) {
       debugPrint("Map Load Error: $e");
@@ -380,7 +400,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   void _fitBounds(List<LatLng> points) {
-    if (points.isEmpty) return;
+    if (points.isEmpty || !_isMapReady) return;
     final bounds = LatLngBounds.fromPoints(points);
     _mapController.fitCamera(
       CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)),
@@ -392,15 +412,21 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     try {
       final String? role = await UserStore.getRole();
       final bool isDriver = role?.toLowerCase() == 'driver';
+      final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
 
-      if (isDriver) {
-        final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
+    final String statusString = (_missionData?['travel_info']?['status'] ?? _missionData?['status'] ?? widget.status ?? "").toString().toUpperCase();
+    final bool isStart = statusString == 'APPROVED' || statusString == 'PLANNED' || 
+                        currentStatus == 4 || currentStatus == 5 || currentStatus == 6 || currentStatus == 12;
+
+    debugPrint("DEBUG: isStart=$isStart, statusString=$statusString, currentStatus=$currentStatus");
+
+    if (isDriver) {
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => VerifyMissionScreen(
               requestId: widget.requestId,
-              isStart: currentStatus == 5 || currentStatus == 6,
+              isStart: isStart,
             ),
           ),
         );
@@ -411,85 +437,123 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       }
 
       final String? token = await UserStore.getToken();
-      final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
-      final isStart = currentStatus == 5 || currentStatus == 6;
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
 
-      final endpoint = isStart
-          ? ApiConstants.generateStartOtp
-          : ApiConstants.generateEndOtp;
+      if (tripId == null) throw "Trip ID not found";
+
+      // Determine dynamic endpoint based on action type
+      String endpoint;
+      if (isStart) {
+        endpoint = "https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/start-otp";
+      } else {
+        endpoint = "https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/end-otp";
+      }
 
       final response = await http.post(
         Uri.parse(endpoint),
         headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({"route_id": int.tryParse(widget.requestId) ?? 0}),
+        body: "", // Dynamic endpoints use empty body as per standard
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String displayOtp = data['otp']?.toString() ?? "";
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint("API Error! Endpoint: $endpoint");
+        debugPrint("Curl: curl -X POST '$endpoint' -H 'Authorization: TMS $token' -H 'Content-Type: application/json' --data ''");
+        debugPrint("Response Status: ${response.statusCode}");
+        debugPrint("Response Body: ${response.body}");
+      }
 
-        // Attempt JWT Decode just in case
-        try {
-          final parts = displayOtp.split('.');
-          if (parts.length == 3) {
-            String payloadStr = parts[1];
-            String normalized = payloadStr.replaceAll('-', '+').replaceAll('_', '/');
-            switch (normalized.length % 4) {
-              case 2: normalized += '=='; break;
-              case 3: normalized += '='; break;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        String displayOtp = data['data']?['encrypted_otp']?.toString() ?? data['otp']?.toString() ?? "";
+
+        // Attempt JWT Decode just in case if it's potentially a token
+        if (displayOtp.length > 20 && displayOtp.contains('.')) {
+          try {
+            final parts = displayOtp.split('.');
+            if (parts.length == 3) {
+              String payloadStr = parts[1];
+              String normalized = payloadStr.replaceAll('-', '+').replaceAll('_', '/');
+              switch (normalized.length % 4) {
+                case 2: normalized += '=='; break;
+                case 3: normalized += '='; break;
+              }
+              final decodedBytes = base64Url.decode(normalized);
+              final payloadMap = jsonDecode(utf8.decode(decodedBytes));
+              if (payloadMap['otp'] != null) {
+                displayOtp = payloadMap['otp'].toString();
+              }
             }
-            final decodedBytes = base64Url.decode(normalized);
-            final payloadMap = jsonDecode(utf8.decode(decodedBytes));
-            if (payloadMap['otp'] != null) {
-              displayOtp = payloadMap['otp'].toString();
-            }
+          } catch (e) {
+            debugPrint("Failed to parse JWT: $e");
           }
-        } catch (e) {
-          debugPrint("Failed to parse JWT: $e");
         }
 
         _showOtpModal(displayOtp, isStart ? "Start OTP" : "End OTP");
       } else {
-        throw "Failed to generate OTP";
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Failed to generate OTP (${response.statusCode})";
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       setState(() => _isLoadingOtp = false);
     }
   }
 
-  void _showOtpInputModal() {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
-    final isStart = currentStatus == 5 || currentStatus == 6;
+  Future<void> _handleDirectStart() async {
+    setState(() => _isApproving = true); // Using _isApproving state for loading
+    try {
+      final String? token = await UserStore.getToken();
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _OtpBottomSheet(
-        requestId: widget.requestId,
-        isStart: isStart,
-        bgColor: bgColor,
-        titleColor: titleColor,
-        onSuccess: () {
-          _fetchMissionDetails();
-        },
-      ),
-    );
+      if (tripId == null) throw "Trip ID not found";
+
+      final response = await http.post(
+        Uri.parse("https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/start"),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode({"mode": "DIRECT"}),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint("Direct Start API Error!");
+        debugPrint("Curl: curl -X POST 'https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/start' -H 'Authorization: TMS $token' -H 'Content-Type: application/json' --data '${jsonEncode({"mode": "DIRECT"})}'");
+        debugPrint("Response Status: ${response.statusCode}");
+        debugPrint("Response Body: ${response.body}");
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Trip started directly!"), backgroundColor: Colors.green),
+        );
+        _fetchMissionDetails();
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Direct start failed";
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      setState(() => _isApproving = false);
+    }
   }
+
 
   void _showOtpModal(String otp, String title) {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
         barrierDismissible: true,
-        pageBuilder: (context, _, __) => OtpFlashScreen(
+        pageBuilder: (context, _, ___) => OtpFlashScreen(
           otp: otp,
           title: title,
         ),
@@ -517,19 +581,34 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final Color primaryBlue = const Color(0xFF6366F1);
 
     final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
+    final String statusString = (_missionData?['travel_info']?['status'] ?? _missionData?['status'] ?? widget.status ?? "").toString().toUpperCase();
     
     final bool isDriver = _userRole?.toLowerCase() == 'driver';
-
-    final showAction =
-
-        currentStatus == 5 || currentStatus == 6 || currentStatus == 7;
     
-    String actionLabel = currentStatus == 7 ? "GENERATE END OTP" : "GENERATE START OTP";
+    // Check if any trip instance has allowances
+    final bool hasAllowance = (_missionData?['trip_instances'] as List?)?.any((t) => (t['allowances'] as List?)?.isNotEmpty ?? false) ?? false;
+
+    // Status 4 (Approved), 5 (Driver Assigned), 6 (Driver Reassigned), 7 (Started), 12 (Planned)
+    // Also checking string status for robustness
+    final bool isApprovedState = statusString == 'APPROVED' || statusString == 'PLANNED' || 
+                                currentStatus == 4 || currentStatus == 5 || currentStatus == 6 || currentStatus == 12;
+    
+    final bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING';
+    
+    String actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') 
+        ? "GENERATE END OTP" 
+        : "GENERATE START OTP";
+        
     if (isDriver) {
-      actionLabel = currentStatus == 7 ? "ARRIVED OTP" : "START OTP";
+      actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') ? "ARRIVED OTP" : "START OTP";
     }
 
-    final showApproveDecline = currentStatus == 2 || currentStatus == 3;
+    // if status is approved and allowance exists, show START OTP
+    if (isApprovedState && hasAllowance) {
+       actionLabel = "SWIPE TO START (GET OTP/QR)";
+    }
+
+    final showApproveDecline = currentStatus == 2 || currentStatus == 3 || statusString == 'PENDING' || statusString == 'SUBMITTED';
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -588,6 +667,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           _buildDynamicResources(cardColor, primaryBlue, subColor),
                           const SizedBox(height: 8),
                           _buildAdditionalInfo(cardColor, primaryBlue, subColor),
+                          _buildAllowances(cardColor, primaryBlue, subColor),
                           const SizedBox(height: 24),
                           _buildRemarks(cardColor, titleColor, subColor, primaryBlue),
                           if (showApproveDecline) ...[
@@ -596,12 +676,32 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                               width: double.infinity,
                               child: OutlinedButton.icon(
                                 onPressed: _isLoadingOtp || _isApproving ? null : () async {
-                                  final schedules = _missionData?['schedules'] as List?;
-                                  if (schedules == null || schedules.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No schedules to manage.")));
+                                  final tripInstances = _missionData?['trip_instances'] as List?;
+                                  if (tripInstances == null || tripInstances.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No entries to manage.")));
                                     return;
                                   }
                                   
+                                  List<Map<String, dynamic>> flattenedAssignments = [];
+                                  for (var trip in tripInstances) {
+                                    final legs = trip['legs'] as List?;
+                                    if (legs != null) {
+                                        for (var leg in legs) {
+                                          final assignments = leg['assignments'] as List?;
+                                          if (assignments != null) {
+                                            for (var assignment in assignments) {
+                                              flattenedAssignments.add(Map<String, dynamic>.from(assignment));
+                                            }
+                                          }
+                                        }
+                                    }
+                                  }
+
+                                  if (flattenedAssignments.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No assignments found.")));
+                                    return;
+                                  }
+
                                   final String? role = await UserStore.getRole();
                                   final bool isAdmin = role?.toLowerCase() == 'admin';
 
@@ -609,11 +709,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                   final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => ReassignGuestScreen(
-                                      initialSchedules: schedules,
+                                      initialSchedules: flattenedAssignments,
                                       routeId: widget.requestId,
                                       defaultRemark: isAdmin 
-                                          ? (_missionData?['admin_remark'] ?? '') 
-                                          : (_missionData?['faculty_remark'] ?? ''),
+                                          ? (_missionData?['route_status']?['admin_remark'] ?? '') 
+                                          : (_missionData?['route_status']?['faculty_remark'] ?? ''),
                                     )),
                                   );
 
@@ -709,11 +809,39 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               bottom: 20,
               left: 20,
               right: 20,
-              child: _SwipeToConfirm(
-                label: actionLabel.toUpperCase(),
-                onConfirm: () {
-                  _handleAction();
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isApprovedState)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isApproving || _isLoadingOtp ? null : _handleDirectStart,
+                          icon: _isApproving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.flash_on_rounded, size: 20),
+                          label: const Text(
+                            "DIRECT START",
+                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 4,
+                            shadowColor: Colors.orange.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  _SwipeToConfirm(
+                    label: actionLabel.toUpperCase(),
+                    onConfirm: () {
+                      _handleAction();
+                    },
+                  ),
+                ],
               ),
             ),
         ],
@@ -936,6 +1064,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    final travelInfo = _missionData?['travel_info'];
+    final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
+    final reqNo = travelInfo?['request_number'] ?? "REQ-N/A";
+    final tType = travelInfo?['trip_type'] ?? widget.pathType;
+    final status = travelInfo?['status'] ?? widget.status;
+    final passengerCount = _missionData?['vehicle_config']?['passenger_count']?.toString() ?? widget.passengerCount;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(26),
@@ -944,7 +1079,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 25,
             offset: const Offset(0, 12),
           ),
@@ -956,40 +1091,49 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: widget.statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  widget.status.toUpperCase(),
-                  style: TextStyle(
-                    color: widget.statusColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    letterSpacing: 0.8,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: widget.statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      color: widget.statusColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
+                      letterSpacing: 0.8,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
               ),
-              Row(
-                children: [
-                  Icon(Icons.calendar_today_rounded, size: 14, color: subColor.withOpacity(0.6)),
-                  const SizedBox(width: 6),
-                  Text(
-                    widget.time,
-                    style: TextStyle(color: subColor, fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tag_rounded, size: 14, color: subColor.withValues(alpha: 0.6)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        reqNo,
+                        style: TextStyle(color: subColor, fontWeight: FontWeight.w700, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 24),
           Text(
-            widget.missionTitle,
+            mTitle,
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
@@ -1000,20 +1144,24 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              Text(
-                widget.pathType.toUpperCase(),
-                style: TextStyle(
-                  color: subColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  letterSpacing: 1.5,
+              Expanded(
+                child: Text(
+                  tType.replaceAll('_', ' ').toUpperCase(),
+                  style: TextStyle(
+                    color: subColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
-              const Spacer(),
-              Icon(Icons.person_pin_rounded, size: 14, color: subColor.withOpacity(0.6)),
+              const SizedBox(width: 12),
+              Icon(Icons.calendar_today_rounded, size: 14, color: subColor.withValues(alpha: 0.6)),
               const SizedBox(width: 4),
               Text(
-                widget.creatorName.toUpperCase(),
+                widget.time.toUpperCase(),
                 style: TextStyle(
                   color: subColor,
                   fontWeight: FontWeight.w900,
@@ -1028,9 +1176,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildMetric(Icons.groups_rounded, widget.passengerCount, "GUESTS", primaryBlue, subColor),
-              const SizedBox(width: 48),
-              _buildMetric(Icons.alt_route_rounded, widget.stops.length.toString(), "STOPS", primaryBlue, subColor),
+              Expanded(child: _buildMetric(Icons.groups_rounded, passengerCount, "GUESTS", primaryBlue, subColor)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildMetric(Icons.alt_route_rounded, (_missionData?['route_details']?['legs']?[0]?['stops'] as List?)?.length.toString() ?? "0", "STOPS", primaryBlue, subColor)),
             ],
           ),
         ],
@@ -1044,32 +1192,38 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: blue.withOpacity(0.08),
+            color: blue.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: blue, size: 18),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: sub.withOpacity(0.6),
-                letterSpacing: 0.5,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: sub.withValues(alpha: 0.6),
+                  letterSpacing: 0.5,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -1087,13 +1241,17 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            color: titleColor,
-            letterSpacing: -0.3,
+        Flexible(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: titleColor,
+              letterSpacing: -0.3,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ),
       ],
@@ -1101,17 +1259,31 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildCheckpointList(Color blue, Color title) {
+    final legs = _missionData?['route_details']?['legs'] as List?;
+    if (legs == null || legs.isEmpty) return const SizedBox.shrink();
+    
+    // Flatten all stops from all legs
+    List<dynamic> allStops = [];
+    for (var leg in legs) {
+      final stops = leg['stops'] as List?;
+      if (stops != null) {
+        allStops.addAll(stops);
+      }
+    }
+
+    if (allStops.isEmpty) return const SizedBox.shrink();
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: widget.stops.length,
+      itemCount: allStops.length,
       itemBuilder: (context, index) {
-        final stop = widget.stops[index];
+        final stop = allStops[index];
         return _buildTimelineItem(
-          location: stop['location']!,
-          eta: stop['eta']!,
+          location: stop['stop_name'] ?? stop['address'] ?? "Unknown",
+          eta: stop['planned_arrival_time'] ?? "",
           isFirst: index == 0,
-          isLast: index == widget.stops.length - 1,
+          isLast: index == allStops.length - 1,
           color: blue,
           titleColor: title,
         );
@@ -1145,7 +1317,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2.5, color: color.withOpacity(0.15)),
+                  child: Container(width: 2.5, color: color.withValues(alpha: 0.15)),
                 ),
             ],
           ),
@@ -1173,7 +1345,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.08),
+                          color: color.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -1190,7 +1362,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   if (isFirst)
                      Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text("Origin point", style: TextStyle(color: color.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: Text("Origin point", style: TextStyle(color: color.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                 ],
               ),
@@ -1204,7 +1376,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Widget _buildDriverCard(Color cardColor, Color blue, Color sub, String dName, String dPhone) {
     final bool isNotAssigned = dName == "no driver assigned" || dName == "Driver Not Assigned";
     final Color nameColor = isNotAssigned ? Colors.redAccent : (cardColor == Colors.white ? Colors.black87 : Colors.white);
-    final Color phoneColor = isNotAssigned ? Colors.redAccent.withOpacity(0.7) : sub;
+    final Color phoneColor = isNotAssigned ? Colors.redAccent.withValues(alpha: 0.7) : sub;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1212,14 +1384,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: isNotAssigned ? Colors.red.withOpacity(0.1) : blue.withOpacity(0.1),
+            backgroundColor: isNotAssigned ? Colors.red.withValues(alpha: 0.1) : blue.withValues(alpha: 0.1),
             child: Icon(isNotAssigned ? Icons.person_off_rounded : Icons.person_rounded, color: isNotAssigned ? Colors.red : blue, size: 24),
           ),
           const SizedBox(width: 16),
@@ -1244,7 +1416,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               height: 44,
               width: 44,
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.call_rounded, size: 20, color: Colors.green),
@@ -1268,33 +1440,42 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildEnhancedSmallInfo(
-            Icons.directions_car_filled_rounded,
-            vType,
-            "VEHICLE",
-            blue,
-            sub,
+          Expanded(
+            child: _buildEnhancedSmallInfo(
+                Icons.directions_car_filled_rounded,
+                vType,
+                "VEHICLE",
+                blue,
+                sub,
+              ),
           ),
-          if (vNumber.isNotEmpty)
-            _buildEnhancedSmallInfo(
-              Icons.tag_rounded,
-              vNumber,
-              "PLATE NO",
+          if (vNumber.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildEnhancedSmallInfo(
+                  Icons.tag_rounded,
+                  vNumber,
+                  "PLATE NO",
+                  blue,
+                  sub,
+                ),
+            ),
+          ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildEnhancedSmallInfo(
+              Icons.groups_rounded,
+              cap,
+              "SEATS",
               blue,
               sub,
             ),
-           _buildEnhancedSmallInfo(
-            Icons.groups_rounded,
-            cap,
-            "SEATS",
-            blue,
-            sub,
           ),
         ],
       ),
@@ -1302,9 +1483,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildDynamicResources(Color cardColor, Color blue, Color subColor) {
-    // ... (rest of _buildDynamicResources remains the same, inserting beneath it)
-    final schedules = _missionData?['schedules'] as List?;
-    if (schedules == null || schedules.isEmpty) {
+    final tripInstances = _missionData?['trip_instances'] as List?;
+    if (tripInstances == null || tripInstances.isEmpty) {
       return Column(
         children: [
           _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
@@ -1314,125 +1494,169 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       );
     }
 
+    List<Widget> assignmentWidgets = [];
+
+    for (var trip in tripInstances) {
+      final legs = trip['legs'] as List?;
+      if (legs != null) {
+        for (var leg in legs) {
+          final assignments = leg['assignments'] as List?;
+          if (assignments != null) {
+            for (var assignment in assignments) {
+              final vehicle = assignment['vehicle'];
+              final driver = assignment['driver'];
+              final passengers = assignment['passengers'] as List?;
+
+              final dName = driver?['name'] ?? "Driver Not Assigned";
+              final dPhone = driver?['phone'] ?? "n/a";
+              final vInfo = vehicle != null ? "${vehicle['vehicle_type_name'] ?? 'Vehicle'} (${vehicle['vehicle_number']})" : "Vehicle Not Assigned";
+              final vCap = vehicle != null ? "${vehicle['capacity']} Seats" : "n/a";
+
+              assignmentWidgets.add(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Trip Header with gradient
+                      if (trip['trip_number'] != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [blue.withValues(alpha: 0.2), blue.withValues(alpha: 0.05)]),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "TRIP: ${trip['trip_number']}",
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: blue, letterSpacing: 1),
+                          ),
+                        ),
+                      _buildDriverCard(cardColor, blue, subColor, dName, dPhone),
+                      const SizedBox(height: 12),
+                      _buildVehicleDetails(cardColor, blue, subColor, vInfo, vCap),
+                      if (passengers != null && passengers.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.people_outline_rounded, size: 14, color: subColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Assigned Guests (${passengers.length})",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: subColor.withValues(alpha: 0.8), letterSpacing: 0.5),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...passengers.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final g = entry.value;
+                          final phone = g['phone'];
+                          final isPrimary = g['is_primary_contact'] == true;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10.0),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: blue.withValues(alpha: 0.1)),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 4, offset: const Offset(0, 2))
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(color: blue.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                    child: Center(
+                                      child: Text(
+                                        "${i + 1}",
+                                        style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 12),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                g['passenger_name'] ?? "Unknown", 
+                                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
+                                              ),
+                                            ),
+                                            if (isPrimary)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.amber.withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  "PRIMARY",
+                                                  style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          phone ?? 'No Phone Provided',
+                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subColor),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (phone != null && phone.toString().isNotEmpty)
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final Uri url = Uri.parse("tel:$phone");
+                                          if (await canLaunchUrl(url)) {
+                                            await launchUrl(url);
+                                          }
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                                          child: const Icon(Icons.phone_in_talk_rounded, color: Colors.green, size: 20),
+                                        ),
+                                      ),
+                                    )
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ]
+                    ],
+                  ),
+                )
+              );
+            }
+          }
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: schedules.map((schedule) {
-        final driver = schedule['driver'];
-        final vehicle = schedule['vehicle'];
-        final guests = schedule['guests'] as List?;
-        
-        final dName = driver?['name'] ?? "no driver assigned";
-        final dPhone = driver?['phone'] ?? "n/a";
-        final vInfo = vehicle != null ? "${vehicle['vehicle_type']} (${vehicle['vehicle_number']})" : "no driver assigned";
-        final vCap = vehicle != null ? "${vehicle['vehicle_capacity']} Seats" : "n/a";
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDriverCard(cardColor, blue, subColor, dName, dPhone),
+      children: assignmentWidgets.isNotEmpty 
+          ? assignmentWidgets 
+          : [
+              _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
               const SizedBox(height: 12),
-              _buildVehicleDetails(cardColor, blue, subColor, vInfo, vCap),
-              if (guests != null && guests.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  "Assigned Guests (${guests.length})",
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: subColor.withOpacity(0.8), letterSpacing: 0.5),
-                ),
-                const SizedBox(height: 8),
-                ...guests.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final g = entry.value;
-                  final phone = g['phone'];
-                  final status = g['status']?.toString().toUpperCase() ?? "UNKNOWN";
-                  final Color statusColor = status == "ACTIVE" ? Colors.green : Colors.orange;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: blue.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: blue.withOpacity(0.05)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: blue.withOpacity(0.1), shape: BoxShape.circle),
-                            child: Text(
-                              "${i + 1}",
-                              style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        g['name'] ?? "Unknown", 
-                                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        status,
-                                        style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.phone_rounded, size: 12, color: subColor.withOpacity(0.7)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      phone ?? 'No Phone',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subColor),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (phone != null && phone.toString().isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.phone_in_talk_rounded, color: Colors.green, size: 20),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () async {
-                                final Uri url = Uri.parse("tel:$phone");
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url);
-                                } else {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
-                                  }
-                                }
-                              },
-                            )
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ]
+              _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
             ],
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -1440,15 +1664,19 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     if (_missionData == null || _missionData!['route_details'] == null) return const SizedBox.shrink();
     
     final details = _missionData!['route_details'];
-    final dist = details['distance_km'] != null ? "${details['distance_km']} km" : "N/A";
+    final dist = details['approx_distance_km'] != null ? "${details['approx_distance_km']} km" : "N/A";
     
-    // Formatting duration correctly from minutes (e.g., 360 -> 6h 0m)
+    // Formatting duration correctly
+    int approxMin = int.tryParse(details['approx_duration']?.toString() ?? "0") ?? 0;
     String dur = "N/A";
-    if (details['duration_mins'] != null) {
-       int durationInMins = (details['duration_mins'] as num).toInt();
-       int hours = durationInMins ~/ 60;
-       int mins = durationInMins % 60;
-       dur = hours > 0 ? "${hours}h ${mins}m" : "${mins}m";
+    if (approxMin > 0) {
+      if (approxMin < 60) {
+        dur = "$approxMin mins";
+      } else {
+        int h = approxMin ~/ 60;
+        int m = approxMin % 60;
+        dur = m > 0 ? "${h}h ${m}m" : "${h}h";
+      }
     }
 
     return Container(
@@ -1457,15 +1685,15 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildEnhancedSmallInfo(Icons.map_rounded, dist, "DISTANCE", blue, sub),
-          Container(height: 40, width: 1, color: sub.withOpacity(0.2)),
-          _buildEnhancedSmallInfo(Icons.timer_rounded, dur, "EST. DURATION", blue, sub),
+          Expanded(child: _buildEnhancedSmallInfo(Icons.map_rounded, dist, "DISTANCE", blue, sub)),
+          Container(height: 40, width: 1, color: sub.withValues(alpha: 0.2), margin: const EdgeInsets.symmetric(horizontal: 8)),
+          Expanded(child: _buildEnhancedSmallInfo(Icons.timer_rounded, dur, "EST. DURATION", blue, sub)),
         ],
       ),
     );
@@ -1474,37 +1702,39 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Widget _buildAdditionalInfo(Color cardColor, Color blue, Color sub) {
      if (_missionData == null || _missionData!['additional_info'] == null) return const SizedBox.shrink();
      final addInfo = _missionData!['additional_info'];
-     final reqs = addInfo['special_requirements'];
+     final instr = addInfo['special_instructions'];
      final lug = addInfo['luggage_details'];
 
-     if ((reqs == null || reqs == 'Nil' || reqs == 'null' || reqs.toString().isEmpty) && 
-         (lug == null || lug == 'Nil' || lug == 'null' || lug.toString().isEmpty)) return const SizedBox.shrink();
+     if ((instr == null || instr == 'NIL' || instr == 'null' || instr.toString().isEmpty) && 
+         (lug == null || lug == 'NIL' || lug == 'null' || lug.toString().isEmpty)) {
+       return const SizedBox.shrink();
+     }
 
      return Container(
        width: double.infinity,
        padding: const EdgeInsets.all(20),
        decoration: BoxDecoration(
-         color: blue.withOpacity(0.05),
+         color: blue.withValues(alpha: 0.05),
          borderRadius: BorderRadius.circular(24),
-         border: Border.all(color: blue.withOpacity(0.1)),
+         border: Border.all(color: blue.withValues(alpha: 0.1)),
        ),
        child: Column(
          crossAxisAlignment: CrossAxisAlignment.start,
          children: [
-           if (reqs != null && reqs != 'Nil' && reqs != 'null' && reqs.toString().isNotEmpty) ...[
+           if (instr != null && instr != 'NIL' && instr != 'null' && instr.toString().isNotEmpty) ...[
              Row(
                children: [
                  Icon(Icons.assignment_late_rounded, size: 16, color: blue),
                  const SizedBox(width: 8),
-                 Text("Special Requirements", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: blue, letterSpacing: 0.5)),
+                 Text("Special Instructions", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: blue, letterSpacing: 0.5)),
                ],
              ),
              const SizedBox(height: 6),
-             Text(reqs, style: TextStyle(fontSize: 14, color: sub, fontWeight: FontWeight.w600, height: 1.4)),
+             Text(instr, style: TextStyle(fontSize: 14, color: sub, fontWeight: FontWeight.w600, height: 1.4)),
              const SizedBox(height: 16),
            ],
            
-           if (lug != null && lug != 'Nil' && lug != 'null' && lug.toString().isNotEmpty) ...[
+           if (lug != null && lug != 'NIL' && lug != 'null' && lug.toString().isNotEmpty) ...[
              Row(
                children: [
                  Icon(Icons.luggage_rounded, size: 16, color: blue),
@@ -1523,17 +1753,19 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Widget _buildRemarks(Color cardColor, Color titleColor, Color subColor, Color blue) {
     if (_missionData == null) return const SizedBox.shrink();
     
-    final facultyRemark = _missionData!['faculty_remark'];
-    final adminRemark = _missionData!['admin_remark'];
-    final creator = _missionData!['creator'];
+    final audit = _missionData!['audit'];
+    final createdBy = audit?['created_by'];
+    final approvedBy = audit?['approved_by'];
+    final statusData = _missionData!['route_status'];
     
-    if (facultyRemark == null && adminRemark == null && creator == null) return const SizedBox.shrink();
+    final facultyRemark = statusData?['faculty_remark'];
+    final adminRemark = statusData?['admin_remark'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (creator != null) ...[
-           _buildSectionTitle("Assigned By", blue, titleColor),
+        if (createdBy != null) ...[
+           _buildSectionTitle("Created By", blue, titleColor),
            const SizedBox(height: 12),
            Container(
              width: double.infinity,
@@ -1541,7 +1773,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
              decoration: BoxDecoration(
                color: cardColor,
                borderRadius: BorderRadius.circular(16),
-               border: Border.all(color: subColor.withOpacity(0.1)),
+               border: Border.all(color: subColor.withValues(alpha: 0.1)),
              ),
              child: Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1549,24 +1781,54 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                    Column(
                      crossAxisAlignment: CrossAxisAlignment.start,
                      children: [
-                        Text(creator['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
+                        Text(createdBy['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
                         const SizedBox(height: 4),
-                        Text(creator['Role']?['name'] ?? 'Staff', style: TextStyle(fontWeight: FontWeight.w600, color: subColor, fontSize: 12)),
+                        Text(createdBy['role'] ?? 'Staff', style: TextStyle(fontWeight: FontWeight.w600, color: subColor, fontSize: 12)),
                      ],
                    ),
-                   Icon(Icons.assignment_turned_in_rounded, color: Colors.green.withOpacity(0.8), size: 28),
+                   Icon(Icons.edit_note_rounded, color: blue.withValues(alpha: 0.8), size: 28),
                  ],
              ),
            ),
            const SizedBox(height: 24),
         ],
 
-        if (facultyRemark != null || adminRemark != null) ...[
+        if (approvedBy != null) ...[
+           _buildSectionTitle("Approved By", blue, titleColor),
+           const SizedBox(height: 12),
+           Container(
+             width: double.infinity,
+             padding: const EdgeInsets.all(16),
+             decoration: BoxDecoration(
+               color: cardColor,
+               borderRadius: BorderRadius.circular(16),
+               border: Border.all(color: subColor.withValues(alpha: 0.1)),
+             ),
+             child: Row(
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                 children: [
+                   Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                        Text(approvedBy['name'] ?? 'System', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
+                        const SizedBox(height: 4),
+                        Text("AUTHORIZED", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 10, letterSpacing: 1)),
+                     ],
+                   ),
+                   const Icon(Icons.verified_user_rounded, color: Colors.green, size: 28),
+                 ],
+             ),
+           ),
+           const SizedBox(height: 24),
+        ],
+
+        if ((facultyRemark != null && facultyRemark.toString() != 'NIL') || 
+            (adminRemark != null && adminRemark.toString() != 'NIL')) ...[
           _buildSectionTitle("Remarks", blue, titleColor),
           const SizedBox(height: 12),
-          if (facultyRemark != null && facultyRemark.toString().isNotEmpty && facultyRemark != 'null')
+          if (facultyRemark != null && facultyRemark.toString().isNotEmpty && facultyRemark != 'NIL')
             _buildRemarkTile(Icons.person_outline, "Faculty Remark", facultyRemark, cardColor, subColor, titleColor),
-          if (adminRemark != null && adminRemark.toString().isNotEmpty && adminRemark != 'null')
+          if (adminRemark != null && adminRemark.toString().isNotEmpty && adminRemark != 'NIL')
             _buildRemarkTile(Icons.admin_panel_settings_outlined, "Admin Remark", adminRemark, cardColor, subColor, titleColor),
         ]
       ],
@@ -1581,7 +1843,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: subColor.withOpacity(0.1)),
+          border: Border.all(color: subColor.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1605,18 +1867,155 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: sub.withOpacity(0.6), letterSpacing: 1)),
+        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: sub.withValues(alpha: 0.6), letterSpacing: 1)),
         const SizedBox(height: 6),
         Row(
           children: [
             Icon(icon, size: 18, color: blue),
             const SizedBox(width: 8),
-            Text(
-              val,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            Expanded(
+              child: Text(
+                  val,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildAllowances(Color cardColor, Color blue, Color sub) {
+    List<dynamic> allAllowances = [];
+    final tripInstances = _missionData?['trip_instances'] as List?;
+    
+    int? firstTripId;
+    List<Map<String, dynamic>> allDrivers = [];
+
+    if (tripInstances != null && tripInstances.isNotEmpty) {
+      firstTripId = tripInstances[0]['id'];
+      for (var trip in tripInstances) {
+        final allowances = trip['allowances'] as List?;
+        if (allowances != null) {
+          allAllowances.addAll(allowances);
+        }
+        
+        // Collect drivers for this trip
+        final legs = trip['legs'] as List?;
+        if (legs != null) {
+          for (var leg in legs) {
+            final assignments = leg['assignments'] as List?;
+            if (assignments != null) {
+              for (var assignment in assignments) {
+                final driver = assignment['driver'];
+                if (driver != null && !allDrivers.any((d) => d['id'] == driver['id'])) {
+                  allDrivers.add(Map<String, dynamic>.from(driver));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
+              ),
+            if (allAllowances.isEmpty && firstTripId != null)
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateAllowanceScreen(
+                        routeRequestId: int.tryParse(widget.requestId) ?? 0,
+                        tripId: firstTripId!,
+                        drivers: allDrivers,
+                      ),
+                    ),
+                  ).then((value) {
+                    if (value == true) _fetchMissionDetails();
+                  });
+                },
+                icon: Icon(Icons.add_circle_outline_rounded, size: 18, color: blue),
+                label: Text("CREATE ALLOWANCE", style: TextStyle(color: blue, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (allAllowances.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: blue.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: blue.withValues(alpha: 0.08), style: BorderStyle.solid),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.payments_outlined, size: 32, color: blue.withValues(alpha: 0.3)),
+                const SizedBox(height: 12),
+                Text("No allowances recorded yet", style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 14)),
+              ],
+            ),
+          )
+        else
+          ...allAllowances.map((allowance) {
+            final driver = allowance['driver'];
+            final amount = allowance['amount'] ?? "0.00";
+            final type = allowance['allowance_type'] ?? "ALLOWANCE";
+            final reason = allowance['reason'] ?? "Trip related expense";
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: blue.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), shape: BoxShape.circle),
+                    child: const Icon(Icons.payments_rounded, color: Color(0xFF10B981), size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "${driver?['name'] ?? 'Driver'} - $type",
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          reason,
+                          style: TextStyle(color: sub, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    "₹$amount",
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF10B981)),
+                  ),
+                ],
+              ),
+            );
+          }),
       ],
     );
   }
@@ -1630,7 +2029,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -1642,9 +2041,15 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             borderRadius: BorderRadius.circular(32),
             child: FlutterMap(
               mapController: _mapController,
-              options: const MapOptions(
-                initialCenter: LatLng(20.5937, 78.9629),
+              options: MapOptions(
+                initialCenter: const LatLng(20.5937, 78.9629),
                 initialZoom: 5,
+                onMapReady: () {
+                  setState(() => _isMapReady = true);
+                  if (_routePoints.isNotEmpty) {
+                    _fitBounds(_routePoints);
+                  }
+                },
               ),
               children: [
                 TileLayer(
@@ -1668,7 +2073,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           if (_isMapLoading)
             Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(32),
               ),
               child: const Center(child: CircularProgressIndicator()),
@@ -1687,7 +2092,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             right: -60,
             child: CircleAvatar(
               radius: 140,
-              backgroundColor: const Color(0xFF6366F1).withOpacity(isDark ? 0.06 : 0.04),
+              backgroundColor: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.06 : 0.04),
             ),
           ),
           Positioned(
@@ -1695,7 +2100,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             left: -40,
             child: CircleAvatar(
               radius: 80,
-              backgroundColor: const Color(0xFFA855F7).withOpacity(isDark ? 0.04 : 0.02),
+              backgroundColor: const Color(0xFFA855F7).withValues(alpha: isDark ? 0.04 : 0.02),
             ),
           ),
         ],
@@ -1763,7 +2168,7 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
             borderRadius: BorderRadius.circular(40),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 30,
                 offset: const Offset(0, 15),
               ),
@@ -1778,7 +2183,7 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.qr_code_2_rounded,
@@ -1820,7 +2225,7 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                 ),
                 child: QrImageView(
                   data: widget.otp, // Encrypted value for scanning
@@ -1864,7 +2269,7 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.05),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Row(
@@ -1954,7 +2359,7 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProvi
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(36),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Stack(
@@ -1969,7 +2374,7 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProvi
                 width: 12,
                 height: 2,
                 decoration: BoxDecoration(
-                  color: Colors.yellow.withOpacity(0.2),
+                  color: Colors.yellow.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -1986,7 +2391,7 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProvi
                 width: p.size * p.progress,
                 height: p.size * p.progress,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1996,7 +2401,7 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProvi
           Text(
             widget.label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
               fontSize: 10,
@@ -2062,7 +2467,7 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProvi
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.5),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.5),
                         blurRadius: 15,
                         spreadRadius: 2,
                       ),
@@ -2212,10 +2617,10 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           decoration: BoxDecoration(
-            color: widget.bgColor.withOpacity(isDark ? 0.7 : 0.85),
+            color: widget.bgColor.withValues(alpha: isDark ? 0.7 : 0.85),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.05) : accentColor.withOpacity(0.1),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : accentColor.withValues(alpha: 0.1),
               width: 1.5,
             ),
           ),
@@ -2228,7 +2633,7 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: Colors.grey.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -2246,7 +2651,7 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
                 Text(
                   widget.isStart ? "Verify start of mission" : "Verify end of mission",
                   style: TextStyle(
-                    color: widget.titleColor.withOpacity(0.6),
+                    color: widget.titleColor.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2261,7 +2666,7 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
                       border: Border.all(color: accentColor, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: accentColor.withOpacity(0.3),
+                          color: accentColor.withValues(alpha: 0.3),
                           blurRadius: 20,
                         )
                       ],
@@ -2303,7 +2708,7 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: accentColor.withOpacity(0.3),
+                              color: accentColor.withValues(alpha: 0.3),
                               blurRadius: 15,
                               offset: const Offset(0, 8),
                             )
@@ -2353,7 +2758,7 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
       height: 60,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withOpacity(0.05),
+        color: const Color(0xFF6366F1).withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _focusNodes[index].hasFocus ? const Color(0xFF6366F1) : Colors.transparent,

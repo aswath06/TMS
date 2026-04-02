@@ -30,6 +30,8 @@ class ApiConstants {
       "$baseUrl/request/create-transport-request";
   static const String updateStatus = "$baseUrl/request/update-status";
   static const String getRequestById = "$baseUrl/request/get-by-id/";
+  static const String getRouteById = "$baseUrl/api/routes/get-by-id/";
+  static const String createAllowance = "$baseUrl/api/routes/create-allowance";
   static const String startRoute = "$baseUrl/request/start-route";
   static const String completeRouteOtp = "$baseUrl/request/complete-route-otp";
   static const String generateStartOtp = "$baseUrl/request/generate-start-otp";

@@ -31,13 +31,13 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
   }
 
   void _initializeData() {
-    _vehicles = widget.initialSchedules.map((schedule) {
-      final vehicle = schedule['vehicle'];
-      final guests = List<Map<String, dynamic>>.from(schedule['guests'] ?? []);
+    _vehicles = widget.initialSchedules.map((assignment) {
+      final vehicle = assignment['vehicle'];
+      final passengers = List<Map<String, dynamic>>.from(assignment['passengers'] ?? []);
       return {
         "vehicle_id": vehicle != null ? vehicle['id'] : null,
-        "vehicle_info": vehicle != null ? "${vehicle['vehicle_type']} (${vehicle['vehicle_number']})" : "Unknown Vehicle",
-        "guests": guests,
+        "vehicle_info": vehicle != null ? "${vehicle['vehicle_type_name'] ?? 'Vehicle'} (${vehicle['vehicle_number']})" : "Unknown Vehicle",
+        "guests": passengers,
       };
     }).where((v) => v['vehicle_id'] != null).toList();
   }
@@ -49,7 +49,7 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
       List<Map<String, dynamic>> allocations = _vehicles.map((v) {
         return {
           "vehicle_id": v['vehicle_id'],
-          "guest_ids": (v['guests'] as List).map((g) => g['id']).toList(),
+          "guest_ids": (v['guests'] as List).map((p) => p['passenger_id'] ?? p['id']).toList(),
         };
       }).toList();
 
@@ -272,7 +272,7 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
           Icon(Icons.drag_indicator_rounded, size: 14, color: isDragging ? Colors.white : color),
           const SizedBox(width: 6),
           Text(
-            guest['name'] ?? "Unknown",
+            guest['passenger_name'] ?? guest['name'] ?? "Unknown",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 13,
