@@ -159,18 +159,36 @@ class RequestStore extends ChangeNotifier {
   /// Formats raw API data into the UI-friendly Map used by RequestCard
   Map<String, dynamic> _formatRequest(dynamic req) {
     // Determine status for the UI color logic
+    String statusString = 'Pending';
     int rawStatusInt = 1;
-    if (req['status'] is int) {
+
+    if (req['status'] is String) {
+      statusString = req['status'].toString().toUpperCase();
+      // Map string status back to a reasonable integer for existing UI code if needed
+      final reverseMap = {
+        'PENDING': 1,
+        'DRAFT': 10,
+        'SUBMITTED': 11,
+        'PLANNED': 12,
+        'APPROVED': 2,
+        'REJECTED': 3,
+        'STARTED': 7,
+        'ONGOING': 4,
+        'COMPLETED': 8,
+        'CANCELLED': 9,
+      };
+      rawStatusInt = reverseMap[statusString] ?? 1;
+    } else if (req['status'] is int) {
       rawStatusInt = req['status'];
+      statusString = RouteStatus[rawStatusInt] ?? 'Unknown';
     } else if (req['status'] != null) {
       rawStatusInt = int.tryParse(req['status'].toString()) ?? 1;
+      statusString = RouteStatus[rawStatusInt] ?? 'Unknown';
     }
-
-    String statusString = RouteStatus[rawStatusInt] ?? 'Unknown';
 
     return {
       'id': 'REQ-${req['id']}',
-      'dbId': req['id'], 
+      'dbId': req['id'],
       'faculty': req['createdBy']?['name'] ?? 'Staff Member',
       'date': _formatDate(req['start_datetime']),
       'pickup': _formatAddress(req['startLocation']),
@@ -180,8 +198,7 @@ class RequestStore extends ChangeNotifier {
       'routeName': req['routeName'] ?? 'Unknown Route',
       'travelType': req['travelType'] ?? 'One Way',
       'approx_duration': req['approx_duration'] ?? 0,
-      'vehicle':
-          req['assignedVehicle']?['model'] ??
+      'vehicle': req['assignedVehicle']?['model'] ??
           req['routeName'] ??
           'Not Assigned',
       'passengers': req['passengerCount'] ?? 0,

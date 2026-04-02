@@ -88,7 +88,7 @@ class _RequestListPageState extends State<RequestListPage> {
                                 ),
                               );
                               if (refresh == true) {
-                                if (mounted) {
+                                if (context.mounted) {
                                   context.read<RequestStore>().fetchRequests();
                                 }
                               }
@@ -168,8 +168,7 @@ class _RequestListPageState extends State<RequestListPage> {
                                   rawStatus: mission['rawStatus'] ?? 0,
                                   missionTitle: mission['vehicle'] ?? "Transport Request",
                                   time: mission['date'] ?? "TBD",
-                                  driverName: mission['driverName'] ?? "No Driver",
-                                  driverPhone: mission['driverPhone'] ?? "N/A",
+                                  drivers: mission['drivers'] ?? [],
                                   vehicleInfo: mission['vehicleInfo'] ?? mission['vehicle'] ?? "Pending",
                                   capacity: mission['passengers'].toString(),
                                   pathType: "Admin View",
@@ -192,7 +191,8 @@ class _RequestListPageState extends State<RequestListPage> {
                                     },
                                   ],
                                   status: mission['status'] ?? "Active",
-                                  statusColor: _getStatusColor(mission['rawStatus']),
+                                  statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
+                                  statusColor: _getStatusColor(mission['status'] ?? "Active"),
                                   primaryBlue: primaryBlue,
                                   creatorName: mission['faculty'] ?? "Unknown Faculty",
                                 );
@@ -206,20 +206,89 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  Color _getStatusColor(int? status) {
-    switch (status) {
-      case 2:
-      case 5:
-        return Colors.blue;
-      case 4:
-        return Colors.indigo;
-      case 7:
-        return Colors.green;
-      case 9:
-        return Colors.red;
-      default:
-        return Colors.orange;
-    }
+  Color _getStatusColor(String status) {
+    final s = status.toUpperCase();
+    if (s == 'STARTED' || s == 'ONGOING') return const Color(0xFF6366F1);
+    if (s == 'COMPLETED') return const Color(0xFF10B981);
+    if (s == 'CANCELLED' || s == 'REJECTED') return const Color(0xFF64748B);
+    if (s == 'DRAFT') return const Color(0xFFF59E0B);
+    return const Color(0xFFEC4899); // Pink for Approved/Planned
+  }
+
+  Widget _buildStatusBadge(String status) {
+    final String s = status.toUpperCase();
+    final Map<String, Map<String, Color>> statusStyles = {
+      'DRAFT': {
+        'bg': const Color(0xFFFFFBEB),
+        'text': const Color(0xFFF59E0B),
+        'border': const Color(0xFFFDE68A),
+      },
+      'SUBMITTED': {
+        'bg': const Color(0xFFFAF5FF),
+        'text': const Color(0xFFA855F7),
+        'border': const Color(0xFFE9D5FF),
+      },
+      'PLANNED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'REJECTED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'APPROVED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'STARTED': {
+        'bg': const Color(0xFFDBEAFE),
+        'text': const Color(0xFF2563EB),
+        'border': const Color(0xFF93C5FD),
+      },
+      'ONGOING': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'COMPLETED': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
+      'CANCELLED': {
+        'bg': const Color(0xFFF8FAFC),
+        'text': const Color(0xFF64748B),
+        'border': const Color(0xFFE2E8F0),
+      },
+    };
+
+    final style = statusStyles[s] ??
+        {
+          'bg': Colors.grey.withValues(alpha: 0.1),
+          'text': Colors.grey,
+          'border': Colors.grey.withValues(alpha: 0.2),
+        };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: style['bg'],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: style['border']!, width: 1),
+      ),
+      child: Text(
+        s,
+        style: TextStyle(
+          color: style['text'],
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 
   Widget _buildMissionCard(
@@ -229,19 +298,26 @@ class _RequestListPageState extends State<RequestListPage> {
     required Color subColor,
     required String missionTitle,
     required String time,
-    required String driverName,
-    required String driverPhone,
+    required List<dynamic> drivers,
     required String vehicleInfo,
     required String capacity,
     required String pathType,
     required List<Map<String, String>> detailedStops,
     required String status,
+    required Widget statusBadge,
     required Color statusColor,
     required Color primaryBlue,
     required String requestId,
     required int rawStatus,
     required String creatorName,
   }) {
+    // Determine primary driver or list
+    String driverNameHead = "Driver Assigned";
+    String driverPhoneHead = "N/A";
+    if (drivers.isNotEmpty) {
+      driverNameHead = drivers.map((d) => d['name'] ?? "Driver").join(", ");
+      driverPhoneHead = drivers.map((d) => d['phone'] ?? "N/A").join(", ");
+    }
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -249,8 +325,8 @@ class _RequestListPageState extends State<RequestListPage> {
           builder: (context) => MissionDetailsScreen(
             missionTitle: missionTitle,
             time: time,
-            driverName: driverName,
-            driverPhone: driverPhone,
+            driverName: driverNameHead,
+            driverPhone: driverPhoneHead,
             vehicleInfo: vehicleInfo,
             capacity: capacity, // Keep for vehicle capacity label if needed
             passengerCount: capacity, // Using the capacity variable which stores passengers count here
@@ -272,7 +348,7 @@ class _RequestListPageState extends State<RequestListPage> {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -297,25 +373,7 @@ class _RequestListPageState extends State<RequestListPage> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                statusBadge,
               ],
             ),
             const SizedBox(height: 12),
@@ -347,7 +405,7 @@ class _RequestListPageState extends State<RequestListPage> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildDriverMinimal(primaryBlue, driverName, vehicleInfo, subColor),
+            _buildDriverMinimal(primaryBlue, driverNameHead, vehicleInfo, subColor),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -385,8 +443,7 @@ class _RequestListPageState extends State<RequestListPage> {
                     titleColor,
                     subColor,
                   ),
-                )
-                .toList(),
+                ),
           ],
         ),
       ),
@@ -397,9 +454,9 @@ class _RequestListPageState extends State<RequestListPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: blue.withOpacity(0.05),
+        color: blue.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: blue.withOpacity(0.1)),
+        border: Border.all(color: blue.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -427,7 +484,7 @@ class _RequestListPageState extends State<RequestListPage> {
           Icon(
             Icons.arrow_forward_ios_rounded,
             size: 14,
-            color: sub.withOpacity(0.5),
+            color: sub.withValues(alpha: 0.5),
           ),
         ],
       ),

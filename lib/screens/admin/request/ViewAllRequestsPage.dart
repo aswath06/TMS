@@ -21,19 +21,12 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
 
   /// Helper to get consistent colors for status throughout the app
   Color _getStatusColor(String status) {
-    final s = status.toLowerCase();
-    if (s.contains('pending')) {
-      return const Color(0xFFF59E0B); // Amber/Orange
-    } else if (s.contains('vehicle') || s.contains('assign')) {
-      return const Color(0xFF3B82F6); // Professional Blue
-    } else if (s.contains('approved') ||
-        s.contains('confirm') ||
-        s.contains('success')) {
-      return const Color(0xFF10B981); // Emerald Green
-    } else if (s.contains('reject') || s.contains('cancel')) {
-      return const Color(0xFFEF4444); // Red
-    }
-    return const Color(0xFF64748B); // Slate/Grey default
+    final s = status.toUpperCase();
+    if (s == 'STARTED' || s == 'ONGOING') return const Color(0xFF6366F1);
+    if (s == 'COMPLETED') return const Color(0xFF10B981);
+    if (s == 'CANCELLED' || s == 'REJECTED') return const Color(0xFF64748B);
+    if (s == 'DRAFT') return const Color(0xFFF59E0B);
+    return const Color(0xFFEC4899); // Pink for Approved/Planned
   }
 
   void _filterRequests(String query) {
@@ -131,7 +124,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -144,7 +137,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
           decoration: InputDecoration(
             hintText: "Search faculty or ID...",
             hintStyle: TextStyle(
-              color: titleColor.withOpacity(0.4),
+              color: titleColor.withValues(alpha: 0.4),
               fontSize: 14,
             ),
             prefixIcon: Icon(
@@ -158,7 +151,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
                 ? IconButton(
                     icon: Icon(
                       Icons.clear_rounded,
-                      color: titleColor.withOpacity(0.4),
+                      color: titleColor.withValues(alpha: 0.4),
                     ),
                     onPressed: () {
                       _searchController.clear();
@@ -192,7 +185,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -206,7 +199,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: acc.withOpacity(0.1),
+                  backgroundColor: acc.withValues(alpha: 0.1),
                   child: Icon(Icons.school_rounded, size: 18, color: acc),
                 ),
                 const SizedBox(width: 12),
@@ -233,10 +226,31 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
                     ],
                   ),
                 ),
-                _buildStatusBadge(status, statusColor),
+                _buildStatusBadge(status),
               ],
             ),
           ),
+          if (req['drivers'] != null && (req['drivers'] as List).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.person_rounded, size: 14, color: acc.withValues(alpha: 0.7)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Drivers: " + (req['drivers'] as List).map((d) => d['name'] ?? "Driver").join(", "),
+                      style: TextStyle(
+                        color: subColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(20),
@@ -290,7 +304,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     return Column(
       children: [
         Icon(Icons.radio_button_checked_rounded, size: 18, color: acc),
-        Container(width: 2, height: 35, color: acc.withOpacity(0.2)),
+        Container(width: 2, height: 35, color: acc.withValues(alpha: 0.2)),
         Icon(Icons.location_on_rounded, size: 20, color: acc),
       ],
     );
@@ -300,7 +314,7 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
-        color: acc.withOpacity(0.05),
+        color: acc.withValues(alpha: 0.05),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(28),
           bottomRight: Radius.circular(28),
@@ -341,19 +355,75 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     );
   }
 
-  Widget _buildStatusBadge(String status, Color color) {
+  Widget _buildStatusBadge(String status) {
+    final String s = status.toUpperCase();
+    final Map<String, Map<String, Color>> statusStyles = {
+      'DRAFT': {
+        'bg': const Color(0xFFFFFBEB),
+        'text': const Color(0xFFF59E0B),
+        'border': const Color(0xFFFDE68A),
+      },
+      'SUBMITTED': {
+        'bg': const Color(0xFFFAF5FF),
+        'text': const Color(0xFFA855F7),
+        'border': const Color(0xFFE9D5FF),
+      },
+      'PLANNED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'REJECTED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'APPROVED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'STARTED': {
+        'bg': const Color(0xFFDBEAFE),
+        'text': const Color(0xFF2563EB),
+        'border': const Color(0xFF93C5FD),
+      },
+      'ONGOING': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'COMPLETED': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
+      'CANCELLED': {
+        'bg': const Color(0xFFF8FAFC),
+        'text': const Color(0xFF64748B),
+        'border': const Color(0xFFE2E8F0),
+      },
+    };
+
+    final style = statusStyles[s] ??
+        {
+          'bg': Colors.grey.withValues(alpha: 0.1),
+          'text': Colors.grey,
+          'border': Colors.grey.withValues(alpha: 0.2),
+        };
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
+        color: style['bg'],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: style['border']!, width: 1),
       ),
       child: Text(
-        status.toUpperCase(),
+        s,
         style: TextStyle(
-          color: color,
-          fontSize: 10,
+          color: style['text'],
+          fontSize: 9,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.5,
         ),
@@ -369,13 +439,13 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
           Icon(
             Icons.search_off_rounded,
             size: 60,
-            color: titleColor.withOpacity(0.2),
+            color: titleColor.withValues(alpha: 0.2),
           ),
           const SizedBox(height: 16),
           Text(
             "No requests found",
             style: TextStyle(
-              color: titleColor.withOpacity(0.5),
+              color: titleColor.withValues(alpha: 0.5),
               fontWeight: FontWeight.w600,
             ),
           ),

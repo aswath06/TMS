@@ -51,7 +51,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
         : const Color(0xFFF8FAFC);
 
     final store = context.watch<RequestStore>();
-    final missionStatuses = [2, 3, 4, 5, 6, 7, 9];
+    final missionStatuses = [2, 3, 4, 5, 6, 7, 9, 12]; // Added 12 (PLANNED)
     final missions = store.requests
         .where((req) => missionStatuses.contains(req['rawStatus']))
         .toList();
@@ -184,7 +184,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
                                       },
                                     ],
                                     status: mission['status'] ?? "Active",
-                                    statusColor: _getStatusColor(mission['rawStatus']),
+                                    statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
+                                    statusColor: _getStatusColor(mission['status'] ?? "Active"),
                                     primaryBlue: primaryBlue,
                                     creatorName: mission['faculty'] ?? "Faculty Member",
                                   );
@@ -307,20 +308,89 @@ class _MissionsScreenState extends State<MissionsScreen> {
     );
   }
 
-  Color _getStatusColor(int? status) {
-    switch (status) {
-      case 2:
-      case 5:
-        return Colors.blue;
-      case 4:
-        return Colors.indigo;
-      case 7:
-        return Colors.green;
-      case 9:
-        return Colors.red;
-      default:
-        return Colors.orange;
-    }
+  Color _getStatusColor(String status) {
+    final s = status.toUpperCase();
+    if (s == 'STARTED' || s == 'ONGOING') return const Color(0xFF6366F1);
+    if (s == 'COMPLETED') return const Color(0xFF10B981);
+    if (s == 'CANCELLED' || s == 'REJECTED') return const Color(0xFF64748B);
+    if (s == 'DRAFT') return const Color(0xFFF59E0B);
+    return const Color(0xFFEC4899); // Pink for Approved/Planned
+  }
+
+  Widget _buildStatusBadge(String status) {
+    final String s = status.toUpperCase();
+    final Map<String, Map<String, Color>> statusStyles = {
+      'DRAFT': {
+        'bg': const Color(0xFFFFFBEB),
+        'text': const Color(0xFFF59E0B),
+        'border': const Color(0xFFFDE68A),
+      },
+      'SUBMITTED': {
+        'bg': const Color(0xFFFAF5FF),
+        'text': const Color(0xFFA855F7),
+        'border': const Color(0xFFE9D5FF),
+      },
+      'PLANNED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'REJECTED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'APPROVED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'STARTED': {
+        'bg': const Color(0xFFDBEAFE),
+        'text': const Color(0xFF2563EB),
+        'border': const Color(0xFF93C5FD),
+      },
+      'ONGOING': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'COMPLETED': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
+      'CANCELLED': {
+        'bg': const Color(0xFFF8FAFC),
+        'text': const Color(0xFF64748B),
+        'border': const Color(0xFFE2E8F0),
+      },
+    };
+
+    final style = statusStyles[s] ??
+        {
+          'bg': Colors.grey.withValues(alpha: 0.1),
+          'text': Colors.grey,
+          'border': Colors.grey.withValues(alpha: 0.2),
+        };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: style['bg'],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: style['border']!, width: 1),
+      ),
+      child: Text(
+        s,
+        style: TextStyle(
+          color: style['text'],
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 
   // ... (Keeping your existing helper methods _buildDateBucket, _buildMissionCard, etc.)
@@ -359,6 +429,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
     required String duration,
     required List<Map<String, String>> detailedStops,
     required String status,
+    required Widget statusBadge,
     required Color statusColor,
     required Color primaryBlue,
     required String requestId,
@@ -428,25 +499,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                statusBadge,
               ],
             ),
             const SizedBox(height: 12),
@@ -514,8 +567,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
                     titleColor,
                     subColor,
                   ),
-                )
-                .toList(),
+                ),
           ],
         ),
       ),
