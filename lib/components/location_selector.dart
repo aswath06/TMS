@@ -37,12 +37,15 @@ class LocationSelector extends StatefulWidget {
   final Color accentColor;
   final Function(List<String> addresses, double totalDistance, double totalDuration) onChanged;
 
+  final List<String>? initialAddresses;
+
   const LocationSelector({
     super.key,
     required this.cardColor,
     required this.titleColor,
     required this.accentColor,
     required this.onChanged,
+    this.initialAddresses,
   });
 
   @override
@@ -60,6 +63,20 @@ class _LocationSelectorState extends State<LocationSelector> {
   String _totalDistanceText = '0.0 km';
   String _totalDurationText = '0 min';
   bool _isCalculating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialAddresses != null && widget.initialAddresses!.isNotEmpty) {
+      _stops.clear();
+      for (int i = 0; i < widget.initialAddresses!.length; i++) {
+        _stops.add(LocationStopData(
+          id: i,
+          controller: TextEditingController(text: widget.initialAddresses![i]),
+        ));
+      }
+    }
+  }
 
   final String _userAgent = 'TMS_Fleet_Manager_App/1.0 (contact@yourdomain.com)';
 
@@ -87,6 +104,7 @@ class _LocationSelectorState extends State<LocationSelector> {
           final List geo = route['geometry']['coordinates'];
           final pts = geo.map((c) => LatLng(c[1], c[0])).toList();
 
+          if (!mounted) return;
           setState(() {
             _routePoints = pts;
             _totalDistanceText = '${dist.toStringAsFixed(1)} km';
@@ -100,7 +118,7 @@ class _LocationSelectorState extends State<LocationSelector> {
     } catch (e) {
       debugPrint('Routing Error: $e');
     } finally {
-      setState(() => _isCalculating = false);
+      if (mounted) setState(() => _isCalculating = false);
     }
   }
 
@@ -441,6 +459,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       setState(() { _results = []; _searched = false; });
       return;
     }
+    if (!mounted) return;
     setState(() { _isLoading = true; _searched = true; });
 
     final url =
@@ -450,6 +469,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       final res = await http.get(Uri.parse(url), headers: {'User-Agent': widget.userAgent, 'Accept-Language': 'en'});
       if (res.statusCode == 200) {
         final List data = json.decode(res.body);
+        if (!mounted) return;
         setState(() {
           _results = data
               .map((e) => {
@@ -463,7 +483,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     } catch (e) {
       debugPrint('Location search error: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

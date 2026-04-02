@@ -24,7 +24,7 @@ class ApiConstants {
   static const String fuelLog = "$baseUrl/api/vehicles/fuel-log";
 
   // Requests (Added these for your RequestStore)
-  static const String getAllRequests = "$baseUrl/request/get-all";
+  static const String getAllRequests = "$baseUrl/api/routes/get-all";
   static const String createRequest = "$baseUrl/request/create";
   static const String createTransportRequest =
       "$baseUrl/request/create-transport-request";
@@ -34,6 +34,9 @@ class ApiConstants {
   static const String completeRouteOtp = "$baseUrl/request/complete-route-otp";
   static const String generateStartOtp = "$baseUrl/request/generate-start-otp";
   static const String generateEndOtp = "$baseUrl/request/generate-end-otp";
+  static const String adminCreateFull = "$baseUrl/api/routes/admin-create-full";
+  static const String getAvailableVehicles = "$baseUrl/api/routes/route-requests/available-vehicles";
+  static const String getAvailableDrivers = "$baseUrl/api/routes/route-requests/available-drivers";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";

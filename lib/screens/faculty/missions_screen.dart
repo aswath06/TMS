@@ -13,12 +13,28 @@ class MissionsScreen extends StatefulWidget {
 }
 
 class _MissionsScreenState extends State<MissionsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests();
+      context.read<RequestStore>().fetchRequests(isRefresh: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<RequestStore>().fetchNextPage();
+    }
   }
 
   @override
@@ -101,10 +117,10 @@ class _MissionsScreenState extends State<MissionsScreen> {
               ),
             ),
             Expanded(
-              child: store.isLoading && missions.isEmpty
+                child: store.isLoading && missions.isEmpty
                   ? _buildMissionsSkeleton(isDark, cardColor)
                   : RefreshIndicator(
-                      onRefresh: () => store.fetchRequests(),
+                      onRefresh: () => store.fetchRequests(isRefresh: true),
                       child: missions.isEmpty
                           ? ListView(
                               children: [
@@ -122,55 +138,58 @@ class _MissionsScreenState extends State<MissionsScreen> {
                                 ),
                               ],
                             )
-                          : ListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 16,
+                            : ListView.builder(
+                                controller: _scrollController,
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                itemCount: missions.length + (store.isLoading ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == missions.length) {
+                                    return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 20), child: CircularProgressIndicator()));
+                                  }
+                                  final mission = missions[index];
+                                  return _buildMissionCard(
+                                    context,
+                                    cardColor: cardColor,
+                                    titleColor: titleColor,
+                                    subColor: subColor,
+                                    requestId: mission['dbId']?.toString() ?? "",
+                                    rawStatus: mission['rawStatus'] ?? 0,
+                                    missionTitle: mission['routeName'] ?? "Transport Request",
+                                    time: mission['date'] ?? "TBD",
+                                    drivers: mission['drivers'] ?? [],
+                                    vehicleInfo: mission['vehicle'] ?? "Pending",
+                                    capacity: mission['passengers'].toString(),
+                                    pathType: mission['travelType'] ?? "One-Way",
+                                    duration: mission['approx_duration']?.toString() ?? "0",
+                                    detailedStops: [
+                                      {
+                                        'location': mission['pickup'] ?? "Start",
+                                        'eta': "Start",
+                                        'type': 'Pickup',
+                                      },
+                                      if (mission['intermediateStops'] is List)
+                                      ... (mission['intermediateStops'] as List).map((s) => {
+                                        'location': s.toString(),
+                                        'eta': "Transit",
+                                        'type': 'Transit',
+                                      }),
+                                      {
+                                        'location': mission['drop'] ?? "Destination",
+                                        'eta': "End",
+                                        'type': 'Drop',
+                                      },
+                                    ],
+                                    status: mission['status'] ?? "Active",
+                                    statusColor: _getStatusColor(mission['rawStatus']),
+                                    primaryBlue: primaryBlue,
+                                    creatorName: mission['faculty'] ?? "Faculty Member",
+                                  );
+                                },
                               ),
-                              itemCount: missions.length,
-                              itemBuilder: (context, index) {
-                                final mission = missions[index];
-                                // Map mission data to card helper
-                                return _buildMissionCard(
-                                  context,
-                                  cardColor: cardColor,
-                                  titleColor: titleColor,
-                                  subColor: subColor,
-                                  requestId: mission['dbId']?.toString() ?? "",
-                                  rawStatus: mission['rawStatus'] ?? 0,
-                                  missionTitle: mission['vehicle'] ?? "Transport Request",
-                                  time: mission['date'] ?? "TBD",
-                                  driverName: "Driver Assigned", // Detailed info would need more API mapping
-                                  driverPhone: "N/A",
-                                  vehicleInfo: mission['vehicle'] ?? "Pending",
-                                  capacity: mission['passengers'].toString(),
-                                  pathType: "One-Way", // Assuming default for now
-                                  detailedStops: [
-                                    {
-                                      'location': mission['pickup'] ?? "Start",
-                                      'eta': "Start",
-                                      'type': 'Pickup',
-                                    },
-                                    if (mission['intermediateStops'] is List)
-                                    ... (mission['intermediateStops'] as List).map((s) => {
-                                      'location': s.toString(),
-                                      'eta': "Transit",
-                                      'type': 'Transit',
-                                    }),
-                                    {
-                                      'location': mission['drop'] ?? "Destination",
-                                      'eta': "End",
-                                      'type': 'Drop',
-                                    },
-                                  ],
-                                  status: mission['status'] ?? "Active",
-                                  statusColor: _getStatusColor(mission['rawStatus']),
-                                  primaryBlue: primaryBlue,
-                                  creatorName: mission['faculty'] ?? "Faculty Member",
-                                );
-                              },
-                            ),
                     ),
             ),
           ],
@@ -333,11 +352,11 @@ class _MissionsScreenState extends State<MissionsScreen> {
     required Color subColor,
     required String missionTitle,
     required String time,
-    required String driverName,
-    required String driverPhone,
+    required List<dynamic> drivers,
     required String vehicleInfo,
     required String capacity,
     required String pathType,
+    required String duration,
     required List<Map<String, String>> detailedStops,
     required String status,
     required Color statusColor,
@@ -346,6 +365,14 @@ class _MissionsScreenState extends State<MissionsScreen> {
     required int rawStatus,
     required String creatorName,
   }) {
+    // Determine primary driver or list
+    String driverNameHead = "Driver Assigned";
+    String driverPhoneHead = "N/A";
+    if (drivers.isNotEmpty) {
+      driverNameHead = drivers[0]['name'] ?? "Assigned";
+      driverPhoneHead = drivers[0]['phone'] ?? "N/A";
+    }
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -353,8 +380,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
           builder: (context) => MissionDetailsScreen(
             missionTitle: missionTitle,
             time: time,
-            driverName: driverName,
-            driverPhone: driverPhone,
+            driverName: driverNameHead,
+            driverPhone: driverPhoneHead,
             vehicleInfo: vehicleInfo,
             capacity: capacity,
             passengerCount: capacity,
@@ -430,28 +457,26 @@ class _MissionsScreenState extends State<MissionsScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.person_outline_rounded, size: 14, color: subColor),
+                Icon(Icons.timer_outlined, size: 14, color: subColor),
                 const SizedBox(width: 4),
                 Text(
-                  "Created by: ",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: subColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  "Duration: ",
+                  style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  creatorName,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: primaryBlue,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  "$duration mins",
+                  style: TextStyle(fontSize: 12, color: titleColor, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _buildDriverMinimal(primaryBlue, driverName, vehicleInfo, subColor),
+            if (drivers.isEmpty)
+              _buildDriverMinimal(primaryBlue, "Pending Driver", vehicleInfo, subColor)
+            else
+              ...drivers.map((d) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildDriverMinimal(primaryBlue, d['name'] ?? "Driver", d['status'] ?? "Assigned", subColor),
+              )),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

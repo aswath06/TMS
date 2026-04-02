@@ -13,6 +13,12 @@ class RequestStore extends ChangeNotifier {
   bool _isLoading = false;
   bool _isFetchingDetails = false;
   bool _isLoadingLeaves = false;
+  
+  // Pagination State
+  int _currentPage = 1;
+  bool _hasMore = true;
+  int _totalItems = 0;
+
   String? _errorMessage;
   String? _leavesErrorMessage;
 
@@ -23,61 +29,82 @@ class RequestStore extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isFetchingDetails => _isFetchingDetails;
   bool get isLoadingLeaves => _isLoadingLeaves;
+  bool get hasMore => _hasMore;
+  int get currentPage => _currentPage;
   String? get errorMessage => _errorMessage;
   String? get leavesErrorMessage => _leavesErrorMessage;
 
   /// Fetches all requests with optional pagination
-  Future<void> fetchRequests({int page = 1, int limit = 10}) async {
+  Future<void> fetchRequests({int page = 1, int limit = 10, bool isRefresh = false}) async {
+    if (isRefresh) {
+      _currentPage = 1;
+      _hasMore = true;
+      _requests = [];
+    }
+
+    if (!_hasMore && !isRefresh) return;
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final String? token = await UserStore.getToken();
-
       if (token == null) {
-        _errorMessage = "Session expired. Please login again.";
+        _errorMessage = "Session expired.";
         _isLoading = false;
         notifyListeners();
         return;
       }
 
-      // Using the base URL and endpoint pattern from your constants
-      String url =
-          "${ApiConstants.baseUrl}/request/get-all?page=$page&limit=$limit";
+      String url = "${ApiConstants.getAllRequests}?page=$page&limit=$limit";
 
-      // Append user email for faculty requests as per requirement
+      // Append user email for faculty requests
       final String? role = await UserStore.getRole();
       final String? email = await UserStore.getEmail();
-
-      if (role != 'transport admin' && email != null) {
+      if (role != null && !role.toLowerCase().contains('admin') && email != null) {
         url += "&user=$email";
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
+        
+        final List<dynamic> items = data['data'] ?? [];
+        final List<Map<String, dynamic>> formattedItems = items.map((req) => _formatRequest(req)).toList();
 
-        // Handling both possible list formats (direct list or nested in 'items')
-        final List<dynamic> items = data['items'] ?? (data is List ? data : []);
+        if (page == 1) {
+          _requests = formattedItems;
+        } else {
+          _requests.addAll(formattedItems);
+        }
 
-        _requests = items.map((req) => _formatRequest(req)).toList();
-      } else if (response.statusCode == 401) {
-        _errorMessage = "Unauthorized access. Please re-login.";
+        // Parse pagination metadata
+        if (data['pagination'] != null) {
+          final p = data['pagination'];
+          _currentPage = p['page'] ?? page;
+          _totalItems = p['totalItems'] ?? 0;
+          _hasMore = _requests.length < _totalItems;
+        } else {
+          _hasMore = formattedItems.length >= limit;
+        }
       } else {
         _errorMessage = "Server Error: ${response.statusCode}";
       }
     } catch (e) {
-      _errorMessage = "Connection failed. Please check your network.";
+      _errorMessage = "Connection failed.";
       debugPrint("RequestStore Error: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Helper to fetch the next page for infinite scroll
+  Future<void> fetchNextPage() async {
+    if (_isLoading || !_hasMore) return;
+    await fetchRequests(page: _currentPage + 1);
   }
 
   /// Fetches a single request by ID
@@ -143,7 +170,7 @@ class RequestStore extends ChangeNotifier {
 
     return {
       'id': 'REQ-${req['id']}',
-      'dbId': req['id'], // Keeping original ID for API calls
+      'dbId': req['id'], 
       'faculty': req['createdBy']?['name'] ?? 'Staff Member',
       'date': _formatDate(req['start_datetime']),
       'pickup': _formatAddress(req['startLocation']),
@@ -151,6 +178,8 @@ class RequestStore extends ChangeNotifier {
       'status': statusString,
       'rawStatus': rawStatusInt,
       'routeName': req['routeName'] ?? 'Unknown Route',
+      'travelType': req['travelType'] ?? 'One Way',
+      'approx_duration': req['approx_duration'] ?? 0,
       'vehicle':
           req['assignedVehicle']?['model'] ??
           req['routeName'] ??
@@ -158,6 +187,12 @@ class RequestStore extends ChangeNotifier {
       'passengers': req['passengerCount'] ?? 0,
       'capacity': req['assignedVehicle']?['capacity'] ?? 0,
       'intermediateStops': req['intermediateStops'] ?? [],
+      'drivers': (req['drivers'] as List?)?.map((d) => {
+        'id': d['driver_id'],
+        'name': d['name'],
+        'phone': d['phone'],
+        'status': d['status'],
+      }).toList() ?? [],
     };
   }
 

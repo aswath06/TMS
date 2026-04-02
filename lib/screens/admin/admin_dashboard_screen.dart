@@ -517,11 +517,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Icons.add_box_rounded,
           primaryBlue,
           surface,
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final refresh = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const NewRequestScreen()),
             );
+            if (refresh == true) {
+              if (mounted) {
+                context.read<RequestStore>().fetchRequests();
+                AdminDashboardStore().fetchStats();
+              }
+            }
           },
         ),
         const SizedBox(width: 15),

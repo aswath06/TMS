@@ -16,10 +16,11 @@ class VehicleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String type = vehicle['vehicle_type'] ?? "Vehicle";
+    final String type = vehicle['vehicle_type_name'] ?? vehicle['vehicle_type'] ?? "Vehicle";
     final String plate = vehicle['vehicle_number'] ?? "N/A";
     final bool isActive =
-        vehicle['status']?.toString().toLowerCase() == 'active';
+        vehicle['status']?.toString().toUpperCase() == 'ACTIVE' || 
+        vehicle['status']?.toString().toUpperCase() == 'AVAILABLE';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

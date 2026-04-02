@@ -80,12 +80,19 @@ class _RequestListPageState extends State<RequestListPage> {
                       Row(
                         children: [
                           IconButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const NewRequestScreen(),
-                              ),
-                            ),
+                            onPressed: () async {
+                              final refresh = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NewRequestScreen(),
+                                ),
+                              );
+                              if (refresh == true) {
+                                if (mounted) {
+                                  context.read<RequestStore>().fetchRequests();
+                                }
+                              }
+                            },
                             icon: Icon(
                               Icons.add_circle_outline_rounded,
                               color: primaryBlue,
