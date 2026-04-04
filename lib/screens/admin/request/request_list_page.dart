@@ -13,12 +13,29 @@ class RequestListPage extends StatefulWidget {
 }
 
 class _RequestListPageState extends State<RequestListPage> {
+  final ScrollController _scrollController = ScrollController();
+  String _selectedFilter = 'ALL';
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests();
+      context.read<RequestStore>().fetchRequests(isRefresh: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<RequestStore>().fetchNextPage();
+    }
   }
 
   @override
@@ -36,13 +53,17 @@ class _RequestListPageState extends State<RequestListPage> {
 
     final store = context.watch<RequestStore>();
     
-    // Admin sees all requests in this list, or we can filter for missions if preferred.
-    // Given the request is to make it similar to "faculty mission page", 
-    // we'll focus on similar statuses but maybe show all for admin.
-    final missionStatuses = [1, 2, 3, 4, 5, 6, 7, 9]; 
-    final missions = store.requests
-        .where((req) => missionStatuses.contains(req['rawStatus']))
-        .toList();
+    // Dynamic filtering based on selection
+    final missions = store.requests.where((req) {
+      final String s = (req['status'] ?? "").toString().toUpperCase();
+      final int rs = req['rawStatus'] ?? 0;
+      
+      if (_selectedFilter == 'ALL') return true;
+      if (_selectedFilter == 'APPROVED') return s == 'APPROVED' || s == 'VEHICLE APPROVED' || rs == 4;
+      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || rs == 1 || rs == 10;
+      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING' || rs == 7;
+      return true;
+    }).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -125,6 +146,8 @@ class _RequestListPageState extends State<RequestListPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const SizedBox(height: 18),
+                  _buildFilterChips(primaryBlue, titleColor, isDark),
                 ],
               ),
             ),
@@ -132,7 +155,7 @@ class _RequestListPageState extends State<RequestListPage> {
               child: store.isLoading && missions.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
-                      onRefresh: () => store.fetchRequests(),
+                      onRefresh: () => store.fetchRequests(isRefresh: true),
                       child: missions.isEmpty
                           ? ListView(
                               children: [
@@ -140,24 +163,40 @@ class _RequestListPageState extends State<RequestListPage> {
                                   height: MediaQuery.of(context).size.height * 0.3,
                                 ),
                                 Center(
-                                  child: Text(
-                                    "No active missions",
-                                    style: TextStyle(
-                                      color: subColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.auto_awesome_motion_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        _selectedFilter == 'ALL' ? "No active missions" : "No $_selectedFilter missions found",
+                                        style: TextStyle(
+                                          color: subColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             )
                           : ListView.builder(
-                              physics: const BouncingScrollPhysics(),
+                              controller: _scrollController,
+                              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                                 vertical: 16,
                               ),
-                              itemCount: missions.length,
+                              itemCount: missions.length + (store.hasMore ? 1 : 0),
                               itemBuilder: (context, index) {
+                                if (index == missions.length) {
+                                  return const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 24),
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                }
                                 final mission = missions[index];
                                 return _buildMissionCard(
                                   context,
@@ -314,7 +353,12 @@ class _RequestListPageState extends State<RequestListPage> {
     // Determine primary driver or list
     String driverNameHead = "Driver Assigned";
     String driverPhoneHead = "N/A";
-    if (drivers.isNotEmpty) {
+
+    final bool isDraftCard = status.toUpperCase() == 'DRAFT' || rawStatus == 1 || rawStatus == 10;
+
+    if (isDraftCard) {
+      driverNameHead = "No Driver Assigned";
+    } else if (drivers.isNotEmpty) {
       driverNameHead = drivers.map((d) => d['name'] ?? "Driver").join(", ");
       driverPhoneHead = drivers.map((d) => d['phone'] ?? "N/A").join(", ");
     }
@@ -537,6 +581,44 @@ class _RequestListPageState extends State<RequestListPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(Color p, Color t, bool d) {
+    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: filters.map((f) => _buildChipItem(f, p, t, d)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildChipItem(String label, Color p, Color t, bool d) {
+    bool isS = _selectedFilter == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFilter = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isS ? p : (d ? const Color(0xFF1E293B) : Colors.white),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isS ? p : t.withValues(alpha: 0.1), width: 1.5),
+          boxShadow: isS ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isS ? Colors.white : t.withValues(alpha: 0.6),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
     );
   }

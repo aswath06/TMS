@@ -37,7 +37,7 @@ class AdminDashboardStore {
 
       // Fetch other stats
       final String url =
-          "${ApiConstants.baseUrl}/request/get-all?page=1&limit=100";
+          "${ApiConstants.baseUrl}/request/get-all?page=1&limit=10";
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),

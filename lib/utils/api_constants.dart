@@ -38,6 +38,7 @@ class ApiConstants {
   static const String generateStartOtp = "$baseUrl/request/generate-start-otp";
   static const String generateEndOtp = "$baseUrl/request/generate-end-otp";
   static const String adminCreateFull = "$baseUrl/api/routes/admin-create-full";
+  static const String facultyCreate = "$baseUrl/api/routes/faculty-create";
   static const String getAvailableVehicles = "$baseUrl/api/routes/route-requests/available-vehicles";
   static const String getAvailableDrivers = "$baseUrl/api/routes/route-requests/available-drivers";
 

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:ui';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -46,8 +45,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   final TextEditingController _luggageController = TextEditingController();
   final TextEditingController _specialReqController = TextEditingController();
 
-  List<Map<String, dynamic>> _stops = [];
-  List<Guest> _guests = [Guest(name: "", phone: "")];
+  final List<Map<String, dynamic>> _stops = [];
+  final List<Guest> _guests = [Guest(name: "", phone: "")];
 
   // --- Step 2: Grouping ---
   List<Guest> _unassignedGuests = [];
@@ -55,12 +54,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   // --- Step 3: Vehicles ---
   List<Map<String, dynamic>> _availableVehicles = [];
-  Map<int, Map<String, dynamic>?> _selectedVehicles = {};
+  final Map<int, Map<String, dynamic>?> _selectedVehicles = {};
   bool _isLoadingVehicles = false;
 
   // --- Step 4: Drivers ---
   List<Map<String, dynamic>> _availableDrivers = [];
-  Map<int, Map<String, dynamic>?> _selectedDrivers = {};
+  final Map<int, Map<String, dynamic>?> _selectedDrivers = {};
   bool _isLoadingDrivers = false;
   double _travelDurationMinutes = 0;
   double _approxDistanceKm = 0;
@@ -81,7 +80,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     final count = int.tryParse(_passengerCountController.text) ?? 1;
     if (count > _guests.length) {
       setState(() {
-        while (_guests.length < count) _guests.add(Guest(name: "", phone: ""));
+        while (_guests.length < count) {
+          _guests.add(Guest(name: "", phone: ""));
+        }
       });
     }
     if (_visibleGuestSlots > count) setState(() => _visibleGuestSlots = count);
@@ -90,11 +91,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Future<void> _checkRole() async {
     final role = await UserStore.getRole();
-    if (mounted) setState(() { 
-      _userRole = role?.toLowerCase() ?? 'faculty'; 
-      _totalSteps = _userRole.contains('admin') ? 5 : 2; 
-      if (_stops.isEmpty) _stops = [{"address": "Chennai", "lat": 13.0827, "lon": 80.2707}, {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411}];
-    });
+    if (mounted) {
+      setState(() { 
+        _userRole = role?.toLowerCase() ?? 'faculty'; 
+        _totalSteps = _userRole.contains('admin') ? 5 : 2; 
+        if (_stops.isEmpty) {
+          _stops.addAll([{"address": "Chennai", "lat": 13.0827, "lon": 80.2707}, {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411}]);
+        }
+      });
+    }
   }
 
   @override
@@ -167,7 +172,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         _unassignedGuests.add(_guests[i]);
       }
       _guestGroups = {}; 
-      for (int i = 0; i < vCount; i++) _guestGroups[i] = []; 
+      for (int i = 0; i < vCount; i++) {
+        _guestGroups[i] = []; 
+      }
     });
   }
 
@@ -184,8 +191,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     setState(() => _isSubmitting = true);
     try {
       final token = await UserStore.getToken();
+      final bool isAdmin = _userRole.toLowerCase().contains('admin');
       
-      // Constructing passengers list (Fill generic names for empty ones)
+      // Constructing passengers list
       int pLimit = int.tryParse(_passengerCountController.text) ?? 1;
       List<Map<String, dynamic>> passengers = [];
       for (int i = 0; i < pLimit; i++) {
@@ -198,84 +206,86 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         });
       }
 
-      // LEG-1 Vehicles
-      List<Map<String, dynamic>> leg1Vehicles = [];
-      _guestGroups.forEach((idx, guests) {
-        leg1Vehicles.add({
-          "vehicle_id": _selectedVehicles[idx]?['id'],
-          "driver_id": _selectedDrivers[idx]?['id'],
-          // MUST use original _guests list to get stable 1-based indices for the server
-          "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList() 
-        });
-      });
-
-      // Date Logic for Round Trip
-      DateTime? outboundEnd;
-      DateTime? returnStart;
-      
-      if (_routeType != 'One Way' && _startDate != null) {
-        outboundEnd = _startDate!.add(Duration(minutes: _travelDurationMinutes.toInt()));
-        returnStart = outboundEnd.add(const Duration(hours: 5)); // Stay duration
-      }
-
-      // Constructing the full request body
       final Map<String, dynamic> body = {
         "route_name": _routeNameController.text.trim(),
         "trip_type": _routeType == 'One Way' ? 'ONE_WAY' : 'ROUND_TRIP',
         "requested_for_date": DateFormat('yyyy-MM-dd').format(_startDate ?? DateTime.now()),
         "start_datetime": _startDate != null ? _toIso(_startDate!) : null,
-        "end_datetime": outboundEnd != null ? _toIso(outboundEnd) : (_endDate != null ? _toIso(_endDate!) : null),
-        if (_routeType != 'One Way' && returnStart != null)
-          "return_start_datetime": _toIso(returnStart),
+        "end_datetime": _endDate != null ? _toIso(_endDate!) : null,
         "purpose": _purposeController.text.trim(),
         "passenger_count": int.tryParse(_passengerCountController.text) ?? 1,
         "vehicle_count": int.tryParse(_vehicleCountController.text) ?? 1,
-        "approx_distance_km": _approxDistanceKm,
-        "approx_duration_minutes": _travelDurationMinutes.toInt(),
+        "suggested_vehicle_type_id": 1, // Default or mapped
         "luggage_details": _luggageController.text.trim(),
         "special_instructions": _specialReqController.text.trim(),
-        "stops": _stops.asMap().entries.map((entry) {
+        "approx_distance_km": _approxDistanceKm,
+        "approx_duration_minutes": _travelDurationMinutes.toInt(),
+        "passengers": passengers,
+      };
+
+      if (isAdmin) {
+        // ADMIN FLOW: Uses admin_assignments
+        List<Map<String, dynamic>> leg1Vehicles = [];
+        _guestGroups.forEach((idx, guests) {
+          leg1Vehicles.add({
+            "vehicle_id": _selectedVehicles[idx]?['id'],
+            "driver_id": _selectedDrivers[idx]?['id'],
+            "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList() 
+          });
+        });
+
+        body["stops"] = _stops.asMap().entries.map((entry) {
           final idx = entry.key;
           final s = entry.value;
-          final address = s['address'] ?? "";
           return {
-            "stop_name": address.isEmpty ? (idx == 0 ? "Start" : (idx == _stops.length - 1 ? "End" : "Via")) : address,
-            "address": address,
-            "latitude": s['lat'] ?? null,
-            "longitude": s['lon'] ?? null,
+            "stop_name": s['address'] ?? "",
+            "address": s['address'] ?? "",
+            "latitude": s['lat'],
+            "longitude": s['lon'],
             "stop_order": idx + 1,
             "stop_type": idx == 0 ? "START" : (idx == _stops.length - 1 ? "END" : "VIA"),
           };
-        }).toList(),
-        "passengers": passengers,
-        "admin_assignments": [
+        }).toList();
+
+        body["admin_assignments"] = [
           {"leg_code": "LEG-1", "vehicles": leg1Vehicles},
           if (_routeType != 'One Way')
             {"leg_code": "LEG-2", "vehicles": leg1Vehicles}
-        ]
-      };
+        ];
+      } else {
+        // FACULTY FLOW: Uses groupings
+        body["stops"] = _stops.map((s) => { "stop_name": s['address'] ?? "" }).toList();
+        
+        List<Map<String, dynamic>> groupings = [];
+        _guestGroups.forEach((idx, guests) {
+          groupings.add({
+            "group_label": "Vehicle Group ${idx + 1}",
+            "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList()
+          });
+        });
+        body["groupings"] = groupings;
+      }
 
-      // Logging as a CURL with pretty-printed JSON
+      final String apiUrl = isAdmin ? ApiConstants.adminCreateFull : ApiConstants.facultyCreate;
+      final String tokenLabel = isAdmin ? "ADMIN" : "FACULTY";
+
+      // Logging as a CURL for verification
       const encoder = JsonEncoder.withIndent('  ');
       String prettyJson = encoder.convert(body);
-      
-      String curl = "curl --location '${ApiConstants.adminCreateFull}' \\\n"
-          "--header 'Authorization: TMS $token' \\\n"
-          "--header 'Content-Type: application/json' \\\n"
-          "--data '$prettyJson'";
-      
-      debugPrint("\n🚀 [FINAL CURL SENDING]:\n$curl\n");
+      debugPrint("\n🚀 [$tokenLabel CURL SENDING]:\ncurl --location '$apiUrl' \\\n"
+          "--header 'Authorization: TMS $token' \\\n--header 'Content-Type: application/json' \\\n--data '$prettyJson'\n");
 
       final resp = await http.post(
-        Uri.parse(ApiConstants.adminCreateFull),
+        Uri.parse(apiUrl),
         headers: ApiConstants.getHeaders(token),
         body: json.encode(body),
       );
 
       debugPrint("📥 [SERVER RESPONSE] (${resp.statusCode}): ${resp.body}");
 
+      if (!mounted) return;
       if (resp.statusCode == 200 || resp.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Route Created Successfully!")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Request Submitted Successfully!")));
         Navigator.pop(context, true);
       } else {
         final err = json.decode(resp.body);
@@ -326,7 +336,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildMeshBg(Color p) => Positioned(top: -100, right: -100, child: Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [p.withOpacity(0.08), Colors.transparent]))));
+  Widget _buildMeshBg(Color p) => Positioned(top: -100, right: -100, child: Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [p.withValues(alpha: 0.08), Colors.transparent]))));
 
   Widget _buildPremiumHeader(BuildContext context, Color p, bool d) {
     double prg = (_currentStep + 1) / _totalSteps;
@@ -335,13 +345,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-          color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.4),
+          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  GestureDetector(onTap: () { Navigator.pop(context); }, child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: p.withOpacity(0.1), shape: BoxShape.circle), child: Icon(Icons.close_rounded, color: p, size: 22))),
+                  GestureDetector(onTap: () { Navigator.pop(context); }, child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: p.withValues(alpha: 0.1), shape: BoxShape.circle), child: Icon(Icons.close_rounded, color: p, size: 22))),
                   const SizedBox(width: 16),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text("TRANSPORT", style: GoogleFonts.montserrat(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.w900, color: p)),
@@ -358,7 +368,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   Widget _buildProgressCircle(Color p, double prg) => Stack(alignment: Alignment.center, children: [
-    SizedBox(width: 50, height: 50, child: CircularProgressIndicator(value: prg, strokeWidth: 4, backgroundColor: p.withOpacity(0.05), valueColor: AlwaysStoppedAnimation<Color>(p))),
+    SizedBox(width: 50, height: 50, child: CircularProgressIndicator(value: prg, strokeWidth: 4, backgroundColor: p.withValues(alpha: 0.05), valueColor: AlwaysStoppedAnimation<Color>(p))),
     Text("${(prg * 100).toInt()}%", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: p)),
   ]);
 
@@ -396,7 +406,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     margin: const EdgeInsets.only(right: 8), 
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                     decoration: BoxDecoration(
-                      color: act ? p : p.withOpacity(0.04), 
+                      color: act ? p : p.withValues(alpha: 0.04), 
                       borderRadius: BorderRadius.circular(16), 
                       border: Border.all(color: act ? p : Colors.transparent, width: 1.5)
                     ),
@@ -434,7 +444,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             titleColor: t, 
             accentColor: p, 
             initialAddresses: _stops.map((s) => s['address'] as String).toList(),
-            onChanged: (stops, dist, dur) { setState(() { _stops = stops; _travelDurationMinutes = dur; _approxDistanceKm = dist; _updateEndDate(); }); }
+            onChanged: (stops, dist, dur) {
+              setState(() {
+                _stops.clear();
+                _stops.addAll(stops);
+                _travelDurationMinutes = dur;
+                _approxDistanceKm = dist;
+                _updateEndDate();
+              });
+            }
           ),
           const SizedBox(height: 50),
         ],
@@ -464,20 +482,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.5),
+        color: c.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: t.withOpacity(0.04)),
+        border: Border.all(color: t.withValues(alpha: 0.04)),
       ),
       child: Row(
         children: [
-          Icon(Icons.auto_awesome_rounded, size: 18, color: p.withOpacity(0.5)),
+          Icon(Icons.auto_awesome_rounded, size: 18, color: p.withValues(alpha: 0.5)),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("AUTO-CALCULATED RETURN", style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: p, letterSpacing: 0.5)),
               const SizedBox(height: 4),
-              Text(DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!), style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: t.withOpacity(0.6))),
+              Text(DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!), style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: t.withValues(alpha: 0.6))),
             ],
           ),
         ],
@@ -503,25 +521,25 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         decoration: BoxDecoration(
           color: c,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: t.withOpacity(0.04), width: 1.5),
+          border: Border.all(color: t.withValues(alpha: 0.04), width: 1.5),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [p.withOpacity(0.15), p.withOpacity(0.05)]),
+              gradient: LinearGradient(colors: [p.withValues(alpha: 0.15), p.withValues(alpha: 0.05)]),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: p.withOpacity(0.1)),
+              border: Border.all(color: p.withValues(alpha: 0.1)),
             ),
             child: Icon(Icons.calendar_today_rounded, size: 20, color: p),
           ),
           const SizedBox(width: 18),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(h.replaceFirst('*', '').trim().toUpperCase(), style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: t.withOpacity(0.4), letterSpacing: 0.5)),
+              Text(h.replaceFirst('*', '').trim().toUpperCase(), style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: t.withValues(alpha: 0.4), letterSpacing: 0.5)),
               const SizedBox(height: 4),
               Text(val == null ? "Set Schedule" : DateFormat('EEE, MMM dd • hh:mm a').format(val), style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: val == null ? Colors.grey : t)),
             ]),
@@ -529,8 +547,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           const Spacer(),
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: t.withOpacity(0.03), shape: BoxShape.circle),
-            child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: t.withOpacity(0.2)),
+            decoration: BoxDecoration(color: t.withValues(alpha: 0.03), shape: BoxShape.circle),
+            child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: t.withValues(alpha: 0.2)),
           ),
         ]),
       ),
@@ -559,7 +577,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _premiumInputInline(String label, String initial, Function(String) onC, IconData icon, Color c, Color t, Color p, {bool isNum = false, bool isReq = true}) {
     return Container(
-      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(16), border: Border.all(color: t.withOpacity(0.04)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
+      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(16), border: Border.all(color: t.withValues(alpha: 0.04)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
       child: TextFormField(
         initialValue: initial, 
         keyboardType: isNum ? TextInputType.number : TextInputType.text, 
@@ -567,8 +585,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         decoration: InputDecoration(
           hintText: label, 
-          hintStyle: TextStyle(color: t.withOpacity(0.1), fontSize: 13), 
-          prefixIcon: Icon(icon, color: p.withOpacity(0.35), size: 20), 
+          hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13), 
+          prefixIcon: Icon(icon, color: p.withValues(alpha: 0.35), size: 20), 
           border: InputBorder.none, 
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
           prefixText: isNum ? "+91 " : null, 
@@ -588,14 +606,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _premiumInput(String label, TextEditingController ctrl, String hint, IconData icon, Color c, Color t, Color p, {bool isReq = false, bool isNum = false}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.withOpacity(0.3))),
+      Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.withValues(alpha: 0.3))),
       const SizedBox(height: 8),
       Container(
-        decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(16), border: Border.all(color: t.withOpacity(0.04)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
+        decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(16), border: Border.all(color: t.withValues(alpha: 0.04)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
         child: TextFormField(
           controller: ctrl, keyboardType: isNum ? TextInputType.number : TextInputType.text,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-          decoration: InputDecoration(hintText: hint, hintStyle: TextStyle(color: t.withOpacity(0.1), fontSize: 13), prefixIcon: Icon(icon, color: p.withOpacity(0.35), size: 20), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+          decoration: InputDecoration(hintText: hint, hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13), prefixIcon: Icon(icon, color: p.withValues(alpha: 0.35), size: 20), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
           validator: isReq ? (v) => (v == null || v.isEmpty) ? "Req" : null : null,
         ),
       ),
@@ -612,7 +630,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       child: Container(
         margin: const EdgeInsets.only(top: 8), 
         padding: const EdgeInsets.symmetric(vertical: 14), 
-        decoration: BoxDecoration(color: p.withOpacity(0.05), borderRadius: BorderRadius.circular(16)), 
+        decoration: BoxDecoration(color: p.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16)), 
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center, 
           children: [
@@ -649,12 +667,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 onPressed: _autoAllocateGuests,
                 icon: Icon(Icons.auto_awesome_rounded, size: 16, color: p),
                 label: Text("Smart Split", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: p)),
-                style: TextButton.styleFrom(backgroundColor: p.withOpacity(0.05), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                style: TextButton.styleFrom(backgroundColor: p.withValues(alpha: 0.05), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               )
             else
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
                 child: Row(children: [
                   const Icon(Icons.check_circle_outline_rounded, size: 14, color: Colors.green),
                   const SizedBox(width: 6),
@@ -672,9 +690,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: c.withOpacity(0.3),
+                color: c.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: t.withOpacity(0.04)),
+                border: Border.all(color: t.withValues(alpha: 0.04)),
               ),
               child: _guestSrc(p, c, t),
             ),
@@ -695,9 +713,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             children: [
-              Icon(Icons.done_all_rounded, color: Colors.green.withOpacity(0.5), size: 32),
+              Icon(Icons.done_all_rounded, color: Colors.green.withValues(alpha: 0.5), size: 32),
               const SizedBox(height: 8),
-              Text("All passengers allocated", style: TextStyle(color: t.withOpacity(0.4), fontWeight: FontWeight.w700, fontSize: 13)),
+              Text("All passengers allocated", style: TextStyle(color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w700, fontSize: 13)),
             ],
           ),
         ),
@@ -721,7 +739,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           decoration: BoxDecoration(
             color: p,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: p.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+            boxShadow: [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
           ),
           child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
         ),
@@ -730,8 +748,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         opacity: 0.3,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(color: t.withOpacity(0.05), borderRadius: BorderRadius.circular(14)),
-          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.withOpacity(0.2))),
+          decoration: BoxDecoration(color: t.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
+          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.withValues(alpha: 0.2))),
         ),
       ),
       child: AnimatedContainer(
@@ -740,13 +758,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         decoration: BoxDecoration(
           color: c,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: t.withOpacity(0.05)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+          border: Border.all(color: t.withValues(alpha: 0.05)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5)],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.drag_indicator_rounded, size: 14, color: p.withOpacity(0.4)),
+            Icon(Icons.drag_indicator_rounded, size: 14, color: p.withValues(alpha: 0.4)),
             const SizedBox(width: 8),
             Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: t)),
           ],
@@ -758,10 +776,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   Widget _groupList(Color p, Color c, bool d, Color t) {
     return Column(
       children: _guestGroups.entries.map((ent) => DragTarget<Guest>(
-        onAccept: (g) {
+        onAcceptWithDetails: (details) {
+          final g = details.data;
           setState(() {
             _unassignedGuests.remove(g);
-            for (var l in _guestGroups.values) l.remove(g);
+            for (var l in _guestGroups.values) {
+              l.remove(g);
+            }
             _guestGroups[ent.key]!.add(g);
           });
         },
@@ -773,11 +794,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             padding: const EdgeInsets.all(20),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: isO ? p.withOpacity(0.12) : c,
+              color: isO ? p.withValues(alpha: 0.12) : c,
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: isO ? p : t.withOpacity(0.02), width: 2),
+              border: Border.all(color: isO ? p : t.withValues(alpha: 0.02), width: 2),
               boxShadow: [
-                BoxShadow(color: isO ? p.withOpacity(0.1) : Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8)),
+                BoxShadow(color: isO ? p.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 8)),
               ],
             ),
             child: Column(
@@ -790,7 +811,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: p.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                           child: Icon(Icons.directions_bus_filled_rounded, size: 16, color: p),
                         ),
                         const SizedBox(width: 12),
@@ -798,7 +819,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       ],
                     ),
                     if (ent.value.isNotEmpty)
-                      Text("${ent.value.length} Assigned", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: t.withOpacity(0.3))),
+                      Text("${ent.value.length} Assigned", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: t.withValues(alpha: 0.3))),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -806,7 +827,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text("Drag guests here", style: TextStyle(fontSize: 11, color: t.withOpacity(0.2), fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                      child: Text("Drag guests here", style: TextStyle(fontSize: 11, color: t.withValues(alpha: 0.2), fontWeight: FontWeight.w700, letterSpacing: 0.5)),
                     ),
                   )
                 else
@@ -829,11 +850,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       duration: const Duration(milliseconds: 300),
       child: Chip(
         label: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: p)),
-        backgroundColor: p.withOpacity(0.08),
+        backgroundColor: p.withValues(alpha: 0.08),
         padding: const EdgeInsets.symmetric(horizontal: 4),
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        deleteIcon: Icon(Icons.close_rounded, size: 14, color: p.withOpacity(0.5)),
+        deleteIcon: Icon(Icons.close_rounded, size: 14, color: p.withValues(alpha: 0.5)),
         onDeleted: () {
           setState(() {
             _guestGroups[gIndex]!.remove(g);
@@ -851,7 +872,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       const SizedBox(height: 24),
       _buildGlassLabel("Fleet Selection", p),
       const SizedBox(height: 12),
-      Text("Select available vehicles for your trip segments.", style: TextStyle(fontSize: 13, color: t.withOpacity(0.5))),
+      Text("Select available vehicles for your trip segments.", style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5))),
       const SizedBox(height: 32),
       if (_isLoadingVehicles) 
         const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())) 
@@ -864,7 +885,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           (v) => setState(() => _selectedVehicles[idx] = v), 
           c, t, p, isV: true, guestCount: gCount
         );
-      }).toList(),
+      }),
       const SizedBox(height: 40),
     ]);
   }
@@ -876,7 +897,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       const SizedBox(height: 24),
       _buildGlassLabel("Driver Assignment", p),
       const SizedBox(height: 12),
-      Text("Assign drivers to the selected vehicles.", style: TextStyle(fontSize: 13, color: t.withOpacity(0.5))),
+      Text("Assign drivers to the selected vehicles.", style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5))),
       const SizedBox(height: 32),
       if (_isLoadingDrivers) 
         const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())) 
@@ -886,7 +907,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         _selectedDrivers[idx], 
         (v) => setState(() => _selectedDrivers[idx] = v), 
         c, t, p, isV: false
-      )).toList(),
+      )),
       const SizedBox(height: 40),
     ]);
   }
@@ -953,13 +974,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         child: Container(
           height: MediaQuery.of(context).size.height * 0.75,
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B).withOpacity(0.9) : Colors.white.withOpacity(0.95),
+            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.95),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           ),
           child: Column(
             children: [
               const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -974,8 +995,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           onTap: () => Navigator.pop(ctx),
                           child: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.grey.withOpacity(0.1), shape: BoxShape.circle),
-                            child: Icon(Icons.close_rounded, size: 20, color: t.withOpacity(0.5)),
+                            decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), shape: BoxShape.circle),
+                            child: Icon(Icons.close_rounded, size: 20, color: t.withValues(alpha: 0.5)),
                           ),
                         ),
                       ],
@@ -984,7 +1005,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: p.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                         child: Text(
                           "REQUIRED CAPACITY: $currentGuestCount - ${currentGuestCount + 5} SEATS",
                           style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: p, letterSpacing: 0.5),
@@ -1001,9 +1022,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(isVehicle ? Icons.directions_bus_rounded : Icons.person_off_rounded, size: 48, color: t.withOpacity(0.1)),
+                        Icon(isVehicle ? Icons.directions_bus_rounded : Icons.person_off_rounded, size: 48, color: t.withValues(alpha: 0.1)),
                         const SizedBox(height: 16),
-                        Text("No ${isVehicle ? 'vehicles' : 'drivers'} available", style: TextStyle(color: t.withOpacity(0.3), fontWeight: FontWeight.w600)),
+                        Text("No ${isVehicle ? 'vehicles' : 'drivers'} available", style: TextStyle(color: t.withValues(alpha: 0.3), fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -1013,7 +1034,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                     itemCount: filteredItems.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       final item = filteredItems[i];
                       final bool isSelected = selected != null && (item['id'] == selected['id']);
@@ -1059,9 +1080,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           padding: const EdgeInsets.all(16),
                           margin: const EdgeInsets.only(bottom: 4),
                           decoration: BoxDecoration(
-                            color: isSelected ? p.withOpacity(0.1) : (isDisabled ? t.withOpacity(0.01) : t.withOpacity(0.03)),
+                            color: isSelected ? p.withValues(alpha: 0.1) : (isDisabled ? t.withValues(alpha: 0.01) : t.withValues(alpha: 0.03)),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: isSelected ? p : (isDisabled ? Colors.red.withOpacity(0.2) : Colors.transparent), width: 1.5),
+                            border: Border.all(color: isSelected ? p : (isDisabled ? Colors.red.withValues(alpha: 0.2) : Colors.transparent), width: 1.5),
                           ),
                           child: Opacity(
                             opacity: isDisabled ? 0.4 : 1.0,
@@ -1069,8 +1090,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: (isSelected ? p : t).withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
-                                  child: Icon(isVehicle ? Icons.directions_bus_filled_rounded : Icons.person_rounded, size: 20, color: isSelected ? p : t.withOpacity(0.5)),
+                                  decoration: BoxDecoration(color: (isSelected ? p : t).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+                                  child: Icon(isVehicle ? Icons.directions_bus_filled_rounded : Icons.person_rounded, size: 20, color: isSelected ? p : t.withValues(alpha: 0.5)),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
@@ -1084,15 +1105,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                         runSpacing: 4,
                                         crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
-                                          Text(subText, style: TextStyle(fontSize: 12, color: t.withOpacity(0.4), fontWeight: FontWeight.w600)),
+                                          Text(subText, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w600)),
                                           if (isVehicle && item['default_driver'] != null)
                                             Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 const SizedBox(width: 4),
-                                                Text("•", style: TextStyle(fontSize: 12, color: t.withOpacity(0.2))),
+                                                Text("•", style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.2))),
                                                 const SizedBox(width: 4),
-                                                Icon(Icons.person_rounded, size: 12, color: Colors.green.withOpacity(0.7)),
+                                                Icon(Icons.person_rounded, size: 12, color: Colors.green.withValues(alpha: 0.7)),
                                                 const SizedBox(width: 4),
                                                 Text(item['default_driver']['name'], style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w900)),
                                               ],
@@ -1100,19 +1121,19 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                           if (isVehicle) ...[
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(color: (isDisabled ? Colors.red : p).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                              decoration: BoxDecoration(color: (isDisabled ? Colors.red : p).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                                               child: Text("Cap: $capacity", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: (isDisabled ? Colors.red : p))),
                                             ),
                                             if (!isDisabled)
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                                                 child: const Text("AVAILABLE", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.green)),
                                               )
                                             else if (isDisabled && isVehicle && item['available'] == false)
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                                                 child: const Text("UNAVAILABLE", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.red)),
                                               ),
                                           ],
@@ -1124,7 +1145,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                 if (isDisabled)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                    decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                                     child: Text(
                                       item['available'] == false ? "UNAVAILABLE" : (status == "ON_LEAVE" ? "ON LEAVE" : (tooSmall ? "TOO SMALL" : (tooLarge ? "TOO LARGE" : status))), 
                                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.red)
@@ -1133,26 +1154,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                 else if (tooLarge)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                    decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                                     child: const Text("LARGE VEHICLE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.orange)),
                                   )
                                 else if (!isVehicle && status == "ON_TRIP")
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.cyan.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                    decoration: BoxDecoration(color: Colors.cyan.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                                     child: const Text("ON TRIP", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.cyan)),
                                   )
                                 else if (!isVehicle && status == "AVAILABLE")
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                                     child: const Text("AVAILABLE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.green)),
-                                  )
-                                else if (extraText != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: Text(extraText, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.green)),
                                   )
                                 else if (isSelected)
                                   Icon(Icons.check_circle_rounded, color: p, size: 20),
@@ -1193,8 +1208,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         decoration: BoxDecoration(
           color: c,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: t.withOpacity(0.04), width: 1.5),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
+          border: Border.all(color: t.withValues(alpha: 0.04), width: 1.5),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1205,18 +1220,18 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: (sel != null ? p : t).withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
-                  child: Icon(isV ? Icons.directions_bus_filled_rounded : Icons.person_rounded, size: 20, color: sel != null ? p : t.withOpacity(0.3)),
+                  decoration: BoxDecoration(color: (sel != null ? p : t).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+                  child: Icon(isV ? Icons.directions_bus_filled_rounded : Icons.person_rounded, size: 20, color: sel != null ? p : t.withValues(alpha: 0.3)),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(dispTitle, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: sel != null ? t : t.withOpacity(0.3))),
+                      Text(dispTitle, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: sel != null ? t : t.withValues(alpha: 0.3))),
                       if (dispSub != null) ...[
                         const SizedBox(height: 2),
-                        Text(dispSub, style: TextStyle(fontSize: 12, color: t.withOpacity(0.4), fontWeight: FontWeight.w600)),
+                        Text(dispSub, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w600)),
                       ],
                     ],
                   ),
@@ -1224,14 +1239,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 if (defDriver != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                     child: Text("👤 $defDriver", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.green)),
                   ),
                 if (driverStatus != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: (driverStatus == "ON_LEAVE" ? Colors.red : (driverStatus == "ON_TRIP" ? Colors.cyan : Colors.green)).withOpacity(0.1),
+                      color: (driverStatus == "ON_LEAVE" ? Colors.red : (driverStatus == "ON_TRIP" ? Colors.cyan : Colors.green)).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1244,7 +1259,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     ),
                   ),
                 const SizedBox(width: 8),
-                Icon(Icons.keyboard_arrow_down_rounded, color: t.withOpacity(0.2), size: 20),
+                Icon(Icons.keyboard_arrow_down_rounded, color: t.withValues(alpha: 0.2), size: 20),
               ],
             ),
           ],
@@ -1253,7 +1268,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildGlassLabel(String txt, Color p) => Row(children: [Container(width: 4, height: 16, decoration: BoxDecoration(color: p, borderRadius: BorderRadius.circular(2))), const SizedBox(width: 8), Text(txt.toUpperCase(), style: GoogleFonts.montserrat(fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w900, color: p.withOpacity(0.6)))]);
+  Widget _buildGlassLabel(String txt, Color p) => Row(children: [Container(width: 4, height: 16, decoration: BoxDecoration(color: p, borderRadius: BorderRadius.circular(2))), const SizedBox(width: 8), Text(txt.toUpperCase(), style: GoogleFonts.montserrat(fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w900, color: p.withValues(alpha: 0.6)))]);
 
 
   Widget _stageReview(Color p, bool d) {
@@ -1266,7 +1281,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         const SizedBox(height: 24),
         _buildGlassLabel("Verify Request", p),
         const SizedBox(height: 12),
-        Text("Final review before creating the full route request.", style: TextStyle(fontSize: 13, color: t.withOpacity(0.5))),
+        Text("Final review before creating the full route request.", style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5))),
         const SizedBox(height: 32),
         _sumCard("MISSION DETAILS", Icons.map_outlined, [
           {"label": "Route Name", "value": _routeNameController.text},
@@ -1286,13 +1301,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(24), border: Border.all(color: t.withOpacity(0.04))),
+            decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(24), border: Border.all(color: t.withValues(alpha: 0.04))),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: p.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(Icons.directions_bus_filled_rounded, size: 16, color: p)),
+                    Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)), child: Icon(Icons.directions_bus_filled_rounded, size: 16, color: p)),
                     const SizedBox(width: 12),
                     Text("GROUP ${ent.key + 1}", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w900, color: t)),
                   ],
@@ -1301,38 +1316,39 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 _revRow(Icons.local_shipping_rounded, veh?['vehicle_number'] ?? "No Vehicle Selected", t),
                 _revRow(Icons.person_rounded, dri?['user']?['name'] ?? dri?['name'] ?? "No Driver Assigned", t),
                 const SizedBox(height: 12),
-                Text("GUESTS: ${ent.value.map((g) => g.name.isEmpty ? 'Guest' : g.name).join(', ')}", style: TextStyle(fontSize: 11, color: t.withOpacity(0.5))),
+                Text("GUESTS: ${ent.value.map((g) => g.name.isEmpty ? 'Guest' : g.name).join(', ')}", style: TextStyle(fontSize: 11, color: t.withValues(alpha: 0.5))),
               ],
             ),
           );
-        }).toList(),
+        }),
         const SizedBox(height: 50),
       ],
     );
   }
 
-  Widget _revRow(IconData icon, String val, Color t) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [Icon(icon, size: 16, color: t.withOpacity(0.3)), const SizedBox(width: 12), Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.withOpacity(0.8)))]));
+  Widget _revRow(IconData icon, String val, Color t) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [Icon(icon, size: 16, color: t.withValues(alpha: 0.3)), const SizedBox(width: 12), Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.withValues(alpha: 0.8)))]));
 
   Widget _sumCard(String title, IconData icon, List<Map<String, String>> stats, Color p, Color c, Color t) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(28), border: Border.all(color: t.withOpacity(0.02)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))]),
+      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(28), border: Border.all(color: t.withValues(alpha: 0.02)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [Icon(icon, size: 18, color: p), const SizedBox(width: 12), Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: p))]),
           const SizedBox(height: 20),
-          ...stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(s['label']!, style: TextStyle(fontSize: 12, color: t.withOpacity(0.4), fontWeight: FontWeight.w700)), Text(s['value']!, style: TextStyle(fontSize: 12, color: t, fontWeight: FontWeight.w900))]))),
+          ...stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(s['label']!, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w700)), Text(s['value']!, style: TextStyle(fontSize: 12, color: t, fontWeight: FontWeight.w900))]))),
         ],
       ),
     );
   }
 
   Widget _buildActionToolbar(Color p) {
+    final bool isAdmin = _userRole.toLowerCase().contains('admin');
     bool isL = _currentStep == _totalSteps - 1;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24), decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1)))),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24), decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1)))),
       child: Row(children: [
         if (_currentStep > 0) Expanded(child: TextButton(onPressed: () => setState(() => _currentStep--), child: const Text("BACK", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w900, fontSize: 13)))),
         const SizedBox(width: 16),
@@ -1350,8 +1366,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               } 
             } else if (_currentStep == 1) { 
               if (_unassignedGuests.isNotEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please assign all guests to vehicles"))); return; }
-              _fetchAvailableVehicles(); 
-              setState(() => _currentStep++); 
+              
+              if (!isAdmin) {
+                // For Faculty, Step 1 is the final step
+                _submitForm();
+              } else {
+                // For Admin, proceed to Fleet Selection
+                _fetchAvailableVehicles(); 
+                setState(() => _currentStep++); 
+              }
             } else if (_currentStep == 2) { 
               int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
               if (_selectedVehicles.length < vCount || _selectedVehicles.values.any((v) => v == null)) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a vehicle for each segment"))); return; }

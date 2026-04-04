@@ -15,15 +15,30 @@ class MissionHistoryScreen extends StatefulWidget {
 
 class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = "";
   String _role = "faculty";
   int _currentPage = 1;
-  bool _isInit = true;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _initData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
   }
 
   Future<void> _initData() async {
@@ -43,10 +58,15 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     } else {
       await dashboardStore.fetchHistory(page: _currentPage);
     }
-    _isInit = false;
   }
 
   void _loadMore() {
+    if (_role == "admin" || _role == "admin_fleet") {
+      if (useAdminDashboardStore.isLoading.value) return;
+    } else {
+      if (dashboardStore.state.isLoading) return;
+    }
+    
     setState(() {
       _currentPage++;
     });
@@ -121,44 +141,45 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                               ? _buildHistorySkeleton(isDark)
                               : RefreshIndicator(
                                   onRefresh: () => _fetchHistory(refresh: true),
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 20),
-                                  _buildSummaryCard(
-                                    cardColor,
-                                    titleColor,
-                                    subColor,
-                                    primaryBlue,
-                                    completedMissions.length,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildSearchField(isDark, subColor, cardColor),
-                                  const SizedBox(height: 32),
-                                  _buildSectionTitle(
-                                    "Completed Missions",
-                                    primaryBlue,
-                                    titleColor,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  if (completedMissions.isEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 40),
-                                      child: Center(
-                                        child: Text(
-                                          "No completed missions found",
-                                          style: TextStyle(color: subColor),
-                                        ),
-                                      ),
-                                    )
-                                    else ...[
-                                      ...completedMissions.map((mission) {
+                                  child: ListView.builder(
+                                    controller: _scrollController,
+                                    physics: const AlwaysScrollableScrollPhysics(
+                                      parent: BouncingScrollPhysics(),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    itemCount: completedMissions.length + 5, // summary, search, title, items, padding
+                                    itemBuilder: (context, index) {
+                                      if (index == 0) return const SizedBox(height: 20);
+                                      if (index == 1) {
+                                        return _buildSummaryCard(
+                                          cardColor,
+                                          titleColor,
+                                          subColor,
+                                          primaryBlue,
+                                          completedMissions.length,
+                                        );
+                                      }
+                                      if (index == 2) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(top: 24),
+                                          child: _buildSearchField(isDark, subColor, cardColor),
+                                        );
+                                      }
+                                      if (index == 3) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(top: 32, bottom: 16),
+                                          child: _buildSectionTitle(
+                                            "Completed Missions",
+                                            primaryBlue,
+                                            titleColor,
+                                          ),
+                                        );
+                                      }
+                                      
+                                      // History Cards logic
+                                      int cardIdx = index - 4;
+                                      if (cardIdx < completedMissions.length) {
+                                        final mission = completedMissions[cardIdx];
                                         return GestureDetector(
                                           onTap: () => Navigator.push(
                                             context,
@@ -200,35 +221,29 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                                             primaryBlue: primaryBlue,
                                           ),
                                         );
-                                      }).toList(),
-                                      const SizedBox(height: 20),
-                                      if (completedMissions.isNotEmpty)
-                                        Center(
-                                          child: TextButton(
-                                            onPressed: isLoading ? null : _loadMore,
-                                            child: Text(
-                                              isLoading ? "Loading..." : "Load More",
-                                              style: TextStyle(
-                                                color: primaryBlue,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
+                                      }
+
+                                      // Loading indicator or final padding
+                                      if (isLoading && completedMissions.isNotEmpty) {
+                                        return const Center(
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 24),
+                                            child: CircularProgressIndicator(),
                                           ),
-                                        ),
-                                    ],
-                                  const SizedBox(height: 40),
-                                ],
-                              ),
-                            ),
+                                        );
+                                      }
+                                      
+                                      return const SizedBox(height: 40);
+                                    },
+                                  ),
+                                ),
                           ),
-                        ),
+                        ],
                       ),
-                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
+                  ],
+                ),
+              );
           },
         );
       },
@@ -371,7 +386,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
         ),
         IconButton(
           onPressed: () {},
-          icon: Icon(Icons.tune_rounded, color: titleColor.withOpacity(0.6)),
+          icon: Icon(Icons.tune_rounded, color: titleColor.withValues(alpha: 0.6)),
         ),
       ],
     );
@@ -391,7 +406,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -439,7 +454,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
       onChanged: (val) => setState(() => _searchQuery = val),
       decoration: InputDecoration(
         hintText: "Search by mission or driver...",
-        hintStyle: TextStyle(color: subColor.withOpacity(0.5), fontSize: 14),
+        hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 14),
         prefixIcon: Icon(Icons.search_rounded, color: subColor, size: 20),
         filled: true,
         fillColor: cardColor,
@@ -476,20 +491,6 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     );
   }
 
-  Widget _buildHistoryDateBucket(String month, Color sub) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 16),
-      child: Text(
-        month.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          color: sub,
-          letterSpacing: 1.5,
-        ),
-      ),
-    );
-  }
 
   Widget _buildHistoryCard({
     required String title,
@@ -551,12 +552,12 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                 ),
               ),
               const Spacer(),
-              Icon(Icons.person_outline_rounded, size: 12, color: subColor.withOpacity(0.5)),
+              Icon(Icons.person_outline_rounded, size: 12, color: subColor.withValues(alpha: 0.5)),
               const SizedBox(width: 4),
               Text(
                 creator,
                 style: TextStyle(
-                  color: subColor.withOpacity(0.7),
+                  color: subColor.withValues(alpha: 0.7),
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -570,14 +571,14 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
               Text(
                 "$stops stops",
                 style: TextStyle(
-                  color: subColor.withOpacity(0.7),
+                  color: subColor.withValues(alpha: 0.7),
                   fontSize: 12,
                 ),
               ),
               Text(
                 distance,
                 style: TextStyle(
-                  color: subColor.withOpacity(0.7),
+                  color: subColor.withValues(alpha: 0.7),
                   fontSize: 12,
                 ),
               ),
@@ -592,7 +593,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: blue.withOpacity(0.1),
+        color: blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -613,7 +614,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
               radius: 140,
               backgroundColor: const Color(
                 0xFF6366F1,
-              ).withOpacity(isDark ? 0.06 : 0.04),
+              ).withValues(alpha: isDark ? 0.06 : 0.04),
             ),
           ),
           Positioned(
@@ -623,7 +624,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
               radius: 80,
               backgroundColor: const Color(
                 0xFFA855F7,
-              ).withOpacity(isDark ? 0.04 : 0.02),
+              ).withValues(alpha: isDark ? 0.04 : 0.02),
             ),
           ),
         ],

@@ -12,13 +12,28 @@ class RequestsScreen extends StatefulWidget {
 }
 
 class _RequestsScreenState extends State<RequestsScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    // Fetch requests when screen loads
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests();
+      context.read<RequestStore>().fetchRequests(isRefresh: true);
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      context.read<RequestStore>().fetchNextPage();
+    }
   }
 
   @override
@@ -37,6 +52,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
     final Color primaryIndigo = const Color(0xFF6366F1);
+    final List<Map<String, dynamic>> filteredRequests =
+        store.requests.where((req) => req['rawStatus'] != 7).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -73,7 +90,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                             ),
                           ),
                           _buildQuickStatBadge(
-                            "${store.requests.length} Total",
+                            "${filteredRequests.length} Total",
                             primaryIndigo,
                           ),
                         ],
@@ -94,7 +111,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 // --- CONTENT ---
                 Expanded(
                   child: RefreshIndicator(
-                    onRefresh: () => store.fetchRequests(),
+                    onRefresh: () => store.fetchRequests(isRefresh: true),
                     child: _buildMainContent(
                       store,
                       isDark,
@@ -102,6 +119,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       horizontalPadding,
                       titleColor,
                       size,
+                      filteredRequests,
                     ),
                   ),
                 ),
@@ -138,6 +156,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             );
             
             if (result == true) {
+              if (!mounted) return;
               context.read<RequestStore>().fetchRequests();
             }
           },
@@ -168,6 +187,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     double horizontalPadding,
     Color titleColor,
     Size size,
+    List<Map<String, dynamic>> filteredRequests,
   ) {
     if (store.isLoading && store.requests.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -194,10 +214,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
       );
     }
 
-    final List<Map<String, dynamic>> pendingRequests =
-        store.requests.where((req) => req['rawStatus'] == 1).toList();
 
-    if (pendingRequests.isEmpty) {
+    if (filteredRequests.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
@@ -210,11 +228,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 Icon(
                   Icons.notes_rounded,
                   size: 64,
-                  color: Colors.grey.withOpacity(0.5),
+                  color: Colors.grey.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "No pending requests",
+                  "No requests found",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -229,6 +247,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     }
 
     return ListView.builder(
+      controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
@@ -236,9 +255,17 @@ class _RequestsScreenState extends State<RequestsScreen> {
         horizontal: horizontalPadding,
         vertical: 20,
       ),
-      itemCount: pendingRequests.length,
+      itemCount: filteredRequests.length + (store.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        final req = pendingRequests[index];
+        if (index == filteredRequests.length) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        final req = filteredRequests[index];
         return RequestCard(
           req: req,
           isDark: isDark,
@@ -253,7 +280,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: blue.withOpacity(0.1),
+        color: blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -278,7 +305,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               radius: size.width * 0.35,
               backgroundColor: const Color(
                 0xFF6366F1,
-              ).withOpacity(isDark ? 0.06 : 0.04),
+              ).withValues(alpha: isDark ? 0.06 : 0.04),
             ),
           ),
           Positioned(
@@ -288,7 +315,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               radius: size.width * 0.2,
               backgroundColor: const Color(
                 0xFFA855F7,
-              ).withOpacity(isDark ? 0.04 : 0.02),
+              ).withValues(alpha: isDark ? 0.04 : 0.02),
             ),
           ),
         ],

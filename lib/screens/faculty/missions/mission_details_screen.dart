@@ -639,6 +639,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     
     final bool isDriver = _userRole?.toLowerCase() == 'driver';
     
+    // Draft check
+    final bool isDraft = currentStatus == 1 || currentStatus == 10 || statusString == 'DRAFT';
+
     // Check if any trip instance has allowances
     final bool hasAllowance = (_missionData?['trip_instances'] as List?)?.any((t) => (t['allowances'] as List?)?.isNotEmpty ?? false) ?? false;
 
@@ -712,16 +715,48 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           const SizedBox(height: 20),
                           _buildCheckpointList(primaryBlue, titleColor),
                           const SizedBox(height: 32),
-                          _buildSectionTitle(
-                            "Resource & Vehicle",
-                            primaryBlue,
-                            titleColor,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildDynamicResources(cardColor, primaryBlue, subColor),
-                          const SizedBox(height: 8),
-                          _buildAdditionalInfo(cardColor, primaryBlue, subColor),
-                          _buildAllowances(cardColor, primaryBlue, subColor),
+                          if (isDraft) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                   final tripInstances = _missionData?['trip_instances'] as List?;
+                                   if (tripInstances != null && tripInstances.isNotEmpty) {
+                                      _showRemarkModal(true); 
+                                   } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Draft mission - Assign drivers via Admin Dashboard.")));
+                                   }
+                                },
+                                icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                                label: const Text(
+                                  "ASSIGN DRIVER & VEHICLE",
+                                  style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryBlue,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  elevation: 4,
+                                  shadowColor: primaryBlue.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                          if (!isDraft) ...[
+                            _buildSectionTitle(
+                              "Resource & Vehicle",
+                              primaryBlue,
+                              titleColor,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildDynamicResources(cardColor, primaryBlue, subColor),
+                            const SizedBox(height: 8),
+                            _buildAdditionalInfo(cardColor, primaryBlue, subColor),
+                            _buildAllowances(cardColor, primaryBlue, subColor),
+                          ],
                           const SizedBox(height: 24),
                           _buildRemarks(cardColor, titleColor, subColor, primaryBlue),
                           if (showApproveDecline) ...[

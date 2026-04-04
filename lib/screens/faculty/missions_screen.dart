@@ -14,6 +14,7 @@ class MissionsScreen extends StatefulWidget {
 
 class _MissionsScreenState extends State<MissionsScreen> {
   final ScrollController _scrollController = ScrollController();
+  String _selectedFilter = 'ALL';
 
   @override
   void initState() {
@@ -51,10 +52,15 @@ class _MissionsScreenState extends State<MissionsScreen> {
         : const Color(0xFFF8FAFC);
 
     final store = context.watch<RequestStore>();
-    final missionStatuses = [2, 3, 4, 5, 6, 7, 9, 12]; // Added 12 (PLANNED)
-    final missions = store.requests
-        .where((req) => missionStatuses.contains(req['rawStatus']))
-        .toList();
+    final missions = store.requests.where((req) {
+      final String s = (req['status'] ?? "").toString().toUpperCase();
+      final int rs = req['rawStatus'] ?? 0;
+      if (_selectedFilter == 'ALL') return true;
+      if (_selectedFilter == 'APPROVED') return s == 'APPROVED' || s == 'VEHICLE APPROVED' || rs == 4;
+      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || rs == 1 || rs == 10;
+      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING' || rs == 7;
+      return true;
+    }).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -113,6 +119,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const SizedBox(height: 18),
+                  _buildFilterChips(primaryBlue, titleColor, isDark),
                 ],
               ),
             ),
@@ -128,12 +136,19 @@ class _MissionsScreenState extends State<MissionsScreen> {
                                   height: MediaQuery.of(context).size.height * 0.3,
                                 ),
                                 Center(
-                                  child: Text(
-                                    "No active missions",
-                                    style: TextStyle(
-                                      color: subColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.auto_awesome_motion_rounded, size: 48, color: subColor.withOpacity(0.2)),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        _selectedFilter == 'ALL' ? "No active missions" : "No $_selectedFilter missions found",
+                                        style: TextStyle(
+                                          color: subColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -145,10 +160,15 @@ class _MissionsScreenState extends State<MissionsScreen> {
                                   horizontal: 24,
                                   vertical: 16,
                                 ),
-                                itemCount: missions.length + (store.isLoading ? 1 : 0),
+                                itemCount: missions.length + (store.hasMore ? 1 : 0),
                                 itemBuilder: (context, index) {
                                   if (index == missions.length) {
-                                    return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 20), child: CircularProgressIndicator()));
+                                    return const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 24),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
                                   }
                                   final mission = missions[index];
                                   return _buildMissionCard(
@@ -304,6 +324,44 @@ class _MissionsScreenState extends State<MissionsScreen> {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         children: List.generate(3, (_) => skeletonCard()),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(Color p, Color t, bool d) {
+    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: filters.map((f) => _buildChipItem(f, p, t, d)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildChipItem(String label, Color p, Color t, bool d) {
+    bool isS = _selectedFilter == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFilter = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isS ? p : (d ? const Color(0xFF1E293B) : Colors.white),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isS ? p : t.withOpacity(0.1), width: 1.5),
+          boxShadow: isS ? [BoxShadow(color: p.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isS ? Colors.white : t.withOpacity(0.6),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
     );
   }
