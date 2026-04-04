@@ -111,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           name: showTyping ? "..." : (data?['name'] ?? "Faculty User"),
           subtitle: showTyping
               ? "Updating..."
-              : "${data?['role'] ?? 'Faculty'} • ${data?['user_name'] ?? ''}",
+              : "${_getRoleName(data?['role'])} • ${data?['username'] ?? ''}",
           cardColor: cardColor,
           titleColor: titleColor,
           subColor: subColor,
@@ -142,19 +142,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       {
         'title': 'Username',
-        'val': data?['user_name'],
+        'val': data?['username'],
         'icon': Icons.person_outline_rounded,
         'color': Colors.indigo,
       },
       {
+        'title': 'Phone',
+        'val': data?['phone'],
+        'icon': Icons.phone_rounded,
+        'color': Colors.green,
+      },
+      {
+        'title': 'Department',
+        'val': data?['department'] != null ? data!['department']['department_name'] : null,
+        'icon': Icons.school_rounded,
+        'color': Colors.purple,
+      },
+      {
         'title': 'Role',
-        'val': data?['role'] ?? 'Faculty',
+        'val': _getRoleName(data?['role']),
         'icon': Icons.work_outline_rounded,
         'color': Colors.amber.shade700,
       },
       {
         'title': 'Status',
-        'val': data?['isLogin'] == true ? 'Active' : 'Offline',
+        'val': data?['is_login'] == true ? 'Active' : 'Offline',
         'icon': Icons.check_circle_outline_rounded,
         'color': Colors.green,
       },
@@ -243,6 +255,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  String _getRoleName(dynamic role) {
+    if (role == null) return 'Faculty';
+    if (role is String) return role;
+    if (role is Map) {
+      return role['name'] ?? role['code'] ?? 'Faculty';
+    }
+    return role.toString();
   }
 
   Widget _buildErrorState(String error, Color titleColor) {

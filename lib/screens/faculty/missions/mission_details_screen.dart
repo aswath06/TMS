@@ -2069,7 +2069,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               Flexible(
                 child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
               ),
-            if (allAllowances.isEmpty && firstTripId != null)
+            if (allAllowances.isEmpty && firstTripId != null && _userRole?.toLowerCase() == 'admin')
               TextButton.icon(
                 onPressed: () {
                   Navigator.push(
@@ -2148,7 +2148,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                     ),
                   ),
                   Text(
-                    "₹$amount",
+                    _userRole?.toLowerCase() == 'admin' ? "₹$amount" : "CREATED",
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF10B981)),
                   ),
                 ],

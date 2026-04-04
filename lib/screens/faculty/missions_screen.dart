@@ -55,10 +55,13 @@ class _MissionsScreenState extends State<MissionsScreen> {
     final missions = store.requests.where((req) {
       final String s = (req['status'] ?? "").toString().toUpperCase();
       final int rs = req['rawStatus'] ?? 0;
+      
+      // Global restriction: Only show missions that have actually started
+      final bool isStarted = s == 'STARTED' || s == 'ONGOING' || rs == 7;
+      if (!isStarted) return false;
+
       if (_selectedFilter == 'ALL') return true;
-      if (_selectedFilter == 'APPROVED') return s == 'APPROVED' || s == 'VEHICLE APPROVED' || rs == 4;
-      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || rs == 1 || rs == 10;
-      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING' || rs == 7;
+      if (_selectedFilter == 'STARTED') return true;
       return true;
     }).toList();
 
@@ -329,7 +332,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
   }
 
   Widget _buildFilterChips(Color p, Color t, bool d) {
-    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED'];
+    final List<String> filters = ['ALL', 'STARTED'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),

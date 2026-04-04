@@ -52,8 +52,12 @@ class _RequestsScreenState extends State<RequestsScreen> {
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
     final Color primaryIndigo = const Color(0xFF6366F1);
-    final List<Map<String, dynamic>> filteredRequests =
-        store.requests.where((req) => req['rawStatus'] != 7).toList();
+    final List<Map<String, dynamic>> filteredRequests = store.requests.where((req) {
+      final String s = (req['status'] ?? "").toString().toUpperCase();
+      final int rs = req['rawStatus'] ?? 0;
+      final bool isStarted = s == 'STARTED' || s == 'ONGOING' || rs == 7;
+      return !isStarted;
+    }).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
