@@ -46,7 +46,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   final TextEditingController _luggageController = TextEditingController();
   final TextEditingController _specialReqController = TextEditingController();
 
-  List<String> _stops = [];
+  List<Map<String, dynamic>> _stops = [];
   List<Guest> _guests = [Guest(name: "", phone: "")];
 
   // --- Step 2: Grouping ---
@@ -93,7 +93,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     if (mounted) setState(() { 
       _userRole = role?.toLowerCase() ?? 'faculty'; 
       _totalSteps = _userRole.contains('admin') ? 5 : 2; 
-      if (_stops.isEmpty) _stops = ["Chennai", "Tiruppur"];
+      if (_stops.isEmpty) _stops = [{"address": "Chennai", "lat": 13.0827, "lon": 80.2707}, {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411}];
     });
   }
 
@@ -234,7 +234,19 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         "approx_duration_minutes": _travelDurationMinutes.toInt(),
         "luggage_details": _luggageController.text.trim(),
         "special_instructions": _specialReqController.text.trim(),
-        "stops": _stops.map((s) => {"stop_name": s}).toList(),
+        "stops": _stops.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final s = entry.value;
+          final address = s['address'] ?? "";
+          return {
+            "stop_name": address.isEmpty ? (idx == 0 ? "Start" : (idx == _stops.length - 1 ? "End" : "Via")) : address,
+            "address": address,
+            "latitude": s['lat'] ?? null,
+            "longitude": s['lon'] ?? null,
+            "stop_order": idx + 1,
+            "stop_type": idx == 0 ? "START" : (idx == _stops.length - 1 ? "END" : "VIA"),
+          };
+        }).toList(),
         "passengers": passengers,
         "admin_assignments": [
           {"leg_code": "LEG-1", "vehicles": leg1Vehicles},
@@ -421,8 +433,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             cardColor: c, 
             titleColor: t, 
             accentColor: p, 
-            initialAddresses: _stops,
-            onChanged: (a, dist, dur) { setState(() { _stops = a; _travelDurationMinutes = dur; _approxDistanceKm = dist; _updateEndDate(); }); }
+            initialAddresses: _stops.map((s) => s['address'] as String).toList(),
+            onChanged: (stops, dist, dur) { setState(() { _stops = stops; _travelDurationMinutes = dur; _approxDistanceKm = dist; _updateEndDate(); }); }
           ),
           const SizedBox(height: 50),
         ],
@@ -911,18 +923,18 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           bool bs = bc < currentGuestCount;
           bool bl = bc > (currentGuestCount + 5);
 
-          bool aAvail = a['status'] == "ACTIVE" || a['status'] == "AVAILABLE";
-          bool bAvail = b['status'] == "ACTIVE" || b['status'] == "AVAILABLE";
+          bool aAvail = (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") && (a['available'] != false);
+          bool bAvail = (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") && (b['available'] != false);
 
           bool aFit = !as && !al;
           bool bFit = !bs && !bl;
 
-          // Priority: 
+          // Priority for Selection Modal Sorting:
           // 0: Available & Fit & Default Driver
           // 1: Available & Fit (no Default Driver)
           // 2: Available & Too Large
           // 3: Available & Too Small
-          // 4: Not Available
+          // 4: Not Available (Busy or Status-blocked)
           int aPrio = !aAvail ? 4 : (aFit ? (a['default_driver'] != null ? 0 : 1) : (as ? 3 : 2));
           int bPrio = !bAvail ? 4 : (bFit ? (b['default_driver'] != null ? 0 : 1) : (bs ? 3 : 2));
 
@@ -1015,9 +1027,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         mainText = item['vehicle_number'] ?? "Unknown";
                         subText = item['vehicle_type_name'] ?? "General";
                         capacity = int.tryParse(item['capacity']?.toString() ?? "0") ?? 0;
-                        if (item['default_driver'] != null) {
-                          extraText = "👤 ${item['default_driver']['name']}";
-                        }
                       } else {
                         mainText = item['user']?['name'] ?? item['name'] ?? "Unknown";
                         subText = "📞 ${item['user']?['phone'] ?? 'No Contact'}";
@@ -1025,19 +1034,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
                       String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
                       bool isNotAvailable = isVehicle 
-                          ? (status != "AVAILABLE" && status != "ACTIVE")
-                          : (status == "ON_LEAVE"); // Block drivers only if they are on leave
+                          ? ((status != "AVAILABLE" && status != "ACTIVE") || item['available'] == false)
+                          : (status == "ON_LEAVE" || item['available'] == false); 
                       bool tooSmall = false;
                       bool tooLarge = false;
                       if (isVehicle && currentGuestCount != null && capacity > 0) {
                         tooSmall = capacity < currentGuestCount;
                         tooLarge = capacity > (currentGuestCount + 5);
                       }
-                      bool isDisabled = isVehicle ? (tooSmall || isNotAvailable) : isNotAvailable;
+                      bool isDisabled = isVehicle ? (tooSmall || tooLarge || isNotAvailable) : isNotAvailable;
 
                       return GestureDetector(
                         onTap: isDisabled ? () {
-                          String msg = isNotAvailable ? "⚠️ Status: $status" : "⚠️ Too Small";
+                          String msg = item['available'] == false 
+                              ? "⚠️ Not Available for this schedule" 
+                              : (isNotAvailable ? "⚠️ Status: $status" : (tooSmall ? "⚠️ Too Small" : "⚠️ Too Large"));
                           ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
                         } : () {
                           onSelect(item); // PASS ORIGINAL ITEM
@@ -1074,6 +1085,18 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                         crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
                                           Text(subText, style: TextStyle(fontSize: 12, color: t.withOpacity(0.4), fontWeight: FontWeight.w600)),
+                                          if (isVehicle && item['default_driver'] != null)
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const SizedBox(width: 4),
+                                                Text("•", style: TextStyle(fontSize: 12, color: t.withOpacity(0.2))),
+                                                const SizedBox(width: 4),
+                                                Icon(Icons.person_rounded, size: 12, color: Colors.green.withOpacity(0.7)),
+                                                const SizedBox(width: 4),
+                                                Text(item['default_driver']['name'], style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w900)),
+                                              ],
+                                            ),
                                           if (isVehicle) ...[
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1085,6 +1108,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                 decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
                                                 child: const Text("AVAILABLE", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.green)),
+                                              )
+                                            else if (isDisabled && isVehicle && item['available'] == false)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                                                child: const Text("UNAVAILABLE", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.red)),
                                               ),
                                           ],
                                         ],
@@ -1096,7 +1125,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: Text(status == "ON_LEAVE" ? "ON LEAVE" : (isNotAvailable ? status : "TOO SMALL"), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.red)),
+                                    child: Text(
+                                      item['available'] == false ? "UNAVAILABLE" : (status == "ON_LEAVE" ? "ON LEAVE" : (tooSmall ? "TOO SMALL" : (tooLarge ? "TOO LARGE" : status))), 
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.red)
+                                    ),
                                   )
                                 else if (tooLarge)
                                   Container(

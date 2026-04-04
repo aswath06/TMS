@@ -89,7 +89,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     // Start loading data and route after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMissionDetails();
-      _loadMapData();
       _fetchUserRole();
     });
   }
@@ -103,7 +102,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Future<void> _refreshData() async {
     await Future.wait([
       _fetchMissionDetails(),
-      _loadMapData(),
       _fetchUserRole(),
     ]);
   }
@@ -124,10 +122,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           setState(() {
             _missionData = data['data'];
           });
+          _updateMapFromMissionData();
         }
       }
     } catch (e) {
       debugPrint("Fetch details error: $e");
+      // Fallback to basic geocoding if details fetch fails
+      _loadMapData();
     } finally {
       if (mounted) setState(() => _isFetchingDetails = false);
     }
@@ -302,6 +303,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Future<void> _loadMapData() async {
+    // If coordinates were already extracted from API, skip geocoding fallback
+    if (_routePoints.isNotEmpty || _markers.isNotEmpty) return;
+    
     if (widget.stops.isEmpty) return;
     setState(() => _isMapLoading = true);
 
@@ -338,6 +342,56 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       debugPrint("Map Load Error: $e");
     } finally {
       if (mounted) setState(() => _isMapLoading = false);
+    }
+  }
+
+  /// Extracts coordinates from mission data (API response) and updates map.
+  /// Bypasses slow/unreliable address-based geocoding.
+  Future<void> _updateMapFromMissionData() async {
+    final legs = _missionData?['route_details']?['legs'] as List?;
+    if (legs == null || legs.isEmpty) return;
+
+    List<LatLng> stopCoords = [];
+    for (var leg in legs) {
+      final stops = leg['stops'] as List?;
+      if (stops != null) {
+        for (var stop in stops) {
+          // Check for latitude/longitude in various possible formats
+          final latVal = stop['latitude'] ?? stop['lat'];
+          final lonVal = stop['longitude'] ?? stop['lng'] ?? stop['lon'];
+          
+          final lat = latVal != null ? double.tryParse(latVal.toString()) : null;
+          final lon = lonVal != null ? double.tryParse(lonVal.toString()) : null;
+          
+          if (lat != null && lon != null) {
+            stopCoords.add(LatLng(lat, lon));
+          }
+        }
+      }
+    }
+
+    if (stopCoords.length >= 2) {
+      debugPrint("DEBUG: Found ${stopCoords.length} coordinates in mission data. Updating map.");
+      await _calculateRoute(stopCoords);
+    } else if (stopCoords.isNotEmpty) {
+      debugPrint("DEBUG: Found 1 coordinate in mission data. Showing marker.");
+      setState(() {
+        _markers = [
+          Marker(
+            point: stopCoords.first,
+            width: 40,
+            height: 40,
+            child: const Icon(Icons.location_on, color: Colors.blue, size: 30),
+          ),
+        ];
+      });
+      if (_isMapReady) {
+        _mapController.move(stopCoords.first, 12);
+      }
+    } else {
+       debugPrint("DEBUG: No coordinates found in mission data. Falling back to geocoding.");
+       // No coords found in API, fallback to address geocoding if possible
+       _loadMapData();
     }
   }
 
@@ -1299,71 +1353,117 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     required Color color,
     required Color titleColor,
   }) {
+    final bool isDark = titleColor == Colors.white;
+    final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color blueIcon = const Color(0xFF6366F1);
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Timeline indicator
           Column(
             children: [
               Container(
-                margin: const EdgeInsets.only(top: 4),
-                width: 16,
-                height: 16,
+                margin: const EdgeInsets.only(top: 24),
+                width: 12,
+                height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isFirst ? color : (isLast ? Colors.red : Colors.transparent),
-                  border: Border.all(color: isLast ? Colors.red : color, width: 3),
+                  color: isFirst ? Colors.green : (isLast ? Colors.red : color.withOpacity(0.3)),
+                  border: Border.all(color: isFirst ? Colors.green.withOpacity(0.2) : (isLast ? Colors.red.withOpacity(0.2) : color.withOpacity(0.1)), width: 4),
                 ),
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2.5, color: color.withValues(alpha: 0.15)),
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),
           const SizedBox(width: 20),
+          // Checkpoint Card
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.05), blurRadius: 15, offset: const Offset(0, 8)),
+                ],
+                border: Border.all(color: titleColor.withOpacity(0.05), width: 1),
+              ),
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
+                  // Blue Car Icon
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: blueIcon.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.directions_car_rounded, color: blueIcon, size: 22),
+                  ),
+                  const SizedBox(width: 16),
+                  // Location Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           location,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: titleColor,
+                            letterSpacing: 0.3,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.access_time_rounded, size: 12, color: titleColor.withOpacity(0.4)),
+                            const SizedBox(width: 4),
+                            Text(
+                              eta.isNotEmpty ? "Scheduled: $eta" : "Time not set",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: titleColor.withOpacity(0.4),
+                              ),
+                            ),
+                            if (isFirst || isLast) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: (isFirst ? Colors.green : Colors.red).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  isFirst ? "START" : "END",
+                                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: isFirst ? Colors.green : Colors.red),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        child: Text(
-                          eta,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: color,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (isFirst)
-                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text("Origin point", style: TextStyle(color: color.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
                     ),
+                  ),
                 ],
               ),
             ),

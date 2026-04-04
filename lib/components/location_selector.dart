@@ -35,7 +35,7 @@ class LocationSelector extends StatefulWidget {
   final Color cardColor;
   final Color titleColor;
   final Color accentColor;
-  final Function(List<String> addresses, double totalDistance, double totalDuration) onChanged;
+  final Function(List<Map<String, dynamic>> stops, double totalDistance, double totalDuration) onChanged;
 
   final List<String>? initialAddresses;
 
@@ -112,7 +112,12 @@ class _LocationSelectorState extends State<LocationSelector> {
                 dur > 60 ? '${(dur / 60).toStringAsFixed(1)} hrs' : '${dur.toStringAsFixed(0)} mins';
           });
           _fitBounds(valid);
-          widget.onChanged(_stops.map((s) => s.controller.text).toList(), dist, dur);
+          final stopData = _stops.map((s) => {
+            'address': s.controller.text,
+            'lat': s.lat,
+            'lon': s.lon,
+          }).toList();
+          widget.onChanged(stopData, dist, dur);
         }
       }
     } catch (e) {
