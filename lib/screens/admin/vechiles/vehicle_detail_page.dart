@@ -48,7 +48,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
     try {
       final String? token = await UserStore.getToken();
       final response = await http.get(
-        Uri.parse("${ApiConstants.vehicleDashboard}${widget.vehicleId}"),
+        Uri.parse("${ApiConstants.getVehicleById}${widget.vehicleId}"),
         headers: ApiConstants.getHeaders(token),
       );
 
@@ -123,27 +123,36 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
                             const SizedBox(height: 16),
                             _buildInfoGrid(
                               [
-                                _InfoItem(Icons.category, "Type", _vehicleData!['vehicle_type'] ?? 'N/A'),
                                 _InfoItem(Icons.airline_seat_recline_normal, "Capacity", "${_vehicleData!['capacity'] ?? 0} Seats"),
-                                _InfoItem(Icons.speed, "Current KM", "${_vehicleData!['current_kilometer'] ?? 0}"),
-                                _InfoItem(Icons.auto_graph, "Mileage", "${_vehicleData!['mileage'] ?? 0} km/l"),
+                                _InfoItem(Icons.speed, "Odometer", "${_vehicleData!['current_odometer'] ?? _vehicleData!['current_kilometer'] ?? 0} km"),
+                                _InfoItem(Icons.local_gas_station_rounded, "Fuel Type", _vehicleData!['fuel_type'] ?? 'N/A'),
+                                _InfoItem(Icons.business_center_rounded, "Ownership", _vehicleData!['ownership_type'] ?? 'N/A'),
                               ],
                               surfaceColor,
                               isDark,
                             ),
-                            const SizedBox(height: 32),
-                            _buildSectionTitle("Registration & Compliance", titleColor),
+                              _buildSectionTitle("Registration & Compliance", titleColor),
                             const SizedBox(height: 16),
                             _buildInfoGrid(
                               [
-                                _InfoItem(Icons.verified_user, "Insurance", _formatDate(_vehicleData!['insurance_date'])),
-                                _InfoItem(Icons.science, "Pollution", _formatDate(_vehicleData!['pollution_date'])),
-                                _InfoItem(Icons.description, "RC Date", _formatDate(_vehicleData!['rc_date'])),
-                                _InfoItem(Icons.fact_check, "FC Date", _formatDate(_vehicleData!['fc_date'])),
+                                _InfoItem(Icons.verified_user, "Insurance", _formatDate(_vehicleData!['insurance_expiry_date'])),
+                                _InfoItem(Icons.science, "Pollution", _formatDate(_vehicleData!['pollution_expiry_date'])),
+                                _InfoItem(Icons.description, "RC Date", _formatDate(_vehicleData!['rc_expiry_date'])),
+                                _InfoItem(Icons.fact_check, "FC Date", _formatDate(_vehicleData!['fc_expiry_date'])),
                               ],
                               surfaceColor,
                               isDark,
                             ),
+                            if (_vehicleData!['default_driver'] != null) ...[
+                              const SizedBox(height: 32),
+                              _buildSectionTitle("Default Driver", titleColor),
+                              const SizedBox(height: 16),
+                              _buildDefaultDriver(surfaceColor, isDark, primaryBlue),
+                            ],
+                            const SizedBox(height: 32),
+                            _buildSectionTitle("Fuel Summary", titleColor),
+                            const SizedBox(height: 16),
+                            _buildFuelSummary(surfaceColor, isDark, primaryBlue),
                             const SizedBox(height: 32),
                             _buildActionButtons(primaryBlue, surfaceColor, isDark),
                             const SizedBox(height: 32),
@@ -226,13 +235,25 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
           ),
           const SizedBox(height: 4),
           Text(
-            (_vehicleData!['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
+            (_vehicleData!['make'] != null || _vehicleData!['model'] != null)
+                ? "${_vehicleData!['make'] ?? ''} ${_vehicleData!['model'] ?? ''}".trim()
+                : (_vehicleData!['vehicle_type_name'] ?? _vehicleData!['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
             style: const TextStyle(
               color: Colors.grey,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
+          if (_vehicleData!['make'] != null || _vehicleData!['model'] != null)
+            Text(
+              (_vehicleData!['vehicle_type_name'] ?? _vehicleData!['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
+              style: TextStyle(
+                color: Colors.grey.withOpacity(0.5),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -452,15 +473,15 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildStatsRow(Color primaryBlue, Color surfaceColor, bool isDark) {
-    final summary = _vehicleData!['service_summary'] ?? {};
+    final fuel = _vehicleData!['fuel_summary'] ?? {};
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
-            "Services",
-            "${summary['total_service_count'] ?? 0}",
-            Icons.settings_suggest,
-            Colors.orange,
+            "Fuel Refills",
+            "${fuel['total_entries'] ?? 0}",
+            Icons.local_gas_station,
+            Colors.blue,
             surfaceColor,
             isDark,
           ),
@@ -468,10 +489,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
         const SizedBox(width: 12),
         Expanded(
           child: _buildStatCard(
-            "Expense",
-            "₹${summary['total_spent_on_service'] ?? 0}",
-            Icons.payments,
-            Colors.green,
+            "Total Volume",
+            "${fuel['total_volume'] ?? 0} L",
+            Icons.water_drop,
+            Colors.cyan,
             surfaceColor,
             isDark,
           ),
@@ -780,6 +801,98 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDefaultDriver(Color surfaceColor, bool isDark, Color primaryBlue) {
+    final def = _vehicleData!['default_driver'];
+    final driver = def['driver'] ?? {};
+    final t = isDark ? Colors.white : const Color(0xFF1E293B);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: primaryBlue.withOpacity(0.1),
+            child: Icon(Icons.person_rounded, color: primaryBlue, size: 28),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  driver['name'] ?? 'Unknown Driver',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: t),
+                ),
+                Text(
+                  "Emp Code: ${driver['employee_code'] ?? 'N/A'}",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.phone_rounded, size: 14, color: primaryBlue),
+                    const SizedBox(width: 6),
+                    Text(driver['phone'] ?? 'No contact', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.withOpacity(0.7))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Text("PRIMARY", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.green)),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "ID: ${driver['id'] ?? ''}",
+                style: TextStyle(fontSize: 10, color: Colors.grey.withOpacity(0.5), fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFuelSummary(Color surfaceColor, bool isDark, Color primaryBlue) {
+    final fuel = _vehicleData!['fuel_summary'] ?? {};
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            "Total Amount",
+            "₹${fuel['total_amount'] ?? 0}",
+            Icons.payments_rounded,
+            Colors.green,
+            surfaceColor,
+            isDark,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            "Estimated Mileage",
+            "${fuel['estimated_mileage'] ?? 'N/A'} km/L",
+            Icons.auto_graph_rounded,
+            Colors.purple,
+            surfaceColor,
+            isDark,
+          ),
+        ),
+      ],
     );
   }
 

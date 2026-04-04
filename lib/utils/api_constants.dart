@@ -16,6 +16,7 @@ class ApiConstants {
   static const String createVehicle = "$baseUrl/api/vehicles/create";
   static const String vehicleDashboard =
       "$baseUrl/api/vehicles/vehicle-dashboard/";
+  static const String getVehicleById = "$baseUrl/api/vehicles/vehicles-by-id/";
   static const String serviceTypes = "$baseUrl/api/vehicles/service-types";
   static const String serviceShops = "$baseUrl/api/vehicles/shops";
   static const String vehicleMaintenance =

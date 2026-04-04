@@ -18,9 +18,25 @@ class VehicleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String type = vehicle['vehicle_type_name'] ?? vehicle['vehicle_type'] ?? "Vehicle";
     final String plate = vehicle['vehicle_number'] ?? "N/A";
-    final bool isActive =
-        vehicle['status']?.toString().toUpperCase() == 'ACTIVE' || 
-        vehicle['status']?.toString().toUpperCase() == 'AVAILABLE';
+    final String status = (vehicle['status'] ?? "IDLE").toString().toUpperCase();
+    
+    // Status Color Map
+    Color statusColor;
+    switch (status) {
+      case 'ACTIVE':
+      case 'AVAILABLE':
+        statusColor = Colors.green;
+        break;
+      case 'MAINTENANCE':
+      case 'REPAIR':
+        statusColor = Colors.orange;
+        break;
+      case 'ON_TRIP':
+        statusColor = Colors.blue;
+        break;
+      default:
+        statusColor = Colors.red;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -28,7 +44,7 @@ class VehicleCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.05)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.05)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -43,7 +59,7 @@ class VehicleCard extends StatelessWidget {
             height: 65,
             width: 65,
             decoration: BoxDecoration(
-              color: _getIconColor(type).withOpacity(0.1),
+              color: _getIconColor(type).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(_getIcon(type), color: _getIconColor(type), size: 28),
@@ -74,7 +90,7 @@ class VehicleCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.1),
+                          color: Colors.grey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -89,34 +105,58 @@ class VehicleCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Flexible(
                       child: Text(
                         "${vehicle['capacity'] ?? 0} Seats",
-                        style: TextStyle(color: subColor, fontSize: 12),
+                        style: TextStyle(color: subColor, fontSize: 12, fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
+                if (vehicle['default_driver'] != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.person_rounded, size: 12, color: subColor.withValues(alpha: 0.5)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          "Default: ${vehicle['default_driver']['name'] ?? 'N/A'}",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: subColor.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Icon(
-                Icons.circle,
-                color: isActive ? Colors.green : Colors.red,
-                size: 12,
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
               ),
               const SizedBox(height: 4),
               Text(
-                isActive ? "LIVE" : "IDLE",
+                status,
                 style: TextStyle(
-                  fontSize: 10,
-                  color: subColor,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 9,
+                  color: statusColor,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],

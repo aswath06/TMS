@@ -29,7 +29,7 @@ class VehicleStore extends ChangeNotifier {
 
   int get activeTrucks => _allVehicles.where((v) {
     final status = v['status']?.toString().toLowerCase() ?? '';
-    return status == 'active';
+    return status == 'active' || status == 'available';
   }).length;
 
   // --- Actions ---
@@ -94,8 +94,8 @@ class VehicleStore extends ChangeNotifier {
         final Map<String, dynamic> responseData = json.decode(response.body);
         final List<dynamic> newData = responseData['data'] ?? [];
 
-        _totalRecords = responseData['totalRecords'] ?? 0;
-        final int totalPagesFromApi = responseData['totalPages'] ?? 1;
+        _totalRecords = responseData['total_records'] ?? responseData['totalRecords'] ?? 0;
+        final int totalPagesFromApi = responseData['total_pages'] ?? responseData['totalPages'] ?? 1;
 
         if (page == 1) {
           _allVehicles = List.from(newData);
@@ -148,8 +148,9 @@ class VehicleStore extends ChangeNotifier {
   void _syncCategories() {
     final Set<String> types = {"All"};
     for (var v in _allVehicles) {
-      if (v['vehicle_type'] != null) {
-        types.add(_capitalize(v['vehicle_type'].toString()));
+      final name = v['vehicle_type_name'] ?? v['vehicle_type'];
+      if (name != null) {
+        types.add(_capitalize(name.toString()));
       }
     }
     _dynamicCategories = types.toList()..sort();
@@ -179,7 +180,7 @@ class VehicleStore extends ChangeNotifier {
 
   void _applyFilters() {
     _filteredVehicles = _allVehicles.where((v) {
-      final String type = (v['vehicle_type'] ?? "").toString().toLowerCase();
+      final String type = (v['vehicle_type_name'] ?? v['vehicle_type'] ?? "").toString().toLowerCase();
 
       // Category filter remains client-side for immediate UI response
       final matchesCategory =
