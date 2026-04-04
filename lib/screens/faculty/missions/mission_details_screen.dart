@@ -17,6 +17,7 @@ import 'package:tripzo/screens/driver/verify_mission_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
+import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -720,14 +721,17 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: () {
-                                   final tripInstances = _missionData?['trip_instances'] as List?;
-                                   if (tripInstances != null && tripInstances.isNotEmpty) {
-                                      _showRemarkModal(true); 
-                                   } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Draft mission - Assign drivers via Admin Dashboard.")));
+                                 onPressed: () async {
+                                   final result = await Navigator.push(
+                                     context,
+                                     MaterialPageRoute(
+                                       builder: (context) => AdminFinalizeRequestScreen(requestId: widget.requestId),
+                                     ),
+                                   );
+                                   if (result == true) {
+                                      _fetchMissionDetails(); 
                                    }
-                                },
+                                 },
                                 icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
                                 label: const Text(
                                   "ASSIGN DRIVER & VEHICLE",

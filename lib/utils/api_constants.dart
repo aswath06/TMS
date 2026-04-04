@@ -41,6 +41,7 @@ class ApiConstants {
   static const String facultyCreate = "$baseUrl/api/routes/faculty-create";
   static const String getAvailableVehicles = "$baseUrl/api/routes/route-requests/available-vehicles";
   static const String getAvailableDrivers = "$baseUrl/api/routes/route-requests/available-drivers";
+  static String adminFinalize(dynamic id) => "$baseUrl/api/routes/route-requests/$id/admin-finalize";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";
