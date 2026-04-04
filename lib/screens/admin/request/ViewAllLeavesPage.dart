@@ -5,6 +5,8 @@ import 'package:tripzo/components/leave_card.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/utils/toast_utils.dart';
+
 
 class ViewAllLeavesPage extends StatefulWidget {
   final List<Map<String, dynamic>> leaves;
@@ -1000,8 +1002,10 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
         _startTime == null ||
         _endTime == null ||
         _reasonController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields including time")),
+      showTopToast(
+        context,
+        "Please fill all fields including time",
+        isError: true,
       );
       return;
     }
@@ -1028,17 +1032,13 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
 
     if (mounted) {
       if (success) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text("Leave applied successfully")),
-        );
+        showTopToast(context, "Leave applied successfully");
         navigator.pop();
       } else {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              requestStore.leavesErrorMessage ?? "Failed to apply leave",
-            ),
-          ),
+        showTopToast(
+          context,
+          requestStore.leavesErrorMessage ?? "Failed to apply leave",
+          isError: true,
         );
       }
     }

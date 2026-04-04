@@ -29,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1200),
     );
 
     _fadeAnimation = CurvedAnimation(
@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // 2. Start the minimum display timer AND the API call in parallel
     final Future<bool> authCheck = _checkSession(prefs);
-    await Future.delayed(const Duration(milliseconds: 2500));
+    await Future.delayed(const Duration(milliseconds: 1200));
 
     // 3. Wait for the API check to settle (it might already be done)
     final bool sessionValid = await authCheck;

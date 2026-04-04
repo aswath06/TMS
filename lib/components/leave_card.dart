@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/store/request_store.dart';
+import 'package:tripzo/utils/toast_utils.dart';
+
 
 class LeaveCard extends StatelessWidget {
   final Map<String, dynamic> leaf;
@@ -352,19 +354,16 @@ class _LeaveDetailBottomSheetState extends State<_LeaveDetailBottomSheet> {
     if (mounted) {
       setState(() => _isUpdating = false);
       if (success) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text("Leave ${status == 2 ? 'Approved' : 'Rejected'} successfully"),
-            backgroundColor: status == 2 ? Colors.green : Colors.red,
-          ),
+        showTopToast(
+          context,
+          "Leave ${status == 2 ? 'Approved' : 'Rejected'} successfully",
         );
         navigator.pop(); // Close detail view
       } else {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(store.leavesErrorMessage ?? "Failed to update status"),
-            backgroundColor: Colors.red,
-          ),
+        showTopToast(
+          context,
+          store.leavesErrorMessage ?? "Failed to update status",
+          isError: true,
         );
       }
     }

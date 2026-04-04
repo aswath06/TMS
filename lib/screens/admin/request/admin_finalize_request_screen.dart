@@ -9,6 +9,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:intl/intl.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class AdminFinalizeRequestScreen extends StatefulWidget {
   final String requestId;
@@ -347,8 +348,10 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
     for (var g in _groups) {
       if (g['passengers'].isEmpty) continue;
       if (g['vehicle_id'] == null || g['driver_id'] == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Please assign a vehicle and driver for ${g['label']}")),
+        showTopToast(
+          context,
+          "Please assign a vehicle and driver for ${g['label']}",
+          isError: true,
         );
         return;
       }
@@ -394,19 +397,19 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
       final respData = json.decode(response.body);
       if (response.statusCode == 200 && respData['success'] == true) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Route Finalized Successfully!"), backgroundColor: Colors.green),
-        );
+        showTopToast(context, "Route Finalized Successfully!");
         Navigator.pop(context, true);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(respData['message'] ?? "Failed to finalize"), backgroundColor: Colors.red),
+        showTopToast(
+          context,
+          respData['message'] ?? "Failed to finalize",
+          isError: true,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      showTopToast(context, "Error: $e", isError: true);
     } finally {
       if (mounted) setState(() => _isFinalizing = false);
     }

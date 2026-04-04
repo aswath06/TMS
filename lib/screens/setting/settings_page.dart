@@ -5,6 +5,7 @@ import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:provider/provider.dart';
 import 'scanner_page.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -191,14 +192,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         );
                         if (result != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                isTamil
-                                    ? "ஸ்கேன் செய்யப்பட்டது: $result"
-                                    : "Scanned: $result",
-                              ),
-                            ),
+                          showTopToast(
+                            context,
+                            isTamil
+                                ? "ஸ்கேன் செய்யப்பட்டது: $result"
+                                : "Scanned: $result",
                           );
                         }
                       },

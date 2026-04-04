@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripzo/store/isdark.dart'; // Ensure this path is correct
+import 'package:tripzo/utils/toast_utils.dart';
 
 class SecuritySettingsPage extends StatefulWidget {
   const SecuritySettingsPage({super.key});
@@ -370,9 +371,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     );
   }
 
-  void _showSnackBar(String msg) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
-  );
+  void _showSnackBar(String msg, {bool isError = false}) =>
+      showTopToast(context, msg, isError: isError);
 
   @override
   Widget build(BuildContext context) {
@@ -499,7 +499,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
             value: value,
             onChanged: isEnabled
                 ? onChanged
-                : (val) => _showSnackBar("Enable PIN first"),
+                : (val) => _showSnackBar("Enable PIN first", isError: true),
             activeColor: primaryBlue,
           ),
         ),

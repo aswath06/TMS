@@ -6,6 +6,8 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/istamil.dart'; // Import Language Store
 import 'package:tripzo/store/isdark.dart'; // Import Theme Store
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/toast_utils.dart';
+
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
@@ -59,11 +61,11 @@ class _ScannerPageState extends State<ScannerPage>
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          _showStatusSnackBar(
+          showTopToast(
+            context,
             isTamil
                 ? "உள்நுழைவு அங்கீகரிக்கப்பட்டது"
                 : "Login Approved Successfully",
-            Colors.green,
           );
           Navigator.pop(context);
         }
@@ -85,22 +87,8 @@ class _ScannerPageState extends State<ScannerPage>
     }
   }
 
-  void _showStatusSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   void _handleError(String message) {
-    _showStatusSnackBar(message, const Color(0xFFEF4444));
+    showTopToast(context, message, isError: true);
     setState(() => scannedSessionId = null);
     cameraController.start();
     _animationController.repeat(reverse: true);

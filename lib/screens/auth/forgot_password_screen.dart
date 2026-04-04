@@ -3,6 +3,8 @@ import 'package:tripzo/components/custom_button.dart';
 import 'package:tripzo/components/custom_input.dart';
 import 'package:tripzo/components/app_branding.dart';
 import 'package:tripzo/utils/validators.dart';
+import 'package:tripzo/utils/toast_utils.dart';
+
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -26,13 +28,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Password reset link sent to your email!"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      showTopToast(context, "Password reset link sent to your email!");
 
       Navigator.pop(context);
     }

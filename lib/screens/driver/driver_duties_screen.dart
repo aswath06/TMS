@@ -82,7 +82,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                         const SizedBox(height: 24),
                         _buildHeader(driverName, titleColor, subColor, screenWidth, primaryBlue, isTamil),
                         const SizedBox(height: 32),
-                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList),
+                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList, profile),
                         const SizedBox(height: 36),
                         _buildSectionTitle(isTamil ? "இன்றைய பணிகள்" : "Your Assignments", titleColor),
                         const SizedBox(height: 18),
@@ -190,10 +190,24 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     );
   }
 
-  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList) {
+  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList, Map<String, dynamic>? profile) {
     final pendingCount = missionList.where((m) => m['status'] < 7).length;
+    final double rewardValue = double.tryParse((profile?['reward_points'] ?? "150").toString()) ?? 150.0;
+    
     return Row(
       children: [
+        _statItem(
+          label: isTamil ? "வெகுமதி புள்ளிகள்" : "Reward Point",
+          value: rewardValue.toInt().toString(),
+          animatedValue: rewardValue,
+          icon: Icons.military_tech_rounded,
+          accentColor: const Color(0xFFF59E0B),
+          surface: surface,
+          isDark: isDark,
+          statusLabel: isTamil ? "செயலில்" : "ACTIVE",
+          statusColor: Colors.green,
+        ),
+        const SizedBox(width: 16),
         _statItem(
           label: isTamil ? "நிலுவையில்" : "Pending",
           value: pendingCount.toString().padLeft(2, '0'),
@@ -202,40 +216,111 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
           surface: surface,
           isDark: isDark,
         ),
-        const SizedBox(width: 16),
-        _statItem(
-          label: isTamil ? "முடிந்தது" : "Completed",
-          value: missionList.where((m) => m['status'] >= 7).length.toString().padLeft(2, '0'),
-          icon: Icons.verified_user_rounded,
-          accentColor: Colors.tealAccent.shade700,
-          surface: surface,
-          isDark: isDark,
-        ),
       ],
     );
   }
 
-  Widget _statItem({required String label, required String value, required IconData icon, required Color accentColor, required Color surface, required bool isDark}) {
+  Widget _statItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color accentColor,
+    required Color surface,
+    required bool isDark,
+    String? statusLabel,
+    Color? statusColor,
+    double? animatedValue,
+  }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04)),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withOpacity(isDark ? 0.05 : 0.03),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: accentColor.withOpacity(0.1), shape: BoxShape.circle),
-              child: Icon(icon, color: accentColor, size: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [accentColor.withOpacity(0.2), accentColor.withOpacity(0.05)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: accentColor, size: 20),
+                ),
+                if (statusLabel != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: (statusColor ?? accentColor).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: (statusColor ?? accentColor).withOpacity(0.2)),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
+                        color: statusColor ?? accentColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
-            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF0F172A))),
+            if (animatedValue != null)
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: animatedValue),
+                duration: const Duration(seconds: 2),
+                curve: Curves.easeOutExpo,
+                builder: (context, val, child) {
+                  return Text(
+                    val.toInt().toString().padLeft(2, '0'),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      letterSpacing: -0.5,
+                    ),
+                  );
+                },
+              )
+            else
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
           ],
         ),
       ),
