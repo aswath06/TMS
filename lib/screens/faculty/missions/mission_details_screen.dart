@@ -485,6 +485,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             ),
           ),
         );
+        if (!mounted) return;
         if (result == true) {
           _fetchMissionDetails();
         }
@@ -583,6 +584,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Trip started directly!"), backgroundColor: Colors.green),
         );
@@ -608,7 +610,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       PageRouteBuilder(
         opaque: false,
         barrierDismissible: true,
-        pageBuilder: (context, _, ___) => OtpFlashScreen(
+        pageBuilder: (context, _, __) => OtpFlashScreen(
           otp: otp,
           title: title,
         ),
@@ -759,7 +761,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                             _buildDynamicResources(cardColor, primaryBlue, subColor),
                             const SizedBox(height: 8),
                             _buildAdditionalInfo(cardColor, primaryBlue, subColor),
-                            _buildAllowances(cardColor, primaryBlue, subColor),
+                            _buildAllowances(cardColor, primaryBlue, subColor, statusString),
                           ],
                           const SizedBox(height: 24),
                           _buildRemarks(cardColor, titleColor, subColor, primaryBlue),
@@ -1409,8 +1411,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isFirst ? Colors.green : (isLast ? Colors.red : color.withOpacity(0.3)),
-                  border: Border.all(color: isFirst ? Colors.green.withOpacity(0.2) : (isLast ? Colors.red.withOpacity(0.2) : color.withOpacity(0.1)), width: 4),
+                  color: isFirst ? Colors.green : (isLast ? Colors.red : color.withValues(alpha: 0.3)),
+                  border: Border.all(color: isFirst ? Colors.green.withValues(alpha: 0.2) : (isLast ? Colors.red.withValues(alpha: 0.2) : color.withValues(alpha: 0.1)), width: 4),
                 ),
               ),
               if (!isLast)
@@ -1422,7 +1424,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+                        colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
                       ),
                     ),
                   ),
@@ -1439,9 +1441,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 color: cardBg,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.05), blurRadius: 15, offset: const Offset(0, 8)),
+                  BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05), blurRadius: 15, offset: const Offset(0, 8)),
                 ],
-                border: Border.all(color: titleColor.withOpacity(0.05), width: 1),
+                border: Border.all(color: titleColor.withValues(alpha: 0.05), width: 1),
               ),
               child: Row(
                 children: [
@@ -1449,7 +1451,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: blueIcon.withOpacity(0.1),
+                      color: blueIcon.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(Icons.directions_car_rounded, color: blueIcon, size: 22),
@@ -1474,14 +1476,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.access_time_rounded, size: 12, color: titleColor.withOpacity(0.4)),
+                            Icon(Icons.access_time_rounded, size: 12, color: titleColor.withValues(alpha: 0.4)),
                             const SizedBox(width: 4),
                             Text(
                               eta.isNotEmpty ? "Scheduled: $eta" : "Time not set",
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: titleColor.withOpacity(0.4),
+                                color: titleColor.withValues(alpha: 0.4),
                               ),
                             ),
                             if (isFirst || isLast) ...[
@@ -1489,7 +1491,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: (isFirst ? Colors.green : Colors.red).withOpacity(0.1),
+                                  color: (isFirst ? Colors.green : Colors.red).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -2026,7 +2028,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     );
   }
 
-  Widget _buildAllowances(Color cardColor, Color blue, Color sub) {
+  Widget _buildAllowances(Color cardColor, Color blue, Color sub, String statusString) {
     List<dynamic> allAllowances = [];
     final tripInstances = _missionData?['trip_instances'] as List?;
     
@@ -2069,7 +2071,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               Flexible(
                 child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
               ),
-            if (allAllowances.isEmpty && firstTripId != null && _userRole?.toLowerCase() == 'admin')
+            if (firstTripId != null && (statusString == 'APPROVED' || _userRole?.toLowerCase() == 'admin'))
               TextButton.icon(
                 onPressed: () {
                   Navigator.push(
@@ -2489,7 +2491,7 @@ class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProvi
 
     // Update smoke particles
     _smoke.removeWhere((p) => p.isDead);
-    for (var p in _smoke) p.update();
+    for (var p in _smoke) { p.update(); }
 
     return Container(
       height: 72,
@@ -2668,8 +2670,8 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
 
   @override
   void dispose() {
-    for (var c in _controllers) c.dispose();
-    for (var f in _focusNodes) f.dispose();
+    for (var c in _controllers) { c.dispose(); }
+    for (var f in _focusNodes) { f.dispose(); }
     super.dispose();
   }
 
