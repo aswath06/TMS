@@ -907,7 +907,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isApprovedState)
+                  if (isApprovedState && _userRole?.toLowerCase() == 'transport admin')
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2150,7 +2150,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                     ),
                   ),
                   Text(
-                    _userRole?.toLowerCase() == 'admin' ? "₹$amount" : "CREATED",
+                    "₹$amount",
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF10B981)),
                   ),
                 ],
