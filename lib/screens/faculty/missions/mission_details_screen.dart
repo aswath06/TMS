@@ -18,6 +18,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
+import 'package:geolocator/geolocator.dart';
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -825,6 +826,258 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       ),
     );
   }
+
+  void _showStopStatusModal(int tripId, int stopId) {
+    String selectedAction = "ARRIVED";
+    bool isSubmitting = false;
+    LocationPermission? permissionStatus;
+    bool isLocationEnabled = false;
+    bool isCheckingPermission = true;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bool isDark = Theme.of(context).brightness == Brightness.dark;
+            final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final Color primaryBlue = const Color(0xFF6366F1);
+
+            // Proactive permission check
+            if (isCheckingPermission) {
+              Future.microtask(() async {
+                try {
+                  final enabled = await Geolocator.isLocationServiceEnabled();
+                  final perm = await Geolocator.checkPermission();
+                  if (mounted) {
+                    setModalState(() {
+                      isLocationEnabled = enabled;
+                      permissionStatus = perm;
+                      isCheckingPermission = false;
+                    });
+                  }
+                } catch (e) {
+                   if (mounted) {
+                     setModalState(() {
+                       isCheckingPermission = false;
+                     });
+                   }
+                }
+              });
+            }
+
+            final bool canSubmit = !isCheckingPermission && 
+                                   isLocationEnabled && 
+                                   (permissionStatus == LocationPermission.whileInUse || permissionStatus == LocationPermission.always);
+
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Update Stop Status", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                      IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text("Select the action for this checkpoint.", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      _buildActionChip("ARRIVED", selectedAction == "ARRIVED", primaryBlue, (val) {
+                        if (val) setModalState(() => selectedAction = "ARRIVED");
+                      }),
+                      const SizedBox(width: 12),
+                      _buildActionChip("SKIPPED", selectedAction == "SKIPPED", Colors.orange, (val) {
+                        if (val) setModalState(() => selectedAction = "SKIPPED");
+                      }),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  if (isCheckingPermission)
+                    const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(strokeWidth: 2)))
+                  else if (!canSubmit)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.location_off_rounded, color: Colors.red, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  !isLocationEnabled 
+                                    ? "Location services are disabled." 
+                                    : "Location permission is required to update status.",
+                                  style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: TextButton(
+                              onPressed: () async {
+                                setModalState(() => isCheckingPermission = true);
+                                if (!isLocationEnabled) {
+                                  await Geolocator.openLocationSettings();
+                                } else {
+                                  await Geolocator.requestPermission();
+                                }
+                                // Re-check will happen via StatefulBuilder rebuild
+                              },
+                              style: TextButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1)),
+                              child: Text(
+                                !isLocationEnabled ? "OPEN SETTINGS" : "GRANT PERMISSION",
+                                style: const TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: (!canSubmit || isSubmitting) ? null : () async {
+                        setModalState(() => isSubmitting = true);
+                        try {
+                          await _updateStopStatus(tripId, stopId, selectedAction);
+                          if (mounted) Navigator.pop(context);
+                        } catch (e) {
+                          setModalState(() => isSubmitting = false);
+                          if (mounted) {
+                             String errorMsg = e.toString();
+                             if (errorMsg.contains("MissingPluginException")) {
+                               errorMsg = "Please RESTART the application. A new plugin was added.";
+                             }
+                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: isSubmitting 
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text("SUBMIT UPDATE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildActionChip(String label, bool isSelected, Color activeColor, Function(bool) onSelected) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: onSelected,
+      selectedColor: activeColor.withValues(alpha: 0.2),
+      backgroundColor: Colors.grey.withValues(alpha: 0.1),
+      labelStyle: TextStyle(
+        color: isSelected ? activeColor : Colors.grey.shade600,
+        fontWeight: FontWeight.w800,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isSelected ? activeColor : Colors.transparent, width: 1.5),
+      ),
+      showCheckmark: false,
+    );
+  }
+
+  Future<void> _updateStopStatus(int tripId, int stopId, String action) async {
+    // 1. Get Location
+    Position? position;
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+         throw "Location services are disabled. Please enable them in settings.";
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw "Location permissions are denied.";
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        throw "Location permissions are permanently denied. Please enable them in settings.";
+      }
+
+      position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    } catch (e) {
+       throw e.toString();
+    }
+
+    // 2. PATCH Request
+    final token = await UserStore.getToken();
+    final url = "${ApiConstants.baseUrl}/routes/trips/$tripId/stops/$stopId/update-status";
+    final body = {
+      "action": action,
+      "latitude": position.latitude,
+      "longitude": position.longitude,
+      "recorded_at": DateTime.now().toUtc().toIso8601String(),
+    };
+
+    // Console the CURL for debugging
+    debugPrint('\n--- [CURL COMMAND] ---');
+    debugPrint('curl --location --request PATCH \'$url\' \\');
+    debugPrint('--header \'Authorization: TMS $token\' \\');
+    debugPrint('--header \'Content-Type: application/json\' \\');
+    debugPrint('--data \'${jsonEncode(body)}\'');
+    debugPrint('----------------------\n');
+
+    final response = await http.patch(
+      Uri.parse(url),
+      headers: ApiConstants.getHeaders(token),
+      body: jsonEncode(body),
+    );
+
+    debugPrint("DEBUG: PATCH Stop Status Response Code: ${response.statusCode}");
+    debugPrint("DEBUG: PATCH Stop Status Body: ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Stop status updated successfully!"), backgroundColor: Colors.green));
+        _fetchMissionDetails();
+      }
+    } else {
+      final error = jsonDecode(response.body);
+      throw error['message'] ?? "Failed to update status";
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1642,10 +1895,52 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildCheckpointList(Color blue, Color title) {
+    final tripInstances = _missionData?['trip_instances'] as List?;
+    
+    // Attempt to get stops from the active trip instance first
+    if (tripInstances != null && tripInstances.isNotEmpty) {
+      final activeTrip = tripInstances[0];
+      final tripId = activeTrip['id'];
+      final legs = activeTrip['legs'] as List?;
+      
+      if (legs != null && legs.isNotEmpty) {
+        List<dynamic> allStops = [];
+        for (var leg in legs) {
+          final stops = leg['stops'] as List?;
+          if (stops != null) {
+            allStops.addAll(stops.map((s) => { ...s, 'tripId': tripId }));
+          }
+        }
+        
+        if (allStops.isNotEmpty) {
+          return ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: allStops.length,
+            itemBuilder: (context, index) {
+              final stop = allStops[index];
+              return _buildTimelineItem(
+                location: stop['stop_name'] ?? "Unknown Stop",
+                eta: stop['planned_arrival_at'] ?? "",
+                actualTime: stop['actual_arrival_at'],
+                status: stop['stop_status'] ?? "PENDING",
+                isFirst: index == 0,
+                isLast: index == allStops.length - 1,
+                color: blue,
+                titleColor: title,
+                tripId: stop['tripId'],
+                stopId: stop['id'],
+              );
+            },
+          );
+        }
+      }
+    }
+
+    // Fallback to route_details if trip_instances are not available or empty
     final legs = _missionData?['route_details']?['legs'] as List?;
     if (legs == null || legs.isEmpty) return const SizedBox.shrink();
     
-    // Flatten all stops from all legs
     List<dynamic> allStops = [];
     for (var leg in legs) {
       final stops = leg['stops'] as List?;
@@ -1677,14 +1972,25 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Widget _buildTimelineItem({
     required String location,
     required String eta,
+    String? actualTime,
+    String status = "PENDING",
     required bool isFirst,
     required bool isLast,
     required Color color,
     required Color titleColor,
+    int? tripId,
+    int? stopId,
   }) {
     final bool isDark = titleColor == Colors.white;
     final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color blueIcon = const Color(0xFF6366F1);
+    
+    // Handle isDriver role locally
+    final bool isDriver = _userRole?.toLowerCase() == 'driver' || _userRole?.toLowerCase() == 'transport admin';
+
+    Color statusColor = Colors.grey;
+    if (status == 'ARRIVED' || status == 'COMPLETED') statusColor = Colors.green;
+    if (status == 'SKIPPED') statusColor = Colors.orange;
 
     return IntrinsicHeight(
       child: Row(
@@ -1699,8 +2005,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isFirst ? Colors.green : (isLast ? Colors.red : color.withValues(alpha: 0.3)),
-                  border: Border.all(color: isFirst ? Colors.green.withValues(alpha: 0.2) : (isLast ? Colors.red.withValues(alpha: 0.2) : color.withValues(alpha: 0.1)), width: 4),
+                  color: isFirst ? Colors.green : (isLast ? Colors.red : statusColor.withValues(alpha: 0.6)),
+                  border: Border.all(color: (isFirst ? Colors.green : (isLast ? Colors.red : statusColor)).withValues(alpha: 0.2), width: 4),
                 ),
               ),
               if (!isLast)
@@ -1733,66 +2039,97 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 ],
                 border: Border.all(color: titleColor.withValues(alpha: 0.05), width: 1),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  // Blue Car Icon
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: blueIcon.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(Icons.directions_car_rounded, color: blueIcon, size: 22),
-                  ),
-                  const SizedBox(width: 16),
-                  // Location Details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          location,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: titleColor,
-                            letterSpacing: 0.3,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      // Blue Car Icon
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: blueIcon.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                        child: Icon(Icons.directions_car_rounded, color: blueIcon, size: 22),
+                      ),
+                      const SizedBox(width: 16),
+                      // Location Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.access_time_rounded, size: 12, color: titleColor.withValues(alpha: 0.4)),
-                            const SizedBox(width: 4),
                             Text(
-                              eta.isNotEmpty ? "Scheduled: $eta" : "Time not set",
+                              location,
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: titleColor.withValues(alpha: 0.4),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                                letterSpacing: 0.3,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            if (isFirst || isLast) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: (isFirst ? Colors.green : Colors.red).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.access_time_rounded, size: 12, color: titleColor.withValues(alpha: 0.4)),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    actualTime != null 
+                                      ? "Actual: ${_formatActualTime(actualTime)}" 
+                                      : (eta.isNotEmpty ? "Scheduled: ${_formatDateTimeString(eta)}" : "Time not set"),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: actualTime != null ? Colors.green : titleColor.withValues(alpha: 0.4),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                child: Text(
-                                  isFirst ? "START" : "END",
-                                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: isFirst ? Colors.green : Colors.red),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (status == 'PENDING' && isDriver && tripId != null && stopId != null) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showStopStatusModal(tripId, stopId),
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                        label: const Text("MARK AS COMPLETED", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.withValues(alpha: 0.1),
+                          foregroundColor: Colors.green,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ] else if (status != 'PENDING') ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor, letterSpacing: 0.5),
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -1801,6 +2138,27 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       ),
     );
   }
+
+  String _formatActualTime(String timeStr) {
+    try {
+      final dt = DateTime.parse(timeStr).toLocal();
+      final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return "${dt.day} ${months[dt.month - 1]}, ${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+    } catch (_) {
+      return timeStr;
+    }
+  }
+
+  String _formatDateTimeString(String timeStr) {
+     if (timeStr.contains('T') || timeStr.contains('-')) {
+        try {
+          final dt = DateTime.parse(timeStr).toLocal();
+          return "${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+        } catch (_) {}
+     }
+     return timeStr;
+  }
+
 
   Widget _buildGuestContacts(Color cardColor, Color blue, Color subColor) {
     final guests = _missionData?['passengers'] as List?;

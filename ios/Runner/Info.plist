@@ -70,5 +70,7 @@
 	<string>We need access to your photo library to upload fuel bill images.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need camera access to capture fuel bill images.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to location when open to verify trip stop arrivals for drivers.</string>
 </dict>
 </plist>

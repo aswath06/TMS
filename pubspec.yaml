@@ -41,6 +41,7 @@ dependencies:
   flutter_map: ^8.2.2
   country_code_picker: ^3.4.1
   mobile_scanner: ^7.1.4
+  geolocator: ^13.0.1
   google_sign_in: ^6.2.1 
   http: ^1.2.0
   shared_preferences: ^2.5.4
