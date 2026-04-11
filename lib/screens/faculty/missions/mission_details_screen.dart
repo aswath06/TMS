@@ -485,7 +485,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       final bool isDriver = role?.toLowerCase() == 'driver';
       final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
 
-    final String statusString = (_missionData?['travel_info']?['status'] ?? _missionData?['status'] ?? widget.status ?? "").toString().toUpperCase();
+    final String statusString = (_missionData?['status'] ?? _missionData?['travel_info']?['status'] ?? widget.status ?? "").toString().toUpperCase();
     final bool isStart = statusString == 'APPROVED' || statusString == 'PLANNED' || 
                         currentStatus == 4 || currentStatus == 5 || currentStatus == 6 || currentStatus == 12;
 
@@ -1095,7 +1095,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final Color primaryBlue = const Color(0xFF6366F1);
 
     final currentStatus = _missionData?['route_status'] ?? widget.rawStatus;
-    final String statusString = (_missionData?['travel_info']?['status'] ?? _missionData?['status'] ?? widget.status ?? "").toString().toUpperCase();
+    final String statusString = (_missionData?['status'] ?? _missionData?['travel_info']?['status'] ?? widget.status ?? "").toString().toUpperCase();
     
     final bool isDriver = _userRole?.toLowerCase() == 'driver';
     
@@ -1640,7 +1640,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
     final reqNo = travelInfo?['request_number'] ?? "REQ-N/A";
     final tType = travelInfo?['trip_type'] ?? widget.pathType;
-    final String status = (_missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
+    final String status = (_missionData?['status'] ?? _missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
     
     // Calculate color based on route_request_status
     Color statusColor = widget.statusColor;

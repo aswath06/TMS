@@ -240,42 +240,25 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     final tripStatuses = mission['trip_instance_statuses'] as List?;
     final String? tripStatus = (tripStatuses != null && tripStatuses.isNotEmpty) ? tripStatuses[0]['status']?.toString().toUpperCase() : null;
     
-    // Status Logic
-    String statusStr = isTamil ? "தெரியவில்லை" : "Unknown";
+    // Status Logic - Using backend status directly as requested
+    final String backendStatus = (mission['status'] ?? "UNKNOWN").toString().toUpperCase();
+    String statusStr = backendStatus;
     Color statusColor = Colors.grey;
 
-    final String? routeReqStatus = mission['route_request_status']?.toString().toUpperCase();
-
-    // Use route_request_status if available, then trip status, then fallback to route status
-    final effectiveStatus = routeReqStatus ?? tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
-
-    if (effectiveStatus != null) {
-      if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
-        statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
-        statusColor = Colors.blue;
-      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'STARTED' || effectiveStatus == 'ONGOING') {
-        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
-        statusColor = Colors.orange;
-      } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
-        statusStr = isTamil ? "முடிந்தது" : "Completed";
-        statusColor = Colors.green;
-      } else if (effectiveStatus == 'REJECTED' || effectiveStatus == 'CANCELLED') {
-         statusStr = isTamil ? "ரத்து செய்யப்பட்டது" : "Cancelled";
-         statusColor = Colors.red;
-      }
-    } else if (rawStatusValue is int) {
-       // Fallback for integer status if string is null
-       if (rawStatusValue == 5 || rawStatusValue == 6) {
-        statusStr = isTamil ? "செயலில்" : "Assigned";
-        statusColor = Colors.blue;
-      } else if (rawStatusValue == 7) {
-        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
-        statusColor = Colors.orange;
-      } else if (rawStatusValue >= 8) {
-        statusStr = isTamil ? "முடிந்தது" : "Completed";
-        statusColor = Colors.green;
-      }
+    if (backendStatus == 'READY' || backendStatus == 'APPROVED' || backendStatus == 'PLANNED' || backendStatus == 'ASSIGNED') {
+      if (isTamil) statusStr = "ஒதுக்கப்பட்டது";
+      statusColor = Colors.blue;
+    } else if (backendStatus == 'ON_TRIP' || backendStatus == 'STARTED' || backendStatus == 'ONGOING') {
+      if (isTamil) statusStr = "நடைபெறுகிறது";
+      statusColor = Colors.orange;
+    } else if (backendStatus == 'COMPLETED' || backendStatus == 'FINISHED') {
+      if (isTamil) statusStr = "முடிந்தது";
+      statusColor = Colors.green;
+    } else if (backendStatus == 'REJECTED' || backendStatus == 'CANCELLED' || backendStatus == 'DRAFT') {
+      if (isTamil) statusStr = "ரத்து செய்யப்பட்டது";
+      statusColor = backendStatus == 'DRAFT' ? Colors.amber : Colors.red;
     }
+
 
     return GestureDetector(
       onTap: () => Navigator.push(
