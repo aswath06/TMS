@@ -2316,7 +2316,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               Flexible(
                 child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
               ),
-            if (firstTripId != null && (statusString == 'APPROVED' || _userRole?.toLowerCase() == 'admin'))
+            if (firstTripId != null && _userRole?.toLowerCase() == 'transport admin')
               TextButton.icon(
                 onPressed: () {
                   Navigator.push(
