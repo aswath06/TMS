@@ -34,6 +34,10 @@ class DriverStore extends ChangeNotifier {
   bool _isLoadingMissions = false;
   bool get isLoadingMissions => _isLoadingMissions;
 
+  String _searchQuery = "";
+  String get searchQuery => _searchQuery;
+
+
   // Leave State
   List<Map<String, dynamic>> _leaves = [];
   List<Map<String, dynamic>> get leaves => _leaves;
@@ -324,7 +328,8 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
-      final url = "${ApiConstants.getDriverMissions}?driver_id=${driverId ?? 1}&page=1&limit=20";
+      final url = "${ApiConstants.getDriverMissions}?driver_id=${driverId ?? 1}&page=1&limit=20&search=$_searchQuery";
+
       
       // Print CURL for debugging
       debugPrint("--- [DEBUG] FETCH MISSIONS CURL ---");
@@ -569,12 +574,12 @@ class DriverStore extends ChangeNotifier {
         return {"success": false, "message": "Session expired or Driver ID missing"};
       }
 
-      final encryptedOtp = CryptoUtils.encryptOTP(otp);
+      // final encryptedOtp = CryptoUtils.encryptOTP(otp);
       final url = isStart ? ApiConstants.startTrip(routeId) : ApiConstants.endLeg(routeId);
 
       final body = {
         "mode": "OTP",
-        "otp": encryptedOtp,
+        "otp": otp,
       };
 
       debugPrint("--- [DEBUG] STARTING OTP VERIFICATION ---");
@@ -714,4 +719,11 @@ class DriverStore extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void updateSearch(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
 }
+
+

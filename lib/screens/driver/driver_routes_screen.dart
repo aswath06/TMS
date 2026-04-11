@@ -13,6 +13,9 @@ class DriverRoutesScreen extends StatefulWidget {
 
 class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
 
   @override
   void initState() {
@@ -27,8 +30,10 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +49,45 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
-        title: Text(
-          isTamil ? "உங்கள் பயணங்கள்" : "My Journeys",
-          style: TextStyle(color: titleColor, fontWeight: FontWeight.w900),
-        ),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  hintText: isTamil ? "பயண பெயரைத் தேடுக..." : "Search route name...",
+                  hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.normal),
+                  border: InputBorder.none,
+                ),
+                onChanged: (val) {
+                  context.read<DriverStore>().updateSearch(val);
+                },
+              )
+            : Text(
+                isTamil ? "உங்கள் பயணங்கள்" : "My Journeys",
+                style: TextStyle(color: titleColor, fontWeight: FontWeight.w900),
+              ),
+        actions: [
+          _isSearching
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                  onPressed: () {
+                    if (_searchController.text.isEmpty) {
+                      setState(() => _isSearching = false);
+                    } else {
+                      _searchController.clear();
+                      context.read<DriverStore>().updateSearch("");
+                    }
+                  },
+                )
+              : IconButton(
+                  icon: Icon(Icons.search_rounded, color: titleColor),
+                  onPressed: () => setState(() => _isSearching = true),
+                ),
+        ],
         bottom: TabBar(
+
+
           controller: _tabController,
           labelColor: primaryBlue,
           unselectedLabelColor: Colors.grey,
@@ -108,7 +147,11 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
           return false;
         }
 
-        // Identify the Priority Mission (Dashboard one)
+        // identify search query
+        final query = store.searchQuery.toLowerCase().trim();
+        
+        // Helper to normalize status for filtering
+
         final upcomingNonCompleted = allMissions.where((m) => !isCompleted(m['status'])).toList();
         final String? priorityId = upcomingNonCompleted.isNotEmpty ? upcomingNonCompleted.first['id']?.toString() : null;
 
@@ -126,13 +169,30 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
           list = allMissions.where((m) => isCompleted(m['status'])).toList();
         }
 
+        // Apply Search Filtering (Frontend)
+        if (query.isNotEmpty) {
+          list = list.where((m) {
+            final String routeName = (m['routeName'] ?? "").toString().toLowerCase();
+            final String pickup = (m['startLocation'] ?? "").toString().toLowerCase();
+            final String drop = (m['destinationLocation'] ?? "").toString().toLowerCase();
+            final String driveId = (m['id'] ?? "").toString().toLowerCase();
+            
+            return routeName.contains(query) || 
+                   pickup.contains(query) || 
+                   drop.contains(query) ||
+                   driveId.contains(query);
+          }).toList();
+        }
+
+
         if (store.isLoadingMissions && list.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (list.isEmpty) {
-          return _buildEmptyState(type);
+          return _buildEmptyState(type, isSearch: query.isNotEmpty);
         }
+
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -350,24 +410,33 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     );
   }
 
-  Widget _buildEmptyState(String type) {
+  Widget _buildEmptyState(String type, {bool isSearch = false}) {
     final bool isTamil = LanguageStore.isTamil;
     String text = "";
-    if (type == 'remaining') text = isTamil ? "மீதமுள்ள பயணங்கள் இல்லை" : "No active shifts";
-    if (type == 'upcoming') text = isTamil ? "வரவிருக்கும் பயணங்கள் இல்லை" : "No upcoming assignments";
-    if (type == 'completed') text = isTamil ? "முடிந்த பயணங்கள் இல்லை" : "No finished history";
+    if (isSearch) {
+      text = isTamil ? "பொருத்தமான பயணங்கள் எதுவும் இல்லை" : "No matching journeys found";
+    } else {
+      if (type == 'remaining') text = isTamil ? "மீதமுள்ள பயணங்கள் இல்லை" : "No active shifts";
+      if (type == 'upcoming') text = isTamil ? "வரவிருக்கும் பயணங்கள் இல்லை" : "No upcoming assignments";
+      if (type == 'completed') text = isTamil ? "முடிந்த பயணங்கள் இல்லை" : "No finished history";
+    }
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.subtitles_off_rounded, size: 64, color: Colors.grey.withValues(alpha: 0.2)),
+          Icon(
+            isSearch ? Icons.search_off_rounded : Icons.subtitles_off_rounded,
+            size: 64,
+            color: Colors.grey.withValues(alpha: 0.2),
+          ),
           const SizedBox(height: 16),
           Text(text, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
+
 
 
   String _formatDate(String? dateStr) {
