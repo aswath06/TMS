@@ -21,18 +21,20 @@ class RequestCard extends StatelessWidget {
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
 
-    final String s = (req['status'] ?? 'Pending').toUpperCase();
+    final String s = (req['route_request_status'] ?? req['status'] ?? 'Pending').toString().toUpperCase();
     Color bColor;
     if (s == 'STARTED' || s == 'ONGOING') {
-      bColor = const Color(0xFF6366F1);
+      bColor = Colors.orange;
     } else if (s == 'COMPLETED') {
-      bColor = const Color(0xFF10B981);
+      bColor = Colors.green;
     } else if (s == 'CANCELLED' || s == 'REJECTED') {
-      bColor = const Color(0xFF64748B);
-    } else if (s == 'DRAFT') {
-      bColor = const Color(0xFFF59E0B);
+      bColor = Colors.red;
+    } else if (s == 'DRAFT' || s == 'SUBMITTED') {
+      bColor = Colors.blue;
+    } else if (s == 'APPROVED' || s == 'PLANNED') {
+      bColor = Colors.green;
     } else {
-      bColor = const Color(0xFFEC4899); // Pink for Approved/Planned
+      bColor = Colors.grey;
     }
 
     return GestureDetector(
@@ -322,9 +324,9 @@ class RequestCard extends StatelessWidget {
         'border': const Color(0xFFA7F3D0),
       },
       'CANCELLED': {
-        'bg': const Color(0xFFF8FAFC),
-        'text': const Color(0xFF64748B),
-        'border': const Color(0xFFE2E8F0),
+        'bg': const Color(0xFFFEF2F2),
+        'text': Colors.red,
+        'border': const Color(0xFFFECACA),
       },
     };
 

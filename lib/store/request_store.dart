@@ -186,6 +186,11 @@ class RequestStore extends ChangeNotifier {
       statusString = RouteStatus[rawStatusInt] ?? 'Unknown';
     }
 
+    final String? routeReqStatus = req['route_request_status']?.toString().toUpperCase();
+    if (routeReqStatus != null && routeReqStatus.isNotEmpty) {
+      statusString = routeReqStatus;
+    }
+
     return {
       'id': 'REQ-${req['id']}',
       'dbId': req['id'],
@@ -194,6 +199,7 @@ class RequestStore extends ChangeNotifier {
       'pickup': _formatAddress(req['startLocation']),
       'drop': _formatAddress(req['destinationLocation']),
       'status': statusString,
+      'route_request_status': routeReqStatus,
       'rawStatus': rawStatusInt,
       'routeName': req['routeName'] ?? 'Unknown Route',
       'travelType': req['travelType'] ?? 'One Way',

@@ -197,19 +197,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     // Use route_request_status if available, then trip status, then fallback to route status
     final effectiveStatus = routeReqStatus ?? tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
 
-    if (rawStatusValue is int) {
-      if (rawStatusValue == 5 || rawStatusValue == 6) {
-        statusStr = isTamil ? "செயலில்" : "Assigned";
-        statusColor = Colors.blue;
-      } else if (rawStatusValue == 7) {
-        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
-        statusColor = Colors.orange;
-      } else if (rawStatusValue >= 8) {
-        statusStr = isTamil ? "முடிந்தது" : "Completed";
-        statusColor = Colors.green;
-      }
-    } else {
-      // String status handling
+    if (effectiveStatus != null) {
       if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
         statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
         statusColor = Colors.blue;
@@ -217,6 +205,21 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
         statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
         statusColor = Colors.orange;
       } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
+        statusStr = isTamil ? "முடிந்தது" : "Completed";
+        statusColor = Colors.green;
+      } else if (effectiveStatus == 'REJECTED' || effectiveStatus == 'CANCELLED') {
+         statusStr = isTamil ? "ரத்து செய்யப்பட்டது" : "Cancelled";
+         statusColor = Colors.red;
+      }
+    } else if (rawStatusValue is int) {
+       // Fallback for integer status if string is null
+       if (rawStatusValue == 5 || rawStatusValue == 6) {
+        statusStr = isTamil ? "செயலில்" : "Assigned";
+        statusColor = Colors.blue;
+      } else if (rawStatusValue == 7) {
+        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
+        statusColor = Colors.orange;
+      } else if (rawStatusValue >= 8) {
         statusStr = isTamil ? "முடிந்தது" : "Completed";
         statusColor = Colors.green;
       }

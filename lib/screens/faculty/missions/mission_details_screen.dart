@@ -117,6 +117,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
+
+      // Console the curl and response as requested
+      debugPrint("DEBUG: CURL command for Mission Details:");
+      debugPrint("curl -X GET '$url' -H 'Authorization: TMS $token' -H 'Content-Type: application/json'");
+      debugPrint("DEBUG: Mission Details Response Status: ${response.statusCode}");
+      debugPrint("DEBUG: Mission Details Response Body: ${response.body}");
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -1178,11 +1185,25 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    final bool isDriver = _userRole?.toLowerCase() == 'driver';
     final travelInfo = _missionData?['travel_info'];
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
     final reqNo = travelInfo?['request_number'] ?? "REQ-N/A";
     final tType = travelInfo?['trip_type'] ?? widget.pathType;
-    final status = travelInfo?['status'] ?? widget.status;
+    final String status = (_missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
+    
+    // Calculate color based on route_request_status
+    Color statusColor = widget.statusColor;
+    final String sUpper = status.toUpperCase();
+    if (sUpper == 'APPROVED' || sUpper == 'COMPLETED') {
+      statusColor = Colors.green;
+    } else if (sUpper == 'PENDING' || sUpper == 'SUBMITTED') {
+      statusColor = Colors.orange;
+    } else if (sUpper == 'REJECTED' || sUpper == 'CANCELLED') {
+      statusColor = Colors.red;
+    } else if (sUpper == 'PLANNED' || sUpper == 'ASSIGNED') {
+      statusColor = Colors.blue;
+    }
     final passengerCount = _missionData?['vehicle_config']?['passenger_count']?.toString() ?? widget.passengerCount;
     final dynamic purpose = travelInfo?['purpose'];
 
@@ -1210,13 +1231,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
-                    color: widget.statusColor.withValues(alpha: 0.12),
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     status.toUpperCase(),
                     style: TextStyle(
-                      color: widget.statusColor,
+                      color: statusColor,
                       fontWeight: FontWeight.w900,
                       fontSize: 11,
                       letterSpacing: 0.8,
@@ -1303,6 +1324,35 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                     child: Text(
                       "PURPOSE: ${travelInfo?['purpose']}",
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: primaryBlue, letterSpacing: 0.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (isDriver) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: statusColor.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.assignment_turned_in_rounded, size: 14, color: statusColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '"status": "${status.toUpperCase()}"',
+                      style: TextStyle(
+                        fontSize: 11, 
+                        fontWeight: FontWeight.w900, 
+                        color: statusColor, 
+                        letterSpacing: 0.5,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                 ],
