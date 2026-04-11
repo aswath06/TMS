@@ -317,20 +317,39 @@ class DriverStore extends ChangeNotifier {
 
     try {
       final token = await UserStore.getToken();
+      final driverId = await UserStore.getDriverId();
+      
       if (token == null) {
         _missionsError = "Session expired.";
         return;
       }
 
+      final url = "${ApiConstants.getDriverMissions}?driver_id=${driverId ?? 1}&page=1&limit=20";
+      
+      // Print CURL for debugging
+      debugPrint("--- [DEBUG] FETCH MISSIONS CURL ---");
+      debugPrint("curl --location '$url' \\");
+      final headers = ApiConstants.getHeaders(token);
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("------------------------------------");
+
       final response = await http.get(
-        Uri.parse(ApiConstants.getDriverMissions),
-        headers: ApiConstants.getHeaders(token),
+        Uri.parse(url),
+        headers: headers,
       );
+
+      // Print Response for debugging
+      debugPrint("--- [DEBUG] FETCH MISSIONS RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("---------------------------------------");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
-          final List<dynamic> items = decoded['items'] ?? [];
+          final List<dynamic> items = decoded['data'] ?? [];
           _missions = items.map((e) => e as Map<String, dynamic>).toList();
         } else {
           _missionsError = decoded['message'] ?? "Failed to fetch missions";

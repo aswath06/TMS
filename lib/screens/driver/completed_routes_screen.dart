@@ -45,7 +45,14 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
                   final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
                   return bTime.compareTo(aTime); // Latest first for history
                 });
-                final completedMissions = allMissions.where((m) => (m['status'] ?? 0) >= 8).toList();
+                // Helper to normalize status for filtering
+                bool isCompleted(dynamic s) {
+                  if (s is int) return s >= 8;
+                  if (s is String) return s.toUpperCase() == 'COMPLETED' || s.toUpperCase() == 'FINISHED';
+                  return false;
+                }
+
+                final completedMissions = allMissions.where((m) => isCompleted(m['status'])).toList();
 
                 return RefreshIndicator(
                   onRefresh: () async {
@@ -161,7 +168,13 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
     final String pickup = mission['startLocation'] ?? 'Unknown';
     final String drop = mission['destinationLocation'] ?? 'Unknown';
     final String time = _formatDate(mission['start_datetime'] ?? mission['startDate']);
-    final int rawStatus = mission['status'] ?? 0;
+    final dynamic rawStatusValue = mission['status'];
+    final tripStatuses = mission['trip_instance_statuses'] as List?;
+    final String? tripStatus = (tripStatuses != null && tripStatuses.isNotEmpty) ? tripStatuses[0]['status']?.toString().toUpperCase() : null;
+    
+    // Status Logic - Always Completed here
+    String statusStr = isTamil ? "முடிந்தது" : "Completed";
+    Color statusColor = Colors.green;
     
     // Status Logic - Always Completed here
     String statusStr = isTamil ? "முடிந்தது" : "Completed";
@@ -185,13 +198,16 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
             stops: [
               {'location': pickup, 'eta': 'Start'},
               if (mission['intermediateStops'] is List)
-                ...(mission['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': 'Transit'}),
+                ...(mission['intermediateStops'] as List).map((s) {
+                  if (s is Map) return {'location': (s['stop_name'] ?? '').toString(), 'eta': 'Transit'};
+                  return {'location': s.toString(), 'eta': 'Transit'};
+                }),
               {'location': drop, 'eta': 'End'},
             ],
             status: statusStr,
             statusColor: statusColor,
             requestId: mission['id'].toString(),
-            rawStatus: rawStatus,
+            rawStatus: rawStatusValue is int ? rawStatusValue : 0,
             creatorName: mission['createdBy']?['name'] ?? "Admin",
           ),
         ),

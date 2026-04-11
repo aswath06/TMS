@@ -55,9 +55,15 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               builder: (context, store, _) {
                 final profile = store.profileData.value;
                 final allTasksList = List<Map<String, dynamic>>.from(store.missions);
-                
+                // Helper to normalize status for filtering
+                bool isCompleted(dynamic s) {
+                  if (s is int) return s >= 8;
+                  if (s is String) return s.toUpperCase() == 'COMPLETED';
+                  return false;
+                }
+
                 // Filter for non-completed missions and sort by date/time
-                final upcoming = allTasksList.where((m) => (m['status'] ?? 0) < 8).toList();
+                final upcoming = allTasksList.where((m) => !isCompleted(m['status'])).toList();
                 upcoming.sort((a, b) {
                   final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
                   final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
@@ -191,7 +197,14 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
   }
 
   Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList, Map<String, dynamic>? profile) {
-    final pendingCount = missionList.where((m) => m['status'] < 7).length;
+    // Helper to normalize status for filtering
+    bool isCompleted(dynamic s) {
+      if (s is int) return s >= 8;
+      if (s is String) return s.toUpperCase() == 'COMPLETED';
+      return false;
+    }
+    
+    final pendingCount = missionList.where((m) => !isCompleted(m['status'])).length;
     final double rewardValue = double.tryParse((profile?['reward_points'] ?? "150").toString()) ?? 150.0;
     
     return Row(
@@ -346,20 +359,40 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     final String pickup = mission['startLocation'] ?? 'Unknown';
     final String drop = mission['destinationLocation'] ?? 'Unknown';
     final String time = _formatDate(mission['start_datetime']);
-    final int rawStatus = mission['status'] ?? 0;
+    final dynamic rawStatusValue = mission['status'];
+    final tripStatuses = mission['trip_instance_statuses'] as List?;
+    final String? tripStatus = (tripStatuses != null && tripStatuses.isNotEmpty) ? tripStatuses[0]['status']?.toString().toUpperCase() : null;
     
     // Status Logic
-    String statusStr = "Unknown";
+    String statusStr = isTamil ? "தெரியவில்லை" : "Unknown";
     Color statusColor = Colors.grey;
-    if (rawStatus == 6) {
-      statusStr = isTamil ? "செயலில்" : "Assigned";
-      statusColor = Colors.blue;
-    } else if (rawStatus == 7) {
-      statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
-      statusColor = Colors.orange;
-    } else if (rawStatus >= 8) {
-      statusStr = isTamil ? "முடிந்தது" : "Completed";
-      statusColor = Colors.green;
+
+    // Use trip status if available, fallback to route status
+    final effectiveStatus = tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
+
+    if (rawStatusValue is int) {
+      if (rawStatusValue == 5 || rawStatusValue == 6) {
+        statusStr = isTamil ? "செயலில்" : "Assigned";
+        statusColor = Colors.blue;
+      } else if (rawStatusValue == 7) {
+        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
+        statusColor = Colors.orange;
+      } else if (rawStatusValue >= 8) {
+        statusStr = isTamil ? "முடிந்தது" : "Completed";
+        statusColor = Colors.green;
+      }
+    } else {
+      // String status handling
+      if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
+        statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
+        statusColor = Colors.blue;
+      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'STARTED' || effectiveStatus == 'ONGOING') {
+        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
+        statusColor = Colors.orange;
+      } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
+        statusStr = isTamil ? "முடிந்தது" : "Completed";
+        statusColor = Colors.green;
+      }
     }
 
     return GestureDetector(
@@ -380,13 +413,16 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             stops: [
               {'location': pickup, 'eta': 'Start'},
               if (mission['intermediateStops'] is List)
-                ...(mission['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': 'Transit'}),
+                ...(mission['intermediateStops'] as List).map((s) {
+                  if (s is Map) return {'location': (s['stop_name'] ?? '').toString(), 'eta': 'Transit'};
+                  return {'location': s.toString(), 'eta': 'Transit'};
+                }),
               {'location': drop, 'eta': 'End'},
             ],
             status: statusStr,
             statusColor: statusColor,
             requestId: mission['id'].toString(),
-            rawStatus: rawStatus,
+            rawStatus: rawStatusValue is int ? rawStatusValue : 0,
             creatorName: mission['createdBy']?['name'] ?? "Admin",
           ),
         ),

@@ -91,25 +91,47 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
           return aTime.compareTo(bTime);
         });
 
+        // Helper to normalize status for filtering
+        bool isCompleted(dynamic s) {
+          if (s is int) return s >= 8;
+          if (s is String) return s.toUpperCase() == 'COMPLETED';
+          return false;
+        }
+
+        bool isActive(dynamic s) {
+          if (s is int) return s >= 7 && s < 8;
+          if (s is String) {
+            final upper = s.toUpperCase();
+            return upper == 'ON_TRIP' || upper == 'STARTED' || upper == 'ONGOING';
+          }
+          return false;
+        }
+
+        bool isUpcoming(dynamic s) {
+          if (s is int) return s < 7;
+          if (s is String) {
+            final upper = s.toUpperCase();
+            return upper == 'APPROVED' || upper == 'READY' || upper == 'PLANNED';
+          }
+          return false;
+        }
+
         // Identify the Priority Mission (Dashboard one)
-        final upcomingNonCompleted = allMissions.where((m) => (m['status'] ?? 0) < 8).toList();
+        final upcomingNonCompleted = allMissions.where((m) => !isCompleted(m['status'])).toList();
         final String? priorityId = upcomingNonCompleted.isNotEmpty ? upcomingNonCompleted.first['id']?.toString() : null;
 
         if (type == 'remaining') {
-          // All active/assigned except the priority one
           list = allMissions.where((m) {
-            final int s = m['status'] ?? 0;
             final String mid = m['id']?.toString() ?? '';
-            return s > 1 && s < 8 && mid != priorityId;
+            return !isCompleted(m['status']) && mid != priorityId;
           }).toList();
         } else if (type == 'upcoming') {
-          // All future ones except the priority one
           list = upcomingNonCompleted.where((m) {
             final String mid = m['id']?.toString() ?? '';
-            return mid != priorityId;
+            return isUpcoming(m['status']) && mid != priorityId;
           }).toList();
         } else if (type == 'completed') {
-          list = allMissions.where((m) => (m['status'] ?? 0) >= 8).toList();
+          list = allMissions.where((m) => isCompleted(m['status'])).toList();
         }
 
         if (store.isLoadingMissions && list.isEmpty) {
@@ -162,20 +184,40 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     final String pickup = mission['startLocation'] ?? 'Unknown';
     final String drop = mission['destinationLocation'] ?? 'Unknown';
     final String time = _formatDate(mission['start_datetime'] ?? mission['startDate']);
-    final int rawStatus = mission['status'] ?? 0;
+    final dynamic rawStatusValue = mission['status'];
+    final tripStatuses = mission['trip_instance_statuses'] as List?;
+    final String? tripStatus = (tripStatuses != null && tripStatuses.isNotEmpty) ? tripStatuses[0]['status']?.toString().toUpperCase() : null;
     
     // Status Logic
-    String statusStr = "Unknown";
+    String statusStr = isTamil ? "தெரியவில்லை" : "Unknown";
     Color statusColor = Colors.grey;
-    if (rawStatus == 5 || rawStatus == 6) {
-      statusStr = isTamil ? "செயலில்" : "Assigned";
-      statusColor = Colors.blue;
-    } else if (rawStatus == 7) {
-      statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
-      statusColor = Colors.orange;
-    } else if (rawStatus >= 8) {
-      statusStr = isTamil ? "முடிந்தது" : "Completed";
-      statusColor = Colors.green;
+
+    // Use trip status if available, fallback to route status
+    final effectiveStatus = tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
+
+    if (rawStatusValue is int) {
+      if (rawStatusValue == 5 || rawStatusValue == 6) {
+        statusStr = isTamil ? "செயலில்" : "Assigned";
+        statusColor = Colors.blue;
+      } else if (rawStatusValue == 7) {
+        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
+        statusColor = Colors.orange;
+      } else if (rawStatusValue >= 8) {
+        statusStr = isTamil ? "முடிந்தது" : "Completed";
+        statusColor = Colors.green;
+      }
+    } else {
+      // String status handling
+      if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
+        statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
+        statusColor = Colors.blue;
+      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'STARTED' || effectiveStatus == 'ONGOING') {
+        statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
+        statusColor = Colors.orange;
+      } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
+        statusStr = isTamil ? "முடிந்தது" : "Completed";
+        statusColor = Colors.green;
+      }
     }
 
     return GestureDetector(
@@ -196,13 +238,16 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
             stops: [
               {'location': pickup, 'eta': 'Start'},
               if (mission['intermediateStops'] is List)
-                ...(mission['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': 'Transit'}),
+                ...(mission['intermediateStops'] as List).map((s) {
+                  if (s is Map) return {'location': (s['stop_name'] ?? '').toString(), 'eta': 'Transit'};
+                  return {'location': s.toString(), 'eta': 'Transit'};
+                }),
               {'location': drop, 'eta': 'End'},
             ],
             status: statusStr,
             statusColor: statusColor,
             requestId: mission['id'].toString(),
-            rawStatus: rawStatus,
+            rawStatus: rawStatusValue is int ? rawStatusValue : 0,
             creatorName: mission['createdBy']?['name'] ?? "Admin",
           ),
         ),
