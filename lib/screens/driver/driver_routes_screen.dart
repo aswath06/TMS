@@ -98,14 +98,6 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
           return false;
         }
 
-        bool isActive(dynamic s) {
-          if (s is int) return s >= 7 && s < 8;
-          if (s is String) {
-            final upper = s.toUpperCase();
-            return upper == 'ON_TRIP' || upper == 'STARTED' || upper == 'ONGOING';
-          }
-          return false;
-        }
 
         bool isUpcoming(dynamic s) {
           if (s is int) return s < 7;
@@ -194,20 +186,14 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
 
     final String? routeReqStatus = mission['route_request_status']?.toString().toUpperCase();
 
-    // Use execution status (rawStatusValue or tripStatus) first, then administrative status
-    final effectiveStatus = (rawStatusValue is String ? rawStatusValue.toUpperCase() : null) ?? tripStatus ?? routeReqStatus;
+    // Use route_request_status if available, then trip status, then fallback to route status
+    final effectiveStatus = routeReqStatus ?? tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
 
     if (effectiveStatus != null) {
-      if (effectiveStatus == 'STARTED') {
-        statusStr = isTamil ? "தொடங்கப்பட்டது" : "Started";
-        statusColor = Colors.orange;
-      } else if (effectiveStatus == 'APPROVED') {
-        statusStr = isTamil ? "அங்கீகரிக்கப்பட்டது" : "Approved";
-        statusColor = Colors.blue;
-      } else if (effectiveStatus == 'READY' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
+      if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
         statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
         statusColor = Colors.blue;
-      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'ONGOING') {
+      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'STARTED' || effectiveStatus == 'ONGOING') {
         statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
         statusColor = Colors.orange;
       } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
@@ -271,7 +257,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -292,7 +278,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                   child: Text(statusStr.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                 ),
               ],
@@ -335,8 +321,8 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
         Column(
           children: [
             Icon(Icons.radio_button_checked, color: primary, size: 18),
-            Container(width: 2, height: 20, color: primary.withOpacity(0.2)),
-            Icon(Icons.location_on, color: Colors.redAccent.withOpacity(0.7), size: 18),
+            Container(width: 2, height: 20, color: primary.withValues(alpha: 0.2)),
+            Icon(Icons.location_on, color: Colors.redAccent.withValues(alpha: 0.7), size: 18),
           ],
         ),
         const SizedBox(width: 14),
@@ -375,7 +361,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.subtitles_off_rounded, size: 64, color: Colors.grey.withOpacity(0.2)),
+          Icon(Icons.subtitles_off_rounded, size: 64, color: Colors.grey.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
           Text(text, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
         ],
@@ -383,12 +369,6 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     );
   }
 
-  Color _getStatusColor(dynamic status) {
-    int s = (status is int) ? status : 0;
-    if (s >= 8) return Colors.green;
-    if (s > 1) return Colors.blue;
-    return Colors.orange;
-  }
 
   String _formatDate(String? dateStr) {
     if (dateStr == null) return "TBD";

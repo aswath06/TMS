@@ -3,10 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
-import 'package:tripzo/screens/driver/verify_mission_screen.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:intl/intl.dart';
-import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/screens/driver/maintenance/fuel_page.dart';
 import 'package:tripzo/screens/driver/maintenance/service_page.dart';
 
@@ -128,7 +124,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         padding: const EdgeInsets.only(top: 40),
         child: Column(
           children: [
-            Icon(Icons.assignment_turned_in_rounded, size: 64, color: subColor.withOpacity(0.3)),
+            Icon(Icons.assignment_turned_in_rounded, size: 64, color: subColor.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(
               isTamil ? "பணிகள் எதுவும் இல்லை" : "No assignments for today",
@@ -149,7 +145,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         height: 250,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: primaryBlue.withOpacity(isDark ? 0.1 : 0.05),
+          color: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
         ),
       ),
     );
@@ -165,7 +161,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -250,10 +246,10 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04)),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
           boxShadow: [
             BoxShadow(
-              color: accentColor.withOpacity(isDark ? 0.05 : 0.03),
+              color: accentColor.withValues(alpha: isDark ? 0.05 : 0.03),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -269,7 +265,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [accentColor.withOpacity(0.2), accentColor.withOpacity(0.05)],
+                      colors: [accentColor.withValues(alpha: 0.2), accentColor.withValues(alpha: 0.05)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -281,9 +277,9 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: (statusColor ?? accentColor).withOpacity(0.1),
+                      color: (statusColor ?? accentColor).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: (statusColor ?? accentColor).withOpacity(0.2)),
+                      border: Border.all(color: (statusColor ?? accentColor).withValues(alpha: 0.2)),
                     ),
                     child: Text(
                       statusLabel,
@@ -369,8 +365,8 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
 
     final String? routeReqStatus = mission['route_request_status']?.toString().toUpperCase();
 
-    // Use execution status (rawStatusValue or tripStatus) first, then administrative status
-    final effectiveStatus = (rawStatusValue is String ? rawStatusValue.toUpperCase() : null) ?? tripStatus ?? routeReqStatus;
+    // Use route_request_status if available, then trip status, then fallback to route status
+    final effectiveStatus = routeReqStatus ?? tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
 
     if (rawStatusValue is int) {
       if (rawStatusValue == 5 || rawStatusValue == 6) {
@@ -385,16 +381,10 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
       }
     } else {
       // String status handling
-      if (effectiveStatus == 'STARTED') {
-        statusStr = isTamil ? "தொடங்கப்பட்டது" : "Started";
-        statusColor = Colors.orange;
-      } else if (effectiveStatus == 'APPROVED') {
-        statusStr = isTamil ? "அங்கீகரிக்கப்பட்டது" : "Approved";
-        statusColor = Colors.blue;
-      } else if (effectiveStatus == 'READY' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
+      if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
         statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
         statusColor = Colors.blue;
-      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'ONGOING') {
+      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'STARTED' || effectiveStatus == 'ONGOING') {
         statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
         statusColor = Colors.orange;
       } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
@@ -464,7 +454,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                   child: Text(statusStr.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                 ),
               ],
@@ -508,8 +498,8 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         Column(
           children: [
             Icon(Icons.radio_button_checked, color: primary, size: 18),
-            Container(width: 2, height: 20, color: primary.withOpacity(0.2)),
-            Icon(Icons.location_on, color: Colors.redAccent.withOpacity(0.7), size: 18),
+            Container(width: 2, height: 20, color: primary.withValues(alpha: 0.2)),
+            Icon(Icons.location_on, color: Colors.redAccent.withValues(alpha: 0.7), size: 18),
           ],
         ),
         const SizedBox(width: 14),
@@ -590,14 +580,14 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color, color.withOpacity(0.8)],
+            colors: [color, color.withValues(alpha: 0.8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -609,7 +599,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: Colors.white, size: 28),
@@ -622,7 +612,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
             ),
           ],
         ),

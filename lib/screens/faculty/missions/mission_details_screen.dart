@@ -77,6 +77,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   bool _isApproving = false;
   String? _userRole;
   bool _isMapReady = false;
+  bool _isMarkingReceived = false;
 
 
   @override
@@ -609,6 +610,173 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     } finally {
       setState(() => _isApproving = false);
     }
+  }
+
+  Future<void> _markAllowanceReceived(int allowanceId, String mode, String remarks) async {
+    setState(() => _isMarkingReceived = true);
+    try {
+      final token = await UserStore.getToken();
+      final url = ApiConstants.markAllowanceReceived(allowanceId);
+      final body = {
+        "payment_mode": mode,
+        "remarks": remarks.isEmpty ? "Received by driver" : remarks,
+      };
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode(body),
+      );
+
+      final respData = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Allowance marked as received!"), backgroundColor: Colors.green),
+        );
+        _fetchMissionDetails();
+      } else {
+        throw respData['message'] ?? "Failed to mark as received";
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isMarkingReceived = false);
+    }
+  }
+
+  void _showMarkReceivedModal(int allowanceId) {
+    String selectedMode = "UPI";
+    final TextEditingController remarksController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bool isDark = Theme.of(context).brightness == Brightness.dark;
+            final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final Color primaryIndigo = const Color(0xFF6366F1);
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Mark as Received",
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Please confirm the payment mode and add remarks.",
+                      style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "PAYMENT MODE",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      children: ["UPI", "BANK", "CASH"].map((mode) {
+                        final isSelected = selectedMode == mode;
+                        return ChoiceChip(
+                          label: Text(mode),
+                          selected: isSelected,
+                          onSelected: (val) {
+                            if (val) setModalState(() => selectedMode = mode);
+                          },
+                          selectedColor: primaryIndigo.withValues(alpha: 0.2),
+                          backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                          labelStyle: TextStyle(
+                            color: isSelected ? primaryIndigo : Colors.grey.shade600,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isSelected ? primaryIndigo : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          showCheckmark: false,
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "REMARKS",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: remarksController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: "Enter remarks (e.g., Paid and received by driver)",
+                        filled: true,
+                        fillColor: Colors.grey.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryIndigo, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isMarkingReceived ? null : () {
+                          Navigator.pop(context);
+                          _markAllowanceReceived(allowanceId, selectedMode, remarksController.text);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryIndigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: _isMarkingReceived 
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text("CONFIRM RECEIPT", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
 
@@ -1190,7 +1358,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
     final reqNo = travelInfo?['request_number'] ?? "REQ-N/A";
     final tType = travelInfo?['trip_type'] ?? widget.pathType;
-    final String status = (_missionData?['status'] ?? _missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
+    final String status = (_missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
     
     // Calculate color based on route_request_status
     Color statusColor = widget.statusColor;
@@ -2477,6 +2645,27 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         const SizedBox(width: 4),
                         Text("Paid by: ${paidByUser['name']}", style: TextStyle(fontSize: 10, color: sub.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
                       ],
+                    ),
+                  ],
+                  if (pStatus.toString().toUpperCase() == 'ASSIGNED') ...[
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showMarkReceivedModal(allowance['id']),
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                        label: const Text(
+                          "MARK AS RECEIVED",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: blue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
                   ],
                 ],
