@@ -78,6 +78,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   String? _userRole;
   bool _isMapReady = false;
   bool _isMarkingReceived = false;
+  int? _driverId;
 
 
   @override
@@ -97,7 +98,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   Future<void> _fetchUserRole() async {
     final role = await UserStore.getRole();
-    if (mounted) setState(() => _userRole = role);
+    final driverId = await UserStore.getDriverId();
+    if (mounted) {
+      setState(() {
+        _userRole = role;
+        _driverId = driverId;
+      });
+    }
   }
 
   /// Pull-to-refresh handler — re-fetches all data in parallel.
@@ -2503,7 +2510,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       for (var trip in tripInstances) {
         final allowances = trip['allowances'] as List?;
         if (allowances != null) {
-          allAllowances.addAll(allowances);
+          allAllowances.addAll(List<Map<String, dynamic>>.from(allowances));
         }
         
         // Collect drivers for this trip
@@ -2522,6 +2529,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           }
         }
       }
+    }
+
+    // Filter allowances for drivers
+    if (_userRole?.toLowerCase() == 'driver' && _driverId != null) {
+      allAllowances = allAllowances.where((a) => a['driver_id'] == _driverId).toList();
     }
 
     return Column(
