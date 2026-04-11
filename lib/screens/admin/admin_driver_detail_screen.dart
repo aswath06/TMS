@@ -71,7 +71,12 @@ class AdminDriverDetailScreen extends StatelessWidget {
                       _InfoItem(
                         Icons.bloodtype,
                         "Blood Group",
-                        driver['blood_group'] ?? 'N/A',
+                        driver['driverProfile']?['blood_group'] ?? 'N/A',
+                      ),
+                      _InfoItem(
+                        Icons.location_on,
+                        "Address",
+                        driver['driverProfile']?['address'] ?? 'N/A',
                       ),
                     ],
                     surfaceColor,
@@ -84,23 +89,47 @@ class AdminDriverDetailScreen extends StatelessWidget {
                     [
                       _InfoItem(
                         Icons.badge,
+                        "Employee Code",
+                        driver['driverProfile']?['employee_code'] ?? 'N/A',
+                      ),
+                      _InfoItem(
+                        Icons.description,
                         "License No",
-                        driver['license_number'] ?? 'N/A',
+                        driver['driverProfile']?['license_number'] ?? 'N/A',
                       ),
                       _InfoItem(
                         Icons.event,
                         "License Expiry",
-                        _formatDate(driver['license_expiry']),
+                        _formatDate(driver['driverProfile']?['license_expiry_date']),
+                      ),
+                      _InfoItem(
+                        Icons.calendar_today,
+                        "Joining Date",
+                        _formatDate(driver['driverProfile']?['joining_date']),
                       ),
                       _InfoItem(
                         Icons.history,
                         "Experience",
-                        "${driver['experience_years'] ?? 0} Years",
+                        "${driver['driverProfile']?['experience_years'] ?? 0} Years",
+                      ),
+                    ],
+                    surfaceColor,
+                    isDark,
+                  ),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle("Emergency Contact", titleColor),
+                  const SizedBox(height: 16),
+                  _buildInfoGrid(
+                    [
+                      _InfoItem(
+                        Icons.contact_emergency,
+                        "Name",
+                        driver['driverProfile']?['emergency_contact_name'] ?? 'N/A',
                       ),
                       _InfoItem(
-                        Icons.payments,
-                        "Salary",
-                        "₹${driver['salary'] ?? '0.00'}",
+                        Icons.phone_callback,
+                        "Phone",
+                        driver['driverProfile']?['emergency_contact_phone'] ?? 'N/A',
                       ),
                     ],
                     surfaceColor,
@@ -334,7 +363,7 @@ class AdminDriverDetailScreen extends StatelessWidget {
         Expanded(
           child: _buildStatCard(
             "Total KM",
-            "${driver['total_kilometer_drive'] ?? 0}",
+            "${driver['driverProfile']?['total_kilometer_drived'] ?? 0}",
             Icons.speed,
             primaryBlue,
             surfaceColor,
@@ -345,7 +374,7 @@ class AdminDriverDetailScreen extends StatelessWidget {
         Expanded(
           child: _buildStatCard(
             "Total Routes",
-            "${driver['total_routes'] ?? 0}",
+            "${driver['driverProfile']?['total_routes'] ?? 0}",
             Icons.route,
             const Color(0xFF10B981),
             surfaceColor,

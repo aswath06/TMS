@@ -41,22 +41,22 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     } else if (sortType == 'Max Distance') {
       list.sort(
         (a, b) => _parseKm(
-          b['total_kilometer_drive']?.toString() ?? '0',
-        ).compareTo(_parseKm(a['total_kilometer_drive']?.toString() ?? '0')),
+          b['driverProfile']?['total_kilometer_drived']?.toString() ?? '0',
+        ).compareTo(_parseKm(a['driverProfile']?['total_kilometer_drived']?.toString() ?? '0')),
       );
     } else if (sortType == 'Min Distance') {
       list.sort(
         (a, b) => _parseKm(
-          a['total_kilometer_drive']?.toString() ?? '0',
-        ).compareTo(_parseKm(b['total_kilometer_drive']?.toString() ?? '0')),
+          a['driverProfile']?['total_kilometer_drived']?.toString() ?? '0',
+        ).compareTo(_parseKm(b['driverProfile']?['total_kilometer_drived']?.toString() ?? '0')),
       );
     } else if (sortType == 'Max Experience') {
       list.sort(
-        (a, b) => (b['experience_years'] ?? 0).compareTo(a['experience_years'] ?? 0),
+        (a, b) => (b['driverProfile']?['experience_years'] ?? 0).compareTo(a['driverProfile']?['experience_years'] ?? 0),
       );
     } else if (sortType == 'Min Experience') {
       list.sort(
-        (a, b) => (a['experience_years'] ?? 0).compareTo(b['experience_years'] ?? 0),
+        (a, b) => (a['driverProfile']?['experience_years'] ?? 0).compareTo(b['driverProfile']?['experience_years'] ?? 0),
       );
     }
   }
@@ -1108,10 +1108,11 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);
 
-    final String kmDisplay = "${driver['total_kilometer_drive'] ?? 0} km";
-    final String employeeCode = driver['employee_code'] ?? 'N/A';
-    final int experience = driver['experience_years'] ?? 0;
-    final int routes = driver['total_routes'] ?? 0;
+    final String kmDisplay = "${driver['driverProfile']?['total_kilometer_drived'] ?? 0} km";
+    final String employeeCode = driver['driverProfile']?['employee_code'] ?? 'N/A';
+    final int experience = driver['driverProfile']?['experience_years'] ?? 0;
+    final int routes = driver['driverProfile']?['total_routes'] ?? 0;
+    final String bloodGroup = driver['driverProfile']?['blood_group'] ?? 'N/A';
 
     return GestureDetector(
       onTap: () {
@@ -1266,7 +1267,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                     ),
                     _buildQuickStat(
                       Icons.bloodtype_outlined,
-                      driver['blood_group'] ?? 'N/A',
+                      bloodGroup,
                       "Blood",
                       isDark,
                     ),

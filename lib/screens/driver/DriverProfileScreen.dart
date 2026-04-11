@@ -272,34 +272,46 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         'color': Colors.indigo,
       },
       {
+        'title': isTamil ? 'பணியாளர் குறியீடு' : 'Employee Code',
+        'val': data?['driverProfile']?['employee_code'],
+        'icon': Icons.badge_outlined,
+        'color': Colors.blueGrey,
+      },
+      {
         'title': isTamil ? 'அனுமதி எண்' : 'License Number',
-        'val': data?['license'],
+        'val': data?['driverProfile']?['license_number'],
         'icon': Icons.description_rounded,
         'color': Colors.orange,
       },
       {
         'title': isTamil ? 'இரத்த வகை' : 'Blood Group',
-        'val': data?['bloodGroup'],
+        'val': data?['driverProfile']?['blood_group'],
         'icon': Icons.bloodtype_rounded,
         'color': Colors.redAccent,
       },
       {
-        'title': isTamil ? 'மொத்த கிமீ' : 'Total KM',
-        'val': data?['totalKm'],
-        'icon': Icons.map_rounded,
-        'color': Colors.blue,
-      },
-      {
         'title': isTamil ? 'அனுமதி காலாவதி' : 'License Expiry',
-        'val': _formatDate(data?['licenseExpiry']),
+        'val': _formatDate(data?['driverProfile']?['license_expiry_date']),
         'icon': Icons.calendar_today_rounded,
         'color': Colors.amber.shade700,
       },
       {
         'title': isTamil ? 'அனுபவம்' : 'Experience',
-        'val': "${data?['expYears'] ?? 0} ${isTamil ? 'ஆண்டுகள்' : 'Years'}",
+        'val': "${data?['driverProfile']?['experience_years'] ?? 0} ${isTamil ? 'ஆண்டுகள்' : 'Years'}",
         'icon': Icons.work_history_rounded,
         'color': Colors.green,
+      },
+      {
+        'title': isTamil ? 'சேர்ந்த தேதி' : 'Joining Date',
+        'val': _formatDate(data?['driverProfile']?['joining_date']),
+        'icon': Icons.login_rounded,
+        'color': Colors.cyan,
+      },
+      {
+        'title': isTamil ? 'முகவரி' : 'Address',
+        'val': data?['driverProfile']?['address'],
+        'icon': Icons.location_on_rounded,
+        'color': Colors.deepOrange,
       },
     ];
     return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
@@ -327,16 +339,34 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         'color': Colors.blue,
       },
       {
+        'title': isTamil ? 'அவசர தொடர்பு' : 'Emergency Contact',
+        'val': data?['driverProfile']?['emergency_contact_name'],
+        'icon': Icons.contact_emergency_rounded,
+        'color': Colors.red,
+      },
+      {
+        'title': isTamil ? 'அவசர எண்' : 'Emergency Phone',
+        'val': data?['driverProfile']?['emergency_contact_phone'],
+        'icon': Icons.phone_callback_rounded,
+        'color': Colors.orange,
+      },
+      {
+        'title': isTamil ? 'மொத்த கிமீ' : 'Total KM',
+        'val': data?['driverProfile']?['total_kilometer_drived'],
+        'icon': Icons.speed_rounded,
+        'color': Colors.blue,
+      },
+      {
         'title': isTamil ? 'மொத்த பயணங்கள்' : 'Total Routes',
-        'val': data?['totalRoutes'],
+        'val': data?['driverProfile']?['total_routes'],
         'icon': Icons.route_rounded,
         'color': Colors.purple,
       },
       {
-        'title': isTamil ? 'மொத்த விடுப்புகள்' : 'Total Leaves',
-        'val': data?['totalLeaves'],
-        'icon': Icons.calendar_month_rounded,
-        'color': Colors.redAccent,
+        'title': isTamil ? 'நிலை' : 'Status',
+        'val': data?['driverProfile']?['status'],
+        'icon': Icons.info_outline_rounded,
+        'color': Colors.green,
       },
     ];
     return _renderGrid(items, isLoading, cardColor, titleColor, subColor);

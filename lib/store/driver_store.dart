@@ -253,66 +253,60 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
-      // 1. Fetch Basic Profile First (Repair Logic & Fallback Data)
-      final basicResponse = await http.get(
+      // Fetch Full User Profile (Includes roles, driverProfile, etc.)
+      final response = await http.get(
         Uri.parse(ApiConstants.userMe),
         headers: ApiConstants.getHeaders(token),
       );
 
-      Map<String, dynamic>? basicData;
-      int? recoveredId;
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final data = decoded['data'];
+          profileData.value = data;
 
-      if (basicResponse.statusCode == 200) {
-        final decoded = json.decode(basicResponse.body);
-        basicData = decoded['data'];
-        recoveredId = basicData?['id'];
-
-        // Repair missing ID in UserStore if found
-        if (recoveredId != null) {
-          await UserStore.saveUserId(recoveredId);
-        }
-      }
-
-      // 2. Attempt Driver Dashboard Fetch
-      final userId = recoveredId ?? await UserStore.getUserId();
-
-      if (userId != null) {
-        final url = "${ApiConstants.driverDashboard}$userId";
-        final dashResponse = await http.get(
-          Uri.parse(url),
-          headers: ApiConstants.getHeaders(token),
-        );
-
-        if (dashResponse.statusCode == 200) {
-          final decoded = json.decode(dashResponse.body);
-          if (decoded['success'] == true) {
-            profileData.value = decoded['driverData'];
-            ongoingTask.value = decoded['ongoingTask'];
-            upcomingRoutes.value = decoded['upcomingRoutes'] ?? [];
-            
-            // Extract and save driver_id if present
-            final driverId = decoded['driverData']?['driver_id'];
-            if (driverId != null) {
-              await UserStore.saveDriverId(driverId);
-            }
-            return; // Successfully fetched full dashboard
+          // Repair missing IDs in UserStore if found
+          if (data['id'] != null) {
+            await UserStore.saveUserId(data['id']);
           }
+          if (data['driverProfile'] != null && data['driverProfile']['id'] != null) {
+            await UserStore.saveDriverId(data['driverProfile']['id']);
+          }
+
+          // Optional: Fetch dashboard specifics if still needed for routes/tasks
+          await _fetchDashboardExtra(token, data['id']);
+          return;
         }
       }
-
-      // 3. Fallback to basic profile if dashboard restricted or ID still missing
-      if (basicData != null) {
-        profileData.value = basicData;
-        ongoingTask.value = null;
-        upcomingRoutes.value = [];
-      } else {
-        _profileError = "Failed to load profile data.";
-      }
+      _profileError = "Failed to load profile data.";
     } catch (e) {
       _profileError = "Network connection failed: $e";
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _fetchDashboardExtra(String token, dynamic userId) async {
+    if (userId == null) return;
+    try {
+      final url = "${ApiConstants.driverDashboard}$userId";
+      final dashResponse = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (dashResponse.statusCode == 200) {
+        final decoded = json.decode(dashResponse.body);
+        if (decoded['success'] == true) {
+          // We keep the profileData from auth/user/me as it's more standard
+          // but we grab the tasks/routes from here
+          ongoingTask.value = decoded['ongoingTask'];
+          upcomingRoutes.value = decoded['upcomingRoutes'] ?? [];
+        }
+      }
+    } catch (e) {
+      debugPrint("Extra dashboard fetch failed: $e");
     }
   }
 
