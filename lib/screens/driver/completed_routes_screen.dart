@@ -173,9 +173,6 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
     final String? tripStatus = (tripStatuses != null && tripStatuses.isNotEmpty) ? tripStatuses[0]['status']?.toString().toUpperCase() : null;
     
     // Status Logic - Always Completed here
-    String statusStr = isTamil ? "முடிந்தது" : "Completed";
-    Color statusColor = Colors.green;
-    
     // Status Logic - Always Completed here
     String statusStr = isTamil ? "முடிந்தது" : "Completed";
     Color statusColor = Colors.green;
