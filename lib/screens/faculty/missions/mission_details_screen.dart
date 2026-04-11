@@ -1190,7 +1190,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
     final reqNo = travelInfo?['request_number'] ?? "REQ-N/A";
     final tType = travelInfo?['trip_type'] ?? widget.pathType;
-    final String status = (_missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
+    final String status = (_missionData?['status'] ?? _missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
     
     // Calculate color based on route_request_status
     Color statusColor = widget.statusColor;

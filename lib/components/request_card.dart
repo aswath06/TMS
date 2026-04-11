@@ -21,7 +21,7 @@ class RequestCard extends StatelessWidget {
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
 
-    final String s = (req['route_request_status'] ?? req['status'] ?? 'Pending').toString().toUpperCase();
+    final String s = (req['status'] ?? req['route_request_status'] ?? 'Pending').toString().toUpperCase();
     Color bColor;
     if (s == 'STARTED' || s == 'ONGOING') {
       bColor = Colors.orange;

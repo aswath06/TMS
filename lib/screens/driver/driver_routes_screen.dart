@@ -194,14 +194,20 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
 
     final String? routeReqStatus = mission['route_request_status']?.toString().toUpperCase();
 
-    // Use route_request_status if available, then trip status, then fallback to route status
-    final effectiveStatus = routeReqStatus ?? tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
+    // Use execution status (rawStatusValue or tripStatus) first, then administrative status
+    final effectiveStatus = (rawStatusValue is String ? rawStatusValue.toUpperCase() : null) ?? tripStatus ?? routeReqStatus;
 
     if (effectiveStatus != null) {
-      if (effectiveStatus == 'READY' || effectiveStatus == 'APPROVED' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
+      if (effectiveStatus == 'STARTED') {
+        statusStr = isTamil ? "தொடங்கப்பட்டது" : "Started";
+        statusColor = Colors.orange;
+      } else if (effectiveStatus == 'APPROVED') {
+        statusStr = isTamil ? "அங்கீகரிக்கப்பட்டது" : "Approved";
+        statusColor = Colors.blue;
+      } else if (effectiveStatus == 'READY' || effectiveStatus == 'PLANNED' || effectiveStatus == 'ASSIGNED') {
         statusStr = isTamil ? "ஒதுக்கப்பட்டது" : "Assigned";
         statusColor = Colors.blue;
-      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'STARTED' || effectiveStatus == 'ONGOING') {
+      } else if (effectiveStatus == 'ON_TRIP' || effectiveStatus == 'ONGOING') {
         statusStr = isTamil ? "நடைபெறுகிறது" : "On Trip";
         statusColor = Colors.orange;
       } else if (effectiveStatus == 'COMPLETED' || effectiveStatus == 'FINISHED') {
