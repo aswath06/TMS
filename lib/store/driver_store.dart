@@ -570,16 +570,17 @@ class DriverStore extends ChangeNotifier {
       }
 
       final encryptedOtp = CryptoUtils.encryptOTP(otp);
-      final url = isStart ? ApiConstants.startRoute : ApiConstants.completeRouteOtp;
+      final url = isStart ? ApiConstants.startTrip(routeId) : ApiConstants.endLeg(routeId);
 
       final body = {
-        "route_id": routeId,
-        "driver_id": driverId,
+        "mode": "OTP",
         "otp": encryptedOtp,
       };
 
       debugPrint("--- [DEBUG] STARTING OTP VERIFICATION ---");
-      debugPrint("curl --location '$url' \\");
+      debugPrint("URL: $url");
+      debugPrint("Payload: ${jsonEncode(body)}");
+      debugPrint("CURL: curl --location '$url' \\");
       final headers = ApiConstants.getHeaders(token);
       headers.forEach((key, value) {
         debugPrint("--header '$key: $value' \\");

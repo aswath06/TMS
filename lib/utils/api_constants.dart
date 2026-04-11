@@ -43,6 +43,8 @@ class ApiConstants {
   static const String getAvailableDrivers = "$baseUrl/api/routes/route-requests/available-drivers";
   static String adminFinalize(dynamic id) => "$baseUrl/api/routes/route-requests/$id/admin-finalize";
   static String markAllowanceReceived(dynamic id) => "$baseUrl/api/routes/mark-received/$id/receive";
+  static String startTrip(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/start";
+  static String endLeg(dynamic legId) => "$baseUrl/api/routes/trips/legs/$legId/end";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";

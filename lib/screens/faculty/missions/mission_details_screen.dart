@@ -491,11 +491,31 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     debugPrint("DEBUG: isStart=$isStart, statusString=$statusString, currentStatus=$currentStatus");
 
     if (isDriver) {
+        final tripInstances = _missionData?['trip_instances'] as List?;
+        String targetId = widget.requestId; // Fallback
+        
+        if (tripInstances != null && tripInstances.isNotEmpty) {
+          final firstTrip = tripInstances[0];
+          if (isStart) {
+            targetId = firstTrip['id'].toString();
+          } else {
+            final legs = firstTrip['legs'] as List?;
+            if (legs != null && legs.isNotEmpty) {
+              // Try to find an "ongoing" or "started" leg, otherwise use the first one
+              final activeLeg = legs.firstWhere(
+                (l) => l['status']?.toString().toUpperCase() == 'STARTED',
+                orElse: () => legs[0]
+              );
+              targetId = activeLeg['id'].toString();
+            }
+          }
+        }
+
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => VerifyMissionScreen(
-              requestId: widget.requestId,
+              requestId: targetId,
               isStart: isStart,
             ),
           ),
