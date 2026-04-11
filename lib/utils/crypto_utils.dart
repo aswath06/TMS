@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 class CryptoUtils {
-  static const String _secretKey = "tripzo_default_dev_secret_change_in_prod";
+  static const String _secretKey = "sureshaswath05!";
 
   static String decryptOTP(String encryptedOtp) {
     if (encryptedOtp.isEmpty) return "";

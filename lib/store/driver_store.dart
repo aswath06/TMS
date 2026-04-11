@@ -583,14 +583,27 @@ class DriverStore extends ChangeNotifier {
       };
 
       debugPrint("--- [DEBUG] STARTING OTP VERIFICATION ---");
+      debugPrint("Mode: OTP");
+      debugPrint("Value: $otp");
+      
+      // Log decryption attempt if it looks encrypted (e.g. hex string longer than 6)
+      if (otp.length > 6 || !RegExp(r'^\d+$').hasMatch(otp)) {
+        try {
+          final decrypted = CryptoUtils.decryptOTP(otp);
+          debugPrint("Decrypted Value: $decrypted");
+        } catch (_) {}
+      }
+
       debugPrint("URL: $url");
-      debugPrint("Payload: ${jsonEncode(body)}");
-      debugPrint("CURL: curl --location '$url' \\");
+      debugPrint("------------------------------------------");
+      debugPrint("CURL COMMAND:");
       final headers = ApiConstants.getHeaders(token);
+      String curl = "curl --location --request POST '$url' \\\n";
       headers.forEach((key, value) {
-        debugPrint("--header '$key: $value' \\");
+        curl += "--header '$key: $value' \\\n";
       });
-      debugPrint("--data '${jsonEncode(body)}'");
+      curl += "--data '${jsonEncode(body)}'";
+      debugPrint(curl);
       debugPrint("------------------------------------------");
 
       final response = await http.post(
@@ -599,8 +612,10 @@ class DriverStore extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
-      debugPrint("OTP Verification - Status Code: ${response.statusCode}");
-      debugPrint("OTP Verification - Response: ${response.body}");
+      debugPrint("--- [DEBUG] OTP VERIFICATION RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Body: ${response.body}");
+      debugPrint("------------------------------------------");
 
       final decoded = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {

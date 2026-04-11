@@ -188,7 +188,11 @@ class RequestStore extends ChangeNotifier {
 
     final String? routeReqStatus = req['route_request_status']?.toString().toUpperCase();
     if (routeReqStatus != null && routeReqStatus.isNotEmpty) {
-      statusString = routeReqStatus;
+      // Prioritize execution statuses over administrative ones
+      const executionStatuses = ['STARTED', 'ONGOING', 'COMPLETED'];
+      if (!executionStatuses.contains(statusString)) {
+        statusString = routeReqStatus;
+      }
     }
 
     return {

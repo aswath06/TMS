@@ -542,18 +542,29 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         endpoint = "https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/end-otp";
       }
 
+      final headers = ApiConstants.getHeaders(token);
+      
+      // Log CURL for debug
+      debugPrint("--- [DEBUG] GENERATING OTP ---");
+      debugPrint("Endpoint: $endpoint");
+      String curl = "curl --location --request POST '$endpoint' \\\n";
+      headers.forEach((key, value) {
+        curl += "--header '$key: $value' \\\n";
+      });
+      curl += "--data ''";
+      debugPrint("CURL COMMAND:\n$curl");
+      debugPrint("-------------------------------");
+
       final response = await http.post(
         Uri.parse(endpoint),
-        headers: ApiConstants.getHeaders(token),
+        headers: headers,
         body: "", // Dynamic endpoints use empty body as per standard
       );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        debugPrint("API Error! Endpoint: $endpoint");
-        debugPrint("Curl: curl -X POST '$endpoint' -H 'Authorization: TMS $token' -H 'Content-Type: application/json' --data ''");
-        debugPrint("Response Status: ${response.statusCode}");
-        debugPrint("Response Body: ${response.body}");
-      }
+      debugPrint("--- [DEBUG] OTP GENERATION RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("---------------------------------------");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -1042,7 +1053,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
     // 2. PATCH Request
     final token = await UserStore.getToken();
-    final url = "${ApiConstants.baseUrl}/routes/trips/$tripId/stops/$stopId/update-status";
+    final url = "${ApiConstants.baseUrl}/api/routes/trips/$tripId/stops/$stopId/update-status";
     final body = {
       "action": action,
       "latitude": position.latitude,
@@ -1050,22 +1061,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       "recorded_at": DateTime.now().toUtc().toIso8601String(),
     };
 
-    // Console the CURL for debugging
-    debugPrint('\n--- [CURL COMMAND] ---');
-    debugPrint('curl --location --request PATCH \'$url\' \\');
-    debugPrint('--header \'Authorization: TMS $token\' \\');
-    debugPrint('--header \'Content-Type: application/json\' \\');
-    debugPrint('--data \'${jsonEncode(body)}\'');
-    debugPrint('----------------------\n');
-
     final response = await http.patch(
       Uri.parse(url),
       headers: ApiConstants.getHeaders(token),
       body: jsonEncode(body),
     );
 
-    debugPrint("DEBUG: PATCH Stop Status Response Code: ${response.statusCode}");
-    debugPrint("DEBUG: PATCH Stop Status Body: ${response.body}");
+    debugPrint("DEBUG: PATCH Stop Status Response: ${response.statusCode} - ${response.body}");
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       if (mounted) {

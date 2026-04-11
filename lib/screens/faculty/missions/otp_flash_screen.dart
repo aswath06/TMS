@@ -55,7 +55,23 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final String decryptedOtp = CryptoUtils.decryptOTP(widget.otp);
+    // Robustly determine raw OTP for display and encrypted data for QR
+    final String rawOtp;
+    final String qrData;
+    
+    if (RegExp(r'^\d{6}$').hasMatch(widget.otp)) {
+      // Input is raw numeric string
+      rawOtp = widget.otp;
+      qrData = CryptoUtils.encryptOTP(widget.otp);
+    } else {
+      // Input is likely encrypted hex string
+      qrData = widget.otp;
+      final decrypted = CryptoUtils.decryptOTP(widget.otp);
+      // If decryption fails to produce 6 digits, it might return the hex, 
+      // so we should handle that gracefully in the UI.
+      rawOtp = decrypted;
+    }
+
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Premium Color Palette & Design Tokens
@@ -200,7 +216,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                                 ],
                               ),
                               child: QrImageView(
-                                data: widget.otp,
+                                data: qrData,
                                 version: QrVersions.auto,
                                 size: MediaQuery.of(context).size.width * 0.42,
                                 eyeStyle: const QrEyeStyle(
@@ -235,7 +251,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
-                              decryptedOtp,
+                              rawOtp,
                               style: TextStyle(
                                 fontSize: 42,
                                 fontWeight: FontWeight.w900,
