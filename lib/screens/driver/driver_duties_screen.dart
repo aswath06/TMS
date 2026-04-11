@@ -367,8 +367,10 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     String statusStr = isTamil ? "தெரியவில்லை" : "Unknown";
     Color statusColor = Colors.grey;
 
-    // Use trip status if available, fallback to route status
-    final effectiveStatus = tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
+    final String? routeReqStatus = mission['route_request_status']?.toString().toUpperCase();
+
+    // Use route_request_status if available, then trip status, then fallback to route status
+    final effectiveStatus = routeReqStatus ?? tripStatus ?? (rawStatusValue is String ? rawStatusValue.toUpperCase() : null);
 
     if (rawStatusValue is int) {
       if (rawStatusValue == 5 || rawStatusValue == 6) {

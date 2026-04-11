@@ -753,6 +753,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           ],
                           if (!isDraft) ...[
                             _buildSectionTitle(
+                              "Guest Contacts",
+                              primaryBlue,
+                              titleColor,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildGuestContacts(cardColor, primaryBlue, subColor),
+                            const SizedBox(height: 32),
+                            _buildSectionTitle(
                               "Resource & Vehicle",
                               primaryBlue,
                               titleColor,
@@ -1158,6 +1166,17 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     );
   }
 
+  int _getTotalStopsCount() {
+    final legs = _missionData?['route_details']?['legs'] as List?;
+    if (legs == null) return 0;
+    int count = 0;
+    for (var leg in legs) {
+      final stops = leg['stops'] as List?;
+      if (stops != null) count += stops.length;
+    }
+    return count;
+  }
+
   Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
     final travelInfo = _missionData?['travel_info'];
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
@@ -1165,6 +1184,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final tType = travelInfo?['trip_type'] ?? widget.pathType;
     final status = travelInfo?['status'] ?? widget.status;
     final passengerCount = _missionData?['vehicle_config']?['passenger_count']?.toString() ?? widget.passengerCount;
+    final dynamic purpose = travelInfo?['purpose'];
 
     return Container(
       width: double.infinity,
@@ -1266,6 +1286,29 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               ),
             ],
           ),
+          if (purpose != null && purpose.toString().isNotEmpty && purpose.toString() != 'null') ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: primaryBlue.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 14, color: primaryBlue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "PURPOSE: ${travelInfo?['purpose']}",
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: primaryBlue, letterSpacing: 0.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 16),
@@ -1273,7 +1316,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             children: [
               Expanded(child: _buildMetric(Icons.groups_rounded, passengerCount, "GUESTS", primaryBlue, subColor)),
               const SizedBox(width: 16),
-              Expanded(child: _buildMetric(Icons.alt_route_rounded, (_missionData?['route_details']?['legs']?[0]?['stops'] as List?)?.length.toString() ?? "0", "STOPS", primaryBlue, subColor)),
+              Expanded(child: _buildMetric(Icons.alt_route_rounded, _getTotalStopsCount().toString(), "STOPS", primaryBlue, subColor)),
             ],
           ),
         ],
@@ -1511,6 +1554,122 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGuestContacts(Color cardColor, Color blue, Color subColor) {
+    final guests = _missionData?['passengers'] as List?;
+    if (guests == null || guests.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: subColor.withValues(alpha: 0.1)),
+        ),
+        child: Text(
+          "No guest contact information available.",
+          style: TextStyle(color: subColor, fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
+    return Column(
+      children: guests.asMap().entries.map((entry) {
+        final i = entry.key;
+        final g = entry.value;
+        final phone = g['phone'];
+        final isPrimary = g['is_primary_contact'] == true;
+        final dept = g['department'];
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: blue.withValues(alpha: 0.1)),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: blue.withValues(alpha: 0.1),
+                  child: Text(
+                    "${i + 1}",
+                    style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              g['passenger_name'] ?? "Guest",
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
+                            ),
+                          ),
+                          if (isPrimary)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                "PRIMARY",
+                                style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              phone ?? 'No Phone Provided',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: subColor),
+                            ),
+                          ),
+                          if (dept != null && dept.toString().isNotEmpty && dept != 'null')
+                             Text(
+                               dept,
+                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: blue.withValues(alpha: 0.6)),
+                             ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (phone != null && phone.toString().isNotEmpty)
+                  IconButton(
+                    onPressed: () async {
+                      final Uri url = Uri.parse("tel:$phone");
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
+                    icon: const Icon(Icons.call_rounded, color: Colors.green, size: 22),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.green.withValues(alpha: 0.1),
+                      padding: const EdgeInsets.all(10),
+                    ),
+                  )
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1794,9 +1953,29 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       children: assignmentWidgets.isNotEmpty 
           ? assignmentWidgets 
           : [
-              _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
-              const SizedBox(height: 12),
-              _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
+               if (_missionData?['trip_instances'] != null && (_missionData?['trip_instances'] as List).isNotEmpty)
+                 ...(_missionData?['trip_instances'] as List).map((trip) {
+                    final notes = trip['notes'];
+                    final status = trip['status'];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           if (notes != null && notes != 'null' && notes.toString().isNotEmpty)
+                             Text("NOTES: $notes", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: subColor.withValues(alpha: 0.7))),
+                           _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
+                           const SizedBox(height: 12),
+                           _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
+                        ],
+                      ),
+                    );
+                 }),
+               if (assignmentWidgets.isEmpty && (_missionData?['trip_instances'] == null || (_missionData?['trip_instances'] as List).isEmpty)) ...[
+                 _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
+                 const SizedBox(height: 12),
+                 _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
+               ]
             ],
     );
   }
@@ -1916,19 +2095,52 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                borderRadius: BorderRadius.circular(16),
                border: Border.all(color: subColor.withValues(alpha: 0.1)),
              ),
-             child: Row(
-                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                 children: [
-                   Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
+             child: Column(
+               children: [
+                 Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                      children: [
-                        Text(createdBy['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
-                        const SizedBox(height: 4),
-                        Text(createdBy['role'] ?? 'Staff', style: TextStyle(fontWeight: FontWeight.w600, color: subColor, fontSize: 12)),
+                       Expanded(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                              Text(createdBy['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
+                              const SizedBox(height: 4),
+                              Text(createdBy['role'] ?? 'Staff', style: TextStyle(fontWeight: FontWeight.w600, color: subColor, fontSize: 12)),
+                           ],
+                         ),
+                       ),
+                       Icon(Icons.edit_note_rounded, color: blue.withValues(alpha: 0.8), size: 28),
+                     ],
+                 ),
+                 if (createdBy['email'] != null || createdBy['phone'] != null) ...[
+                   const SizedBox(height: 12),
+                   const Divider(height: 1),
+                   const SizedBox(height: 12),
+                   Row(
+                     children: [
+                       if (createdBy['email'] != null)
+                         Expanded(
+                           child: Row(
+                             children: [
+                               Icon(Icons.email_outlined, size: 12, color: subColor),
+                               const SizedBox(width: 6),
+                               Expanded(child: Text(createdBy['email'], style: TextStyle(fontSize: 11, color: subColor), overflow: TextOverflow.ellipsis)),
+                             ],
+                           ),
+                         ),
+                       if (createdBy['phone'] != null)
+                         Row(
+                           children: [
+                             Icon(Icons.phone_outlined, size: 12, color: subColor),
+                             const SizedBox(width: 6),
+                             Text(createdBy['phone'], style: TextStyle(fontSize: 11, color: subColor)),
+                           ],
+                         ),
                      ],
                    ),
-                   Icon(Icons.edit_note_rounded, color: blue.withValues(alpha: 0.8), size: 28),
                  ],
+               ],
              ),
            ),
            const SizedBox(height: 24),
@@ -1945,19 +2157,52 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                borderRadius: BorderRadius.circular(16),
                border: Border.all(color: subColor.withValues(alpha: 0.1)),
              ),
-             child: Row(
-                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                 children: [
-                   Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
+             child: Column(
+               children: [
+                 Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                      children: [
-                        Text(approvedBy['name'] ?? 'System', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
-                        const SizedBox(height: 4),
-                        Text("AUTHORIZED", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 10, letterSpacing: 1)),
+                       Expanded(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                              Text(approvedBy['name'] ?? 'System', style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15)),
+                              const SizedBox(height: 4),
+                              Text("AUTHORIZED", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 10, letterSpacing: 1)),
+                           ],
+                         ),
+                       ),
+                       const Icon(Icons.verified_user_rounded, color: Colors.green, size: 28),
                      ],
-                   ),
-                   const Icon(Icons.verified_user_rounded, color: Colors.green, size: 28),
+                 ),
+                 if (approvedBy['email'] != null || approvedBy['phone'] != null) ...[
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        if (approvedBy['email'] != null)
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.email_outlined, size: 12, color: subColor),
+                                const SizedBox(width: 6),
+                                Expanded(child: Text(approvedBy['email'], style: TextStyle(fontSize: 11, color: subColor), overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                          ),
+                        if (approvedBy['phone'] != null)
+                          Row(
+                            children: [
+                              Icon(Icons.phone_outlined, size: 12, color: subColor),
+                              const SizedBox(width: 6),
+                              Text(approvedBy['phone'], style: TextStyle(fontSize: 11, color: subColor)),
+                            ],
+                          ),
+                      ],
+                    ),
                  ],
+               ],
              ),
            ),
            const SizedBox(height: 24),
@@ -2116,6 +2361,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             final amount = allowance['amount'] ?? "0.00";
             final type = allowance['allowance_type'] ?? "ALLOWANCE";
             final reason = allowance['reason'] ?? "Trip related expense";
+            final pStatus = allowance['payment_status'] ?? "PENDING";
+            final paidByUser = allowance['paid_by_user'];
+            final aRemarks = allowance['remarks'];
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -2125,34 +2373,62 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: blue.withValues(alpha: 0.1)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: const Icon(Icons.payments_rounded, color: Color(0xFF10B981), size: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.payments_rounded, color: Color(0xFF10B981), size: 20),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${driver?['name'] ?? 'Driver'} - $type",
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              reason,
+                              style: TextStyle(color: sub, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            "₹$amount",
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF10B981)),
+                          ),
+                          Text(
+                            pStatus.toString().toUpperCase(),
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: pStatus == 'PAID' ? Colors.green : Colors.amber),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  if (aRemarks != null && aRemarks.toString().isNotEmpty && aRemarks != 'null') ...[
+                    const SizedBox(height: 12),
+                    Text("REMARKS: $aRemarks", style: TextStyle(fontSize: 11, color: sub.withValues(alpha: 0.7), fontStyle: FontStyle.italic)),
+                  ],
+                  if (paidByUser != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        Text(
-                          "${driver?['name'] ?? 'Driver'} - $type",
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          reason,
-                          style: TextStyle(color: sub, fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
+                        Icon(Icons.person_outline, size: 10, color: sub.withValues(alpha: 0.5)),
+                        const SizedBox(width: 4),
+                        Text("Paid by: ${paidByUser['name']}", style: TextStyle(fontSize: 10, color: sub.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
                       ],
                     ),
-                  ),
-                  Text(
-                    "₹$amount",
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF10B981)),
-                  ),
+                  ],
                 ],
               ),
             );
