@@ -301,8 +301,8 @@ class RequestStore extends ChangeNotifier {
 
     return {
       'id': leave['id'],
-      'driver': leave['driver']?['name'] ?? 'Unknown Driver',
-      'driver_full': leave['driver'], // Full driver object (id, name, email)
+      'driver': leave['user']?['name'] ?? 'Unknown Driver',
+      'driver_full': leave['user'], // Full user/driver object (id, name, email, phone)
       'from': _formatLeaveDate(leave['from_date']),
       'to': _formatLeaveDate(leave['to_date']),
       'from_raw': leave['from_date'],
@@ -311,9 +311,9 @@ class RequestStore extends ChangeNotifier {
       'status': status,
       'rawStatus': leave['status'],
       'reason': leave['reason'] ?? '',
-      'leave_type': leave['leave_type'],
+      'leave_type': leave['leave_type_id'],   // API returns leave_type_id
       'driver_details': leave['driver_details'],
-      'approver': leave['approver'], // Full approver object (id, name)
+      'approver': leave['approvedBy'], // API returns approvedBy (id, name)
       'approved_at': leave['approved_at'],
       'created_at': leave['created_at'],
       'current_assignment': leave['current_assignment'],
