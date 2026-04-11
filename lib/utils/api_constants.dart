@@ -45,6 +45,12 @@ class ApiConstants {
   static String markAllowanceReceived(dynamic id) => "$baseUrl/api/routes/mark-received/$id/receive";
   static String startTrip(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/start";
   static String endLeg(dynamic legId) => "$baseUrl/api/routes/trips/legs/$legId/end";
+  
+  // Trip actions
+  static String getStartOtp(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/start-otp";
+  static String getEndOtp(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/end-otp";
+  static String updateStopStatus(dynamic tripId, dynamic stopId) => "$baseUrl/api/routes/trips/$tripId/stops/$stopId/update-status";
+  static const String updateAssignedVehicles = "$baseUrl/request/update-assigned-vehicles";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";

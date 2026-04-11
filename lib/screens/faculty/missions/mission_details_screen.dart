@@ -128,8 +128,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       );
 
       // Console the curl and response as requested
-      debugPrint("DEBUG: CURL command for Mission Details:");
-      debugPrint("curl -X GET '$url' -H 'Authorization: TMS $token' -H 'Content-Type: application/json'");
+      debugPrint("DEBUG: Mission Details Fetch: ID=${widget.requestId}");
+      // debugPrint("curl -X GET '$url' -H 'Authorization: TMS $token' -H 'Content-Type: application/json'");
       debugPrint("DEBUG: Mission Details Response Status: ${response.statusCode}");
       debugPrint("DEBUG: Mission Details Response Body: ${response.body}");
 
@@ -190,7 +190,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         "allocations": allocations,
       };
 
-      final url = "${ApiConstants.baseUrl}/request/update-assigned-vehicles";
+      final url = ApiConstants.updateAssignedVehicles;
       final response = await http.put(
         Uri.parse(url),
         headers: {
@@ -413,8 +413,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Future<LatLng?> _geocode(String query) async {
-    final url =
-        "https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1&countrycodes=in";
+    final url = "https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1&countrycodes=in";
     try {
       final response = await http.get(
         Uri.parse(url),
@@ -432,8 +431,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   Future<void> _calculateRoute(List<LatLng> points) async {
     final String coords = points.map((p) => "${p.longitude},${p.latitude}").join(";");
-    final String url =
-        "https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=geojson";
+    final String url = "https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=geojson";
 
     try {
       final response = await http.get(
@@ -537,22 +535,17 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       // Determine dynamic endpoint based on action type
       String endpoint;
       if (isStart) {
-        endpoint = "https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/start-otp";
+        endpoint = ApiConstants.getStartOtp(tripId);
       } else {
-        endpoint = "https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/end-otp";
+        endpoint = ApiConstants.getEndOtp(tripId);
       }
 
       final headers = ApiConstants.getHeaders(token);
       
       // Log CURL for debug
       debugPrint("--- [DEBUG] GENERATING OTP ---");
-      debugPrint("Endpoint: $endpoint");
-      String curl = "curl --location --request POST '$endpoint' \\\n";
-      headers.forEach((key, value) {
-        curl += "--header '$key: $value' \\\n";
-      });
-      curl += "--data ''";
-      debugPrint("CURL COMMAND:\n$curl");
+      debugPrint("Endpoint: ${endpoint.replaceFirst(ApiConstants.baseUrl, '')}");
+      // debugPrint("CURL COMMAND:\n$curl");
       debugPrint("-------------------------------");
 
       final response = await http.post(
@@ -618,14 +611,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       if (tripId == null) throw "Trip ID not found";
 
       final response = await http.post(
-        Uri.parse("https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/start"),
+        Uri.parse(ApiConstants.startTrip(tripId)),
         headers: ApiConstants.getHeaders(token),
         body: jsonEncode({"mode": "DIRECT"}),
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         debugPrint("Direct Start API Error!");
-        debugPrint("Curl: curl -X POST 'https://18x50gz9-8055.inc1.devtunnels.ms/api/routes/trips/$tripId/start' -H 'Authorization: TMS $token' -H 'Content-Type: application/json' --data '${jsonEncode({"mode": "DIRECT"})}'");
+        // debugPrint("Curl: curl -X POST '${ApiConstants.startTrip(tripId)}' -H 'Authorization: TMS $token' -H 'Content-Type: application/json' --data '${jsonEncode({"mode": "DIRECT"})}'");
         debugPrint("Response Status: ${response.statusCode}");
         debugPrint("Response Body: ${response.body}");
       }
@@ -1053,7 +1046,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
     // 2. PATCH Request
     final token = await UserStore.getToken();
-    final url = "${ApiConstants.baseUrl}/api/routes/trips/$tripId/stops/$stopId/update-status";
+    final url = ApiConstants.updateStopStatus(tripId, stopId);
     final body = {
       "action": action,
       "latitude": position.latitude,
