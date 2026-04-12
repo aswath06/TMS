@@ -685,9 +685,18 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
               ),
             ],
           ),
-          if (fieldResults.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ...fieldResults.entries.map((e) {
+          if (!verified) ...[
+            if (fieldResults.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  "Could not extract bill details for comparison.",
+                  style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
+                ),
+              )
+            else ...[
+              const SizedBox(height: 12),
+              ...fieldResults.entries.map((e) {
               final matched = e.value['matched'] == true;
               final similarity = e.value['similarity'] ?? 0;
               return Padding(
@@ -701,32 +710,65 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        e.key.replaceAll('_', ' ').toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.key.replaceAll('_', ' ').toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : Colors.black87,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (!matched)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                "Input: ${e.value['input']} | Extracted: ${e.value['extracted']}",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red.withOpacity(0.8),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    Text(
-                      "${(similarity is num ? similarity : 0).toStringAsFixed(0)}%",
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: matched ? Colors.green : Colors.red,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "${(similarity is num ? similarity : 0).toStringAsFixed(0)}%",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: matched ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        if (!matched)
+                          Text(
+                            "MISMATCH",
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.red.withOpacity(0.6),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               );
             }),
-          ],
+          ]
         ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   // ─── Helpers ──────────────────────────────────────────────────────────
 

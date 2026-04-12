@@ -30,6 +30,8 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
   final TextEditingController _currentKmController = TextEditingController();
   final TextEditingController _litersController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _remarksController = TextEditingController();
+  final TextEditingController _indentNumberController = TextEditingController();
   DateTime? _fillingDate;
   File? _billImage;
 
@@ -38,6 +40,11 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
   Map<String, dynamic>? _selectedBunk;
   bool _isLoadingBunks = false;
   bool _isSubmitting = false;
+
+  // Verification
+  bool _isVerifying = false;
+  bool? _billVerified;
+  Map<String, dynamic>? _verificationResult;
 
   @override
   void initState() {
@@ -50,6 +57,8 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
     _currentKmController.dispose();
     _litersController.dispose();
     _amountController.dispose();
+    _remarksController.dispose();
+    _indentNumberController.dispose();
     super.dispose();
   }
 
@@ -125,7 +134,66 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
       
     );
     if (result != null && result.files.single.path != null) {
-      setState(() => _billImage = File(result.files.single.path!));
+      setState(() {
+        _billImage = File(result.files.single.path!);
+        _billVerified = null;
+        _verificationResult = null;
+      });
+      // Auto verify if fields are filled
+      if (_selectedBunk != null && 
+          _amountController.text.isNotEmpty && 
+          _litersController.text.isNotEmpty) {
+        _verifyBill();
+      }
+    }
+  }
+
+  Future<void> _verifyBill() async {
+    if (_billImage == null || _selectedBunk == null) return;
+
+    setState(() => _isVerifying = true);
+
+    try {
+      final token = await UserStore.getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiConstants.verifyFuelBill),
+      );
+
+      request.headers.addAll({
+        'Authorization': token != null ? 'TMS $token' : '',
+        'User-Agent': 'insomnia/12.3.0',
+        ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
+      });
+
+      request.files.add(await http.MultipartFile.fromPath('bill_image', _billImage!.path));
+      request.fields['bill_amount'] = _amountController.text;
+      request.fields['volume'] = _litersController.text;
+      request.fields['bunk_name'] = _selectedBunk!['name'] ?? '';
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _billVerified = data['verified'] == true;
+          _verificationResult = data;
+        });
+      } else {
+        setState(() {
+          _billVerified = false;
+          _verificationResult = null;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error verifying bill: $e");
+      setState(() {
+        _billVerified = false;
+        _verificationResult = null;
+      });
+    } finally {
+      setState(() => _isVerifying = false);
     }
   }
 
@@ -142,6 +210,11 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
         const SnackBar(content: Text("Please select filling date")),
       );
       return;
+    }
+
+    // Verify bill if not already verified
+    if (_billVerified == null && _billImage != null) {
+      await _verifyBill();
     }
 
     setState(() => _isSubmitting = true);
@@ -173,8 +246,9 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
       request.fields['bill_amount'] = _amountController.text;
       request.fields['current_odometer'] = _currentKmController.text;
       request.fields['filled_at'] = DateFormat('yyyy-MM-ddTHH:mm:ss').format(_fillingDate!);
-      request.fields['isMatches'] = 'true';
-      request.fields['remarks'] = "Admin created fuel log for driver";
+      request.fields['isMatches'] = (_billVerified == true) ? 'true' : 'false';
+      request.fields['remarks'] = _remarksController.text.isNotEmpty ? _remarksController.text : "Admin created fuel log for driver";
+      request.fields['indent_number'] = _indentNumberController.text;
 
       // Add bill image if selected
       if (_billImage != null) {
@@ -271,7 +345,39 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
               const SizedBox(height: 16),
               _buildDatePicker(surfaceColor, isDark),
               const SizedBox(height: 16),
+              _buildTextField(
+                controller: _indentNumberController,
+                label: "Indent Number",
+                icon: Icons.numbers_rounded,
+                surfaceColor: surfaceColor,
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _remarksController,
+                label: "Remarks",
+                icon: Icons.comment_rounded,
+                surfaceColor: surfaceColor,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
               _buildImagePicker(surfaceColor, isDark),
+              if (_isVerifying) ...[
+                const SizedBox(height: 16),
+                const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                      SizedBox(width: 12),
+                      Text("Verifying bill...", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+              if (_verificationResult != null && !_isVerifying) ...[
+                const SizedBox(height: 16),
+                _buildVerificationResult(isDark),
+              ],
               const SizedBox(height: 40),
               _buildSubmitButton(primaryBlue),
               const SizedBox(height: 40),
@@ -286,16 +392,16 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: primary.withOpacity(0.1),
+        color: primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: primary.withOpacity(0.2)),
+        border: Border.all(color: primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: primary.withOpacity(0.15),
+              color: primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.local_gas_station_rounded, color: primary, size: 28),
@@ -334,19 +440,20 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
         decoration: BoxDecoration(
           color: surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.local_gas_station_outlined, color: Color(0xFF3B82F6), size: 24),
             ),
             const SizedBox(width: 16),
+// ...
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,12 +541,13 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.calendar_month_outlined, color: Color(0xFF3B82F6)),
             ),
             const SizedBox(width: 16),
+// ...
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -528,7 +636,7 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withOpacity(0.1),
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -606,7 +714,7 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 5,
-        itemBuilder: (_, __) => Padding(
+        itemBuilder: (_, _) => Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: Row(
             children: [
@@ -653,7 +761,7 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 40,
                   offset: const Offset(0, -10),
                 ),
@@ -719,7 +827,7 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
                             )
                           : null,
                       filled: true,
-                      fillColor: Colors.black.withOpacity(0.04),
+                      fillColor: Colors.black.withValues(alpha: 0.04),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -742,7 +850,7 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
                           : ListView.separated(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: filteredBunks.length,
-                              separatorBuilder: (_, __) => const Divider(
+                              separatorBuilder: (_, _) => const Divider(
                                 height: 1,
                                 indent: 70,
                                 color: Colors.black12,
@@ -754,7 +862,7 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
                                   leading: Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                      color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -805,4 +913,144 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
       ),
     );
   }
+
+  Widget _buildVerificationResult(bool isDark) {
+    final verified = _billVerified == true;
+    final matchPct = _verificationResult?['overall_match_percentage'] ?? 0;
+    final fieldResults = _verificationResult?['field_results'] as Map<String, dynamic>? ?? {};
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: verified
+            ? Colors.green.withValues(alpha: isDark ? 0.12 : 0.06)
+            : Colors.orange.withValues(alpha: isDark ? 0.12 : 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: verified ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                verified ? Icons.verified_rounded : Icons.warning_amber_rounded,
+                color: verified ? Colors.green : Colors.orange,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  verified ? "Bill Verified ✓" : "Bill Verification Warning",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: verified ? Colors.green : Colors.orange,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: verified ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "${matchPct.toStringAsFixed(0)}% Match",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: verified ? Colors.green : Colors.orange,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!verified) ...[
+            if (fieldResults.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Text(
+                  "Could not extract bill details for comparison.",
+                  style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
+                ),
+              )
+            else ...[
+              const SizedBox(height: 12),
+              ...fieldResults.entries.map((e) {
+              final matched = e.value['matched'] == true;
+              final similarity = e.value['similarity'] ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      matched ? Icons.check_circle_outline : Icons.highlight_off,
+                      color: matched ? Colors.green : Colors.red,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.key.replaceAll('_', ' ').toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : Colors.black87,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (!matched)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                "Input: ${e.value['input']} | Extracted: ${e.value['extracted']}",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "${(similarity is num ? similarity : 0).toStringAsFixed(0)}%",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: matched ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        if (!matched)
+                          Text(
+                            "MISMATCH",
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.red.withOpacity(0.6),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ]
+        ],
+      ],
+    ),
+  );
+}
 }
