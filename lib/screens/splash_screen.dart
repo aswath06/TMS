@@ -8,6 +8,7 @@ import '../store/user_store.dart';
 import '../store/isdark.dart'; // Import Theme Store
 import '../store/istamil.dart'; // Import Language Store
 import '../utils/api_constants.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,6 +23,9 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _slideAnimation;
+  bool _isConnected = true;
+  StreamSubscription? _connectivitySubscription;
+  bool _hasCheckedConnectivity = false;
 
   @override
   void initState() {
@@ -53,22 +57,62 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Trigger Auth and Preferences Check
-    _initiateStartupSequence();
+    // Load preferences first (Theme/Language) - no internet required
+    _loadPreferences();
+
+    // Listen for connectivity changes
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      final result = results.first;
+      if (result != ConnectivityResult.none) {
+        if (!_isConnected) {
+          setState(() => _isConnected = true);
+          _initiateStartupSequence();
+        }
+      } else {
+        setState(() => _isConnected = false);
+      }
+    });
+
+    // Initial check
+    _checkInitialConnectivity();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        ThemeStore.isDark = prefs.getBool('isDark') ?? false;
+        LanguageStore.isTamil = prefs.getBool('isTamil') ?? false;
+      });
+    }
+  }
+
+  Future<void> _checkInitialConnectivity() async {
+    final results = await Connectivity().checkConnectivity();
+    final result = results.first;
+    if (result == ConnectivityResult.none) {
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _hasCheckedConnectivity = true;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isConnected = true;
+          _hasCheckedConnectivity = true;
+        });
+        _initiateStartupSequence();
+      }
+    }
   }
 
   /// Loads local settings and checks auth
   Future<void> _initiateStartupSequence() async {
-    final prefs = await SharedPreferences.getInstance();
+    if (!_isConnected) return;
 
-    // 1. Sync Theme and Language before navigating
-    if (mounted) {
-      setState(() {
-        ThemeStore.isDark = prefs.getBool('isDark') ?? false;
-        bool isTamil = prefs.getBool('isTamil') ?? false;
-        LanguageStore.isTamil = isTamil;
-      });
-    }
+    final prefs = await SharedPreferences.getInstance();
 
     // 2. Start the minimum display timer AND the API call in parallel
     final Future<bool> authCheck = _checkSession(prefs);
@@ -120,6 +164,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -243,8 +288,70 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
+            if (!_isConnected) _buildNoInternetUI(size, isDark, subTitleColor),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNoInternetUI(Size size, bool isDark, Color subTitleColor) {
+    return Container(
+      color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.9),
+      width: double.infinity,
+      height: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.wifi_off_rounded,
+            size: 80,
+            color: const Color(0xFF4F46E5),
+          ),
+          const SizedBox(height: 24),
+          Text(
+             LanguageStore.isTamil 
+              ? "இணைய இணைப்பு இல்லை"
+              : "No Internet Connection",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              LanguageStore.isTamil
+                  ? "தயவுசெய்து உங்கள் இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்."
+                  : "You are not connected to the internet. Please check your connection and try again.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: subTitleColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: () {
+              _checkInitialConnectivity();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              LanguageStore.isTamil ? "மீண்டும் முயற்சிக்கவும்" : "Retry",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
