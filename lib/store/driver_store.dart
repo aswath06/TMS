@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
+import 'package:tripzo/services/location_service.dart';
 
 final useDriverStore = DriverStore();
 
@@ -362,6 +363,21 @@ class DriverStore extends ChangeNotifier {
         if (decoded['success'] == true) {
           final List<dynamic> items = decoded['data'] ?? [];
           _missions = items.map((e) => e as Map<String, dynamic>).toList();
+          
+          // Auto-start tracking if any mission is already STARTED
+          int? startedTripId;
+          bool hasStartedMission = _missions.any((m) {
+            final status = m['route_status']?.toString().toUpperCase() ?? '';
+            final isStarted = status == 'STARTED' || status == 'ONGOING';
+            if (isStarted && m['trip_instances'] != null && (m['trip_instances'] as List).isNotEmpty) {
+              startedTripId = m['trip_instances'][0]['id'];
+            }
+            return isStarted;
+          });
+          
+          if (hasStartedMission && startedTripId != null) {
+             LocationService().startTracking(startedTripId!);
+          }
         } else {
           _missionsError = decoded['message'] ?? "Failed to fetch missions";
         }
@@ -653,6 +669,12 @@ class DriverStore extends ChangeNotifier {
 
       final decoded = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // 🚀 Start or Stop Tracking
+        if (isStart) {
+          LocationService().startTracking(routeId);
+        } else {
+          LocationService().stopTracking();
+        }
         return {"success": true, "message": decoded['message'] ?? "Operation successful"};
       } else {
         return {"success": false, "message": decoded['message'] ?? "Verification failed"};

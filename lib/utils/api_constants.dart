@@ -50,6 +50,7 @@ class ApiConstants {
   static String getStartOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-otp";
   static String getEndOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/end-otp";
   static String updateStopStatus(dynamic tripId, dynamic stopId) => "$baseUrl/request/trips/$tripId/stops/$stopId/update-status";
+  static String locationPing(dynamic tripId) => "$baseUrl/request/trips/$tripId/location-ping";
   static const String updateAssignedVehicles = "$baseUrl/request/update-assigned-vehicles";
 
   // Leaves

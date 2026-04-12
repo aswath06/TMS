@@ -12,10 +12,16 @@ import 'package:tripzo/store/isdark.dart';
 
 // Utils
 import 'utils/routes.dart';
+import 'package:tripzo/services/location_service.dart';
 
 void main() async {
   // Ensure Flutter framework is initialized before running code
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Background Location Service (Non-blocking)
+  LocationService().initializeService().catchError((e) {
+    debugPrint("Background Service Init Error: $e");
+  });
 
   // INITIALIZE DATE FORMATTING
   try {

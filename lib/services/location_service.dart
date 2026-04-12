@@ -1,0 +1,98 @@
+import 'dart:async';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tripzo/services/location_callback_handler.dart';
+
+class LocationService {
+  static final LocationService _instance = LocationService._internal();
+  factory LocationService() => _instance;
+  LocationService._internal();
+
+  Future<void> initializeService() async {
+    final service = FlutterBackgroundService();
+
+    // 1. Create Notification Channel
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'location_tracking_channel',
+      'TripZo Tracking',
+      description: 'Foreground service for driver location tracking',
+      importance: Importance.low,
+    );
+
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    // 2. Configure Service with top-level entry point
+    await service.configure(
+      androidConfiguration: AndroidConfiguration(
+        onStart: onStart, // From location_callback_handler.dart
+        autoStart: false,
+        isForegroundMode: true,
+        notificationChannelId: 'location_tracking_channel',
+        initialNotificationTitle: 'TripZo Active',
+        initialNotificationContent: 'Connecting to GPS...',
+        foregroundServiceNotificationId: 888,
+      ),
+      iosConfiguration: IosConfiguration(
+        autoStart: false,
+        onForeground: onStart, // From location_callback_handler.dart
+      ),
+    );
+  }
+
+  Future<void> startTracking(int tripInstanceId) async {
+    print("[LocationService] Preparing to start tracking for Trip #$tripInstanceId");
+
+    // 1. Check & Request Permissions
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      print("[LocationService] Requesting location permission...");
+      permission = await Geolocator.requestPermission();
+    }
+    
+    // Request Notification permission (Android 13+)
+    print("[LocationService] Requesting notification permission...");
+    await FlutterLocalNotificationsPlugin()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      print("[LocationService] Location permissions blocked. Tracking aborted.");
+      return;
+    }
+
+    // 2. Save trip state persistently for the background isolate
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('active_trip_instance_id', tripInstanceId);
+    await prefs.remove('last_lat'); // Reset for new trip
+    await prefs.remove('last_lon');
+
+    // 3. Start the service
+    final service = FlutterBackgroundService();
+    bool isRunning = await service.isRunning();
+    if (!isRunning) {
+      print("[LocationService] Launching background service...");
+      await service.startService();
+    } else {
+      print("[LocationService] Service already running. Re-syncing trip state.");
+    }
+  }
+
+  Future<void> stopTracking() async {
+    print("[LocationService] Stopping tracking process...");
+    final service = FlutterBackgroundService();
+    service.invoke('stopService');
+    
+    // Cleanup state
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('active_trip_instance_id');
+    await prefs.remove('last_lat');
+    await prefs.remove('last_lon');
+  }
+}
