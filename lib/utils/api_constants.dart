@@ -87,4 +87,10 @@ class ApiConstants {
     'ON_TRIP': 3,
     'ON_LEAVE': 4,
   };
+
+  static const Map<String, dynamic> bitLocation = {
+    'display_name': 'Bannari Amman Institute of Technology',
+    'lat': 11.49518076229493,
+    'lon': 77.27954948427481,
+  };
 }

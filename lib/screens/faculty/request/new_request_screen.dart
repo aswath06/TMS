@@ -96,7 +96,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         _userRole = role?.toLowerCase() ?? 'faculty'; 
         _totalSteps = _userRole.contains('admin') ? 5 : 2; 
         if (_stops.isEmpty) {
-          _stops.addAll([{"address": "Chennai", "lat": 13.0827, "lon": 80.2707}, {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411}]);
+          _stops.addAll([
+            {
+              "address": ApiConstants.bitLocation['display_name'],
+              "lat": ApiConstants.bitLocation['lat'],
+              "lon": ApiConstants.bitLocation['lon']
+            },
+            {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411}
+          ]);
         }
       });
     }

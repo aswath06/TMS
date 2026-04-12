@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 // ─────────────────────────────────────────────
 // DATA MODEL
@@ -100,7 +101,9 @@ class _LocationSelectorState extends State<LocationSelector> {
         if (data['code'] == 'Ok' && data['routes'].isNotEmpty) {
           final route = data['routes'][0];
           final double dist = (route['distance'] ?? 0) / 1000.0;
-          final double dur = (route['duration'] ?? 0) / 60.0;
+          // Calculate duration based on average speed of 40 km/h (requested by user)
+          final double dur = (dist / 40.0) * 60.0; 
+          
           final List geo = route['geometry']['coordinates'];
           final pts = geo.map((c) => LatLng(c[1], c[0])).toList();
 
@@ -108,8 +111,14 @@ class _LocationSelectorState extends State<LocationSelector> {
           setState(() {
             _routePoints = pts;
             _totalDistanceText = '${dist.toStringAsFixed(1)} km';
-            _totalDurationText =
-                dur > 60 ? '${(dur / 60).toStringAsFixed(1)} hrs' : '${dur.toStringAsFixed(0)} mins';
+            // Formatting the duration text
+            if (dur >= 60) {
+              int hrs = dur ~/ 60;
+              int mins = (dur % 60).toInt();
+              _totalDurationText = mins > 0 ? '${hrs}h ${mins}m' : '${hrs}h';
+            } else {
+              _totalDurationText = '${dur.toStringAsFixed(0)} mins';
+            }
           });
           _fitBounds(valid);
           final stopData = _stops.map((s) => {
@@ -642,14 +651,30 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
   }
 
   Widget _buildResultList(bool isDark, ScrollController ctrl) {
+    // Institution Locations (Always visible at the top)
+    final bitLoc = ApiConstants.bitLocation;
+    
     // Show search results
     if (_searched && _results.isNotEmpty) {
       return ListView.separated(
         controller: ctrl,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        itemCount: _results.length,
+        itemCount: _results.length + 1,
         separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
-        itemBuilder: (_, i) => _resultTile(_results[i], isDark, isFrequent: false),
+        itemBuilder: (_, i) {
+          if (i == 0) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _sectionHeader(Icons.school_rounded, 'INSTITUTION'),
+                _resultTile(bitLoc, isDark, isFrequent: false, isInstitution: true),
+                const SizedBox(height: 16),
+                _sectionHeader(Icons.search_rounded, 'SEARCH RESULTS'),
+              ],
+            );
+          }
+          return _resultTile(_results[i - 1], isDark, isFrequent: false);
+        },
       );
     }
 
@@ -689,19 +714,10 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       controller: ctrl,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            children: [
-              Icon(Icons.history_rounded, size: 15, color: Colors.grey.shade400),
-              const SizedBox(width: 6),
-              Text(
-                'Frequent Locations',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade500, letterSpacing: 0.5),
-              ),
-            ],
-          ),
-        ),
+        _sectionHeader(Icons.school_rounded, 'INSTITUTION'),
+        _resultTile(bitLoc, isDark, isFrequent: false, isInstitution: true),
+        const SizedBox(height: 24),
+        _sectionHeader(Icons.history_rounded, 'FREQUENT LOCATIONS'),
         ...List.generate(
           _frequent.length,
           (i) => Column(
@@ -716,7 +732,23 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     );
   }
 
-  Widget _resultTile(Map<String, dynamic> loc, bool isDark, {required bool isFrequent}) {
+  Widget _sectionHeader(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: Colors.grey.shade400),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade500, letterSpacing: 0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultTile(Map<String, dynamic> loc, bool isDark, {bool isFrequent = false, bool isInstitution = false}) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _pick(loc),
@@ -727,14 +759,18 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isFrequent
-                    ? Colors.orange.withOpacity(0.1)
-                    : widget.accentColor.withOpacity(0.08),
+                color: isInstitution 
+                    ? widget.accentColor.withOpacity(0.15)
+                    : (isFrequent
+                        ? Colors.orange.withOpacity(0.1)
+                        : widget.accentColor.withOpacity(0.08)),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                isFrequent ? Icons.history_rounded : Icons.location_on_rounded,
-                color: isFrequent ? Colors.orange : widget.accentColor,
+                isInstitution 
+                    ? Icons.account_balance_rounded 
+                    : (isFrequent ? Icons.history_rounded : Icons.location_on_rounded),
+                color: isInstitution ? widget.accentColor : (isFrequent ? Colors.orange : widget.accentColor),
                 size: 16,
               ),
             ),
