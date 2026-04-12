@@ -733,6 +733,41 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> submitAccidentEntry(Map<String, dynamic> data, String? proofPath) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = Uri.parse(ApiConstants.accidentEntry);
+      final request = http.MultipartRequest('POST', url);
+      request.headers.addAll(ApiConstants.getHeaders(token));
+
+      data.forEach((key, value) {
+        request.fields[key] = value.toString();
+      });
+
+      if (proofPath != null) {
+        request.files.add(await http.MultipartFile.fromPath('proof_file', proofPath));
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      String? errorMessage;
+      try {
+        final decoded = json.decode(response.body);
+        errorMessage = decoded['message'];
+      } catch (_) {}
+
+      return {
+        "success": response.statusCode == 200 || response.statusCode == 201,
+        "message": errorMessage ?? (response.statusCode == 200 ? "Success" : "Failed to log accident entry")
+      };
+    } catch (e) {
+      return {"success": false, "message": "Error: $e"};
+    }
+  }
+
   Future<void> fetchFuelBunks() async {
     _isLoadingMaintenance = true;
     notifyListeners();

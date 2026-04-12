@@ -68,6 +68,7 @@ class ApiConstants {
    // Maintenance
    static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";
    static const String serviceEntry = "$baseUrl/api/maintenance/service-entry";
+   static const String accidentEntry = "$baseUrl/api/vehicles/incidents/create";
    static const String getVehicleBunks = "$baseUrl/api/maintenance/get-bunks";
   static const String getServiceShops = "$baseUrl/api/maintenance/get-shops";
 

@@ -4,7 +4,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class ServicePage extends StatefulWidget {
@@ -512,9 +512,10 @@ class _ServicePageState extends State<ServicePage> with SingleTickerProviderStat
   Widget _buildProofUpload(Color primary, bool isDark, bool isTamil) {
     return GestureDetector(
       onTap: () async {
-        final result = await FilePicker.platform.pickFiles(type: FileType.image);
-        if (result != null && result.files.single.path != null) {
-          setState(() => _proofPath = result.files.single.path);
+        final picker = ImagePicker();
+        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+        if (image != null) {
+          setState(() => _proofPath = image.path);
         }
       },
       child: AnimatedContainer(

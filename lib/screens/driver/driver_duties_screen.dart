@@ -5,6 +5,7 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/fuel_page.dart';
 import 'package:tripzo/screens/driver/maintenance/service_page.dart';
+import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
 
 class DriverDutiesScreen extends StatefulWidget {
   const DriverDutiesScreen({super.key});
@@ -550,14 +551,25 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             Expanded(
               child: _buildNavigationCard(
                 context: context,
-                title: isTamil ? "சேவை" : "Service Entry",
-                subtitle: isTamil ? "பதிவு செய்யவும்" : "Log Maintenance",
-                icon: Icons.home_repair_service_rounded,
-                color: const Color(0xFF10B981),
+                title: isTamil ? "விபத்து" : "Accident Entry",
+                subtitle: isTamil ? "சம்பவத்தை பதிவு செய்யவும்" : "Report Incident",
+                icon: Icons.report_problem_rounded,
+                color: const Color(0xFFEF4444),
                 isDark: isDark,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ServicePage())),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AccidentPage())),
               ),
             ),
+            // Expanded(
+            //   child: _buildNavigationCard(
+            //     context: context,
+            //     title: isTamil ? "சேவை" : "Service Entry",
+            //     subtitle: isTamil ? "பதிவு செய்யவும்" : "Log Maintenance",
+            //     icon: Icons.home_repair_service_rounded,
+            //     color: const Color(0xFF10B981),
+            //     isDark: isDark,
+            //     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ServicePage())),
+            //   ),
+            // ),
           ],
         ),
       ],

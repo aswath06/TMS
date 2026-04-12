@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -70,17 +70,15 @@ class _AddDriverPageState extends State<AddDriverPage> {
   bool _isAutoUpload = true;
 
   void _pickLicenseImage(bool isFront) async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-    if (result != null && result.files.single.path != null) {
+    if (image != null) {
       setState(() {
         if (isFront) {
-          _frontPath = result.files.single.path;
+          _frontPath = image.path;
         } else {
-          _backPath = result.files.single.path;
+          _backPath = image.path;
         }
       });
 
