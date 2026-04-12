@@ -1892,6 +1892,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         }
         
         if (allStops.isNotEmpty) {
+          // Find the last stop that has arrived to show the "current location" car icon
+          int lastArrivedIndex = -1;
+          for (int i = 0; i < allStops.length; i++) {
+            if (allStops[i]['stop_status'] == 'ARRIVED') {
+              lastArrivedIndex = i;
+            }
+          }
+
           return ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -1905,6 +1913,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 status: stop['stop_status'] ?? "PENDING",
                 isFirst: index == 0,
                 isLast: index == allStops.length - 1,
+                isCurrentLocation: index == lastArrivedIndex,
                 color: blue,
                 titleColor: title,
                 tripId: stop['tripId'],
@@ -1930,6 +1939,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
     if (allStops.isEmpty) return const SizedBox.shrink();
 
+    // Find last arrived for fallback route as well (though less common)
+    int lastArrivedIndex = -1;
+    for (int i = 0; i < allStops.length; i++) {
+      if (allStops[i]['stop_status'] == 'ARRIVED') {
+        lastArrivedIndex = i;
+      }
+    }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1941,6 +1958,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           eta: stop['planned_arrival_time'] ?? "",
           isFirst: index == 0,
           isLast: index == allStops.length - 1,
+          isCurrentLocation: index == lastArrivedIndex,
           color: blue,
           titleColor: title,
         );
@@ -1955,6 +1973,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     String status = "PENDING",
     required bool isFirst,
     required bool isLast,
+    bool isCurrentLocation = false,
     required Color color,
     required Color titleColor,
     int? tripId,
@@ -1978,16 +1997,36 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           // Timeline indicator
           Column(
             children: [
-              Container(
-                margin: const EdgeInsets.only(top: 24),
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isFirst ? Colors.green : (isLast ? Colors.red : statusColor.withValues(alpha: 0.6)),
-                  border: Border.all(color: (isFirst ? Colors.green : (isLast ? Colors.red : statusColor)).withValues(alpha: 0.2), width: 4),
+              if (isCurrentLocation)
+                Container(
+                  margin: const EdgeInsets.only(top: 20),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.9, end: 1.1).animate(
+                      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+                    ),
+                    child: const Icon(
+                      Icons.directions_car_rounded,
+                      color: Colors.green,
+                      size: 24,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.only(top: 24),
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isFirst ? Colors.green : (isLast ? Colors.red : statusColor.withValues(alpha: 0.6)),
+                    border: Border.all(color: (isFirst ? Colors.green : (isLast ? Colors.red : statusColor)).withValues(alpha: 0.2), width: 4),
+                  ),
                 ),
-              ),
               if (!isLast)
                 Expanded(
                   child: Container(
