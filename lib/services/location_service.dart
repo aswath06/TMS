@@ -50,6 +50,13 @@ class LocationService {
     print("[LocationService] Preparing to start tracking for Trip #$tripInstanceId");
 
     // 1. Check & Request Permissions
+    bool isEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isEnabled) {
+      print("[LocationService] GPS is disabled. Tracking cannot start.");
+      await Geolocator.openLocationSettings();
+      return;
+    }
+
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       print("[LocationService] Requesting location permission...");

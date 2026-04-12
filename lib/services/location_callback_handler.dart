@@ -30,7 +30,29 @@ void onStart(ServiceInstance service) async {
     service.stopSelf();
   });
 
-  int secondsToNextSync = 30;
+  // Track if GPS is currently disabled to avoid spamming notifications
+  bool isGpsDisabled = false;
+
+  // 0. Monitor GPS Status changes
+  Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
+    if (status == ServiceStatus.disabled) {
+      isGpsDisabled = true;
+      _updateNotificationUI(
+        flutterLocalNotificationsPlugin, 
+        "⚠️ GPS DISABLED! Please turn on GPS.",
+        isCritical: true,
+      );
+    } else {
+      isGpsDisabled = false;
+      _updateNotificationUI(
+        flutterLocalNotificationsPlugin, 
+        "GPS Restored. Resuming tracking...",
+        isCritical: false,
+      );
+    }
+  });
+
+  int secondsToNextSync = 120;
 
   // Perform initial update immediately
   _performUpdate(service, flutterLocalNotificationsPlugin);
@@ -38,37 +60,40 @@ void onStart(ServiceInstance service) async {
   // 1. Countdown Timer (Updates UI every second)
   Timer.periodic(const Duration(seconds: 1), (timer) {
     secondsToNextSync--;
-    if (secondsToNextSync < 0) secondsToNextSync = 30;
+    if (secondsToNextSync < 0) secondsToNextSync = 120;
     
-    // Update notification with countdown
-    _updateNotificationUI(flutterLocalNotificationsPlugin, "Next sync in: ${secondsToNextSync}s");
+    // Update notification with countdown (only if GPS is active)
+    if (!isGpsDisabled) {
+      _updateNotificationUI(flutterLocalNotificationsPlugin, "Next sync in: ${secondsToNextSync}s");
+    }
   });
 
-  // 2. Sync Timer (Polls GPS and sends data every 30 seconds)
-  Timer.periodic(const Duration(seconds: 30), (timer) async {
+  // 2. Sync Timer (Polls GPS and sends data every 2 minutes)
+  Timer.periodic(const Duration(seconds: 120), (timer) async {
     if (service is AndroidServiceInstance) {
       if (!(await service.isForegroundService())) return;
     }
     await _performUpdate(service, flutterLocalNotificationsPlugin);
-    secondsToNextSync = 30; // Reset countdown after sync
+    secondsToNextSync = 120; // Reset countdown after sync
   });
 }
 
 // Helper to update notification without full GPS poll
-void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText) {
+void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText, {bool isCritical = false}) {
   notifications.show(
     888,
     'TripZo Tracking',
     subText,
-    const NotificationDetails(
+    NotificationDetails(
       android: AndroidNotificationDetails(
         'location_tracking_channel',
         'TripZo Tracking',
         ongoing: true,
         icon: 'ic_notification',
-        importance: Importance.low,
-        priority: Priority.low,
+        importance: isCritical ? Importance.max : Importance.low,
+        priority: isCritical ? Priority.high : Priority.low,
         showWhen: false,
+        color: isCritical ? Colors.red : null,
       ),
     ),
   );
@@ -127,6 +152,14 @@ Future<void> _performUpdate(
     }
   } catch (e) {
     print("[BackgroundService] System Error: $e");
+    if (e.toString().contains("LocationServiceDisabledException") || 
+        e.toString().contains("location services are disabled")) {
+       _updateNotificationUI(
+        notifications, 
+        "⚠️ GPS OFF - Tracking Paused!", 
+        isCritical: true
+      );
+    }
   }
 }
 

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
 import 'package:tripzo/screens/admin/AdminProfileScreen.dart';
 import 'package:tripzo/screens/admin/request/request_list_page.dart';
@@ -28,16 +31,91 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late PageController _pageController;
+  StreamSubscription<ServiceStatus>? _locationSubscription;
+  bool _isGpsDialogOpen = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _currentIndex);
+    
+    // Initialize monitor for drivers
+    if (widget.userRole.toLowerCase() == 'driver') {
+      _startLocationMonitor();
+    }
+  }
+
+  void _startLocationMonitor() {
+    _locationSubscription = Geolocator.getServiceStatusStream().listen((status) {
+      _evaluateGpsStatus(status);
+    });
+    
+    // Initial check after build
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final isEnabled = await Geolocator.isLocationServiceEnabled();
+      _evaluateGpsStatus(isEnabled ? ServiceStatus.enabled : ServiceStatus.disabled);
+    });
+  }
+
+  Future<void> _evaluateGpsStatus(ServiceStatus status) async {
+    if (!mounted) return;
+
+    if (status == ServiceStatus.disabled) {
+      final service = FlutterBackgroundService();
+      final isRunning = await service.isRunning();
+      
+      if (isRunning && !_isGpsDialogOpen) {
+        _showBlockingGpsDialog();
+      }
+    } else {
+      if (_isGpsDialogOpen) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _isGpsDialogOpen = false;
+      }
+    }
+  }
+
+  void _showBlockingGpsDialog() {
+    _isGpsDialogOpen = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false, // Prevent back button
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.location_off_rounded, color: Colors.red),
+              SizedBox(width: 12),
+              Text("GPS REQUIRED", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.red)),
+            ],
+          ),
+          content: const Text(
+            "Live tracking is active. You MUST keep your location services (GPS) turned ON to continue using the app during a mission.",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Geolocator.openLocationSettings(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Open Location Settings", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _locationSubscription?.cancel();
     super.dispose();
   }
 
