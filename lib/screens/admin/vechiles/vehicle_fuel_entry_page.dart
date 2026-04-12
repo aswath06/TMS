@@ -161,14 +161,20 @@ class _VehicleFuelEntryPageState extends State<VehicleFuelEntryPage> {
         ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
       });
 
+      final userId = await UserStore.getUserId();
+      final instanceId = DateFormat('yyyy/MM/dd').format(_fillingDate!);
+
       // Add form fields
+      request.fields['instance_id'] = instanceId;
       request.fields['vehicle_id'] = widget.vehicleId.toString();
       request.fields['bunk_id'] = _selectedBunk!['id'].toString();
+      request.fields['filled_by_user_id'] = userId?.toString() ?? "";
       request.fields['volume'] = _litersController.text;
       request.fields['bill_amount'] = _amountController.text;
-      request.fields['curr_km'] = _currentKmController.text;
-      request.fields['filled_at'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(_fillingDate!);
+      request.fields['current_odometer'] = _currentKmController.text;
+      request.fields['filled_at'] = DateFormat('yyyy-MM-ddTHH:mm:ss').format(_fillingDate!);
       request.fields['isMatches'] = 'true';
+      request.fields['remarks'] = "Admin created fuel log for driver";
 
       // Add bill image if selected
       if (_billImage != null) {

@@ -242,20 +242,18 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       });
 
       final userId = await UserStore.getUserId();
-      final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
-      final random = DateTime.now().millisecondsSinceEpoch.toString().substring(10);
-      final instanceId = "FL-$dateStr-$random";
+      final instanceId = DateFormat('yyyy/MM/dd').format(_fillingDate);
 
       request.fields['instance_id'] = instanceId;
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
       request.fields['bunk_id'] = _selectedBunk!['id'].toString();
-      request.fields['filled_for_assignment_id'] = userId?.toString() ?? "";
+      request.fields['filled_by_user_id'] = userId?.toString() ?? "";
       request.fields['volume'] = _volumeController.text;
       request.fields['bill_amount'] = _amountController.text;
       request.fields['current_odometer'] = _odometerController.text;
       request.fields['filled_at'] = DateFormat('yyyy-MM-ddTHH:mm:ss').format(_fillingDate);
       request.fields['isMatches'] = (_billVerified == true) ? 'true' : 'false';
-      request.fields['remarks'] = _remarksController.text.isEmpty ? "No bill uploaded now" : _remarksController.text;
+      request.fields['remarks'] = _remarksController.text.isEmpty ? "Admin created fuel log for driver" : _remarksController.text;
       
       if (_indentNumberController.text.isNotEmpty) {
         request.fields['indent_number'] = _indentNumberController.text;
