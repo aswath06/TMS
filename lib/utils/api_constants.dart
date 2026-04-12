@@ -25,31 +25,31 @@ class ApiConstants {
   static const String fuelLog = "$baseUrl/api/vehicles/fuel-log";
 
   // Requests (Added these for your RequestStore)
-  static const String getAllRequests = "$baseUrl/api/routes/get-all";
+  static const String getAllRequests = "$baseUrl/request/get-all";
   static const String createRequest = "$baseUrl/request/create";
   static const String createTransportRequest =
       "$baseUrl/request/create-transport-request";
   static const String updateStatus = "$baseUrl/request/update-status";
   static const String getRequestById = "$baseUrl/request/get-by-id/";
-  static const String getRouteById = "$baseUrl/api/routes/get-by-id/";
-  static const String createAllowance = "$baseUrl/api/routes/create-allowance";
+  static const String getRouteById = "$baseUrl/request/get-by-id/";
+  static const String createAllowance = "$baseUrl/request/create-allowance";
   static const String startRoute = "$baseUrl/request/start-route";
   static const String completeRouteOtp = "$baseUrl/request/complete-route-otp";
   static const String generateStartOtp = "$baseUrl/request/generate-start-otp";
   static const String generateEndOtp = "$baseUrl/request/generate-end-otp";
-  static const String adminCreateFull = "$baseUrl/api/routes/admin-create-full";
-  static const String facultyCreate = "$baseUrl/api/routes/faculty-create";
-  static const String getAvailableVehicles = "$baseUrl/api/routes/route-requests/available-vehicles";
-  static const String getAvailableDrivers = "$baseUrl/api/routes/route-requests/available-drivers";
-  static String adminFinalize(dynamic id) => "$baseUrl/api/routes/route-requests/$id/admin-finalize";
-  static String markAllowanceReceived(dynamic id) => "$baseUrl/api/routes/mark-received/$id/receive";
-  static String startTrip(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/start";
-  static String endLeg(dynamic legId) => "$baseUrl/api/routes/trips/legs/$legId/end";
+  static const String adminCreateFull = "$baseUrl/request/admin-create-full";
+  static const String facultyCreate = "$baseUrl/request/faculty-create";
+  static const String getAvailableVehicles = "$baseUrl/request/route-requests/available-vehicles";
+  static const String getAvailableDrivers = "$baseUrl/request/route-requests/available-drivers";
+  static String adminFinalize(dynamic id) => "$baseUrl/request/route-requests/$id/admin-finalize";
+  static String markAllowanceReceived(dynamic id) => "$baseUrl/request/mark-received/$id/receive";
+  static String startTrip(dynamic tripId) => "$baseUrl/request/trips/$tripId/start";
+  static String endLeg(dynamic tripId) => "$baseUrl/request/trips/$tripId/end";
   
   // Trip actions
-  static String getStartOtp(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/start-otp";
-  static String getEndOtp(dynamic tripId) => "$baseUrl/api/routes/trips/$tripId/end-otp";
-  static String updateStopStatus(dynamic tripId, dynamic stopId) => "$baseUrl/api/routes/trips/$tripId/stops/$stopId/update-status";
+  static String getStartOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-otp";
+  static String getEndOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/end-otp";
+  static String updateStopStatus(dynamic tripId, dynamic stopId) => "$baseUrl/request/trips/$tripId/stops/$stopId/update-status";
   static const String updateAssignedVehicles = "$baseUrl/request/update-assigned-vehicles";
 
   // Leaves

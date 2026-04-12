@@ -495,19 +495,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         
         if (tripInstances != null && tripInstances.isNotEmpty) {
           final firstTrip = tripInstances[0];
-          if (isStart) {
-            targetId = firstTrip['id'].toString();
-          } else {
-            final legs = firstTrip['legs'] as List?;
-            if (legs != null && legs.isNotEmpty) {
-              // Try to find an "ongoing" or "started" leg, otherwise use the first one
-              final activeLeg = legs.firstWhere(
-                (l) => l['status']?.toString().toUpperCase() == 'STARTED',
-                orElse: () => legs[0]
-              );
-              targetId = activeLeg['id'].toString();
-            }
-          }
+          // Use Trip Instance ID (e.g., 70) instead of Leg ID (e.g., 84)
+          // as per backend requirements for /request/trips/{id}/end
+          targetId = firstTrip['id'].toString();
         }
 
         final result = await Navigator.push(
@@ -1773,35 +1763,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               ),
             ),
           ],
-          if (isDriver) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: statusColor.withValues(alpha: 0.1)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.assignment_turned_in_rounded, size: 14, color: statusColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '"status": "${status.toUpperCase()}"',
-                      style: TextStyle(
-                        fontSize: 11, 
-                        fontWeight: FontWeight.w900, 
-                        color: statusColor, 
-                        letterSpacing: 0.5,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 16),
