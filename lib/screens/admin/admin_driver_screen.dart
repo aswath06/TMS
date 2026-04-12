@@ -5,7 +5,7 @@ import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/screens/admin/add_driver_page.dart'; // Import Add Driver Page
-import 'package:tripzo/screens/admin/request/ViewAllLeavesPage.dart';
+import 'package:tripzo/screens/admin/request/view_all_leaves_page.dart';
 import 'package:tripzo/screens/admin/admin_driver_detail_screen.dart';
 import 'package:tripzo/components/leave_card.dart';
 

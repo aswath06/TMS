@@ -54,6 +54,7 @@ class ApiConstants {
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";
+  static const String getLeaveTypes = "$baseUrl/api/leaves/leave-types";
   static const String createLeave = "$baseUrl/api/leaves/create";
   static const String updateLeaveStatus = "$baseUrl/api/leaves/status/";
   static const String getTodayDriverCount = "$baseUrl/api/leaves/today-driver-count";

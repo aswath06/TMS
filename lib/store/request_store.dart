@@ -13,6 +13,8 @@ class RequestStore extends ChangeNotifier {
   bool _isLoading = false;
   bool _isFetchingDetails = false;
   bool _isLoadingLeaves = false;
+  bool _isLoadingLeaveTypes = false;
+  List<Map<String, dynamic>> _leaveTypes = [];
   
   // Pagination State
   int _currentPage = 1;
@@ -29,6 +31,8 @@ class RequestStore extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isFetchingDetails => _isFetchingDetails;
   bool get isLoadingLeaves => _isLoadingLeaves;
+  bool get isLoadingLeaveTypes => _isLoadingLeaveTypes;
+  List<Map<String, dynamic>> get leaveTypes => _leaveTypes;
   bool get hasMore => _hasMore;
   int get currentPage => _currentPage;
   String? get errorMessage => _errorMessage;
@@ -290,6 +294,35 @@ class RequestStore extends ChangeNotifier {
     }
   }
 
+  /// Fetches leave types from the backend
+  Future<void> fetchLeaveTypes() async {
+    _isLoadingLeaveTypes = true;
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.getLeaveTypes),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> items = data['data'] ?? [];
+          _leaveTypes = items.map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("fetchLeaveTypes Error: $e");
+    } finally {
+      _isLoadingLeaveTypes = false;
+      notifyListeners();
+    }
+  }
+
   /// Formats raw API leave data into the UI-friendly Map used by LeaveCard
   Map<String, dynamic> _formatLeave(dynamic leave) {
     String status = 'Pending';
@@ -356,13 +389,15 @@ class RequestStore extends ChangeNotifier {
   }
 
   /// Creates a new leave request (Admin or Driver)
+  ///
+  /// [fromDatetime] and [toDatetime] are full ISO date-time strings:
+  ///   e.g. "2026-04-16T10:00:00"
+  /// This matches exactly what the backend expects.
   Future<bool> createLeave({
     required int driverId,
-    required String fromDate,
-    required String toDate,
-    required String startTime,
-    required String endTime,
-    required int leaveType,
+    required String fromDatetime,  // "2026-04-16T10:00:00"
+    required String toDatetime,    // "2026-04-17T16:00:00"
+    required int leaveType,        // field name: leave_type
     required String reason,
   }) async {
     _isLoadingLeaves = true;
@@ -376,35 +411,61 @@ class RequestStore extends ChangeNotifier {
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse("${ApiConstants.baseUrl}/api/leaves/create"),
-        headers: ApiConstants.getHeaders(token),
-        body: json.encode({
-          "driver_id": driverId,
-          "from_date": fromDate,
-          "to_date": toDate,
-          "start_time": startTime,
-          "end_time": endTime,
-          "leave_type": leaveType,
-          "reason": reason,
-        }),
+      final String url = ApiConstants.createLeave;
+      final Map<String, dynamic> body = {
+        "driver_id": driverId,
+        "from_date": fromDatetime,
+        "to_date": toDatetime,
+        "leave_type": leaveType,
+        "reason": reason,
+      };
+      final String bodyJson = json.encode(body);
+
+      // ── CURL LOG ──────────────────────────────────────────────────────────
+      debugPrint("━━━━━━━━━━━━ [createLeave] REQUEST ━━━━━━━━━━━━");
+      debugPrint(
+        "curl --location '$url' \\\n"
+        "  --header 'Authorization: TMS $token' \\\n"
+        "  --header 'Content-Type: application/json' \\\n"
+        "  --data '\$bodyJson'",
       );
+      debugPrint("Payload: $bodyJson");
+      debugPrint("────────────────────────────────────────────────");
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: bodyJson,
+      );
+
+      // ── RESPONSE LOG ──────────────────────────────────────────────────────
+      debugPrint("━━━━━━━━━━━━ [createLeave] RESPONSE ━━━━━━━━━━━");
+      debugPrint("Status: ${response.statusCode}");
+      debugPrint("Body:   ${response.body}");
+      debugPrint("────────────────────────────────────────────────");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true) {
-          // Refresh the leave list after successful creation
           await fetchLeaves();
           return true;
         } else {
           _leavesErrorMessage = data['message'] ?? "Failed to create leave.";
+          debugPrint("[createLeave] API reported failure: $_leavesErrorMessage");
         }
       } else {
-        _leavesErrorMessage = "Server error: ${response.statusCode}";
+        final errBody = response.body;
+        try {
+          final errData = json.decode(errBody);
+          _leavesErrorMessage = errData['message'] ?? "Server error: ${response.statusCode}";
+        } catch (_) {
+          _leavesErrorMessage = "Server error: ${response.statusCode}";
+        }
+        debugPrint("[createLeave] Non-2xx: ${response.statusCode} – $errBody");
       }
     } catch (e) {
       _leavesErrorMessage = "Connection error.";
-      debugPrint("Create Leave Error: $e");
+      debugPrint("[createLeave] Exception: $e");
     } finally {
       _isLoadingLeaves = false;
       notifyListeners();

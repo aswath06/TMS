@@ -44,6 +44,12 @@ class DriverStore extends ChangeNotifier {
   bool _isLoadingLeaves = false;
   bool get isLoadingLeaves => _isLoadingLeaves;
 
+  // Leave Types State
+  List<Map<String, dynamic>> _leaveTypes = [];
+  List<Map<String, dynamic>> get leaveTypes => _leaveTypes;
+  bool _isLoadingLeaveTypes = false;
+  bool get isLoadingLeaveTypes => _isLoadingLeaveTypes;
+
   // Maintenance Data
   List<Map<String, dynamic>> _fuelBunks = [];
   List<Map<String, dynamic>> get fuelBunks => _fuelBunks;
@@ -423,6 +429,34 @@ class DriverStore extends ChangeNotifier {
   void resetLeavesError() {
     _leavesError = null;
     notifyListeners();
+  }
+
+  /// Fetches dynamic leave types from the backend
+  Future<void> fetchLeaveTypes() async {
+    if (_leaveTypes.isNotEmpty) return; // Already loaded
+    _isLoadingLeaveTypes = true;
+    notifyListeners();
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      final response = await http.get(
+        Uri.parse(ApiConstants.getLeaveTypes),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> items = data['data'] ?? [];
+          _leaveTypes = items.map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      }
+      debugPrint('[DriverStore] leaveTypes: $_leaveTypes');
+    } catch (e) {
+      debugPrint('[DriverStore] fetchLeaveTypes error: $e');
+    } finally {
+      _isLoadingLeaveTypes = false;
+      notifyListeners();
+    }
   }
 
   void reset() {

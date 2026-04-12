@@ -87,7 +87,7 @@ class _CreateAllowanceScreenState extends State<CreateAllowanceScreen> {
       
       // CURL Logging for Allowance
       debugPrint('curl --location \'$url\' \\');
-      debugPrint('--header \'Authorization: TMS $token\' \\');
+      debugPrint('--header \'Authorization: TMS $token\' \\'); 
       debugPrint('--header \'Content-Type: application/json\' \\');
       debugPrint('--data-raw \'${jsonEncode(body)}\'');
 

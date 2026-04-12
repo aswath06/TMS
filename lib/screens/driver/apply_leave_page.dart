@@ -18,18 +18,26 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
 
   DateTime? _startDate;
   DateTime? _endDate;
-  int _selectedLeaveType = 1; // Default to Sick
+  int? _selectedLeaveType; // null until types load
 
   final Color primaryBlue = const Color(0xFF6366F1);
 
   @override
   void initState() {
     super.initState();
-    // Ensure profile is loaded for ID
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Ensure profile is loaded for ID
       if (DriverStore().profileData.value == null) {
         DriverStore().fetchProfile();
       }
+      // Fetch dynamic leave types
+      useDriverStore.fetchLeaveTypes().then((_) {
+        if (mounted && useDriverStore.leaveTypes.isNotEmpty && _selectedLeaveType == null) {
+          setState(() {
+            _selectedLeaveType = useDriverStore.leaveTypes.first['id'] as int;
+          });
+        }
+      });
     });
   }
 
@@ -497,50 +505,78 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Widget _buildLeaveTypeSelector(Color card, Color txt, bool isTamil) {
-    final types = [
-      {'id': 1, 'en': 'Sick', 'ta': 'மருத்துவ'},
-      {'id': 2, 'en': 'Casual', 'ta': 'தற்செயல்'},
-      {'id': 3, 'en': 'Emergency', 'ta': 'அவசர'},
-      {'id': 4, 'en': 'Other', 'ta': 'மற்றவை'},
-    ];
+    return ListenableBuilder(
+      listenable: useDriverStore,
+      builder: (context, _) {
+        // Loading skeleton
+        if (useDriverStore.isLoadingLeaveTypes) {
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: List.generate(4, (i) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 90,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+                ),
+              );
+            }),
+          );
+        }
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: types.map((type) {
-        final bool isSelected = _selectedLeaveType == type['id'];
-        return GestureDetector(
-          onTap: () => setState(() => _selectedLeaveType = type['id'] as int),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected ? primaryBlue : card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? primaryBlue : primaryBlue.withOpacity(0.1),
+        final types = useDriverStore.leaveTypes;
+        if (types.isEmpty) {
+          return Text(
+            isTamil ? 'வகைகள் கிடைக்கவில்லை' : 'No leave types available',
+            style: TextStyle(color: txt.withValues(alpha: 0.5)),
+          );
+        }
+
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: types.map((type) {
+            final int typeId = type['id'] as int;
+            final String label = type['name'] ?? type['code'] ?? '';
+            final bool isSelected = _selectedLeaveType == typeId;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedLeaveType = typeId),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? primaryBlue : card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? primaryBlue : primaryBlue.withValues(alpha: 0.1),
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: primaryBlue.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : txt.withValues(alpha: 0.7),
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: primaryBlue.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      )
-                    ]
-                  : [],
-            ),
-            child: Text(
-              isTamil ? type['ta'] as String : type['en'] as String,
-              style: TextStyle(
-                color: isSelected ? Colors.white : txt.withOpacity(0.7),
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -554,10 +590,11 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
             onPressed: useDriverStore.isLoadingLeaves
                 ? null
                 : () async {
-                    if (_formKey.currentState!.validate() &&
+                     if (_formKey.currentState!.validate() &&
                         _startDate != null &&
-                        _endDate != null) {
-                      
+                        _endDate != null &&
+                        _selectedLeaveType != null) {
+
                       if (!_endDate!.isAfter(_startDate!)) {
                         showTopToast(
                           context,
@@ -569,17 +606,20 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         return;
                       }
 
-                      final String fromDate = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(_startDate!);
-                      final String toDate = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(_endDate!);
+                      // Build ISO datetime strings matching the API format:
+                      // "2026-04-16T10:00:00"
+                      String pad(int n) => n.toString().padLeft(2, '0');
+                      final String fromDate =
+                          "${DateFormat('yyyy-MM-dd').format(_startDate!)}T"
+                          "${pad(_startDate!.hour)}:${pad(_startDate!.minute)}:00";
+                      final String toDate =
+                          "${DateFormat('yyyy-MM-dd').format(_endDate!)}T"
+                          "${pad(_endDate!.hour)}:${pad(_endDate!.minute)}:00";
 
                       final success = await useDriverStore.createLeave(
                         fromDate: fromDate,
                         toDate: toDate,
-                        leaveType: _selectedLeaveType,
+                        leaveType: _selectedLeaveType!,
                         reason: _reasonController.text,
                       );
 
