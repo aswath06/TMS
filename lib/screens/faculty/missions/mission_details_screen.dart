@@ -108,6 +108,32 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     }
   }
 
+  void _showTopToast(String message, Color color) {
+    if (!mounted) return;
+    
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+    
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 10,
+        left: 20,
+        right: 20,
+        child: _TopToastWidget(
+          message: message,
+          color: color,
+          onDismiss: () {
+            if (overlayEntry.mounted) {
+              overlayEntry.remove();
+            }
+          },
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+  }
+
   /// Pull-to-refresh handler — re-fetches all data in parallel.
   Future<void> _refreshData() async {
     await Future.wait([
@@ -653,18 +679,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       final respData = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Allowance marked as received!"), backgroundColor: Colors.green),
-        );
+        _showTopToast("Allowance marked as received!", Colors.green);
         _fetchMissionDetails();
       } else {
         throw respData['message'] ?? "Failed to mark as received";
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-      );
+      _showTopToast("Error: $e", Colors.red);
     } finally {
       if (mounted) setState(() => _isMarkingReceived = false);
     }
@@ -963,7 +985,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                              if (errorMsg.contains("MissingPluginException")) {
                                errorMsg = "Please RESTART the application. A new plugin was added.";
                              }
-                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg), backgroundColor: Colors.red, duration: const Duration(seconds: 5)));
+                             _showTopToast(errorMsg, Colors.red);
                           }
                         }
                       },
@@ -1054,7 +1076,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Stop status updated successfully!"), backgroundColor: Colors.green));
+        _showTopToast("Stop status updated successfully!", Colors.green);
         _fetchMissionDetails();
       }
     } else {
@@ -3799,6 +3821,116 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
               _focusNodes[index - 1].requestFocus();
             }
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _TopToastWidget extends StatefulWidget {
+  final String message;
+  final Color color;
+  final VoidCallback onDismiss;
+
+  const _TopToastWidget({
+    required this.message,
+    required this.color,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_TopToastWidget> createState() => _TopToastWidgetState();
+}
+
+class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _offsetAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(0.0, -1.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    ));
+
+    _controller.forward();
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _controller.reverse().then((_) => widget.onDismiss());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SlideTransition(
+      position: _offsetAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: widget.color.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.color == Colors.green ? Icons.check_circle_rounded : Icons.error_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

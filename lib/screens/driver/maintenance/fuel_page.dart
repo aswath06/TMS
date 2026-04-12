@@ -23,6 +23,8 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
   final TextEditingController _volumeController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
+  final TextEditingController _indentNumberController = TextEditingController();
+  final TextEditingController _remarksController = TextEditingController();
   DateTime _fillingDate = DateTime.now();
   File? _billImage;
 
@@ -60,6 +62,8 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
     _volumeController.dispose();
     _amountController.dispose();
     _odometerController.dispose();
+    _indentNumberController.dispose();
+    _remarksController.dispose();
     super.dispose();
   }
 
@@ -95,27 +99,32 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
     setState(() => _isLoadingVehicles = true);
     try {
       final token = await UserStore.getToken();
-      final userId = await UserStore.getUserId();
-      debugPrint("Fetching driver vehicles for user_id: $userId");
-      final response = await http.get(
-        Uri.parse("${ApiConstants.driverVehicles}?user_id=$userId"),
-        headers: ApiConstants.getHeaders(token),
-      );
-      debugPrint("Driver vehicles response status: ${response.statusCode}");
-      debugPrint("Driver vehicles response body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}");
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        List<dynamic> vehicles = [];
-        if (data is Map && data['data'] != null) {
-          vehicles = data['data'];
-        } else if (data is List) {
-          vehicles = data;
+      // Fetch all pages from get-all vehicles endpoint
+      List<dynamic> allVehicles = [];
+      int page = 1;
+      int totalPages = 1;
+      do {
+        final response = await http.get(
+          Uri.parse("${ApiConstants.getAllVehicles}?page=$page&limit=100"),
+          headers: ApiConstants.getHeaders(token),
+        );
+        debugPrint("Vehicles response status (page $page): ${response.statusCode}");
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data is Map) {
+            final items = data['data'];
+            if (items is List) allVehicles.addAll(items);
+            totalPages = (data['total_pages'] ?? 1) as int;
+          }
+        } else {
+          break;
         }
-        debugPrint("Parsed ${vehicles.length} driver vehicles");
-        setState(() => _driverVehicles = vehicles);
-      }
+        page++;
+      } while (page <= totalPages);
+      debugPrint("Fetched ${allVehicles.length} vehicles in total");
+      setState(() => _driverVehicles = allVehicles);
     } catch (e) {
-      debugPrint("Error fetching driver vehicles: $e");
+      debugPrint("Error fetching vehicles: $e");
     } finally {
       setState(() => _isLoadingVehicles = false);
     }
@@ -232,18 +241,40 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
         ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
       });
 
+      final userId = await UserStore.getUserId();
+      final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+      final random = DateTime.now().millisecondsSinceEpoch.toString().substring(10);
+      final instanceId = "FL-$dateStr-$random";
+
+      request.fields['instance_id'] = instanceId;
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
       request.fields['bunk_id'] = _selectedBunk!['id'].toString();
+      request.fields['filled_for_assignment_id'] = userId?.toString() ?? "";
       request.fields['volume'] = _volumeController.text;
       request.fields['bill_amount'] = _amountController.text;
-      request.fields['curr_km'] = _odometerController.text;
-      request.fields['filled_at'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(_fillingDate);
+      request.fields['current_odometer'] = _odometerController.text;
+      request.fields['filled_at'] = DateFormat('yyyy-MM-ddTHH:mm:ss').format(_fillingDate);
       request.fields['isMatches'] = (_billVerified == true) ? 'true' : 'false';
+      request.fields['remarks'] = _remarksController.text.isEmpty ? "No bill uploaded now" : _remarksController.text;
+      
+      if (_indentNumberController.text.isNotEmpty) {
+        request.fields['indent_number'] = _indentNumberController.text;
+      }
 
       request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
 
+      // DEBUG: Log the CURL equivalent
+      StringBuffer curl = StringBuffer("curl --location '${ApiConstants.fuelLog}' \\\n");
+      request.headers.forEach((key, value) => curl.write("--header '$key: $value' \\\n"));
+      request.fields.forEach((key, value) => curl.write("--form '$key=\"$value\"' \\\n"));
+      curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
+      debugPrint("\n--- FUEL SUBMISSION CURL ---\n${curl.toString()}\n---------------------------\n");
+
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint("Fuel entry response status: ${response.statusCode}");
+      debugPrint("Fuel entry response body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
@@ -480,6 +511,36 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                                         keyboardType: TextInputType.number, controller: _odometerController),
                                   ],
                                 ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _formLabel(isTamil ? "இண்டென்ட் எண்" : "Indent Number", titleColor),
+                              const SizedBox(height: 8),
+                              _buildTextField(
+                                isTamil ? "இண்டென்ட் எண்ணை உள்ளிடவும்" : "Enter indent number",
+                                Icons.confirmation_number_rounded,
+                                isDark,
+                                primary,
+                                controller: _indentNumberController,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _formLabel(isTamil ? "குறிப்புகள்" : "Remarks", titleColor),
+                              const SizedBox(height: 8),
+                              _buildTextField(
+                                isTamil ? "கருத்துக்களை உள்ளிடவும்" : "Enter remarks",
+                                Icons.notes_rounded,
+                                isDark,
+                                primary,
+                                controller: _remarksController,
                               ),
                             ],
                           ),
@@ -949,7 +1010,8 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
         title: "Select Vehicle",
         items: _driverVehicles,
         nameKey: 'vehicle_number',
-        subtitleKey: 'vehicle_type',
+        subtitleKey: 'vehicle_type_name',
+        extraKey: 'make',
         icon: Icons.directions_bus_rounded,
         iconColor: const Color(0xFF3B82F6),
         selectedId: _selectedVehicle?['id'],
@@ -967,7 +1029,8 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
         title: "Select Fuel Bunk",
         items: _allBunks,
         nameKey: 'name',
-        subtitleKey: 'address',
+        subtitleKey: 'owner_name',
+        extraKey: 'phone_number',
         icon: Icons.local_gas_station_rounded,
         iconColor: const Color(0xFF06B6D4),
         selectedId: _selectedBunk?['id'],
@@ -984,6 +1047,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
     required IconData icon,
     required Color iconColor,
     dynamic selectedId,
+    String? extraKey,
     required Function(Map<String, dynamic>) onSelect,
   }) {
     final searchCtrl = TextEditingController();
@@ -1043,6 +1107,9 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                         itemBuilder: (context, index) {
                           final item = filtered[index];
                           final isSelected = selectedId == item['id'];
+                          final subtitleParts = <String>[];
+                          if (item[subtitleKey] != null) subtitleParts.add(item[subtitleKey].toString());
+                          if (extraKey != null && item[extraKey] != null) subtitleParts.add(item[extraKey].toString());
                           return ListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(10),
@@ -1053,8 +1120,8 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                               child: Icon(icon, color: iconColor, size: 22),
                             ),
                             title: Text(item[nameKey] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: item[subtitleKey] != null
-                                ? Text(item[subtitleKey].toString(), style: const TextStyle(fontSize: 12, color: Colors.grey))
+                            subtitle: subtitleParts.isNotEmpty
+                                ? Text(subtitleParts.join(' \u2022 '), style: const TextStyle(fontSize: 12, color: Colors.grey))
                                 : null,
                             trailing: isSelected
                                 ? Icon(Icons.check_circle_rounded, color: iconColor)
