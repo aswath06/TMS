@@ -20,7 +20,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       useDriverStore.fetchMissions();
       useDriverStore.fetchProfile(); // Refresh upcoming/ongoing
@@ -95,7 +95,6 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: [
-            Tab(text: isTamil ? "மீதமுள்ளவை" : "Remaining"),
             Tab(text: isTamil ? "வரவிருப்பவை" : "Upcoming"),
             Tab(text: isTamil ? "முடிந்தவை" : "Completed"),
           ],
@@ -104,7 +103,6 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildRouteList('remaining'),
           _buildRouteList('upcoming'),
           _buildRouteList('completed'),
         ],
@@ -138,33 +136,17 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
         }
 
 
-        bool isUpcoming(dynamic s) {
-          if (s is int) return s < 7;
-          if (s is String) {
-            final upper = s.toUpperCase();
-            return upper == 'APPROVED' || upper == 'READY' || upper == 'PLANNED';
-          }
-          return false;
-        }
+
 
         // identify search query
         final query = store.searchQuery.toLowerCase().trim();
         
         // Helper to normalize status for filtering
 
-        final upcomingNonCompleted = allMissions.where((m) => !isCompleted(m['status'])).toList();
-        final String? priorityId = upcomingNonCompleted.isNotEmpty ? upcomingNonCompleted.first['id']?.toString() : null;
 
-        if (type == 'remaining') {
-          list = allMissions.where((m) {
-            final String mid = m['id']?.toString() ?? '';
-            return !isCompleted(m['status']) && mid != priorityId;
-          }).toList();
-        } else if (type == 'upcoming') {
-          list = upcomingNonCompleted.where((m) {
-            final String mid = m['id']?.toString() ?? '';
-            return isUpcoming(m['status']) && mid != priorityId;
-          }).toList();
+
+        if (type == 'upcoming') {
+          list = allMissions.where((m) => !isCompleted(m['status'])).toList();
         } else if (type == 'completed') {
           list = allMissions.where((m) => isCompleted(m['status'])).toList();
         }
@@ -399,7 +381,6 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
     if (isSearch) {
       text = isTamil ? "பொருத்தமான பயணங்கள் எதுவும் இல்லை" : "No matching journeys found";
     } else {
-      if (type == 'remaining') text = isTamil ? "மீதமுள்ள பயணங்கள் இல்லை" : "No active shifts";
       if (type == 'upcoming') text = isTamil ? "வரவிருக்கும் பயணங்கள் இல்லை" : "No upcoming assignments";
       if (type == 'completed') text = isTamil ? "முடிந்த பயணங்கள் இல்லை" : "No finished history";
     }
