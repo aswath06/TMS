@@ -510,71 +510,133 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
       builder: (context, _) {
         // Loading skeleton
         if (useDriverStore.isLoadingLeaveTypes) {
-          return Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: List.generate(4, (i) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 90,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: card,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+          return Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: card,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryBlue),
                 ),
-              );
-            }),
+              ),
+            ),
           );
         }
 
         final types = useDriverStore.leaveTypes;
         if (types.isEmpty) {
-          return Text(
-            isTamil ? 'வகைகள் கிடைக்கவில்லை' : 'No leave types available',
-            style: TextStyle(color: txt.withValues(alpha: 0.5)),
+          return Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: card,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              isTamil ? 'வகைகள் கிடைக்கவில்லை' : 'No leave types available',
+              style: TextStyle(color: txt.withValues(alpha: 0.4), fontSize: 14),
+            ),
           );
         }
 
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: types.map((type) {
-            final int typeId = type['id'] as int;
-            final String label = type['name'] ?? type['code'] ?? '';
-            final bool isSelected = _selectedLeaveType == typeId;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedLeaveType = typeId),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? primaryBlue : card,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? primaryBlue : primaryBlue.withValues(alpha: 0.1),
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: primaryBlue.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : txt.withValues(alpha: 0.7),
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    fontSize: 14,
-                  ),
+        return Container(
+          decoration: BoxDecoration(
+            color: card,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _selectedLeaveType,
+              isExpanded: true,
+              borderRadius: BorderRadius.circular(16),
+              icon: Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: primaryBlue,
                 ),
               ),
-            );
-          }).toList(),
+              hint: Row(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.category_outlined,
+                      size: 18,
+                      color: primaryBlue,
+                    ),
+                  ),
+                  Text(
+                    isTamil ? 'வகையைத் தேர்ந்தெடுக்கவும்' : 'Select leave type',
+                    style: TextStyle(
+                      color: txt.withValues(alpha: 0.4),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              style: TextStyle(
+                color: txt,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+              dropdownColor: card,
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedLeaveType = val);
+              },
+              items: types.map((type) {
+                final int typeId = type['id'] as int;
+                final String label = type['name'] ?? type['code'] ?? '';
+                return DropdownMenuItem<int>(
+                  value: typeId,
+                  child: Row(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: _selectedLeaveType == typeId
+                              ? primaryBlue.withValues(alpha: 0.15)
+                              : primaryBlue.withValues(alpha: 0.07),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.category_outlined,
+                          size: 18,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: txt,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
         );
       },
     );
