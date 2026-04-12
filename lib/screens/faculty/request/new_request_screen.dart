@@ -1063,7 +1063,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
                       bool isNotAvailable = isVehicle 
                           ? ((status != "AVAILABLE" && status != "ACTIVE") || item['available'] == false)
-                          : (status == "ON_LEAVE" || item['available'] == false); 
+                          : (item['available'] == false); 
                       bool tooSmall = false;
                       bool tooLarge = false;
                       if (isVehicle && currentGuestCount != null && capacity > 0) {

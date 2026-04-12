@@ -165,11 +165,18 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
         return ac.compareTo(bc); 
       });
     } else if (!isVehicle) {
-       // Driver sorting: Available and not on leave first
+       // Driver sorting: Backend availability takes precedence
        filteredItems.sort((a, b) {
-         bool aAvail = (a['available'] != false) && (a['status'] == "AVAILABLE");
-         bool bAvail = (b['available'] != false) && (b['status'] == "AVAILABLE");
+         bool aAvail = (a['available'] == true);
+         bool bAvail = (b['available'] == true);
          if (aAvail != bAvail) return aAvail ? -1 : 1;
+         
+         // Secondary sort: Available status first among same-availability group
+         if (aAvail) {
+           bool aReady = a['status'] == "AVAILABLE";
+           bool bReady = b['status'] == "AVAILABLE";
+           if (aReady != bReady) return aReady ? -1 : 1;
+         }
          return 0;
        });
     }
@@ -216,7 +223,9 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
                     int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
                     
                     String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
-                    bool isAvail = (item['available'] != false) && (status == "AVAILABLE" || status == "ACTIVE");
+                    bool isAvail = isVehicle 
+                        ? (item['available'] != false) && (status == "AVAILABLE" || status == "ACTIVE")
+                        : (item['available'] == true);
                     bool tooSmall = isVehicle && currentGuestCount != null && cap < currentGuestCount;
                     bool tooLarge = isVehicle && currentGuestCount != null && cap > (currentGuestCount + 5);
                     bool isDisabled = !isAvail || tooSmall || tooLarge;
