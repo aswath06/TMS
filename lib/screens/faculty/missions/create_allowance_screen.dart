@@ -83,7 +83,7 @@ class _CreateAllowanceScreenState extends State<CreateAllowanceScreen> {
         "allowances": allowanceData,
       };
 
-      final url = "${ApiConstants.baseUrl}/api/routes/create-allowance";
+      final url = "${ApiConstants.baseUrl}/request/create-allowance";
       
       // CURL Logging for Allowance
       debugPrint('curl --location \'$url\' \\');
