@@ -38,6 +38,12 @@ void main() async {
     ),
   );
 
+  // FORCE PORTRAIT MODE ONLY
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   runApp(
     MultiProvider(
       providers: [
