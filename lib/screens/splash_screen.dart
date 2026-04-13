@@ -119,6 +119,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     final prefs = await SharedPreferences.getInstance();
 
+    // 1. Check if it's the first time
+    final bool hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+    if (!hasSeenOnboarding) {
+      // Small delay for branding
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.getStarted);
+      return;
+    }
+
     // 2. Start the minimum display timer AND the API call in parallel
     final Future<bool> authCheck = _checkSession(prefs);
     await Future.delayed(const Duration(milliseconds: 1200));

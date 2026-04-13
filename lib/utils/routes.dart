@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/get_started_screen.dart';
+import '../screens/auth/setup_permissions_screen.dart';
 import '../screens/main_screen.dart';
-import '../screens/auth/lock_screen.dart'; // Import the new LockScreen
+import '../screens/auth/lock_screen.dart';
 
 class AppRoutes {
   static const String adminDashboard = '/admin-dashboard';
   static const String splash = '/';
   static const String login = '/login';
   static const String dashboard = '/dashboard';
-  static const String lockScreen = '/lock-screen'; // New Route
+  static const String lockScreen = '/lock-screen';
+  static const String getStarted = '/get-started';
+  static const String setupPermissions = '/setup-permissions';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -31,6 +35,12 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => LockScreen(role: role));
       case adminDashboard:
         return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
+
+      case getStarted:
+        return MaterialPageRoute(builder: (_) => const GetStartedScreen());
+
+      case setupPermissions:
+        return MaterialPageRoute(builder: (_) => const SetupPermissionsScreen());
 
       case dashboard:
         final role = settings.arguments as String? ?? 'faculty';

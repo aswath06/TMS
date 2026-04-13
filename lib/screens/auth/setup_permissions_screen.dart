@@ -1,0 +1,234 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../utils/routes.dart';
+import '../../store/isdark.dart';
+import '../../store/istamil.dart';
+
+class SetupPermissionsScreen extends StatefulWidget {
+  const SetupPermissionsScreen({super.key});
+
+  @override
+  State<SetupPermissionsScreen> createState() => _SetupPermissionsScreenState();
+}
+
+class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
+  bool _isInternetOk = false;
+  bool _isLocationOk = false;
+  bool _isGalleryOk = false;
+  bool _isLocationAlways = false;
+  bool _isProcessing = false;
+
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAll();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+       _checkInternet(results.first);
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkAll() async {
+    final connectivity = await Connectivity().checkConnectivity();
+    await _checkInternet(connectivity.first);
+    await _checkPermissions();
+  }
+
+  Future<void> _checkInternet(ConnectivityResult result) async {
+    setState(() => _isInternetOk = result != ConnectivityResult.none);
+  }
+
+  Future<void> _checkPermissions() async {
+    final locationStatus = await Permission.location.status;
+    final locationAlwaysStatus = await Permission.locationAlways.status;
+    final photosStatus = await Permission.photos.status;
+    final storageStatus = await Permission.storage.status;
+
+    setState(() {
+      _isLocationOk = locationStatus.isGranted;
+      _isLocationAlways = locationAlwaysStatus.isGranted;
+      _isGalleryOk = photosStatus.isGranted || storageStatus.isGranted;
+    });
+  }
+
+  Future<void> _requestLocation() async {
+    final status = await Permission.location.request();
+    if (status.isGranted) {
+      await Permission.locationAlways.request();
+    }
+    _checkPermissions();
+  }
+
+  Future<void> _requestGallery() async {
+    await Permission.photos.request();
+    await Permission.storage.request();
+    _checkPermissions();
+  }
+
+  Future<void> _completeOnboarding() async {
+    if (!_isInternetOk) return;
+    
+    setState(() => _isProcessing = true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenOnboarding', true);
+    
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = ThemeStore.isDark;
+    final bool isTamil = LanguageStore.isTamil;
+    final Color primaryColor = const Color(0xFF6366F1);
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: Text(isTamil ? "அமைப்புகள்" : "App Setup", style: const TextStyle(fontWeight: FontWeight.w900)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isTamil ? "தேவையான அனுமதிகள்" : "Required Access",
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isTamil 
+                ? "தடையற்ற சேவையைப் பெற பின்வரும் அனுமதிகளை வழங்கவும்."
+                : "Please ensure all requirements below are met for a seamless experience.",
+              style: TextStyle(fontSize: 16, color: isDark ? Colors.white60 : Colors.black54),
+            ),
+            const SizedBox(height: 40),
+            
+            _buildRequirementCard(
+              title: isTamil ? "இணைய இணைப்பு" : "Internet Connection",
+              subtitle: isTamil ? "சேவையகத்துடன் இணைக்கத் தேவை" : "Required to sync with TripZo servers",
+              icon: Icons.wifi_rounded,
+              isOk: _isInternetOk,
+              onTap: () => _checkAll(),
+              isDark: isDark,
+            ),
+            
+            _buildRequirementCard(
+              title: isTamil ? "இருப்பிட அனுமதி" : "Location Access",
+              subtitle: isTamil ? "பின்னணிக் கண்காணிப்புக்கு 'சரியான இருப்பிடம்' தேவை" : "Required for precise background tracking",
+              icon: Icons.location_on_rounded,
+              isOk: _isLocationOk && _isLocationAlways,
+              onTap: _requestLocation,
+              isDark: isDark,
+            ),
+            
+            _buildRequirementCard(
+              title: isTamil ? "கேலரி அனுமதி" : "Gallery Access",
+              subtitle: isTamil ? "ப்புகைப்படங்களைப் பதிவேற்றத் தேவை" : "Required for profile and maintenance logs",
+              icon: Icons.image_rounded,
+              isOk: _isGalleryOk,
+              onTap: _requestGallery,
+              isDark: isDark,
+            ),
+
+            const Spacer(),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 60,
+              child: ElevatedButton(
+                onPressed: (_isInternetOk && _isLocationOk) ? _completeOnboarding : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: _isProcessing 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                    ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequirementCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isOk,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    final Color successColor = const Color(0xFF10B981);
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isOk ? successColor.withOpacity(0.5) : (isDark ? Colors.white10 : Colors.black12),
+            width: 2,
+          ),
+          boxShadow: [
+            if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isOk ? successColor.withOpacity(0.1) : (isDark ? Colors.white10 : Colors.grey.shade100),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: isOk ? successColor : (isDark ? Colors.white30 : Colors.grey), size: 28),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54)),
+                ],
+              ),
+            ),
+            Icon(
+              isOk ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
+              color: isOk ? successColor : (isDark ? Colors.white24 : Colors.grey.shade300),
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

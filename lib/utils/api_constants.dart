@@ -39,38 +39,50 @@ class ApiConstants {
   static const String generateEndOtp = "$baseUrl/request/generate-end-otp";
   static const String adminCreateFull = "$baseUrl/request/admin-create-full";
   static const String facultyCreate = "$baseUrl/request/faculty-create";
-  static const String getAvailableVehicles = "$baseUrl/request/route-requests/available-vehicles";
-  static const String getAvailableDrivers = "$baseUrl/request/route-requests/available-drivers";
-  static String adminFinalize(dynamic id) => "$baseUrl/request/route-requests/$id/admin-finalize";
-  static String markAllowanceReceived(dynamic id) => "$baseUrl/request/mark-received/$id/receive";
-  static String startTrip(dynamic tripId) => "$baseUrl/request/trips/$tripId/start";
+  static const String getAvailableVehicles =
+      "$baseUrl/request/route-requests/available-vehicles";
+  static const String getAvailableDrivers =
+      "$baseUrl/request/route-requests/available-drivers";
+  static String adminFinalize(dynamic id) =>
+      "$baseUrl/request/route-requests/$id/admin-finalize";
+  static String markAllowanceReceived(dynamic id) =>
+      "$baseUrl/request/mark-received/$id/receive";
+  static String startTrip(dynamic tripId) =>
+      "$baseUrl/request/trips/$tripId/start";
   static String endLeg(dynamic tripId) => "$baseUrl/request/trips/$tripId/end";
-  
+
   // Trip actions
-  static String getStartOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-otp";
-  static String getEndOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/end-otp";
-  static String updateStopStatus(dynamic tripId, dynamic stopId) => "$baseUrl/request/trips/$tripId/stops/$stopId/update-status";
-  static String locationPing(dynamic tripId) => "$baseUrl/request/trips/$tripId/location-ping";
-  static const String updateAssignedVehicles = "$baseUrl/request/update-assigned-vehicles";
+  static String getStartOtp(dynamic tripId) =>
+      "$baseUrl/request/trips/$tripId/start-otp";
+  static String getEndOtp(dynamic tripId) =>
+      "$baseUrl/request/trips/$tripId/end-otp";
+  static String updateStopStatus(dynamic tripId, dynamic stopId) =>
+      "$baseUrl/request/trips/$tripId/stops/$stopId/update-status";
+  static String locationPing(dynamic tripId) =>
+      "$baseUrl/request/trips/$tripId/location-ping";
+  static const String updateAssignedVehicles =
+      "$baseUrl/request/update-assigned-vehicles";
 
   // Leaves
   static const String getAllLeaves = "$baseUrl/api/leaves/get-all";
   static const String getLeaveTypes = "$baseUrl/api/leaves/leave-types";
   static const String createLeave = "$baseUrl/api/leaves/create";
   static const String updateLeaveStatus = "$baseUrl/api/leaves/status/";
-  static const String getTodayDriverCount = "$baseUrl/api/leaves/today-driver-count";
+  static const String getTodayDriverCount =
+      "$baseUrl/api/leaves/today-driver-count";
 
   // OCR
   static const String licenseCheck = "$baseUrl/api/drivers/license-check";
   static const String getDriverMissions = "$baseUrl/api/drivers/drive-routes";
-  static const String driverDashboard = "$baseUrl/api/drivers/driver-dashboard/";
+  static const String driverDashboard =
+      "$baseUrl/api/drivers/driver-dashboard/";
   static const String driverVehicles = "$baseUrl/api/drivers/drive-vehicles";
   static const String verifyFuelBill = "$baseUrl/api/vehicles/verify-fuel-bill";
-   // Maintenance
-   static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";
-   static const String serviceEntry = "$baseUrl/api/maintenance/service-entry";
-   static const String accidentEntry = "$baseUrl/api/vehicles/incidents/create";
-   static const String getVehicleBunks = "$baseUrl/api/maintenance/get-bunks";
+  // Maintenance
+  static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";
+  static const String serviceEntry = "$baseUrl/api/maintenance/service-entry";
+  static const String accidentEntry = "$baseUrl/api/vehicles/incidents/create";
+  static const String getVehicleBunks = "$baseUrl/api/maintenance/get-bunks";
   static const String getServiceShops = "$baseUrl/api/maintenance/get-shops";
 
   // Centralized headers for DevTunnels and common requirements
