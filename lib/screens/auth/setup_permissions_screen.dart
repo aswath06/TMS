@@ -19,6 +19,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   bool _isInternetOk = false;
   bool _isLocationOk = false;
   bool _isGalleryOk = false;
+  bool _isNotificationOk = false;
   bool _isLocationAlways = false;
   bool _isProcessing = false;
 
@@ -54,11 +55,13 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
     final locationAlwaysStatus = await Permission.locationAlways.status;
     final photosStatus = await Permission.photos.status;
     final storageStatus = await Permission.storage.status;
+    final notificationStatus = await Permission.notification.status;
 
     setState(() {
       _isLocationOk = locationStatus.isGranted;
       _isLocationAlways = locationAlwaysStatus.isGranted;
       _isGalleryOk = photosStatus.isGranted || storageStatus.isGranted;
+      _isNotificationOk = notificationStatus.isGranted;
     });
   }
 
@@ -73,6 +76,11 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   Future<void> _requestGallery() async {
     await Permission.photos.request();
     await Permission.storage.request();
+    _checkPermissions();
+  }
+
+  Future<void> _requestNotification() async {
+    await Permission.notification.request();
     _checkPermissions();
   }
 
@@ -102,72 +110,90 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              isTamil ? "தேவையான அனுமதிகள்" : "Required Access",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              isTamil 
-                ? "தடையற்ற சேவையைப் பெற பின்வரும் அனுமதிகளை வழங்கவும்."
-                : "Please ensure all requirements below are met for a seamless experience.",
-              style: TextStyle(fontSize: 16, color: isDark ? Colors.white60 : Colors.black54),
-            ),
-            const SizedBox(height: 40),
-            
-            _buildRequirementCard(
-              title: isTamil ? "இணைய இணைப்பு" : "Internet Connection",
-              subtitle: isTamil ? "சேவையகத்துடன் இணைக்கத் தேவை" : "Required to sync with TripZo servers",
-              icon: Icons.wifi_rounded,
-              isOk: _isInternetOk,
-              onTap: () => _checkAll(),
-              isDark: isDark,
-            ),
-            
-            _buildRequirementCard(
-              title: isTamil ? "இருப்பிட அனுமதி" : "Location Access",
-              subtitle: isTamil ? "பின்னணிக் கண்காணிப்புக்கு 'சரியான இருப்பிடம்' தேவை" : "Required for precise background tracking",
-              icon: Icons.location_on_rounded,
-              isOk: _isLocationOk && _isLocationAlways,
-              onTap: _requestLocation,
-              isDark: isDark,
-            ),
-            
-            _buildRequirementCard(
-              title: isTamil ? "கேலரி அனுமதி" : "Gallery Access",
-              subtitle: isTamil ? "ப்புகைப்படங்களைப் பதிவேற்றத் தேவை" : "Required for profile and maintenance logs",
-              icon: Icons.image_rounded,
-              isOk: _isGalleryOk,
-              onTap: _requestGallery,
-              isDark: isDark,
-            ),
-
-            const Spacer(),
-            
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton(
-                onPressed: (_isInternetOk && _isLocationOk) ? _completeOnboarding : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
-                child: _isProcessing 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTamil ? "தேவையான அனுமதிகள்" : "Required Access",
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black),
                     ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isTamil 
+                        ? "தடையற்ற சேவையைப் பெற பின்வரும் அனுமதிகளை வழங்கவும்."
+                        : "Please ensure all requirements below are met for a seamless experience.",
+                      style: TextStyle(fontSize: 16, color: isDark ? Colors.white60 : Colors.black54),
+                    ),
+                    const SizedBox(height: 40),
+                    
+                    _buildRequirementCard(
+                      title: isTamil ? "இணைய இணைப்பு" : "Internet Connection",
+                      subtitle: isTamil ? "சேவையகத்துடன் இணைக்கத் தேவை" : "Required to sync with TripZo servers",
+                      icon: Icons.wifi_rounded,
+                      isOk: _isInternetOk,
+                      onTap: () => _checkAll(),
+                      isDark: isDark,
+                    ),
+                    
+                    _buildRequirementCard(
+                      title: isTamil ? "இருப்பிட அனுமதி" : "Location Access",
+                      subtitle: isTamil ? "பின்னணிக் கண்காணிப்புக்கு 'சரியான இருப்பிடம்' தேவை" : "Required for precise background tracking",
+                      icon: Icons.location_on_rounded,
+                      isOk: _isLocationOk && _isLocationAlways,
+                      onTap: _requestLocation,
+                      isDark: isDark,
+                    ),
+                    
+                    _buildRequirementCard(
+                      title: isTamil ? "கேலரி அனுமதி" : "Gallery Access",
+                      subtitle: isTamil ? "ப்புகைப்படங்களைப் பதிவேற்றத் தேவை" : "Required for profile and maintenance logs",
+                      icon: Icons.image_rounded,
+                      isOk: _isGalleryOk,
+                      onTap: _requestGallery,
+                      isDark: isDark,
+                    ),
+                    
+                    _buildRequirementCard(
+                      title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
+                      subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
+                      icon: Icons.notifications_active_rounded,
+                      isOk: _isNotificationOk,
+                      onTap: _requestNotification,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
+            
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: (_isInternetOk && _isLocationOk && _isNotificationOk) ? _completeOnboarding : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: _isProcessing 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                      ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

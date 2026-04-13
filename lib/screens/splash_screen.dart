@@ -10,6 +10,8 @@ import '../store/istamil.dart'; // Import Language Store
 import '../utils/api_constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
+import '../providers/notification_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -149,6 +151,16 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     } else {
+      // 4.5 Initialize Notifications
+      if (mounted) {
+        final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+        UserStore.getToken().then((token) {
+          if (token != null) {
+            notificationProvider.initialize(token: token);
+          }
+        });
+      }
+
       // 5. Check location permission for drivers
       if (role == 'driver') {
         final bool hasPermission = await _handleLocationPermission();

@@ -13,6 +13,10 @@ import 'package:tripzo/store/isdark.dart';
 // Utils
 import 'utils/routes.dart';
 import 'package:tripzo/services/location_service.dart';
+import 'package:tripzo/services/notification_local_service.dart';
+import 'package:tripzo/services/notification_api_service.dart';
+import 'package:tripzo/services/notification_socket_service.dart';
+import 'package:tripzo/providers/notification_provider.dart';
 
 void main() async {
   // Ensure Flutter framework is initialized before running code
@@ -22,6 +26,9 @@ void main() async {
   LocationService().initializeService().catchError((e) {
     debugPrint("Background Service Init Error: $e");
   });
+
+  // Initialize Local Notification Service
+  await NotificationLocalService.initialize();
 
   // INITIALIZE DATE FORMATTING
   try {
@@ -58,6 +65,12 @@ void main() async {
         ChangeNotifierProvider.value(value: useDriverStore),
         ChangeNotifierProvider.value(value: dashboardStore),
         ChangeNotifierProvider.value(value: themeStore),
+        ChangeNotifierProvider(
+          create: (_) => NotificationProvider(
+            apiService: NotificationApiService(baseUrl: "", token: ""),
+            socketService: NotificationSocketService(),
+          ),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -69,7 +82,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeStore>(context);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,

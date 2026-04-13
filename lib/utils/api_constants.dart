@@ -85,6 +85,12 @@ class ApiConstants {
   static const String getVehicleBunks = "$baseUrl/api/maintenance/get-bunks";
   static const String getServiceShops = "$baseUrl/api/maintenance/get-shops";
 
+  // Notifications
+  static const String myNotifications = "$baseUrl/api/notifications/my";
+  static const String unreadCount = "$baseUrl/api/notifications/unread-count";
+  static String markNotificationRead(dynamic id) => "$baseUrl/api/notifications/$id/read";
+  static const String markAllRead = "$baseUrl/api/notifications/read-all";
+
   // Centralized headers for DevTunnels and common requirements
   static Map<String, String> getHeaders(String? token) {
     return {

@@ -12,6 +12,8 @@ import 'package:tripzo/components/auth/login_error_dialog.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/validators.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:provider/provider.dart';
+import '../../providers/notification_provider.dart';
 import '../main_screen.dart' show MainScreen;
 
 class LoginScreen extends StatefulWidget {
@@ -79,6 +81,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (mounted) {
+          // Initialize Notifications
+          Provider.of<NotificationProvider>(context, listen: false).initialize(token: token);
+
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
@@ -162,6 +167,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (mounted) {
+          // Initialize Notifications
+          Provider.of<NotificationProvider>(context, listen: false).initialize(token: jwtToken);
+
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(

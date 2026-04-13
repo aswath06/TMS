@@ -7,6 +7,7 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/components/request_card.dart';
 import 'package:tripzo/store/request_store.dart';
+import '../../providers/notification_provider.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends StatefulWidget {
@@ -600,34 +601,78 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildNotificationList(Color primaryBlue, Color surface, bool isDark) {
+    final notificationProvider = context.watch<NotificationProvider>();
+    final notifications = notificationProvider.notifications;
+
+    if (notificationProvider.isLoading && notifications.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: CircularProgressIndicator(),
+      ));
+    }
+
+    if (notifications.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.notifications_none_rounded, color: Colors.grey.withOpacity(0.5), size: 40),
+            const SizedBox(height: 12),
+            Text(
+              "No new notifications",
+              style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show top 3 recent notifications
+    final recentNotifications = notifications.take(3).toList();
+
     return Column(
-      children: [
-        _buildNotifyItem(
-          'Mission Started',
-          'Driver Assigned for TR-2041.',
-          'Just Now',
-          Icons.auto_awesome_rounded,
-          primaryBlue,
+      children: recentNotifications.map((notification) {
+        String timeAgo = _formatDateTime(notification.createdAt);
+        IconData icon = Icons.info_outline_rounded;
+        Color color = primaryBlue;
+
+        if (notification.type == 'SUCCESS') {
+          icon = Icons.check_circle_rounded;
+          color = Colors.green.shade400;
+        } else if (notification.type == 'WARNING') {
+          icon = Icons.warning_amber_rounded;
+          color = Colors.orange;
+        } else if (notification.type == 'ERROR') {
+          icon = Icons.error_outline_rounded;
+          color = Colors.redAccent;
+        }
+
+        return _buildNotifyItem(
+          notification.title,
+          notification.message,
+          timeAgo,
+          icon,
+          color,
           surface,
-        ),
-        _buildNotifyItem(
-          'Approved',
-          'Your recurring shuttle is live.',
-          '2h ago',
-          Icons.check_circle_rounded,
-          Colors.green.shade400,
-          surface,
-        ),
-        _buildNotifyItem(
-          'Update',
-          'Route TR-2041 schedule modified.',
-          '5h ago',
-          Icons.info_outline_rounded,
-          Colors.orange,
-          surface,
-        ),
-      ],
+        );
+      }).toList(),
     );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+
+    if (diff.inMinutes < 1) return "Just Now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
+    if (diff.inHours < 24) return "${diff.inHours}h ago";
+    return "${dt.day}/${dt.month}";
   }
 
   Widget _buildNotifyItem(
