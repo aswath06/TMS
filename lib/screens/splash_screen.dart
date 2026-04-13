@@ -9,6 +9,7 @@ import '../store/isdark.dart'; // Import Theme Store
 import '../store/istamil.dart'; // Import Language Store
 import '../utils/api_constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,6 +27,10 @@ class _SplashScreenState extends State<SplashScreen>
   bool _isConnected = true;
   StreamSubscription? _connectivitySubscription;
   bool _hasCheckedConnectivity = false;
+
+  // Location permission states
+  bool _isLocationPermissionGranted = true;
+  bool _isLocationServiceEnabled = true;
 
   @override
   void initState() {
@@ -133,6 +138,12 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     } else {
+      // 5. Check location permission for drivers
+      if (role == 'driver') {
+        final bool hasPermission = await _handleLocationPermission();
+        if (!hasPermission) return; // Blocked, UI will show warning
+      }
+
       // Navigation to correct landing page
       if (isPinEnabled) {
         Navigator.pushReplacementNamed(
@@ -148,6 +159,48 @@ class _SplashScreenState extends State<SplashScreen>
         );
       }
     }
+  }
+
+  /// Checks and requests location permission
+  Future<bool> _handleLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        setState(() {
+          _isLocationServiceEnabled = false;
+        });
+      }
+      return false;
+    }
+
+    permission = await Geolocator.checkPermission();
+    
+    // On many devices, we might want to request it once if denied
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission != LocationPermission.always) {
+      if (mounted) {
+        setState(() {
+          _isLocationPermissionGranted = false;
+          _isLocationServiceEnabled = true;
+        });
+      }
+      return false;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLocationPermissionGranted = true;
+        _isLocationServiceEnabled = true;
+      });
+    }
+    return true;
   }
 
   /// Helper to check session locally
@@ -289,8 +342,105 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
             if (!_isConnected) _buildNoInternetUI(size, isDark, subTitleColor),
+            if (_isConnected && (!_isLocationServiceEnabled || !_isLocationPermissionGranted))
+              _buildLocationPermissionUI(size, isDark, subTitleColor),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocationPermissionUI(Size size, bool isDark, Color subTitleColor) {
+    bool isTamil = LanguageStore.isTamil;
+    
+    return Container(
+      color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95),
+      width: double.infinity,
+      height: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              !_isLocationServiceEnabled ? Icons.location_off_rounded : Icons.location_searching_rounded,
+              size: 80,
+              color: const Color(0xFFEF4444),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            !_isLocationServiceEnabled
+                ? (isTamil ? "இருப்பிட சேவை முடக்கப்பட்டுள்ளது" : "Location Services Disabled")
+                : (isTamil ? "இருப்பிட அனுமதி தேவை" : "Location Permission Required"),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              !_isLocationServiceEnabled
+                  ? (isTamil
+                      ? "தொடர உங்கள் மொபைலில் GPS சேவையை இயக்கவும்."
+                      : "Please enable GPS services on your device to continue.")
+                  : (isTamil
+                      ? "ஓட்டுநர்களுக்கு பின்னணிக் கண்காணிப்புக்கு 'எப்போதும் அனுமதி' (Always Allow) தேவை. தயவுசெய்து அமைப்புகளில் மாற்றவும்."
+                      : "Drivers require 'Always Allow' location permission for background tracking to ensure safe and accurate trips. Please update this in your settings."),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: subTitleColor,
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
+          ElevatedButton(
+            onPressed: () async {
+              if (!_isLocationServiceEnabled) {
+                await Geolocator.openLocationSettings();
+              } else {
+                await Geolocator.openAppSettings();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+            ),
+            child: Text(
+              isTamil ? "அமைப்புகளைத் திறக்க" : "Open Settings",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () {
+              _initiateStartupSequence();
+            },
+            child: Text(
+              isTamil ? "மீண்டும் முயற்சிக்கவும்" : "Retry",
+              style: TextStyle(
+                color: const Color(0xFF4F46E5),
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

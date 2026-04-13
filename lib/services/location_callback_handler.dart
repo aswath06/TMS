@@ -10,6 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 
+// Current session cache for the background isolate
+String? _cachedToken;
+int? _cachedTripId;
+
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +32,14 @@ void onStart(ServiceInstance service) async {
   service.on('stopService').listen((event) {
     print("[BackgroundService] Stopping service...");
     service.stopSelf();
+  });
+
+  service.on('updateConfig').listen((event) {
+    if (event != null) {
+      _cachedToken = event['token'];
+      _cachedTripId = event['tripId'];
+      print("[BackgroundService] Isolate Config Sync: Trip #$_cachedTripId");
+    }
   });
 
   // Track if GPS is currently disabled to avoid spamming notifications
@@ -52,7 +64,7 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  int secondsToNextSync = 120;
+  int secondsToNextSync = 300;
 
   // Perform initial update immediately
   _performUpdate(service, flutterLocalNotificationsPlugin);
@@ -60,7 +72,7 @@ void onStart(ServiceInstance service) async {
   // 1. Countdown Timer (Updates UI every second)
   Timer.periodic(const Duration(seconds: 1), (timer) {
     secondsToNextSync--;
-    if (secondsToNextSync < 0) secondsToNextSync = 120;
+    if (secondsToNextSync < 0) secondsToNextSync = 300;
     
     // Update notification with countdown (only if GPS is active)
     if (!isGpsDisabled) {
@@ -68,13 +80,13 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  // 2. Sync Timer (Polls GPS and sends data every 2 minutes)
-  Timer.periodic(const Duration(seconds: 120), (timer) async {
+  // 2. Sync Timer (Polls GPS and sends data every 5 minutes)
+  Timer.periodic(const Duration(seconds: 300), (timer) async {
     if (service is AndroidServiceInstance) {
       if (!(await service.isForegroundService())) return;
     }
     await _performUpdate(service, flutterLocalNotificationsPlugin);
-    secondsToNextSync = 120; // Reset countdown after sync
+    secondsToNextSync = 300; // Reset countdown after sync
   });
 }
 
@@ -165,12 +177,12 @@ Future<void> _performUpdate(
 
 Future<void> _syncLocation(double lat, double lon) async {
   try {
-    final token = await UserStore.getToken();
+    final token = _cachedToken ?? await UserStore.getToken();
     final prefs = await SharedPreferences.getInstance();
-    final tripId = prefs.getInt('active_trip_instance_id');
+    final tripId = _cachedTripId ?? prefs.getInt('active_trip_instance_id');
 
     if (token == null || tripId == null) {
-      print("[BackgroundService] Missing Token or TripID ($tripId)");
+      print("[BackgroundService] Missing Token or TripID (TripID: $tripId, Token: ${token != null ? 'Exists' : 'Null'})");
       return;
     }
 

@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripzo/services/location_callback_handler.dart';
+import 'package:tripzo/store/user_store.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -83,12 +84,22 @@ class LocationService {
     // 3. Start the service
     final service = FlutterBackgroundService();
     bool isRunning = await service.isRunning();
+    
+    final token = await UserStore.getToken();
+
     if (!isRunning) {
       print("[LocationService] Launching background service...");
       await service.startService();
     } else {
       print("[LocationService] Service already running. Re-syncing trip state.");
     }
+
+    // Always push latest config to the background isolate
+    print("[LocationService] Pushing config to background: Trip #$tripInstanceId");
+    service.invoke('updateConfig', {
+      'token': token,
+      'tripId': tripInstanceId,
+    });
   }
 
   Future<void> stopTracking() async {
