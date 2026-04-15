@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1752,13 +1753,45 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               const SizedBox(width: 12),
               Icon(Icons.calendar_today_rounded, size: 14, color: subColor.withValues(alpha: 0.6)),
               const SizedBox(width: 4),
-              Text(
-                widget.time.toUpperCase(),
-                style: TextStyle(
-                  color: subColor,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (travelInfo?['start_datetime'] != null) ...[
+                      Row(
+                        children: [
+                          Text(
+                            "START: ",
+                            style: TextStyle(color: subColor.withValues(alpha: 0.7), fontWeight: FontWeight.w800, fontSize: 9),
+                          ),
+                          Text(
+                            DateFormat('MMM dd, hh:mm a').format(DateTime.parse(travelInfo!['start_datetime']).toLocal()).toUpperCase(),
+                            style: TextStyle(color: subColor, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                    ],
+                    if (travelInfo?['end_datetime'] != null) ...[
+                      Row(
+                        children: [
+                          Text(
+                            "END:   ",
+                            style: TextStyle(color: subColor.withValues(alpha: 0.7), fontWeight: FontWeight.w800, fontSize: 9),
+                          ),
+                          Text(
+                            DateFormat('MMM dd, hh:mm a').format(DateTime.parse(travelInfo!['end_datetime']).toLocal()).toUpperCase(),
+                            style: TextStyle(color: subColor, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Text(
+                        widget.time.toUpperCase(),
+                        style: TextStyle(color: subColor, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -2368,22 +2401,22 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: _buildEnhancedSmallInfo(
-                Icons.directions_car_filled_rounded,
-                vType,
-                "VEHICLE",
-                blue,
-                sub,
-              ),
-          ),
           if (vNumber.isNotEmpty) ...[
-            const SizedBox(width: 8),
             Expanded(
               child: _buildEnhancedSmallInfo(
                   Icons.tag_rounded,
                   vNumber,
                   "PLATE NO",
+                  blue,
+                  sub,
+                ),
+            ),
+          ] else ...[
+            Expanded(
+              child: _buildEnhancedSmallInfo(
+                  Icons.directions_car_filled_rounded,
+                  vType,
+                  "VEHICLE",
                   blue,
                   sub,
                 ),
