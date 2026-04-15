@@ -8,6 +8,8 @@ import '../screens/main_screen.dart';
 import '../screens/auth/lock_screen.dart';
 
 class AppRoutes {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static const String adminDashboard = '/admin-dashboard';
   static const String splash = '/';
   static const String login = '/login';

@@ -53,36 +53,58 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoggingIn = true);
 
     final client = _createHttpClient();
+
     try {
+      final url = ApiConstants.login;
+
+      final body = {
+        "identifier": _emailController.text.trim(),
+        "password": _passwordController.text.trim(),
+      };
+
+      // ✅ PRINT CURL
+      final curl =
+          '''
+curl -X POST "$url" \
+-H "Content-Type: application/json" \
+-d '${jsonEncode(body)}'
+''';
+
+      debugPrint("🔥 LOGIN CURL:\n$curl");
+
       final response = await client.post(
-        Uri.parse(ApiConstants.login),
+        Uri.parse(url),
         headers: ApiConstants.getHeaders(null),
-        body: jsonEncode({
-          "identifier": _emailController.text.trim(),
-          "password": _passwordController.text.trim(),
-        }),
+        body: jsonEncode(body),
       );
 
+      // ✅ PRINT RESPONSE
+      debugPrint("✅ STATUS CODE: ${response.statusCode}");
+      debugPrint("📦 RESPONSE BODY: ${response.body}");
+
       if (response.body.isEmpty) {
-        throw "Server returned an empty response. Please try again later.";
+        throw "Empty response";
       }
 
-      final Map<String, dynamic> data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final String token = data['token'];
-        final Map<String, dynamic> user = data['user'];
+        final token = data['token'] ?? '';
+
+        final user = data['user'] ?? {};
 
         await UserStore.saveUserData(
           token: token,
-          role: user['role'] ?? 'faculty',
-          email: user['email'],
+          role: user['role']?.toString().toLowerCase() ?? 'faculty',
+          email: user['email'] ?? '', // ✅ FIXED
           id: user['id'] ?? 0,
         );
 
         if (mounted) {
-          // Initialize Notifications
-          Provider.of<NotificationProvider>(context, listen: false).initialize(token: token);
+          Provider.of<NotificationProvider>(
+            context,
+            listen: false,
+          ).initialize(token: token);
 
           Navigator.pushAndRemoveUntil(
             context,
@@ -97,26 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
         throw data['message'] ?? "Login failed";
       }
     } catch (e) {
-      debugPrint("LOGIN ERROR: $e");
-      String errorMessage = e.toString();
-      bool isNetworkError = false;
-
-      if (errorMessage.contains("SocketException") ||
-          errorMessage.contains("Connection failed") ||
-          errorMessage.contains("ClientException") ||
-          errorMessage.contains("HandshakeException") ||
-          errorMessage.contains("CERTIFICATE_VERIFY_FAILED")) {
-        errorMessage = "Network error. Please check your internet connection and try again.";
-        isNetworkError = true;
-      }
-
-      if (mounted) {
-        LoginErrorDialog.show(
-          context,
-          message: errorMessage,
-          onRetry: isNetworkError ? _handleLogin : null,
-        );
-      }
+      debugPrint("❌ LOGIN ERROR: $e");
     } finally {
       client.close();
       if (mounted) setState(() => _isLoggingIn = false);
@@ -168,7 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (mounted) {
           // Initialize Notifications
-          Provider.of<NotificationProvider>(context, listen: false).initialize(token: jwtToken);
+          Provider.of<NotificationProvider>(
+            context,
+            listen: false,
+          ).initialize(token: jwtToken);
 
           Navigator.pushAndRemoveUntil(
             context,
@@ -257,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailController,
             icon: Icons.alternate_email_rounded,
             keyboardType: TextInputType.emailAddress,
-            validator: AppValidators.validateEmail,
+            // validator: AppValidators.validateEmail,
           ),
           const SizedBox(height: 20),
           CustomInput(

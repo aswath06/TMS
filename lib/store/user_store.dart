@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tripzo/utils/routes.dart';
 
 class UserStore {
   // Keys
@@ -65,5 +67,14 @@ class UserStore {
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  // Force logout and redirect to login
+  static Future<void> forceLogout() async {
+    await clear();
+    AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      AppRoutes.login,
+      (route) => false,
+    );
   }
 }

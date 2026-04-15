@@ -84,6 +84,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
 
     return MaterialApp(
+      navigatorKey: AppRoutes.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'TripZo',
       themeMode: ThemeStore.isDark ? ThemeMode.dark : ThemeMode.light,

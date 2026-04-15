@@ -70,6 +70,12 @@ class DashboardStore extends ChangeNotifier {
           activeRoutes: data['active_routes'] ?? 0,
           isLoading: false,
         );
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _state = _state.copyWith(
+          isLoading: false,
+          error: "Session expired. Please login again.",
+        );
       } else {
         _state = _state.copyWith(
           isLoading: false,
@@ -114,6 +120,9 @@ class DashboardStore extends ChangeNotifier {
           history: page == 1 ? formattedHistory : [..._state.history, ...formattedHistory],
           isLoading: false,
         );
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _state = _state.copyWith(isLoading: false, error: "Session expired.");
       } else {
         _state = _state.copyWith(isLoading: false, error: "Failed to fetch history");
       }

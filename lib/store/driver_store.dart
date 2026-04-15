@@ -130,6 +130,9 @@ class DriverStore extends ChangeNotifier {
             .toList();
 
         _drivers.addAll(newDrivers);
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _driversError = "Session expired. Please login again.";
       } else {
         _driversError = "Failed to load drivers.";
       }
@@ -288,6 +291,10 @@ class DriverStore extends ChangeNotifier {
           await _fetchDashboardExtra(token, data['id']);
           return;
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _profileError = "Session expired.";
+        return;
       }
       _profileError = "Failed to load profile data.";
     } catch (e) {
@@ -381,6 +388,9 @@ class DriverStore extends ChangeNotifier {
         } else {
           _missionsError = decoded['message'] ?? "Failed to fetch missions";
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _missionsError = "Session expired. Please login again.";
       } else {
         _missionsError = "Server error: ${response.statusCode}";
       }
@@ -431,6 +441,9 @@ class DriverStore extends ChangeNotifier {
         } else {
           _leavesError = decoded['message'] ?? "Failed to fetch leaves";
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _leavesError = "Session expired. Please login again.";
       } else {
         _leavesError = "Server error: ${response.statusCode}";
       }

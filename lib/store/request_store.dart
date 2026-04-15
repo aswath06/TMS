@@ -93,6 +93,9 @@ class RequestStore extends ChangeNotifier {
         } else {
           _hasMore = formattedItems.length >= limit;
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _errorMessage = "Session expired. Please login again.";
       } else {
         _errorMessage = "Server Error: ${response.statusCode}";
       }
@@ -136,6 +139,9 @@ class RequestStore extends ChangeNotifier {
         } else {
           _errorMessage = data['message'] ?? "Failed to fetch request details.";
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _errorMessage = "Session expired.";
       } else {
         _errorMessage = "Server Error: ${response.statusCode}";
       }
@@ -281,7 +287,8 @@ class RequestStore extends ChangeNotifier {
           _leavesErrorMessage = "Failed to fetch leaves.";
         }
       } else if (response.statusCode == 401) {
-        _leavesErrorMessage = "Unauthorized access. Please re-login.";
+        await UserStore.forceLogout();
+        _leavesErrorMessage = "Session expired. Please login again.";
       } else {
         _leavesErrorMessage = "Server Error: ${response.statusCode}";
       }
@@ -453,6 +460,10 @@ class RequestStore extends ChangeNotifier {
           _leavesErrorMessage = data['message'] ?? "Failed to create leave.";
           debugPrint("[createLeave] API reported failure: $_leavesErrorMessage");
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _leavesErrorMessage = "Session expired. Please login again.";
+        return false;
       } else {
         final errBody = response.body;
         try {
@@ -510,6 +521,9 @@ class RequestStore extends ChangeNotifier {
         } else {
           _leavesErrorMessage = data['message'] ?? "Failed to update status.";
         }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _leavesErrorMessage = "Session expired. Please login again.";
       } else {
         _leavesErrorMessage = "Server error: ${response.statusCode}";
       }

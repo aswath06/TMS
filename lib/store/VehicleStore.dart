@@ -111,6 +111,8 @@ class VehicleStore extends ChangeNotifier {
         _hasMore = page < totalPagesFromApi && newData.isNotEmpty;
         _syncCategories();
         _applyFilters(); // Apply local category filtering on top of server results
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
       }
     } catch (e) {
       debugPrint("Fetch Page Request Error: $e");
@@ -133,6 +135,9 @@ class VehicleStore extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         await fetchVehicles();
         return true;
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        return false;
       } else {
         debugPrint("Add Vehicle Failed: ${response.body}");
         return false;
