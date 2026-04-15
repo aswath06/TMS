@@ -19,8 +19,6 @@ import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
-
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -256,16 +254,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Declined with remark: $remark"), backgroundColor: Colors.orange),
     );
-  }
-
-  String _formatDateTime(String? dateTimeStr) {
-    if (dateTimeStr == null || dateTimeStr.isEmpty || dateTimeStr == 'null') return '---';
-    try {
-      final dt = DateTime.parse(dateTimeStr).toLocal();
-      return DateFormat('MMM d, hh:mm a').format(dt);
-    } catch (e) {
-      return dateTimeStr;
-    }
   }
 
   void _showRemarkModal(bool isApprove) async {
@@ -1760,47 +1748,18 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                   maxLines: 1,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.calendar_today_rounded, size: 14, color: subColor.withValues(alpha: 0.6)),
-                  const SizedBox(width: 8),
-                  Text(
-                    _missionData != null && _missionData!['travel_info'] != null && _missionData!['travel_info']['start_datetime'] != null
-                        ? "START: ${_formatDateTime(_missionData!['travel_info']['start_datetime'])}".toUpperCase()
-                        : widget.time.toUpperCase(),
-                    style: TextStyle(
-                      color: subColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-              if (_missionData != null && _missionData!['travel_info'] != null && _missionData!['travel_info']['end_datetime'] != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.timer_outlined, size: 14, color: subColor.withValues(alpha: 0.6)),
-                    const SizedBox(width: 8),
-                    Text(
-                      "END:   ${_formatDateTime(_missionData!['travel_info']['end_datetime'])}".toUpperCase(),
-                      style: TextStyle(
-                        color: subColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 11,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 12),
+              Icon(Icons.calendar_today_rounded, size: 14, color: subColor.withValues(alpha: 0.6)),
+              const SizedBox(width: 4),
+              Text(
+                widget.time.toUpperCase(),
+                style: TextStyle(
+                  color: subColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
                 ),
-              ],
+              ),
             ],
           ),
           if (purpose != null && purpose.toString().isNotEmpty && purpose.toString() != 'null') ...[

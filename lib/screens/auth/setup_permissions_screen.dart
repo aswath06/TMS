@@ -18,7 +18,6 @@ class SetupPermissionsScreen extends StatefulWidget {
 class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   bool _isInternetOk = false;
   bool _isLocationOk = false;
-  bool _isGalleryOk = false;
   bool _isNotificationOk = false;
   bool _isLocationAlways = false;
   bool _isProcessing = false;
@@ -49,18 +48,14 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   Future<void> _checkInternet(ConnectivityResult result) async {
     setState(() => _isInternetOk = result != ConnectivityResult.none);
   }
-
   Future<void> _checkPermissions() async {
     final locationStatus = await Permission.location.status;
     final locationAlwaysStatus = await Permission.locationAlways.status;
-    final photosStatus = await Permission.photos.status;
-    final storageStatus = await Permission.storage.status;
     final notificationStatus = await Permission.notification.status;
 
     setState(() {
       _isLocationOk = locationStatus.isGranted;
       _isLocationAlways = locationAlwaysStatus.isGranted;
-      _isGalleryOk = photosStatus.isGranted || storageStatus.isGranted;
       _isNotificationOk = notificationStatus.isGranted;
     });
   }
@@ -70,12 +65,6 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
     if (status.isGranted) {
       await Permission.locationAlways.request();
     }
-    _checkPermissions();
-  }
-
-  Future<void> _requestGallery() async {
-    await Permission.photos.request();
-    await Permission.storage.request();
     _checkPermissions();
   }
 
@@ -152,15 +141,6 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                     ),
                     
                     _buildRequirementCard(
-                      title: isTamil ? "கேலரி அனுமதி" : "Gallery Access",
-                      subtitle: isTamil ? "ப்புகைப்படங்களைப் பதிவேற்றத் தேவை" : "Required for profile and maintenance logs",
-                      icon: Icons.image_rounded,
-                      isOk: _isGalleryOk,
-                      onTap: _requestGallery,
-                      isDark: isDark,
-                    ),
-                    
-                    _buildRequirementCard(
                       title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
                       subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
                       icon: Icons.notifications_active_rounded,
@@ -189,7 +169,12 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
                         isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                 ),
               ),

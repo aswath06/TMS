@@ -23,8 +23,17 @@ class Guest {
   String countryCode;
   Guest({required this.name, required this.phone, this.countryCode = "+91"});
 
-  Map<String, dynamic> toJson() => { "passenger_name": name, "phone": phone, "country_code": countryCode, "is_primary_contact": false };
-  factory Guest.fromJson(Map<String, dynamic> json) => Guest(name: json['passenger_name'] ?? "", phone: json['phone'] ?? "", countryCode: json['country_code'] ?? "+91");
+  Map<String, dynamic> toJson() => {
+    "passenger_name": name,
+    "phone": phone,
+    "country_code": countryCode,
+    "is_primary_contact": false,
+  };
+  factory Guest.fromJson(Map<String, dynamic> json) => Guest(
+    name: json['passenger_name'] ?? "",
+    phone: json['phone'] ?? "",
+    countryCode: json['country_code'] ?? "+91",
+  );
 }
 
 class _NewRequestScreenState extends State<NewRequestScreen> {
@@ -40,8 +49,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   DateTime? _startDate, _endDate;
   final TextEditingController _routeNameController = TextEditingController();
   final TextEditingController _purposeController = TextEditingController();
-  final TextEditingController _passengerCountController = TextEditingController(text: "1");
-  final TextEditingController _vehicleCountController = TextEditingController(text: "1");
+  final TextEditingController _passengerCountController = TextEditingController(
+    text: "1",
+  );
+  final TextEditingController _vehicleCountController = TextEditingController(
+    text: "1",
+  );
   final TextEditingController _luggageController = TextEditingController();
   final TextEditingController _specialReqController = TextEditingController();
 
@@ -70,9 +83,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   int _visibleGuestSlots = 2;
 
   @override
-  void initState() { 
-    super.initState(); 
-    _checkRole(); 
+  void initState() {
+    super.initState();
+    _checkRole();
     _passengerCountController.addListener(_syncGuests);
   }
 
@@ -86,23 +99,24 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       });
     }
     if (_visibleGuestSlots > count) setState(() => _visibleGuestSlots = count);
-    if (_visibleGuestSlots < 2 && count >= 2) setState(() => _visibleGuestSlots = 2);
+    if (_visibleGuestSlots < 2 && count >= 2)
+      setState(() => _visibleGuestSlots = 2);
   }
 
   Future<void> _checkRole() async {
     final role = await UserStore.getRole();
     if (mounted) {
-      setState(() { 
-        _userRole = role?.toLowerCase() ?? 'faculty'; 
-        _totalSteps = _userRole.contains('admin') ? 5 : 2; 
+      setState(() {
+        _userRole = role?.toLowerCase() ?? 'faculty';
+        _totalSteps = _userRole.contains('admin') ? 5 : 2;
         if (_stops.isEmpty) {
           _stops.addAll([
             {
               "address": ApiConstants.bitLocation['display_name'],
               "lat": ApiConstants.bitLocation['lat'],
-              "lon": ApiConstants.bitLocation['lon']
+              "lon": ApiConstants.bitLocation['lon'],
             },
-            {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411}
+            {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411},
           ]);
         }
       });
@@ -110,51 +124,94 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   @override
-  void dispose() { _routeNameController.dispose(); _purposeController.dispose(); _passengerCountController.dispose(); _vehicleCountController.dispose(); _luggageController.dispose(); _specialReqController.dispose(); super.dispose(); }
+  void dispose() {
+    _routeNameController.dispose();
+    _purposeController.dispose();
+    _passengerCountController.dispose();
+    _vehicleCountController.dispose();
+    _luggageController.dispose();
+    _specialReqController.dispose();
+    super.dispose();
+  }
 
   // --- Logic Helpers ---
 
   Future<void> _fetchAvailableVehicles() async {
-    if (_startDate == null) return; setState(() => _isLoadingVehicles = true);
+    if (_startDate == null) return;
+    setState(() => _isLoadingVehicles = true);
     try {
-      final token = await UserStore.getToken(); final start = _toIso(_startDate!); final end = _endDate != null ? _toIso(_endDate!) : start;
-      final url = "${ApiConstants.getAvailableVehicles}?start_datetime=$start&end_datetime=$end";
+      final token = await UserStore.getToken();
+      final start = _toIso(_startDate!);
+      final end = _endDate != null ? _toIso(_endDate!) : start;
+      final url =
+          "${ApiConstants.getAvailableVehicles}?start_datetime=$start&end_datetime=$end";
       debugPrint("Fetching vehicles: $url");
-      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
-      debugPrint("Vehicles Response [${response.statusCode}]: ${response.body}");
-      if (response.statusCode == 200) { 
-        final data = json.decode(response.body); 
-        setState(() => _availableVehicles = List<Map<String, dynamic>>.from(data['data']['vehicles'] ?? [])); 
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+      debugPrint(
+        "Vehicles Response [${response.statusCode}]: ${response.body}",
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(
+          () => _availableVehicles = List<Map<String, dynamic>>.from(
+            data['data']['vehicles'] ?? [],
+          ),
+        );
       }
-    } catch (e) { debugPrint("Err: $e"); } finally { setState(() => _isLoadingVehicles = false); }
+    } catch (e) {
+      debugPrint("Err: $e");
+    } finally {
+      setState(() => _isLoadingVehicles = false);
+    }
   }
 
   Future<void> _fetchAvailableDrivers() async {
-    if (_startDate == null) return; setState(() => _isLoadingDrivers = true);
+    if (_startDate == null) return;
+    setState(() => _isLoadingDrivers = true);
     try {
-      final token = await UserStore.getToken(); final start = _toIso(_startDate!); final end = _endDate != null ? _toIso(_endDate!) : start;
-      final url = "${ApiConstants.getAvailableDrivers}?start_datetime=$start&end_datetime=$end";
+      final token = await UserStore.getToken();
+      final start = _toIso(_startDate!);
+      final end = _endDate != null ? _toIso(_endDate!) : start;
+      final url =
+          "${ApiConstants.getAvailableDrivers}?start_datetime=$start&end_datetime=$end";
       debugPrint("Fetching drivers: $url");
-      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
       debugPrint("Drivers Response [${response.statusCode}]: ${response.body}");
-      if (response.statusCode == 200) { 
-        final data = json.decode(response.body); 
-        setState(() => _availableDrivers = List<Map<String, dynamic>>.from(data['data']['drivers'] ?? [])); 
-        _autoProposeDrivers(); 
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(
+          () => _availableDrivers = List<Map<String, dynamic>>.from(
+            data['data']['drivers'] ?? [],
+          ),
+        );
+        _autoProposeDrivers();
       }
-    } catch (e) { debugPrint("Err: $e"); } finally { setState(() => _isLoadingDrivers = false); }
+    } catch (e) {
+      debugPrint("Err: $e");
+    } finally {
+      setState(() => _isLoadingDrivers = false);
+    }
   }
 
   void _autoProposeDrivers() {
     _selectedVehicles.forEach((groupId, vehicle) {
       if (vehicle != null && vehicle['default_driver'] != null) {
         final defDriver = vehicle['default_driver'];
-        final found = _availableDrivers.firstWhere((d) => d['id'] == defDriver['driver_id'], orElse: () => <String, dynamic>{});
+        final found = _availableDrivers.firstWhere(
+          (d) => d['id'] == defDriver['driver_id'],
+          orElse: () => <String, dynamic>{},
+        );
         if (found.isNotEmpty) setState(() => _selectedDrivers[groupId] = found);
       }
     });
   }
-  
+
   void _autoAllocateGuests() {
     if (_unassignedGuests.isEmpty) return;
     int vCount = _guestGroups.length;
@@ -172,15 +229,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   void _prepareGrouping() {
     int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
     int pLimit = int.tryParse(_passengerCountController.text) ?? 1;
-    setState(() { 
+    setState(() {
       _unassignedGuests = [];
       for (int i = 0; i < pLimit; i++) {
         // Use ORIGINAL object so indexOf works correctly
         _unassignedGuests.add(_guests[i]);
       }
-      _guestGroups = {}; 
+      _guestGroups = {};
       for (int i = 0; i < vCount; i++) {
-        _guestGroups[i] = []; 
+        _guestGroups[i] = [];
       }
     });
   }
@@ -199,7 +256,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     try {
       final token = await UserStore.getToken();
       final bool isAdmin = _userRole.toLowerCase().contains('admin');
-      
+
       // Constructing passengers list
       int pLimit = int.tryParse(_passengerCountController.text) ?? 1;
       List<Map<String, dynamic>> passengers = [];
@@ -209,14 +266,16 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           "passenger_name": name.isEmpty ? "Guest ${i + 1}" : name,
           "phone": _guests[i].phone.trim(),
           "country_code": _guests[i].countryCode,
-          "is_primary_contact": i == 0
+          "is_primary_contact": i == 0,
         });
       }
 
       final Map<String, dynamic> body = {
         "route_name": _routeNameController.text.trim(),
         "trip_type": _routeType == 'One Way' ? 'ONE_WAY' : 'ROUND_TRIP',
-        "requested_for_date": DateFormat('yyyy-MM-dd').format(_startDate ?? DateTime.now()),
+        "requested_for_date": DateFormat(
+          'yyyy-MM-dd',
+        ).format(_startDate ?? DateTime.now()),
         "start_datetime": _startDate != null ? _toIso(_startDate!) : null,
         "end_datetime": _endDate != null ? _toIso(_endDate!) : null,
         "purpose": _purposeController.text.trim(),
@@ -237,7 +296,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           leg1Vehicles.add({
             "vehicle_id": _selectedVehicles[idx]?['id'],
             "driver_id": _selectedDrivers[idx]?['id'],
-            "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList() 
+            "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList(),
           });
         });
 
@@ -250,37 +309,45 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             "latitude": s['lat'],
             "longitude": s['lon'],
             "stop_order": idx + 1,
-            "stop_type": idx == 0 ? "START" : (idx == _stops.length - 1 ? "END" : "VIA"),
+            "stop_type": idx == 0
+                ? "START"
+                : (idx == _stops.length - 1 ? "END" : "VIA"),
           };
         }).toList();
 
         body["admin_assignments"] = [
           {"leg_code": "LEG-1", "vehicles": leg1Vehicles},
           if (_routeType != 'One Way')
-            {"leg_code": "LEG-2", "vehicles": leg1Vehicles}
+            {"leg_code": "LEG-2", "vehicles": leg1Vehicles},
         ];
       } else {
         // FACULTY FLOW: Uses groupings
-        body["stops"] = _stops.map((s) => { "stop_name": s['address'] ?? "" }).toList();
-        
+        body["stops"] = _stops
+            .map((s) => {"stop_name": s['address'] ?? ""})
+            .toList();
+
         List<Map<String, dynamic>> groupings = [];
         _guestGroups.forEach((idx, guests) {
           groupings.add({
             "group_label": "Vehicle Group ${idx + 1}",
-            "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList()
+            "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList(),
           });
         });
         body["groupings"] = groupings;
       }
 
-      final String apiUrl = isAdmin ? ApiConstants.adminCreateFull : ApiConstants.facultyCreate;
+      final String apiUrl = isAdmin
+          ? ApiConstants.adminCreateFull
+          : ApiConstants.facultyCreate;
       final String tokenLabel = isAdmin ? "ADMIN" : "FACULTY";
 
       // Logging as a CURL for verification
       const encoder = JsonEncoder.withIndent('  ');
       String prettyJson = encoder.convert(body);
-      debugPrint("\n🚀 [$tokenLabel CURL SENDING]:\ncurl --location '$apiUrl' \\\n"
-          "--header 'Authorization: TMS $token' \\\n--header 'Content-Type: application/json' \\\n--data '$prettyJson'\n");
+      debugPrint(
+        "\n🚀 [$tokenLabel CURL SENDING]:\ncurl --location '$apiUrl' \\\n"
+        "--header 'Authorization: TMS $token' \\\n--header 'Content-Type: application/json' \\\n--data '$prettyJson'\n",
+      );
 
       final resp = await http.post(
         Uri.parse(apiUrl),
@@ -292,11 +359,17 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
       if (!mounted) return;
       if (resp.statusCode == 200 || resp.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Request Submitted Successfully!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ Request Submitted Successfully!")),
+        );
         Navigator.pop(context, true);
       } else {
         final err = json.decode(resp.body);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Failed: ${err['message'] ?? 'Unknown error'}")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("❌ Failed: ${err['message'] ?? 'Unknown error'}"),
+          ),
+        );
       }
     } catch (e) {
       debugPrint("Err: $e");
@@ -310,7 +383,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+    final Color bgColor = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF8FAFC);
     final Color pColor = const Color(0xFF6366F1);
 
     return Theme(
@@ -343,7 +418,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildMeshBg(Color p) => Positioned(top: -100, right: -100, child: Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [p.withValues(alpha: 0.08), Colors.transparent]))));
+  Widget _buildMeshBg(Color p) => Positioned(
+    top: -100,
+    right: -100,
+    child: Container(
+      width: 400,
+      height: 400,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [p.withValues(alpha: 0.08), Colors.transparent],
+        ),
+      ),
+    ),
+  );
 
   Widget _buildPremiumHeader(BuildContext context, Color p, bool d) {
     double prg = (_currentStep + 1) / _totalSteps;
@@ -352,18 +440,50 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).scaffoldBackgroundColor.withValues(alpha: 0.4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  GestureDetector(onTap: () { Navigator.pop(context); }, child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: p.withValues(alpha: 0.1), shape: BoxShape.circle), child: Icon(Icons.close_rounded, color: p, size: 22))),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: p.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close_rounded, color: p, size: 22),
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text("TRANSPORT", style: GoogleFonts.montserrat(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.w900, color: p)),
-                    Text("New Request", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: d ? Colors.white : const Color(0xFF0F172A))),
-                  ]),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "TRANSPORT",
+                        style: GoogleFonts.montserrat(
+                          fontSize: 10,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w900,
+                          color: p,
+                        ),
+                      ),
+                      Text(
+                        "New Request",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: d ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               _buildProgressCircle(p, prg),
@@ -374,19 +494,40 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildProgressCircle(Color p, double prg) => Stack(alignment: Alignment.center, children: [
-    SizedBox(width: 50, height: 50, child: CircularProgressIndicator(value: prg, strokeWidth: 4, backgroundColor: p.withValues(alpha: 0.05), valueColor: AlwaysStoppedAnimation<Color>(p))),
-    Text("${(prg * 100).toInt()}%", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: p)),
-  ]);
+  Widget _buildProgressCircle(Color p, double prg) => Stack(
+    alignment: Alignment.center,
+    children: [
+      SizedBox(
+        width: 50,
+        height: 50,
+        child: CircularProgressIndicator(
+          value: prg,
+          strokeWidth: 4,
+          backgroundColor: p.withValues(alpha: 0.05),
+          valueColor: AlwaysStoppedAnimation<Color>(p),
+        ),
+      ),
+      Text(
+        "${(prg * 100).toInt()}%",
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: p),
+      ),
+    ],
+  );
 
   Widget _buildCurrentStage(Color p, bool d) {
     switch (_currentStep) {
-      case 0: return _stageRouteDetails(p, d);
-      case 1: return _stageGrouping(p, d);
-      case 2: return _stageVehicles(p, d);
-      case 3: return _stageDrivers(p, d);
-      case 4: return _stageReview(p, d);
-      default: return Container();
+      case 0:
+        return _stageRouteDetails(p, d);
+      case 1:
+        return _stageGrouping(p, d);
+      case 2:
+        return _stageVehicles(p, d);
+      case 3:
+        return _stageDrivers(p, d);
+      case 4:
+        return _stageReview(p, d);
+      default:
+        return Container();
     }
   }
 
@@ -408,49 +549,118 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               children: ["One Way", "Two Way", "Multi Day"].map((type) {
                 bool act = _routeType == type;
                 return GestureDetector(
-                  onTap: () => setState(() { _routeType = type; }),
+                  onTap: () => setState(() {
+                    _routeType = type;
+                  }),
                   child: Container(
-                    margin: const EdgeInsets.only(right: 8), 
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: act ? p : p.withValues(alpha: 0.04), 
-                      borderRadius: BorderRadius.circular(16), 
-                      border: Border.all(color: act ? p : Colors.transparent, width: 1.5)
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 20,
                     ),
-                    child: Center(child: Text(type, style: TextStyle(color: act ? Colors.white : p, fontWeight: FontWeight.w800, fontSize: 13))),
+                    decoration: BoxDecoration(
+                      color: act ? p : p.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: act ? p : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        type,
+                        style: TextStyle(
+                          color: act ? Colors.white : p,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
                   ),
                 );
               }).toList(),
             ),
           ),
           const SizedBox(height: 32),
-          _premiumInput("Journey Name*", _routeNameController, "e.g. Science Fair visit", Icons.route_rounded, c, t, p, isReq: true),
-          _premiumInput("Journey Purpose", _purposeController, "e.g. Industrial visit for Dept", Icons.info_outline, c, t, p),
+          _premiumInput(
+            "Journey Name*",
+            _routeNameController,
+            "e.g. From to To (by Placement)",
+            Icons.route_rounded,
+            c,
+            t,
+            p,
+            isReq: true,
+          ),
+          _premiumInput(
+            "Journey Purpose (Optional)",
+            _purposeController,
+            "e.g. Industrial visit for Dept",
+            Icons.info_outline,
+            c,
+            t,
+            p,
+          ),
           _buildGlassLabel("Journey Schedule", p),
           const SizedBox(height: 16),
           _buildEnhancedScheduleCards(p, c, t, d),
           const SizedBox(height: 32),
-          Row(children: [
-            Expanded(child: _premiumInput("Passengers*", _passengerCountController, "1", Icons.people_outline, c, t, p, isNum: true, isReq: true)),
-            const SizedBox(width: 16),
-            Expanded(child: _premiumInput("Vehicles*", _vehicleCountController, "1", Icons.directions_bus_filled_outlined, c, t, p, isNum: true, isReq: true)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: _premiumInput(
+                  "Passengers*",
+                  _passengerCountController,
+                  "1",
+                  Icons.people_outline,
+                  c,
+                  t,
+                  p,
+                  isNum: true,
+                  isReq: true,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _premiumInput(
+                  "Vehicles*",
+                  _vehicleCountController,
+                  "1",
+                  Icons.directions_bus_filled_outlined,
+                  c,
+                  t,
+                  p,
+                  isNum: true,
+                  isReq: true,
+                ),
+              ),
+            ],
+          ),
           _buildGlassLabel("Passenger Details", p),
           const SizedBox(height: 16),
           ...List.generate(_visibleGuestSlots, (i) {
             if (i >= _guests.length) return const SizedBox.shrink();
             bool isCompulsory = i < 2;
-            return _premiumGuestEntry(i, _guests[i], c, t, p, isReq: isCompulsory);
+            return _premiumGuestEntry(
+              i,
+              _guests[i],
+              c,
+              t,
+              p,
+              isReq: isCompulsory,
+            );
           }),
           _addGuestBtn(p),
           const SizedBox(height: 32),
           _buildGlassLabel("Route Stops", p),
           const SizedBox(height: 12),
           LocationSelector(
-            cardColor: c, 
-            titleColor: t, 
-            accentColor: p, 
-            initialAddresses: _stops.map((s) => s['address'] as String).toList(),
+            cardColor: c,
+            titleColor: t,
+            accentColor: p,
+            initialAddresses: _stops
+                .map((s) => s['address'] as String)
+                .toList(),
             onChanged: (stops, dist, dur) {
               setState(() {
                 _stops.clear();
@@ -459,7 +669,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 _approxDistanceKm = dist;
                 _updateEndDate();
               });
-            }
+            },
           ),
           const SizedBox(height: 50),
         ],
@@ -468,21 +678,39 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   Widget _buildEnhancedScheduleCards(Color p, Color c, Color t, bool isDark) {
-    return Column(children: [
-      _niceScheduleTile("Departure Date & Time*", _startDate, (v) {
-        setState(() { 
-          _startDate = v; 
-          _updateEndDate();
-        });
-      }, p, c, t),
-      if (_routeType == 'Multi Day') ...[
-        const SizedBox(height: 12),
-        _niceScheduleTile("Expected Return*", _endDate, (v) => setState(() { _endDate = v; }), p, c, t),
-      ] else if (_startDate != null && _endDate != null) ...[
-        const SizedBox(height: 12),
-        _buildReadOnlyEndTile(isDark, p, c, t),
+    return Column(
+      children: [
+        _niceScheduleTile(
+          "Departure Date & Time*",
+          _startDate,
+          (v) {
+            setState(() {
+              _startDate = v;
+              _updateEndDate();
+            });
+          },
+          p,
+          c,
+          t,
+        ),
+        if (_routeType == 'Multi Day') ...[
+          const SizedBox(height: 12),
+          _niceScheduleTile(
+            "Expected Return*",
+            _endDate,
+            (v) => setState(() {
+              _endDate = v;
+            }),
+            p,
+            c,
+            t,
+          ),
+        ] else if (_startDate != null && _endDate != null) ...[
+          const SizedBox(height: 12),
+          _buildReadOnlyEndTile(isDark, p, c, t),
+        ],
       ],
-    ]);
+    );
   }
 
   Widget _buildReadOnlyEndTile(bool isDark, Color p, Color c, Color t) {
@@ -495,14 +723,33 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.auto_awesome_rounded, size: 18, color: p.withValues(alpha: 0.5)),
+          Icon(
+            Icons.auto_awesome_rounded,
+            size: 18,
+            color: p.withValues(alpha: 0.5),
+          ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("AUTO-CALCULATED RETURN", style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: p, letterSpacing: 0.5)),
+              Text(
+                "AUTO-CALCULATED RETURN",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: p,
+                  letterSpacing: 0.5,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!), style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: t.withValues(alpha: 0.6))),
+              Text(
+                DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: t.withValues(alpha: 0.6),
+                ),
+              ),
             ],
           ),
         ],
@@ -510,7 +757,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _niceScheduleTile(String h, DateTime? val, Function(DateTime) onPick, Color p, Color c, Color t) {
+  Widget _niceScheduleTile(
+    String h,
+    DateTime? val,
+    Function(DateTime) onPick,
+    Color p,
+    Color c,
+    Color t,
+  ) {
     return GestureDetector(
       onTap: () async {
         final picked = await CustomDateTimePicker.show(
@@ -530,123 +784,349 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: t.withValues(alpha: 0.04), width: 1.5),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [p.withValues(alpha: 0.15), p.withValues(alpha: 0.05)]),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: p.withValues(alpha: 0.1)),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    p.withValues(alpha: 0.15),
+                    p.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: p.withValues(alpha: 0.1)),
+              ),
+              child: Icon(Icons.calendar_today_rounded, size: 20, color: p),
             ),
-            child: Icon(Icons.calendar_today_rounded, size: 20, color: p),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(h.replaceFirst('*', '').trim().toUpperCase(), style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: t.withValues(alpha: 0.4), letterSpacing: 0.5)),
-              const SizedBox(height: 4),
-              Text(val == null ? "Set Schedule" : DateFormat('EEE, MMM dd • hh:mm a').format(val), style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: val == null ? Colors.grey : t)),
-            ]),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: t.withValues(alpha: 0.03), shape: BoxShape.circle),
-            child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: t.withValues(alpha: 0.2)),
-          ),
-        ]),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      text: h.replaceFirst('*', '').trim().toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: t.withValues(alpha: 0.4),
+                        letterSpacing: 0.5,
+                      ),
+                      children: [
+                        if (h.contains('*'))
+                          const TextSpan(
+                            text: ' *',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    val == null
+                        ? "Set Schedule"
+                        : DateFormat('EEE, MMM dd • hh:mm a').format(val),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: val == null ? Colors.grey : t,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: t.withValues(alpha: 0.03),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: t.withValues(alpha: 0.2),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-
-  Widget _premiumGuestEntry(int i, Guest g, Color c, Color t, Color p, {bool isReq = true}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildLabelWithRedStar(
+    String label,
+    Color textColor, {
+    double fontSize = 11,
+    FontWeight fontWeight = FontWeight.w800,
+    bool isRequired = false,
+  }) {
+    bool hasStar = label.contains('*');
+    String cleanLabel = label.replaceFirst('*', '').trim();
+    return RichText(
+      text: TextSpan(
+        text: cleanLabel,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: textColor,
+        ),
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text("PASSENGER ${i + 1}", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: p)),
-            if (i > 0) GestureDetector(onTap: () => setState(() { _guests.removeAt(i); }), child: const Text("REMOVE", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w900))),
-          ]),
-          const SizedBox(height: 12),
-          _premiumInputInline("Full Name", g.name, (v) { g.name = v; setState(() {}); }, Icons.person_outline_rounded, c, t, p, isReq: isReq),
-          const SizedBox(height: 12),
-          _premiumInputInline("Contact Number", g.phone, (v) { g.phone = v; }, Icons.phone_android_rounded, c, t, p, isNum: true, isReq: isReq),
+          if (hasStar || isRequired)
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _premiumInputInline(String label, String initial, Function(String) onC, IconData icon, Color c, Color t, Color p, {bool isNum = false, bool isReq = true}) {
+  Widget _premiumGuestEntry(
+    int i,
+    Guest g,
+    Color c,
+    Color t,
+    Color p, {
+    bool isReq = true,
+  }) {
     return Container(
-      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(16), border: Border.all(color: t.withValues(alpha: 0.04)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
+      margin: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "PASSENGER ${i + 1}",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: p,
+                ),
+              ),
+              if (i > 0)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _guests.removeAt(i);
+                  }),
+                  child: const Text(
+                    "REMOVE",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _premiumInputInline(
+            "Full Name",
+            g.name,
+            (v) {
+              g.name = v;
+              setState(() {});
+            },
+            Icons.person_outline_rounded,
+            c,
+            t,
+            p,
+            isReq: isReq,
+          ),
+          const SizedBox(height: 12),
+          _premiumInputInline(
+            "Contact Number",
+            g.phone,
+            (v) {
+              g.phone = v;
+            },
+            Icons.phone_android_rounded,
+            c,
+            t,
+            p,
+            isNum: true,
+            isReq: isReq,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _premiumInputInline(
+    String label,
+    String initial,
+    Function(String) onC,
+    IconData icon,
+    Color c,
+    Color t,
+    Color p, {
+    bool isNum = false,
+    bool isReq = true,
+  }) {
+    return Container(
+      height: 60,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: t.withValues(alpha: 0.04)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+          ),
+        ],
+      ),
       child: TextFormField(
-        initialValue: initial, 
-        keyboardType: isNum ? TextInputType.number : TextInputType.text, 
+        initialValue: initial,
+        keyboardType: isNum ? TextInputType.number : TextInputType.text,
         onChanged: onC,
+        textAlignVertical: TextAlignVertical.center,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         decoration: InputDecoration(
-          hintText: label, 
-          hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13), 
-          prefixIcon: Icon(icon, color: p.withValues(alpha: 0.35), size: 20), 
-          border: InputBorder.none, 
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
-          prefixText: isNum ? "+91 " : null, 
-          prefixStyle: const TextStyle(fontWeight: FontWeight.w900, color: Colors.grey),
+          isDense: true,
+          hintText: isReq ? "$label *" : label,
+          hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13),
+          floatingLabelBehavior: FloatingLabelBehavior.never,
+          prefixIcon: Container(
+            margin: const EdgeInsets.only(left: 16, right: 10),
+            child: Icon(icon, color: p.withValues(alpha: 0.35), size: 20),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 46, minHeight: 0),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          prefixText: isNum ? "+91 " : null,
+          prefixStyle: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: t.withValues(alpha: 0.4),
+          ),
           counterText: "",
         ),
         maxLength: isNum ? 10 : null,
-        inputFormatters: isNum ? [FilteringTextInputFormatter.digitsOnly] : null,
+        inputFormatters: isNum
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : null,
         validator: (v) {
           if (isReq && (v == null || v.trim().isEmpty)) return "Required";
-          if (isNum && v != null && v.isNotEmpty && v.length != 10) return "Must be 10 digits";
+          if (isNum && v != null && v.isNotEmpty && v.length != 10)
+            return "Must be 10 digits";
           return null;
         },
       ),
     );
   }
 
-  Widget _premiumInput(String label, TextEditingController ctrl, String hint, IconData icon, Color c, Color t, Color p, {bool isReq = false, bool isNum = false}) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.withValues(alpha: 0.3))),
-      const SizedBox(height: 8),
-      Container(
-        decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(16), border: Border.all(color: t.withValues(alpha: 0.04)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
-        child: TextFormField(
-          controller: ctrl, keyboardType: isNum ? TextInputType.number : TextInputType.text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-          decoration: InputDecoration(hintText: hint, hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13), prefixIcon: Icon(icon, color: p.withValues(alpha: 0.35), size: 20), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-          validator: isReq ? (v) => (v == null || v.isEmpty) ? "Req" : null : null,
+  Widget _premiumInput(
+    String label,
+    TextEditingController ctrl,
+    String hint,
+    IconData icon,
+    Color c,
+    Color t,
+    Color p, {
+    bool isReq = false,
+    bool isNum = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabelWithRedStar(label, t.withValues(alpha: 0.3), isRequired: isReq),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: c,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: t.withValues(alpha: 0.04)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: ctrl,
+            keyboardType: isNum ? TextInputType.number : TextInputType.text,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: t.withValues(alpha: 0.1),
+                fontSize: 13,
+              ),
+              prefixIcon: Icon(
+                icon,
+                color: p.withValues(alpha: 0.35),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+            validator: isReq
+                ? (v) => (v == null || v.isEmpty) ? "Req" : null
+                : null,
+          ),
         ),
-      ),
-      const SizedBox(height: 20),
-    ]);
+        const SizedBox(height: 20),
+      ],
+    );
   }
 
   Widget _addGuestBtn(Color p) {
     int max = int.tryParse(_passengerCountController.text) ?? 1;
     if (_visibleGuestSlots >= max) return const SizedBox.shrink();
-    
+
     return GestureDetector(
-      onTap: () => setState(() { _visibleGuestSlots++; }), 
+      onTap: () => setState(() {
+        _visibleGuestSlots++;
+      }),
       child: Container(
-        margin: const EdgeInsets.only(top: 8), 
-        padding: const EdgeInsets.symmetric(vertical: 14), 
-        decoration: BoxDecoration(color: p.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16)), 
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: p.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center, 
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_add_alt_1_rounded, size: 18, color: p), 
-            const SizedBox(width: 8), 
-            Text("Add Specific Guest Detail (${_visibleGuestSlots + 1}/$max)", style: TextStyle(color: p, fontWeight: FontWeight.w800, fontSize: 13))
-          ]
-        )
-      )
+            Icon(Icons.person_add_alt_1_rounded, size: 18, color: p),
+            const SizedBox(width: 8),
+            Text(
+              "Add Specific Guest Detail (${_visibleGuestSlots + 1}/$max)",
+              style: TextStyle(
+                color: p,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -664,8 +1144,23 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("GROUPING", style: GoogleFonts.montserrat(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.w900, color: p)),
-                Text("Allocate Guests", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: t)),
+                Text(
+                  "GROUPING",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w900,
+                    color: p,
+                  ),
+                ),
+                Text(
+                  "Allocate Guests",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: t,
+                  ),
+                ),
               ],
             ),
             const Spacer(),
@@ -673,18 +1168,53 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               TextButton.icon(
                 onPressed: _autoAllocateGuests,
                 icon: Icon(Icons.auto_awesome_rounded, size: 16, color: p),
-                label: Text("Smart Split", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: p)),
-                style: TextButton.styleFrom(backgroundColor: p.withValues(alpha: 0.05), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                label: Text(
+                  "Smart Split",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: p,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: p.withValues(alpha: 0.05),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-                child: Row(children: [
-                  const Icon(Icons.check_circle_outline_rounded, size: 14, color: Colors.green),
-                  const SizedBox(width: 6),
-                  Text("${_guests.where((g) => !_unassignedGuests.contains(g) && g.name.isNotEmpty).length}/${_guests.where((g) => g.name.isNotEmpty).length} Assigned", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.green)),
-                ]),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 14,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      "${_guests.where((g) => !_unassignedGuests.contains(g) && g.name.isNotEmpty).length}/${_guests.where((g) => g.name.isNotEmpty).length} Assigned",
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
@@ -720,9 +1250,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             children: [
-              Icon(Icons.done_all_rounded, color: Colors.green.withValues(alpha: 0.5), size: 32),
+              Icon(
+                Icons.done_all_rounded,
+                color: Colors.green.withValues(alpha: 0.5),
+                size: 32,
+              ),
               const SizedBox(height: 8),
-              Text("All passengers allocated", style: TextStyle(color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w700, fontSize: 13)),
+              Text(
+                "All passengers allocated",
+                style: TextStyle(
+                  color: t.withValues(alpha: 0.4),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -736,7 +1277,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   Widget _dragGuest(Guest g, Color p, Color c, Color t) {
-    String label = g.name.trim().isEmpty ? "Guest ${_guests.indexOf(g) + 1}" : g.name;
+    String label = g.name.trim().isEmpty
+        ? "Guest ${_guests.indexOf(g) + 1}"
+        : g.name;
     return Draggable<Guest>(
       data: g,
       feedback: Material(
@@ -746,17 +1289,40 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           decoration: BoxDecoration(
             color: p,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+            boxShadow: [
+              BoxShadow(
+                color: p.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-          child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
         ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(color: t.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(14)),
-          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.withValues(alpha: 0.2))),
+          decoration: BoxDecoration(
+            color: t.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: t.withValues(alpha: 0.2),
+            ),
+          ),
         ),
       ),
       child: AnimatedContainer(
@@ -766,14 +1332,30 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           color: c,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: t.withValues(alpha: 0.05)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 5)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 5,
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.drag_indicator_rounded, size: 14, color: p.withValues(alpha: 0.4)),
+            Icon(
+              Icons.drag_indicator_rounded,
+              size: 14,
+              color: p.withValues(alpha: 0.4),
+            ),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: t)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: t,
+              ),
+            ),
           ],
         ),
       ),
@@ -782,86 +1364,142 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _groupList(Color p, Color c, bool d, Color t) {
     return Column(
-      children: _guestGroups.entries.map((ent) => DragTarget<Guest>(
-        onAcceptWithDetails: (details) {
-          final g = details.data;
-          setState(() {
-            _unassignedGuests.remove(g);
-            for (var l in _guestGroups.values) {
-              l.remove(g);
-            }
-            _guestGroups[ent.key]!.add(g);
-          });
-        },
-        builder: (ctx, cand, rej) {
-          bool isO = cand.isNotEmpty;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(20),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: isO ? p.withValues(alpha: 0.12) : c,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: isO ? p : t.withValues(alpha: 0.02), width: 2),
-              boxShadow: [
-                BoxShadow(color: isO ? p.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 8)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                          child: Icon(Icons.directions_bus_filled_rounded, size: 16, color: p),
-                        ),
-                        const SizedBox(width: 12),
-                        Text("VEHICLE ${ent.key + 1}", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w900, color: t, letterSpacing: 0.5)),
-                      ],
+      children: _guestGroups.entries
+          .map(
+            (ent) => DragTarget<Guest>(
+              onAcceptWithDetails: (details) {
+                final g = details.data;
+                setState(() {
+                  _unassignedGuests.remove(g);
+                  for (var l in _guestGroups.values) {
+                    l.remove(g);
+                  }
+                  _guestGroups[ent.key]!.add(g);
+                });
+              },
+              builder: (ctx, cand, rej) {
+                bool isO = cand.isNotEmpty;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(20),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isO ? p.withValues(alpha: 0.12) : c,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isO ? p : t.withValues(alpha: 0.02),
+                      width: 2,
                     ),
-                    if (ent.value.isNotEmpty)
-                      Text("${ent.value.length} Assigned", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: t.withValues(alpha: 0.3))),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (ent.value.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text("Drag guests here", style: TextStyle(fontSize: 11, color: t.withValues(alpha: 0.2), fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-                    ),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ent.value.map((g) => _assignedGuestChip(g, ent.key, p, t, c)).toList(),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isO
+                            ? p.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-              ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: p.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.directions_bus_filled_rounded,
+                                  size: 16,
+                                  color: p,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                "VEHICLE ${ent.key + 1}",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: t,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (ent.value.isNotEmpty)
+                            Text(
+                              "${ent.value.length} Assigned",
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: t.withValues(alpha: 0.3),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      if (ent.value.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              "Drag guests here",
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: t.withValues(alpha: 0.2),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: ent.value
+                              .map(
+                                (g) => _assignedGuestChip(g, ent.key, p, t, c),
+                              )
+                              .toList(),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
-          );
-        },
-      )).toList(),
+          )
+          .toList(),
     );
   }
 
   Widget _assignedGuestChip(Guest g, int gIndex, Color p, Color t, Color c) {
-    String label = g.name.trim().isEmpty ? "Guest ${_guests.indexOf(g) + 1}" : g.name;
+    String label = g.name.trim().isEmpty
+        ? "Guest ${_guests.indexOf(g) + 1}"
+        : g.name;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       child: Chip(
-        label: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: p)),
+        label: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: p),
+        ),
         backgroundColor: p.withValues(alpha: 0.08),
         padding: const EdgeInsets.symmetric(horizontal: 4),
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        deleteIcon: Icon(Icons.close_rounded, size: 14, color: p.withValues(alpha: 0.5)),
+        deleteIcon: Icon(
+          Icons.close_rounded,
+          size: 14,
+          color: p.withValues(alpha: 0.5),
+        ),
         onDeleted: () {
           setState(() {
             _guestGroups[gIndex]!.remove(g);
@@ -875,48 +1513,81 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   Widget _stageVehicles(Color p, bool d) {
     Color c = d ? const Color(0xFF1E293B) : Colors.white;
     Color t = d ? Colors.white : const Color(0xFF0F172A);
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SizedBox(height: 24),
-      _buildGlassLabel("Fleet Selection", p),
-      const SizedBox(height: 12),
-      Text("Select available vehicles for your trip segments.", style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5))),
-      const SizedBox(height: 32),
-      if (_isLoadingVehicles) 
-        const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())) 
-      else ..._guestGroups.keys.map((idx) {
-        int gCount = _guestGroups[idx]?.length ?? 0;
-        return _resSelector(
-          "VEHICLE FOR SLOT ${idx + 1}", 
-          _availableVehicles, 
-          _selectedVehicles[idx], 
-          (v) => setState(() => _selectedVehicles[idx] = v), 
-          c, t, p, isV: true, guestCount: gCount
-        );
-      }),
-      const SizedBox(height: 40),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        _buildGlassLabel("Fleet Selection", p),
+        const SizedBox(height: 12),
+        Text(
+          "Select available vehicles for your trip segments.",
+          style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5)),
+        ),
+        const SizedBox(height: 32),
+        if (_isLoadingVehicles)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else
+          ..._guestGroups.keys.map((idx) {
+            int gCount = _guestGroups[idx]?.length ?? 0;
+            return _resSelector(
+              "VEHICLE FOR SLOT ${idx + 1}",
+              _availableVehicles,
+              _selectedVehicles[idx],
+              (v) => setState(() => _selectedVehicles[idx] = v),
+              c,
+              t,
+              p,
+              isV: true,
+              guestCount: gCount,
+            );
+          }),
+        const SizedBox(height: 40),
+      ],
+    );
   }
 
   Widget _stageDrivers(Color p, bool d) {
     Color c = d ? const Color(0xFF1E293B) : Colors.white;
     Color t = d ? Colors.white : const Color(0xFF0F172A);
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SizedBox(height: 24),
-      _buildGlassLabel("Driver Assignment", p),
-      const SizedBox(height: 12),
-      Text("Assign drivers to the selected vehicles.", style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5))),
-      const SizedBox(height: 32),
-      if (_isLoadingDrivers) 
-        const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())) 
-      else ..._guestGroups.keys.map((idx) => _resSelector(
-        "DRIVER FOR ${_selectedVehicles[idx]?['vehicle_number'] ?? 'SLOT ${idx + 1}'}", 
-        _availableDrivers, 
-        _selectedDrivers[idx], 
-        (v) => setState(() => _selectedDrivers[idx] = v), 
-        c, t, p, isV: false
-      )),
-      const SizedBox(height: 40),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        _buildGlassLabel("Driver Assignment", p),
+        const SizedBox(height: 12),
+        Text(
+          "Assign drivers to the selected vehicles.",
+          style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5)),
+        ),
+        const SizedBox(height: 32),
+        if (_isLoadingDrivers)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else
+          ..._guestGroups.keys.map(
+            (idx) => _resSelector(
+              "DRIVER FOR ${_selectedVehicles[idx]?['vehicle_number'] ?? 'SLOT ${idx + 1}'}",
+              _availableDrivers,
+              _selectedDrivers[idx],
+              (v) => setState(() => _selectedDrivers[idx] = v),
+              c,
+              t,
+              p,
+              isV: false,
+            ),
+          ),
+        const SizedBox(height: 40),
+      ],
+    );
   }
 
   Future<void> _showSelectionSheet({
@@ -932,62 +1603,104 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Filter and Sort items before building the sheet
-    List<Map<String, dynamic>> filteredItems = List.from(items);
-    if (isVehicle) {
-      Set<int> assignedIds = _selectedVehicles.values
-          .where((v) => v != null && v['id'] != (selected?['id']))
-          .map((v) => v!['id'] as int)
-          .toSet();
-      filteredItems = filteredItems.where((v) => !assignedIds.contains(v['id'])).toList();
-
-      if (currentGuestCount != null) {
-        filteredItems.sort((a, b) {
-          int ac = int.tryParse(a['capacity']?.toString() ?? "0") ?? 0;
-          int bc = int.tryParse(b['capacity']?.toString() ?? "0") ?? 0;
-          
-          bool as = ac < currentGuestCount;
-          bool al = ac > (currentGuestCount + 5);
-          bool bs = bc < currentGuestCount;
-          bool bl = bc > (currentGuestCount + 5);
-
-          bool aAvail = (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") && (a['available'] != false);
-          bool bAvail = (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") && (b['available'] != false);
-
-          bool aFit = !as && !al;
-          bool bFit = !bs && !bl;
-
-          // Priority for Selection Modal Sorting:
-          // 0: Available & Fit & Default Driver
-          // 1: Available & Fit (no Default Driver)
-          // 2: Available & Too Large
-          // 3: Available & Too Small
-          // 4: Not Available (Busy or Status-blocked)
-          int aPrio = !aAvail ? 4 : (aFit ? (a['default_driver'] != null ? 0 : 1) : (as ? 3 : 2));
-          int bPrio = !bAvail ? 4 : (bFit ? (b['default_driver'] != null ? 0 : 1) : (bs ? 3 : 2));
-
-          if (aPrio != bPrio) return aPrio.compareTo(bPrio);
-          return bc.compareTo(ac); // Within same group, prefer higher capacity
-        });
-      }
-    }
+    String searchQuery = "";
 
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.95),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          List<Map<String, dynamic>> filteredItems = List.from(items);
+
+          if (isVehicle) {
+            Set<int> assignedIds = _selectedVehicles.values
+                .where((v) => v != null && v['id'] != (selected?['id']))
+                .map((v) => v!['id'] as int)
+                .toSet();
+            filteredItems = filteredItems
+                .where((v) => !assignedIds.contains(v['id']))
+                .toList();
+
+            if (currentGuestCount != null) {
+              filteredItems.sort((a, b) {
+                int ac = int.tryParse(a['capacity']?.toString() ?? "0") ?? 0;
+                int bc = int.tryParse(b['capacity']?.toString() ?? "0") ?? 0;
+
+                bool as = ac < currentGuestCount;
+                bool al = ac > (currentGuestCount + 5);
+                bool bs = bc < currentGuestCount;
+                bool bl = bc > (currentGuestCount + 5);
+
+                bool aAvail =
+                    (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") &&
+                    (a['available'] != false);
+                bool bAvail =
+                    (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") &&
+                    (b['available'] != false);
+
+                bool aFit = !as && !al;
+                bool bFit = !bs && !bl;
+
+                int aPrio = !aAvail
+                    ? 4
+                    : (aFit
+                          ? (a['default_driver'] != null ? 0 : 1)
+                          : (as ? 3 : 2));
+                int bPrio = !bAvail
+                    ? 4
+                    : (bFit
+                          ? (b['default_driver'] != null ? 0 : 1)
+                          : (bs ? 3 : 2));
+
+                if (aPrio != bPrio) return aPrio.compareTo(bPrio);
+                return bc.compareTo(ac);
+              });
+            }
+          }
+
+          if (searchQuery.isNotEmpty) {
+            filteredItems = filteredItems.where((item) {
+              String searchTarget = "";
+              if (isVehicle) {
+                searchTarget = (item['vehicle_number'] ?? "").toString();
+                String type = (item['vehicle_type_name'] ?? "").toString();
+                searchTarget = "$searchTarget $type";
+              } else {
+                searchTarget =
+                    (item['user']?['name'] ?? item['name'] ?? "").toString();
+                String phone =
+                    (item['user']?['phone'] ?? item['phone'] ?? "").toString();
+                searchTarget = "$searchTarget $phone";
+              }
+              return searchTarget
+                  .toLowerCase()
+                  .contains(searchQuery.toLowerCase());
+            }).toList();
+          }
+
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF1E293B).withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.95),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
           child: Column(
             children: [
               const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -996,14 +1709,28 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: t)),
+                        Text(
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: t,
+                          ),
+                        ),
                         const Spacer(),
                         GestureDetector(
                           onTap: () => Navigator.pop(ctx),
                           child: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), shape: BoxShape.circle),
-                            child: Icon(Icons.close_rounded, size: 20, color: t.withValues(alpha: 0.5)),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: t.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
                       ],
@@ -1011,14 +1738,59 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     if (isVehicle && currentGuestCount != null) ...[
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: p.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: Text(
                           "REQUIRED CAPACITY: $currentGuestCount - ${currentGuestCount + 5} SEATS",
-                          style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: p, letterSpacing: 0.5),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: p,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ],
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: t.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: t.withValues(alpha: 0.05)),
+                      ),
+                      child: TextFormField(
+                        onChanged: (v) => setModalState(() => searchQuery = v),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: t,
+                        ),
+                        decoration: InputDecoration(
+                          hintText:
+                              "Search ${isVehicle ? 'Vehicle by number or type' : 'Driver by name'}...",
+                          hintStyle: TextStyle(
+                            color: t.withValues(alpha: 0.3),
+                            fontSize: 13,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            color: t.withValues(alpha: 0.3),
+                            size: 20,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1029,9 +1801,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(isVehicle ? Icons.directions_bus_rounded : Icons.person_off_rounded, size: 48, color: t.withValues(alpha: 0.1)),
+                        Icon(
+                          isVehicle
+                              ? Icons.directions_bus_rounded
+                              : Icons.person_off_rounded,
+                          size: 48,
+                          color: t.withValues(alpha: 0.1),
+                        ),
                         const SizedBox(height: 16),
-                        Text("No ${isVehicle ? 'vehicles' : 'drivers'} available", style: TextStyle(color: t.withValues(alpha: 0.3), fontWeight: FontWeight.w600)),
+                        Text(
+                          "No ${isVehicle ? 'vehicles' : 'drivers'} available",
+                          style: TextStyle(
+                            color: t.withValues(alpha: 0.3),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1044,7 +1828,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       final item = filteredItems[i];
-                      final bool isSelected = selected != null && (item['id'] == selected['id']);
+                      final bool isSelected =
+                          selected != null && (item['id'] == selected['id']);
 
                       String mainText = "";
                       String subText = "";
@@ -1054,42 +1839,72 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       if (isVehicle) {
                         mainText = item['vehicle_number'] ?? "Unknown";
                         subText = item['vehicle_type_name'] ?? "General";
-                        capacity = int.tryParse(item['capacity']?.toString() ?? "0") ?? 0;
+                        capacity =
+                            int.tryParse(item['capacity']?.toString() ?? "0") ??
+                            0;
                       } else {
-                        mainText = item['user']?['name'] ?? item['name'] ?? "Unknown";
-                        subText = "📞 ${item['user']?['phone'] ?? 'No Contact'}";
+                        mainText =
+                            item['user']?['name'] ?? item['name'] ?? "Unknown";
+                        subText =
+                            "📞 ${item['user']?['phone'] ?? 'No Contact'}";
                       }
 
-                      String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
-                      bool isNotAvailable = isVehicle 
-                          ? ((status != "AVAILABLE" && status != "ACTIVE") || item['available'] == false)
-                          : (item['available'] == false); 
+                      String status = (item['status'] ?? "AVAILABLE")
+                          .toString()
+                          .toUpperCase();
+                      bool isNotAvailable = isVehicle
+                          ? ((status != "AVAILABLE" && status != "ACTIVE") ||
+                                item['available'] == false)
+                          : (item['available'] == false);
                       bool tooSmall = false;
                       bool tooLarge = false;
-                      if (isVehicle && currentGuestCount != null && capacity > 0) {
+                      if (isVehicle &&
+                          currentGuestCount != null &&
+                          capacity > 0) {
                         tooSmall = capacity < currentGuestCount;
                         tooLarge = capacity > (currentGuestCount + 5);
                       }
-                      bool isDisabled = isVehicle ? (tooSmall || tooLarge || isNotAvailable) : isNotAvailable;
+                      bool isDisabled = isVehicle
+                          ? (tooSmall || tooLarge || isNotAvailable)
+                          : isNotAvailable;
 
                       return GestureDetector(
-                        onTap: isDisabled ? () {
-                          String msg = item['available'] == false 
-                              ? "⚠️ Not Available for this schedule" 
-                              : (isNotAvailable ? "⚠️ Status: $status" : (tooSmall ? "⚠️ Too Small" : "⚠️ Too Large"));
-                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
-                        } : () {
-                          onSelect(item); // PASS ORIGINAL ITEM
-                          Navigator.pop(ctx);
-                        },
+                        onTap: isDisabled
+                            ? () {
+                                String msg = item['available'] == false
+                                    ? "⚠️ Not Available for this schedule"
+                                    : (isNotAvailable
+                                          ? "⚠️ Status: $status"
+                                          : (tooSmall
+                                                ? "⚠️ Too Small"
+                                                : "⚠️ Too Large"));
+                                ScaffoldMessenger.of(
+                                  ctx,
+                                ).showSnackBar(SnackBar(content: Text(msg)));
+                              }
+                            : () {
+                                onSelect(item); // PASS ORIGINAL ITEM
+                                Navigator.pop(ctx);
+                              },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.all(16),
                           margin: const EdgeInsets.only(bottom: 4),
                           decoration: BoxDecoration(
-                            color: isSelected ? p.withValues(alpha: 0.1) : (isDisabled ? t.withValues(alpha: 0.01) : t.withValues(alpha: 0.03)),
+                            color: isSelected
+                                ? p.withValues(alpha: 0.1)
+                                : (isDisabled
+                                      ? t.withValues(alpha: 0.01)
+                                      : t.withValues(alpha: 0.03)),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: isSelected ? p : (isDisabled ? Colors.red.withValues(alpha: 0.2) : Colors.transparent), width: 1.5),
+                            border: Border.all(
+                              color: isSelected
+                                  ? p
+                                  : (isDisabled
+                                        ? Colors.red.withValues(alpha: 0.2)
+                                        : Colors.transparent),
+                              width: 1.5,
+                            ),
                           ),
                           child: Opacity(
                             opacity: isDisabled ? 0.4 : 1.0,
@@ -1097,87 +1912,116 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: (isSelected ? p : t).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-                                  child: Icon(isVehicle ? Icons.directions_bus_filled_rounded : Icons.person_rounded, size: 20, color: isSelected ? p : t.withValues(alpha: 0.5)),
+                                  decoration: BoxDecoration(
+                                    color: (isSelected ? p : t).withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(
+                                    isVehicle
+                                        ? Icons.directions_bus_filled_rounded
+                                        : Icons.person_rounded,
+                                    size: 20,
+                                    color: isSelected
+                                        ? p
+                                        : t.withValues(alpha: 0.5),
+                                  ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(mainText, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: t), overflow: TextOverflow.ellipsis),
+                                      Text(
+                                        mainText,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: t,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                       const SizedBox(height: 4),
                                       Wrap(
                                         spacing: 8,
                                         runSpacing: 4,
-                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
                                         children: [
-                                          Text(subText, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w600)),
-                                          if (isVehicle && item['default_driver'] != null)
+                                          Text(
+                                            subText,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: t.withValues(alpha: 0.4),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          if (isVehicle)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: (isDisabled ? Colors.red : p)
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                "Cap: $capacity",
+                                                style: TextStyle(
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: (isDisabled ? Colors.red : p),
+                                                ),
+                                              ),
+                                            ),
+                                          if (isVehicle &&
+                                              item['default_driver'] != null)
                                             Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 const SizedBox(width: 4),
-                                                Text("•", style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.2))),
+                                                Text(
+                                                  "•",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: t.withValues(
+                                                      alpha: 0.2,
+                                                    ),
+                                                  ),
+                                                ),
                                                 const SizedBox(width: 4),
-                                                Icon(Icons.person_rounded, size: 12, color: Colors.green.withValues(alpha: 0.7)),
+                                                Icon(
+                                                  Icons.person_rounded,
+                                                  size: 12,
+                                                  color: Colors.green
+                                                      .withValues(alpha: 0.7),
+                                                ),
                                                 const SizedBox(width: 4),
-                                                Text(item['default_driver']['name'], style: const TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w900)),
+                                                Text(
+                                                  item['default_driver']['name'],
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.green,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
                                               ],
                                             ),
-                                          if (isVehicle) ...[
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(color: (isDisabled ? Colors.red : p).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                                              child: Text("Cap: $capacity", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: (isDisabled ? Colors.red : p))),
-                                            ),
-                                            if (!isDisabled)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                                                child: const Text("AVAILABLE", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.green)),
-                                              )
-                                            else if (isDisabled && isVehicle && item['available'] == false)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                                                child: const Text("UNAVAILABLE", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.red)),
-                                              ),
-                                          ],
                                         ],
                                       ),
                                     ],
                                   ),
                                 ),
-                                if (isDisabled)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: Text(
-                                      item['available'] == false ? "UNAVAILABLE" : (status == "ON_LEAVE" ? "ON LEAVE" : (tooSmall ? "TOO SMALL" : (tooLarge ? "TOO LARGE" : status))), 
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.red)
-                                    ),
-                                  )
-                                else if (tooLarge)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: const Text("LARGE VEHICLE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.orange)),
-                                  )
-                                else if (!isVehicle && status == "ON_TRIP")
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.cyan.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: const Text("ON TRIP", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.cyan)),
-                                  )
-                                else if (!isVehicle && status == "AVAILABLE")
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                                    child: const Text("AVAILABLE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.green)),
-                                  )
-                                else if (isSelected)
-                                  Icon(Icons.check_circle_rounded, color: p, size: 20),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: p,
+                                    size: 20,
+                                  ),
                               ],
                             ),
                           ),
@@ -1186,18 +2030,39 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     },
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
+        );
+      },
+    ),
+  );
+}
 
-  Widget _resSelector(String lbl, List<Map<String, dynamic>> items, Map<String, dynamic>? sel, Function(Map<String, dynamic>) onS, Color c, Color t, Color p, {required bool isV, int? guestCount}) {
-    String dispTitle = sel != null ? (isV ? sel['vehicle_number'] : (sel['user']?['name'] ?? sel['name'] ?? "Unknown")) : (isV ? "Choose Vehicle" : "Choose Driver");
-    String? dispSub = sel != null ? (isV ? sel['vehicle_type_name'] : "📞 ${sel['user']?['phone'] ?? 'No Contact'}") : null;
-    String? defDriver = (isV && sel != null && sel['default_driver'] != null) ? sel['default_driver']['name'] : null;
-    String? driverStatus = (!isV && sel != null) ? (sel['status'] ?? "AVAILABLE").toString().toUpperCase() : null;
+  Widget _resSelector(
+    String lbl,
+    List<Map<String, dynamic>> items,
+    Map<String, dynamic>? sel,
+    Function(Map<String, dynamic>) onS,
+    Color c,
+    Color t,
+    Color p, {
+    required bool isV,
+    int? guestCount,
+  }) {
+    String dispTitle = sel != null
+        ? (isV
+              ? sel['vehicle_number']
+              : (sel['user']?['name'] ?? sel['name'] ?? "Unknown"))
+        : (isV ? "Choose Vehicle" : "Choose Driver");
+    String? dispSub = sel != null
+        ? (isV
+              ? sel['vehicle_type_name']
+              : "📞 ${sel['user']?['phone'] ?? 'No Contact'}")
+        : null;
+    String? defDriver = (isV && sel != null && sel['default_driver'] != null)
+        ? sel['default_driver']['name']
+        : null;
 
     return GestureDetector(
       onTap: () => _showSelectionSheet(
@@ -1206,7 +2071,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         selected: sel,
         onSelect: onS,
         isVehicle: isV,
-        p: p, c: c, t: t,
+        p: p,
+        c: c,
+        t: t,
         currentGuestCount: isV ? guestCount : null,
       ),
       child: Container(
@@ -1216,57 +2083,95 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           color: c,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: t.withValues(alpha: 0.04), width: 1.5),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(lbl, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: p, letterSpacing: 1)),
+            Text(
+              lbl,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: p,
+                letterSpacing: 1,
+              ),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: (sel != null ? p : t).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-                  child: Icon(isV ? Icons.directions_bus_filled_rounded : Icons.person_rounded, size: 20, color: sel != null ? p : t.withValues(alpha: 0.3)),
+                  decoration: BoxDecoration(
+                    color: (sel != null ? p : t).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    isV
+                        ? Icons.directions_bus_filled_rounded
+                        : Icons.person_rounded,
+                    size: 20,
+                    color: sel != null ? p : t.withValues(alpha: 0.3),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(dispTitle, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: sel != null ? t : t.withValues(alpha: 0.3))),
+                      Text(
+                        dispTitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: sel != null ? t : t.withValues(alpha: 0.3),
+                        ),
+                      ),
                       if (dispSub != null) ...[
                         const SizedBox(height: 2),
-                        Text(dispSub, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w600)),
+                        Text(
+                          dispSub,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: t.withValues(alpha: 0.4),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ],
                   ),
                 ),
                 if (defDriver != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                    child: Text("👤 $defDriver", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.green)),
-                  ),
-                if (driverStatus != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: (driverStatus == "ON_LEAVE" ? Colors.red : (driverStatus == "ON_TRIP" ? Colors.cyan : Colors.green)).withValues(alpha: 0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      driverStatus.replaceAll("_", " "),
-                      style: TextStyle(
-                        fontSize: 10, 
-                        fontWeight: FontWeight.w800, 
-                        color: (driverStatus == "ON_LEAVE" ? Colors.red : (driverStatus == "ON_TRIP" ? Colors.cyan : Colors.green)),
+                      "👤 $defDriver",
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.green,
                       ),
                     ),
                   ),
                 const SizedBox(width: 8),
-                Icon(Icons.keyboard_arrow_down_rounded, color: t.withValues(alpha: 0.2), size: 20),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: t.withValues(alpha: 0.2),
+                  size: 20,
+                ),
               ],
             ),
           ],
@@ -1275,8 +2180,28 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _buildGlassLabel(String txt, Color p) => Row(children: [Container(width: 4, height: 16, decoration: BoxDecoration(color: p, borderRadius: BorderRadius.circular(2))), const SizedBox(width: 8), Text(txt.toUpperCase(), style: GoogleFonts.montserrat(fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w900, color: p.withValues(alpha: 0.6)))]);
-
+  Widget _buildGlassLabel(String txt, Color p) => Row(
+    children: [
+      Container(
+        width: 4,
+        height: 16,
+        decoration: BoxDecoration(
+          color: p,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        txt.toUpperCase(),
+        style: GoogleFonts.montserrat(
+          fontSize: 11,
+          letterSpacing: 1.5,
+          fontWeight: FontWeight.w900,
+          color: p.withValues(alpha: 0.6),
+        ),
+      ),
+    ],
+  );
 
   Widget _stageReview(Color p, bool d) {
     Color c = d ? const Color(0xFF1E293B) : Colors.white;
@@ -1288,18 +2213,49 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         const SizedBox(height: 24),
         _buildGlassLabel("Verify Request", p),
         const SizedBox(height: 12),
-        Text("Final review before creating the full route request.", style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5))),
+        Text(
+          "Final review before creating the full route request.",
+          style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5)),
+        ),
         const SizedBox(height: 32),
-        _sumCard("MISSION DETAILS", Icons.map_outlined, [
-          {"label": "Route Name", "value": _routeNameController.text},
-          {"label": "Purpose", "value": _purposeController.text},
-          {"label": "Guests", "value": "${int.tryParse(_passengerCountController.text) ?? 1} People"},
-          {"label": "Journey", "value": _routeType},
-        ], p, c, t),
-        _sumCard("SCHEDULE", Icons.calendar_today_rounded, [
-          {"label": "Start", "value": _startDate != null ? DateFormat('EEE, MMM dd • hh:mm a').format(_startDate!) : 'N/A'},
-          {"label": "Return", "value": _endDate != null ? DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!) : 'N/A'},
-        ], p, c, t),
+        _sumCard(
+          "MISSION DETAILS",
+          Icons.map_outlined,
+          [
+            {"label": "Route Name", "value": _routeNameController.text},
+            {"label": "Purpose", "value": _purposeController.text},
+            {
+              "label": "Guests",
+              "value":
+                  "${int.tryParse(_passengerCountController.text) ?? 1} People",
+            },
+            {"label": "Journey", "value": _routeType},
+          ],
+          p,
+          c,
+          t,
+        ),
+        _sumCard(
+          "SCHEDULE",
+          Icons.calendar_today_rounded,
+          [
+            {
+              "label": "Start",
+              "value": _startDate != null
+                  ? DateFormat('EEE, MMM dd • hh:mm a').format(_startDate!)
+                  : 'N/A',
+            },
+            {
+              "label": "Return",
+              "value": _endDate != null
+                  ? DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!)
+                  : 'N/A',
+            },
+          ],
+          p,
+          c,
+          t,
+        ),
         _buildGlassLabel("Vehicle & Driver Assignments", p),
         const SizedBox(height: 16),
         ..._guestGroups.entries.map((ent) {
@@ -1308,22 +2264,58 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(24), border: Border.all(color: t.withValues(alpha: 0.04))),
+            decoration: BoxDecoration(
+              color: c,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: t.withValues(alpha: 0.04)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)), child: Icon(Icons.directions_bus_filled_rounded, size: 16, color: p)),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: p.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.directions_bus_filled_rounded,
+                        size: 16,
+                        color: p,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Text("GROUP ${ent.key + 1}", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w900, color: t)),
+                    Text(
+                      "GROUP ${ent.key + 1}",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: t,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _revRow(Icons.local_shipping_rounded, veh?['vehicle_number'] ?? "No Vehicle Selected", t),
-                _revRow(Icons.person_rounded, dri?['user']?['name'] ?? dri?['name'] ?? "No Driver Assigned", t),
+                _revRow(
+                  Icons.local_shipping_rounded,
+                  veh?['vehicle_number'] ?? "No Vehicle Selected",
+                  t,
+                ),
+                _revRow(
+                  Icons.person_rounded,
+                  dri?['user']?['name'] ?? dri?['name'] ?? "No Driver Assigned",
+                  t,
+                ),
                 const SizedBox(height: 12),
-                Text("GUESTS: ${ent.value.map((g) => g.name.isEmpty ? 'Guest' : g.name).join(', ')}", style: TextStyle(fontSize: 11, color: t.withValues(alpha: 0.5))),
+                Text(
+                  "GUESTS: ${ent.value.map((g) => g.name.isEmpty ? 'Guest' : g.name).join(', ')}",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: t.withValues(alpha: 0.5),
+                  ),
+                ),
               ],
             ),
           );
@@ -1333,19 +2325,92 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     );
   }
 
-  Widget _revRow(IconData icon, String val, Color t) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [Icon(icon, size: 16, color: t.withValues(alpha: 0.3)), const SizedBox(width: 12), Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.withValues(alpha: 0.8)))]));
+  Widget _revRow(IconData icon, String val, Color t) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        Icon(icon, size: 16, color: t.withValues(alpha: 0.3)),
+        const SizedBox(width: 12),
+        Text(
+          val,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: t.withValues(alpha: 0.8),
+          ),
+        ),
+      ],
+    ),
+  );
 
-  Widget _sumCard(String title, IconData icon, List<Map<String, String>> stats, Color p, Color c, Color t) {
+  Widget _sumCard(
+    String title,
+    IconData icon,
+    List<Map<String, String>> stats,
+    Color p,
+    Color c,
+    Color t,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(28), border: Border.all(color: t.withValues(alpha: 0.02)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))]),
+      decoration: BoxDecoration(
+        color: c,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: t.withValues(alpha: 0.02)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [Icon(icon, size: 18, color: p), const SizedBox(width: 12), Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: p))]),
+          Row(
+            children: [
+              Icon(icon, size: 18, color: p),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  color: p,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
-          ...stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(s['label']!, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w700)), Text(s['value']!, style: TextStyle(fontSize: 12, color: t, fontWeight: FontWeight.w900))]))),
+          ...stats.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    s['label']!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: t.withValues(alpha: 0.4),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    s['value']!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: t,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1355,52 +2420,161 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     final bool isAdmin = _userRole.toLowerCase().contains('admin');
     bool isL = _currentStep == _totalSteps - 1;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24), decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1)))),
-      child: Row(children: [
-        if (_currentStep > 0) Expanded(child: TextButton(onPressed: () => setState(() => _currentStep--), child: const Text("BACK", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w900, fontSize: 13)))),
-        const SizedBox(width: 16),
-        Expanded(flex: 2, child: ElevatedButton(
-          onPressed: _isSubmitting ? null : () { 
-            if (_currentStep == 0) { 
-              if (_formKey.currentState!.validate()) { 
-                int pCount = int.tryParse(_passengerCountController.text) ?? 1;
-                int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
-                if (vCount > pCount) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Vehicle count cannot exceed passenger count"))); return; }
-                if (_startDate == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select departure date and time"))); return; }
-                if (_routeType != 'One Way' && _endDate == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select return date and time"))); return; }
-                _prepareGrouping(); 
-                setState(() => _currentStep++); 
-              } 
-            } else if (_currentStep == 1) { 
-              if (_unassignedGuests.isNotEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please assign all guests to vehicles"))); return; }
-              
-              if (!isAdmin) {
-                // For Faculty, Step 1 is the final step
-                _submitForm();
-              } else {
-                // For Admin, proceed to Fleet Selection
-                _fetchAvailableVehicles(); 
-                setState(() => _currentStep++); 
-              }
-            } else if (_currentStep == 2) { 
-              int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
-              if (_selectedVehicles.length < vCount || _selectedVehicles.values.any((v) => v == null)) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a vehicle for each segment"))); return; }
-              _fetchAvailableDrivers(); 
-              setState(() => _currentStep++); 
-            } else if (_currentStep == 3) {
-              int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
-              if (_selectedDrivers.length < vCount || _selectedDrivers.values.any((d) => d == null)) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a driver for each segment"))); return; }
-              setState(() => _currentStep++); 
-            } else if (_currentStep == 4) {
-              _submitForm(); 
-            } else {
-              _submitForm();
-            }
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: p, minimumSize: const Size(double.infinity, 64), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), elevation: 4),
-          child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text(isL ? "CREATE FULL ROUTE" : "CONTINUE", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-        )),
-      ]),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          top: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (_currentStep > 0)
+            Expanded(
+              child: TextButton(
+                onPressed: () => setState(() => _currentStep--),
+                child: const Text(
+                  "BACK",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () {
+                      if (_currentStep == 0) {
+                        if (_formKey.currentState!.validate()) {
+                          int pCount =
+                              int.tryParse(_passengerCountController.text) ?? 1;
+                          int vCount =
+                              int.tryParse(_vehicleCountController.text) ?? 1;
+                          if (vCount > pCount) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Error: Vehicle count cannot exceed passenger count",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          if (_startDate == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please select departure date and time",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          if (_routeType != 'One Way' && _endDate == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please select return date and time",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          _prepareGrouping();
+                          setState(() => _currentStep++);
+                        }
+                      } else if (_currentStep == 1) {
+                        if (_unassignedGuests.isNotEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Please assign all guests to vehicles",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (!isAdmin) {
+                          // For Faculty, Step 1 is the final step
+                          _submitForm();
+                        } else {
+                          // For Admin, proceed to Fleet Selection
+                          _fetchAvailableVehicles();
+                          setState(() => _currentStep++);
+                        }
+                      } else if (_currentStep == 2) {
+                        int vCount =
+                            int.tryParse(_vehicleCountController.text) ?? 1;
+                        if (_selectedVehicles.length < vCount ||
+                            _selectedVehicles.values.any((v) => v == null)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Please select a vehicle for each segment",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        _fetchAvailableDrivers();
+                        setState(() => _currentStep++);
+                      } else if (_currentStep == 3) {
+                        int vCount =
+                            int.tryParse(_vehicleCountController.text) ?? 1;
+                        if (_selectedDrivers.length < vCount ||
+                            _selectedDrivers.values.any((d) => d == null)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Please select a driver for each segment",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() => _currentStep++);
+                      } else if (_currentStep == 4) {
+                        _submitForm();
+                      } else {
+                        _submitForm();
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: p,
+                minimumSize: const Size(double.infinity, 64),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 4,
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      isL ? "CREATE FULL ROUTE" : "CONTINUE",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
