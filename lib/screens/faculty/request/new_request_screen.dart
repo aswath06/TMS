@@ -77,8 +77,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   double _travelDurationMinutes = 0;
   double _approxDistanceKm = 0;
   bool _isSubmitting = false;
-  int _lastPCount = -1;
-  int _lastVCount = -1;
 
   final ScrollController _mainScroll = ScrollController();
   final PageStorageKey _scrollKey = const PageStorageKey("request_scroll");
@@ -231,23 +229,16 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   void _prepareGrouping() {
     int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
     int pLimit = int.tryParse(_passengerCountController.text) ?? 1;
-
-    // Only reset if counts have actually changed from the last time
-    if (_lastPCount == pLimit && _lastVCount == vCount && _guestGroups.isNotEmpty) {
-      return;
-    }
-
     setState(() {
       _unassignedGuests = [];
       for (int i = 0; i < pLimit; i++) {
+        // Use ORIGINAL object so indexOf works correctly
         _unassignedGuests.add(_guests[i]);
       }
       _guestGroups = {};
       for (int i = 0; i < vCount; i++) {
         _guestGroups[i] = [];
       }
-      _lastPCount = pLimit;
-      _lastVCount = vCount;
     });
   }
 
@@ -674,8 +665,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               setState(() {
                 _stops.clear();
                 _stops.addAll(stops);
-                if (dur > 0) _travelDurationMinutes = dur;
-                if (dist > 0) _approxDistanceKm = dist;
+                _travelDurationMinutes = dur;
+                _approxDistanceKm = dist;
                 _updateEndDate();
               });
             },
@@ -821,26 +812,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      text: h.replaceFirst('*', '').trim().toUpperCase(),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: t.withValues(alpha: 0.4),
-                        letterSpacing: 0.5,
-                      ),
-                      children: [
-                        if (h.contains('*'))
-                          const TextSpan(
-                            text: ' *',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
+                  Text(
+                    h.replaceFirst('*', '').trim().toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: t.withValues(alpha: 0.4),
+                      letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -872,38 +850,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildLabelWithRedStar(
-    String label,
-    Color textColor, {
-    double fontSize = 11,
-    FontWeight fontWeight = FontWeight.w800,
-    bool isRequired = false,
-  }) {
-    bool hasStar = label.contains('*');
-    String cleanLabel = label.replaceFirst('*', '').trim();
-    return RichText(
-      text: TextSpan(
-        text: cleanLabel,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          color: textColor,
-        ),
-        children: [
-          if (hasStar || isRequired)
-            const TextSpan(
-              text: ' *',
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -993,8 +939,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     bool isReq = true,
   }) {
     return Container(
-      height: 60,
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: c,
         borderRadius: BorderRadius.circular(16),
@@ -1010,25 +954,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         initialValue: initial,
         keyboardType: isNum ? TextInputType.number : TextInputType.text,
         onChanged: onC,
-        textAlignVertical: TextAlignVertical.center,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         decoration: InputDecoration(
-          isDense: true,
-          hintText: isReq ? "$label *" : label,
+          hintText: label,
           hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13),
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          prefixIcon: Container(
-            margin: const EdgeInsets.only(left: 16, right: 10),
-            child: Icon(icon, color: p.withValues(alpha: 0.35), size: 20),
-          ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 46, minHeight: 0),
+          prefixIcon: Icon(icon, color: p.withValues(alpha: 0.35), size: 20),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           prefixText: isNum ? "+91 " : null,
-          prefixStyle: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-            color: t.withValues(alpha: 0.4),
+          prefixStyle: const TextStyle(
+            fontWeight: FontWeight.w900,
+            color: Colors.grey,
           ),
           counterText: "",
         ),
@@ -1060,7 +999,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabelWithRedStar(label, t.withValues(alpha: 0.3), isRequired: isReq),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: t.withValues(alpha: 0.3),
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -1612,100 +1558,70 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    String searchQuery = "";
+    // Filter and Sort items before building the sheet
+    List<Map<String, dynamic>> filteredItems = List.from(items);
+    if (isVehicle) {
+      Set<int> assignedIds = _selectedVehicles.values
+          .where((v) => v != null && v['id'] != (selected?['id']))
+          .map((v) => v!['id'] as int)
+          .toSet();
+      filteredItems = filteredItems
+          .where((v) => !assignedIds.contains(v['id']))
+          .toList();
+
+      if (currentGuestCount != null) {
+        filteredItems.sort((a, b) {
+          int ac = int.tryParse(a['capacity']?.toString() ?? "0") ?? 0;
+          int bc = int.tryParse(b['capacity']?.toString() ?? "0") ?? 0;
+
+          bool as = ac < currentGuestCount;
+          bool al = ac > (currentGuestCount + 5);
+          bool bs = bc < currentGuestCount;
+          bool bl = bc > (currentGuestCount + 5);
+
+          bool aAvail =
+              (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") &&
+              (a['available'] != false);
+          bool bAvail =
+              (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") &&
+              (b['available'] != false);
+
+          bool aFit = !as && !al;
+          bool bFit = !bs && !bl;
+
+          // Priority for Selection Modal Sorting:
+          // 0: Available & Fit & Default Driver
+          // 1: Available & Fit (no Default Driver)
+          // 2: Available & Too Large
+          // 3: Available & Too Small
+          // 4: Not Available (Busy or Status-blocked)
+          int aPrio = !aAvail
+              ? 4
+              : (aFit ? (a['default_driver'] != null ? 0 : 1) : (as ? 3 : 2));
+          int bPrio = !bAvail
+              ? 4
+              : (bFit ? (b['default_driver'] != null ? 0 : 1) : (bs ? 3 : 2));
+
+          if (aPrio != bPrio) return aPrio.compareTo(bPrio);
+          return bc.compareTo(ac); // Within same group, prefer higher capacity
+        });
+      }
+    }
 
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          List<Map<String, dynamic>> filteredItems = List.from(items);
-
-          if (isVehicle) {
-            Set<int> assignedIds = _selectedVehicles.values
-                .where((v) => v != null && v['id'] != (selected?['id']))
-                .map((v) => v!['id'] as int)
-                .toSet();
-            filteredItems = filteredItems
-                .where((v) => !assignedIds.contains(v['id']))
-                .toList();
-
-            if (currentGuestCount != null) {
-              filteredItems.sort((a, b) {
-                int ac = int.tryParse(a['capacity']?.toString() ?? "0") ?? 0;
-                int bc = int.tryParse(b['capacity']?.toString() ?? "0") ?? 0;
-
-                bool as = ac < currentGuestCount;
-                bool al = ac > (currentGuestCount + 5);
-                bool bs = bc < currentGuestCount;
-                bool bl = bc > (currentGuestCount + 5);
-
-                bool aAvail =
-                    (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") &&
-                    (a['available'] != false);
-                bool bAvail =
-                    (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") &&
-                    (b['available'] != false);
-
-                bool aFit = !as && !al;
-                bool bFit = !bs && !bl;
-
-                int aPrio = !aAvail
-                    ? 4
-                    : (aFit
-                          ? (a['default_driver'] != null ? 0 : 1)
-                          : (as ? 3 : 2));
-                int bPrio = !bAvail
-                    ? 4
-                    : (bFit
-                          ? (b['default_driver'] != null ? 0 : 1)
-                          : (bs ? 3 : 2));
-
-                if (aPrio != bPrio) return aPrio.compareTo(bPrio);
-                return bc.compareTo(ac);
-              });
-            }
-          } else {
-            // Sort Drivers Alphabetically by Name
-            filteredItems.sort((a, b) {
-              String nameA = (a['user']?['name'] ?? a['name'] ?? "").toString().toLowerCase();
-              String nameB = (b['user']?['name'] ?? b['name'] ?? "").toString().toLowerCase();
-              return nameA.compareTo(nameB);
-            });
-          }
-
-          if (searchQuery.isNotEmpty) {
-            filteredItems = filteredItems.where((item) {
-              String searchTarget = "";
-              if (isVehicle) {
-                searchTarget = (item['vehicle_number'] ?? "").toString();
-                String type = (item['vehicle_type_name'] ?? "").toString();
-                searchTarget = "$searchTarget $type";
-              } else {
-                searchTarget =
-                    (item['user']?['name'] ?? item['name'] ?? "").toString();
-                String phone =
-                    (item['user']?['phone'] ?? item['phone'] ?? "").toString();
-                searchTarget = "$searchTarget $phone";
-              }
-              return searchTarget
-                  .toLowerCase()
-                  .contains(searchQuery.toLowerCase());
-            }).toList();
-          }
-
-          return BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.8,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1E293B).withValues(alpha: 0.9)
-                    : Colors.white.withValues(alpha: 0.95),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(32)),
-              ),
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF1E293B).withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.95),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
           child: Column(
             children: [
               const SizedBox(height: 12),
@@ -1773,40 +1689,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: t.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: t.withValues(alpha: 0.05)),
-                      ),
-                      child: TextFormField(
-                        onChanged: (v) => setModalState(() => searchQuery = v),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: t,
-                        ),
-                        decoration: InputDecoration(
-                          hintText:
-                              "Search ${isVehicle ? 'Vehicle by number or type' : 'Driver by name'}...",
-                          hintStyle: TextStyle(
-                            color: t.withValues(alpha: 0.3),
-                            fontSize: 13,
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search_rounded,
-                            color: t.withValues(alpha: 0.3),
-                            size: 20,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -1974,26 +1856,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                          if (isVehicle)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: (isDisabled ? Colors.red : p)
-                                                    .withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                "Cap: $capacity",
-                                                style: TextStyle(
-                                                  fontSize: 8,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: (isDisabled ? Colors.red : p),
-                                                ),
-                                              ),
-                                            ),
                                           if (isVehicle &&
                                               item['default_driver'] != null)
                                             Row(
@@ -2027,12 +1889,175 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                                 ),
                                               ],
                                             ),
+                                          if (isVehicle) ...[
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    (isDisabled
+                                                            ? Colors.red
+                                                            : p)
+                                                        .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                "Cap: $capacity",
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: (isDisabled
+                                                      ? Colors.red
+                                                      : p),
+                                                ),
+                                              ),
+                                            ),
+                                            if (!isDisabled)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green
+                                                      .withValues(alpha: 0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  "AVAILABLE",
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              )
+                                            else if (isDisabled &&
+                                                isVehicle &&
+                                                item['available'] == false)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.withValues(
+                                                    alpha: 0.1,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  "UNAVAILABLE",
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
                                         ],
                                       ),
                                     ],
                                   ),
                                 ),
-                                if (isSelected)
+                                if (isDisabled)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      item['available'] == false
+                                          ? "UNAVAILABLE"
+                                          : (status == "ON_LEAVE"
+                                                ? "ON LEAVE"
+                                                : (tooSmall
+                                                      ? "TOO SMALL"
+                                                      : (tooLarge
+                                                            ? "TOO LARGE"
+                                                            : status))),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  )
+                                else if (tooLarge)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      "LARGE VEHICLE",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                  )
+                                else if (!isVehicle && status == "ON_TRIP")
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.cyan.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      "ON TRIP",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.cyan,
+                                      ),
+                                    ),
+                                  )
+                                else if (!isVehicle && status == "AVAILABLE")
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      "AVAILABLE",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  )
+                                else if (isSelected)
                                   Icon(
                                     Icons.check_circle_rounded,
                                     color: p,
@@ -2046,14 +2071,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     },
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
-        );
-      },
-    ),
-  );
-}
+        ),
+      ),
+    );
+  }
 
   Widget _resSelector(
     String lbl,
@@ -2078,6 +2101,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         : null;
     String? defDriver = (isV && sel != null && sel['default_driver'] != null)
         ? sel['default_driver']['name']
+        : null;
+    String? driverStatus = (!isV && sel != null)
+        ? (sel['status'] ?? "AVAILABLE").toString().toUpperCase()
         : null;
 
     return GestureDetector(
@@ -2179,6 +2205,35 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: Colors.green,
+                      ),
+                    ),
+                  ),
+                if (driverStatus != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (driverStatus == "ON_LEAVE"
+                                  ? Colors.red
+                                  : (driverStatus == "ON_TRIP"
+                                        ? Colors.cyan
+                                        : Colors.green))
+                              .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      driverStatus.replaceAll("_", " "),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: (driverStatus == "ON_LEAVE"
+                            ? Colors.red
+                            : (driverStatus == "ON_TRIP"
+                                  ? Colors.cyan
+                                  : Colors.green)),
                       ),
                     ),
                   ),

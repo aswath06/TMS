@@ -14,6 +14,7 @@ import 'package:tripzo/utils/validators.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:provider/provider.dart';
 import '../../providers/notification_provider.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 import '../main_screen.dart' show MainScreen;
 
 class LoginScreen extends StatefulWidget {
@@ -120,6 +121,9 @@ curl -X POST "$url" \
       }
     } catch (e) {
       debugPrint("❌ LOGIN ERROR: $e");
+      if (mounted) {
+        showTopToast(context, e.toString(), isError: true);
+      }
     } finally {
       client.close();
       if (mounted) setState(() => _isLoggingIn = false);
@@ -193,7 +197,7 @@ curl -X POST "$url" \
       debugPrint("GOOGLE LOGIN ERROR: $error");
 
       if (mounted) {
-        LoginErrorDialog.show(context, message: error.toString());
+        showTopToast(context, error.toString(), isError: true);
       }
     } finally {
       client.close();

@@ -48,6 +48,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   Future<void> _checkInternet(ConnectivityResult result) async {
     setState(() => _isInternetOk = result != ConnectivityResult.none);
   }
+
   Future<void> _checkPermissions() async {
     final locationStatus = await Permission.location.status;
     final locationAlwaysStatus = await Permission.locationAlways.status;
@@ -67,6 +68,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
     }
     _checkPermissions();
   }
+
 
   Future<void> _requestNotification() async {
     await Permission.notification.request();
@@ -140,6 +142,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                       isDark: isDark,
                     ),
                     
+                    
                     _buildRequirementCard(
                       title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
                       subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
@@ -169,12 +172,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
                         isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          letterSpacing: 1.2,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2, color: Colors.white),
                       ),
                 ),
               ),
