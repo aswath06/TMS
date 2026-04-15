@@ -77,6 +77,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   double _travelDurationMinutes = 0;
   double _approxDistanceKm = 0;
   bool _isSubmitting = false;
+  int _lastPCount = -1;
+  int _lastVCount = -1;
 
   final ScrollController _mainScroll = ScrollController();
   final PageStorageKey _scrollKey = const PageStorageKey("request_scroll");
@@ -229,16 +231,23 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   void _prepareGrouping() {
     int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
     int pLimit = int.tryParse(_passengerCountController.text) ?? 1;
+
+    // Only reset if counts have actually changed from the last time
+    if (_lastPCount == pLimit && _lastVCount == vCount && _guestGroups.isNotEmpty) {
+      return;
+    }
+
     setState(() {
       _unassignedGuests = [];
       for (int i = 0; i < pLimit; i++) {
-        // Use ORIGINAL object so indexOf works correctly
         _unassignedGuests.add(_guests[i]);
       }
       _guestGroups = {};
       for (int i = 0; i < vCount; i++) {
         _guestGroups[i] = [];
       }
+      _lastPCount = pLimit;
+      _lastVCount = vCount;
     });
   }
 
@@ -665,8 +674,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               setState(() {
                 _stops.clear();
                 _stops.addAll(stops);
-                _travelDurationMinutes = dur;
-                _approxDistanceKm = dist;
+                if (dur > 0) _travelDurationMinutes = dur;
+                if (dist > 0) _approxDistanceKm = dist;
                 _updateEndDate();
               });
             },
@@ -1657,6 +1666,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 return bc.compareTo(ac);
               });
             }
+          } else {
+            // Sort Drivers Alphabetically by Name
+            filteredItems.sort((a, b) {
+              String nameA = (a['user']?['name'] ?? a['name'] ?? "").toString().toLowerCase();
+              String nameB = (b['user']?['name'] ?? b['name'] ?? "").toString().toLowerCase();
+              return nameA.compareTo(nameB);
+            });
           }
 
           if (searchQuery.isNotEmpty) {
