@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = "https://tripzo.bitsathy.ac.in";
+  static const String baseUrl = "https://18x50gz9-8055.inc1.devtunnels.ms";
 
   // DevTunnels bypass header
   static const String bypassHeaderKey = "X-Tunnel-Skip-Anti-Phishing-Page";
