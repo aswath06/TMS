@@ -53,7 +53,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
 
   Future<void> _fetchHistory({bool refresh = false}) async {
     if (refresh) _currentPage = 1;
-    if (_role == "admin" || _role == "admin_fleet") {
+    if (_role.toLowerCase().contains('admin')) {
       await useAdminDashboardStore.fetchHistory(page: _currentPage);
     } else {
       await dashboardStore.fetchHistory(page: _currentPage);
@@ -61,7 +61,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
   }
 
   void _loadMore() {
-    if (_role == "admin" || _role == "admin_fleet") {
+    if (_role.toLowerCase().contains('admin')) {
       if (useAdminDashboardStore.isLoading.value) return;
     } else {
       if (dashboardStore.state.isLoading) return;
@@ -86,7 +86,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
 
-    final bool isAdmin = _role == "admin" || _role == "admin_fleet";
+    final bool isAdmin = _role.toLowerCase().contains('admin');
     final bool isFacultyLoading = context.watch<DashboardStore>().state.isLoading;
 
     return ValueListenableBuilder<List<Map<String, dynamic>>>(

@@ -94,6 +94,7 @@ class CustomBottomBar extends StatelessWidget {
   List<_NavItem> _getNavItems() {
     switch (userRole.toLowerCase()) {
       case 'transport admin':
+      case 'super admin':
         return [
           _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
           _NavItem(

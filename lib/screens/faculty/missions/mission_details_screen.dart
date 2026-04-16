@@ -209,7 +209,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       }
 
       final String? role = await UserStore.getRole();
-      final bool isAdmin = role?.toLowerCase() == 'admin';
+      final bool isAdmin = role?.toLowerCase().contains('admin') == true;
 
       final body = {
         "route_id": int.tryParse(widget.requestId) ?? 0,
@@ -259,7 +259,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   void _showRemarkModal(bool isApprove) async {
     final String? role = await UserStore.getRole();
-    final bool isAdmin = role?.toLowerCase() == 'admin';
+    final bool isAdmin = role?.toLowerCase().contains('admin') == true;
     
     final TextEditingController remarkController = TextEditingController();
     if (!mounted) return;

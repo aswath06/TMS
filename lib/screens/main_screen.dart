@@ -122,6 +122,7 @@ class _MainScreenState extends State<MainScreen> {
   List<Widget> _getScreens() {
     switch (widget.userRole.toLowerCase()) {
       case 'transport admin':
+      case 'super admin':
         return [
           const AdminDashboardScreen(),
           const RequestListPage(),

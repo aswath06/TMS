@@ -188,14 +188,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   color: primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'ROLE: Admin',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF6366F1),
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
+                child: FutureBuilder<String?>(
+                  future: UserStore.getRole(),
+                  builder: (context, snapshot) {
+                    final String role = snapshot.data?.toUpperCase() ?? "ADMIN";
+                    return Text(
+                      'ROLE: $role',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 8),
