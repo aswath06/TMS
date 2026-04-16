@@ -89,7 +89,6 @@ class _SplashScreenState extends State<SplashScreen>
     if (mounted) {
       setState(() {
         ThemeStore.isDark = prefs.getBool('isDark') ?? false;
-        LanguageStore.isTamil = prefs.getBool('isTamil') ?? false;
       });
     }
   }

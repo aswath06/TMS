@@ -39,10 +39,14 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     // Determine current states from global stores
+    // Listen to theme and language changes
+    final themeStore = Provider.of<ThemeStore>(context);
+    final lStore = Provider.of<LanguageStore>(context);
     final bool isTamil = LanguageStore.isTamil;
     
-    // Listen to theme changes
-    final themeStore = Provider.of<ThemeStore>(context);
+    // Update local state if it differs (e.g. after language was changed elsewhere or on load)
+    _selectedLanguage = isTamil ? "தமிழ்" : "English";
+
     final bool isDark = ThemeStore.isDark;
 
     // Dynamic Colors based on Store state
@@ -312,10 +316,10 @@ class _SettingsPageState extends State<SettingsPage> {
     Color primaryBlue,
   ) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
+      onTap: () async {
+        await Provider.of<LanguageStore>(context, listen: false).setLanguage(label);
+        if (mounted) setState(() {
           _selectedLanguage = label;
-          LanguageStore.setLanguage(label);
         });
       },
       child: AnimatedContainer(

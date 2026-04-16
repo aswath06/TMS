@@ -9,6 +9,7 @@ import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/isdark.dart';
+import 'package:tripzo/store/istamil.dart';
 
 // Utils
 import 'utils/routes.dart';
@@ -40,6 +41,7 @@ void main() async {
 
   // Load theme and other persistent data
   await themeStore.loadTheme();
+  await languageStore.loadLanguage();
 
 
 
@@ -57,6 +59,7 @@ void main() async {
         ChangeNotifierProvider.value(value: useDriverStore),
         ChangeNotifierProvider.value(value: dashboardStore),
         ChangeNotifierProvider.value(value: themeStore),
+        ChangeNotifierProvider.value(value: languageStore),
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(
             apiService: NotificationApiService(baseUrl: "", token: ""),
