@@ -362,12 +362,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         'icon': Icons.route_rounded,
         'color': Colors.purple,
       },
-      {
-        'title': isTamil ? 'நிலை' : 'Status',
-        'val': data?['driverProfile']?['status'],
-        'icon': Icons.info_outline_rounded,
-        'color': Colors.green,
-      },
     ];
     return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
   }

@@ -86,7 +86,12 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
           bunks = data;
         }
         debugPrint("Parsed ${bunks.length} fuel bunks");
-        setState(() => _allBunks = bunks);
+        // Add 'Others' option at the top
+        final List<dynamic> bunksWithOthers = [
+          {'id': 'OTHERS', 'name': 'Others', 'owner_name': 'Local Vendor', 'phone_number': ''}
+        ];
+        bunksWithOthers.addAll(bunks);
+        setState(() => _allBunks = bunksWithOthers);
       }
     } catch (e) {
       debugPrint("Error fetching bunks: $e");
@@ -143,8 +148,10 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       _verificationResult = null;
     });
 
-    // Only verify if we have the required fields
+    // Only verify if we have the required fields and NOT "OTHERS"
+    // (OTHERS verification is still good for match pct, but user says image is ONLY needed for Others)
     if (_selectedBunk != null &&
+        _selectedBunk!['id'] != 'OTHERS' &&
         _amountController.text.isNotEmpty &&
         _volumeController.text.isNotEmpty) {
       await _verifyBill();
@@ -215,8 +222,15 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       _showSnack("Please fill all required fields", Colors.orange);
       return;
     }
-    if (_billImage == null) {
+    final bool isOthers = _selectedBunk?['id'] == 'OTHERS';
+
+    if (isOthers && _billImage == null) {
       _showSnack("Please upload proof document", Colors.orange);
+      return;
+    }
+
+    if (!isOthers && _indentNumberController.text.isEmpty) {
+      _showSnack("Please enter indent number", Colors.orange);
       return;
     }
 
@@ -240,25 +254,25 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
         ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
       });
 
-      final userId = await UserStore.getUserId();
-      final instanceId = DateFormat('yyyy/MM/dd').format(_fillingDate);
+      final bool isOthers = _selectedBunk?['id'] == 'OTHERS';
 
-      request.fields['instance_id'] = instanceId;
+      if (!isOthers) {
+        request.fields['instance_id'] = _indentNumberController.text;
+      }
+
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
       request.fields['bunk_id'] = _selectedBunk!['id'].toString();
-      request.fields['filled_by_user_id'] = userId?.toString() ?? "";
       request.fields['volume'] = _volumeController.text;
       request.fields['bill_amount'] = _amountController.text;
       request.fields['current_odometer'] = _odometerController.text;
       request.fields['filled_at'] = DateFormat('yyyy-MM-ddTHH:mm:ss').format(_fillingDate);
-      request.fields['isMatches'] = (_billVerified == true) ? 'true' : 'false';
-      request.fields['remarks'] = _remarksController.text.isEmpty ? "Admin created fuel log for driver" : _remarksController.text;
+      request.fields['remarks'] = _remarksController.text.isEmpty 
+          ? (isOthers ? "Fuel filled from local vendor" : "Fuel filled at bunk") 
+          : _remarksController.text;
       
-      if (_indentNumberController.text.isNotEmpty) {
-        request.fields['indent_number'] = _indentNumberController.text;
+      if (isOthers) {
+        request.files.add(await http.MultipartFile.fromPath('file', _billImage!.path));
       }
-
-      request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
 
       // DEBUG: Log the CURL equivalent
       StringBuffer curl = StringBuffer("curl --location '${ApiConstants.fuelLog}' \\\n");
@@ -511,21 +525,24 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _formLabel(isTamil ? "இண்டென்ட் எண்" : "Indent Number", titleColor),
-                              const SizedBox(height: 8),
-                              _buildTextField(
-                                isTamil ? "இண்டென்ட் எண்ணை உள்ளிடவும்" : "Enter indent number",
-                                Icons.confirmation_number_rounded,
-                                isDark,
-                                primary,
-                                controller: _indentNumberController,
-                              ),
-                            ],
-                          ),
+                          
+                          if (_selectedBunk?['id'] != 'OTHERS') ...[
+                            const SizedBox(height: 18),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _formLabel(isTamil ? "இண்டென்ட் எண்" : "Indent Number", titleColor),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  isTamil ? "இண்டென்ட் எண்ணை உள்ளிடவும்" : "Enter indent number",
+                                  Icons.confirmation_number_rounded,
+                                  isDark,
+                                  primary,
+                                  controller: _indentNumberController,
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 18),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,49 +563,50 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
 
                       const SizedBox(height: 16),
 
-                      // Proof Upload with Verification
-                      _buildSectionCard(
-                        icon: Icons.photo_camera_rounded,
-                        iconColor: const Color(0xFFF59E0B),
-                        title: isTamil ? "ஆதாரம்" : "Proof Document (Required)",
-                        surface: surface,
-                        titleColor: titleColor,
-                        subColor: subColor,
-                        isDark: isDark,
-                        children: [
-                          _buildProofUpload(primary, isDark, isTamil),
-                          if (_isVerifying) ...[
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const SizedBox(
-                                  width: 18, height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3B82F6)),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  isTamil ? "பில் சரிபார்க்கப்படுகிறது..." : "Verifying bill...",
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white70 : Colors.black54,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                      // Proof Upload with Verification (Only shown for OTHERS)
+                      if (_selectedBunk?['id'] == 'OTHERS')
+                        _buildSectionCard(
+                          icon: Icons.photo_camera_rounded,
+                          iconColor: const Color(0xFFF59E0B),
+                          title: isTamil ? "ஆதாரம்" : "Proof Document (Required)",
+                          surface: surface,
+                          titleColor: titleColor,
+                          subColor: subColor,
+                          isDark: isDark,
+                          children: [
+                            _buildProofUpload(primary, isDark, isTamil),
+                            if (_isVerifying) ...[
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    width: 18, height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3B82F6)),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (_verificationResult != null && !_isVerifying) ...[
-                            const SizedBox(height: 16),
-                            _buildVerificationResult(isDark),
-                          ],
-                        ],
-                      ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    isTamil ? "பில் சரிபார்க்கப்படுகிறது..." : "Verifying bill...",
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white70 : Colors.black54,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            if (_verificationResult != null && !_isVerifying) ...[
+                              const SizedBox(height: 16),
+                              _buildVerificationResult(isDark),
+                            ],
+                            ],
+                          ),
 
-                      const SizedBox(height: 28),
+                        const SizedBox(height: 28),
 
-                      // Submit Button
-                      SizedBox(
+                        // Submit Button
+                        SizedBox(
                         width: double.infinity,
                         height: 58,
                         child: ElevatedButton(

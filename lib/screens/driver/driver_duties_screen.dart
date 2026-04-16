@@ -6,6 +6,8 @@ import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/fuel_page.dart';
 import 'package:tripzo/screens/driver/maintenance/service_page.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
+import '../../providers/notification_provider.dart';
+import '../../utils/routes.dart';
 
 class DriverDutiesScreen extends StatefulWidget {
   const DriverDutiesScreen({super.key});
@@ -21,6 +23,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       useDriverStore.fetchProfile();
       useDriverStore.fetchMissions();
+      context.read<NotificationProvider>().fetchNotifications();
     });
   }
 
@@ -162,7 +165,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.1),
+                  color: primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -178,6 +181,40 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             ],
           ),
         ),
+        // Notification Bell Icon
+        Consumer<NotificationProvider>(
+          builder: (context, provider, _) {
+            return Stack(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
+                  icon: Icon(Icons.notifications_none_rounded, color: titleColor, size: 28),
+                ),
+                if (provider.unreadCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        provider.unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(width: 8),
         Hero(
           tag: 'driver_avatar',
           child: CircleAvatar(
