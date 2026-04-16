@@ -334,8 +334,8 @@ curl -X POST "$url" \
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : Image.network(
-                'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
+            : Image.asset(
+                'assets/google_logo.png',
                 height: 22,
               ),
         label: const Text(

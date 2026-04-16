@@ -11,7 +11,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
-
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
