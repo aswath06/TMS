@@ -145,19 +145,21 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
                                 child: const Icon(Icons.report_problem_rounded, color: primary, size: 28),
                               ),
                               const SizedBox(width: 16),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    isTamil ? "விபத்து பதிவு" : "Accident Entry",
-                                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: titleColor),
-                                  ),
-                                  Text(
-                                    isTamil ? "சம்பவ விவரங்களைச் சேர்க்கவும்" : "Log incident details",
-                                    style: TextStyle(fontSize: 13, color: subColor),
-                                  ),
-                                ],
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      isTamil ? "விபத்து பதிவு" : "Accident Entry",
+                                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: titleColor),
+                                    ),
+                                    Text(
+                                      isTamil ? "சம்பவ விவரங்களைச் சேர்க்கவும்" : "Log incident details",
+                                      style: TextStyle(fontSize: 13, color: subColor),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -447,9 +449,12 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
                   child: Icon(icon, color: iconColor, size: 20),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: titleColor),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: titleColor),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -693,7 +698,7 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
             children: [
               Icon(icon, color: accent.withValues(alpha: 0.5), size: 20),
               const SizedBox(width: 12),
-              Text(hint, style: TextStyle(color: isDark ? Colors.white30 : Colors.black38, fontSize: 14)),
+              Expanded(child: Text(hint, style: TextStyle(color: isDark ? Colors.white30 : Colors.black38, fontSize: 14), overflow: TextOverflow.ellipsis)),
             ],
           ),
           isExpanded: true,
@@ -858,6 +863,7 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
     };
 
     final result = await context.read<DriverStore>().submitAccidentEntry(data, _proofPath);
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (result['success']) {

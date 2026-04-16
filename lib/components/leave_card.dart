@@ -190,13 +190,16 @@ class _LeaveDetailBottomSheetState extends State<_LeaveDetailBottomSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Leave Details",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: titleColor,
-                  letterSpacing: -0.5,
+              Expanded(
+                child: Text(
+                  "Leave Details",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: titleColor,
+                    letterSpacing: -0.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               _buildStatusBadge(widget.leaf['status'] ?? 'Pending'),
@@ -269,12 +272,15 @@ class _LeaveDetailBottomSheetState extends State<_LeaveDetailBottomSheet> {
               children: [
                 Icon(Icons.verified_user_rounded, color: Colors.green.shade400, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  "Approved by ${widget.leaf['approver']?['name']}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: titleColor,
+                Expanded(
+                  child: Text(
+                    "Approved by ${widget.leaf['approver']?['name']}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: titleColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

@@ -533,12 +533,15 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "Apply Leave for Driver",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: titleColor,
+                Expanded(
+                  child: Text(
+                    "Apply Leave for Driver",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: titleColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(

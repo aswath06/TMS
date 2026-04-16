@@ -91,12 +91,12 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
           {'id': 'OTHERS', 'name': 'Others', 'owner_name': 'Local Vendor', 'phone_number': ''}
         ];
         bunksWithOthers.addAll(bunks);
-        setState(() => _allBunks = bunksWithOthers);
+        if (mounted) setState(() => _allBunks = bunksWithOthers);
       }
     } catch (e) {
       debugPrint("Error fetching bunks: $e");
     } finally {
-      setState(() => _isLoadingBunks = false);
+      if (mounted) setState(() => _isLoadingBunks = false);
     }
   }
 
@@ -127,11 +127,11 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
         page++;
       } while (page <= totalPages);
       debugPrint("Fetched ${allVehicles.length} vehicles in total");
-      setState(() => _driverVehicles = allVehicles);
+      if (mounted) setState(() => _driverVehicles = allVehicles);
     } catch (e) {
       debugPrint("Error fetching vehicles: $e");
     } finally {
-      setState(() => _isLoadingVehicles = false);
+      if (mounted) setState(() => _isLoadingVehicles = false);
     }
   }
 
@@ -142,6 +142,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
     if (image == null) return;
 
     final file = File(image.path);
+    if (!mounted) return;
     setState(() {
       _billImage = file;
       _billVerified = null;
@@ -186,24 +187,30 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          _billVerified = data['verified'] == true;
-          _verificationResult = data;
-        });
+        if (mounted) {
+          setState(() {
+            _billVerified = data['verified'] == true;
+            _verificationResult = data;
+          });
+        }
       } else {
+        if (mounted) {
+          setState(() {
+            _billVerified = false;
+            _verificationResult = null;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error verifying bill: $e");
+      if (mounted) {
         setState(() {
           _billVerified = false;
           _verificationResult = null;
         });
       }
-    } catch (e) {
-      debugPrint("Error verifying bill: $e");
-      setState(() {
-        _billVerified = false;
-        _verificationResult = null;
-      });
     } finally {
-      setState(() => _isVerifying = false);
+    if (mounted) setState(() => _isVerifying = false);
     }
   }
 
@@ -239,6 +246,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       await _verifyBill();
     }
 
+    if (!mounted) return;
     setState(() => _isSubmitting = true);
 
     try {

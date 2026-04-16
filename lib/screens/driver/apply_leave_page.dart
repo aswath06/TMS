@@ -385,41 +385,46 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Icon(
-                    Icons.arrow_back_ios,
-                    size: 18,
-                    color: primaryBlue,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(
+                      Icons.arrow_back_ios,
+                      size: 18,
+                      color: primaryBlue,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isTamil ? "நிர்வாகம்" : "ADMINISTRATION",
-                  style: TextStyle(
-                    fontSize: 12,
-                    letterSpacing: 1.5,
-                    fontWeight: FontWeight.w900,
-                    color: primaryBlue,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isTamil ? "நிர்வாகம்" : "ADMINISTRATION",
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w900,
+                        color: primaryBlue,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              isTamil ? "விடுப்பு விண்ணப்பம்" : "Apply Leave",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: titleColor,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                isTamil ? "விடுப்பு விண்ணப்பம்" : "Apply Leave",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: titleColor,
+                ),
+              ),
+            ],
+          ),
         ),
         Container(
           padding: const EdgeInsets.all(10),
@@ -449,12 +454,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: titleColor,
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: titleColor,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -579,12 +587,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                       color: primaryBlue,
                     ),
                   ),
-                  Text(
-                    isTamil ? 'வகையைத் தேர்ந்தெடுக்கவும்' : 'Select leave type',
-                    style: TextStyle(
-                      color: txt.withValues(alpha: 0.4),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      isTamil ? 'வகையைத் தேர்ந்தெடுக்கவும்' : 'Select leave type',
+                      style: TextStyle(
+                        color: txt.withValues(alpha: 0.4),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
