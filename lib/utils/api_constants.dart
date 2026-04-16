@@ -77,6 +77,7 @@ class ApiConstants {
   static const String driverDashboard =
       "$baseUrl/api/drivers/driver-dashboard/";
   static const String driverVehicles = "$baseUrl/api/drivers/drive-vehicles";
+  static String rewardPoints(dynamic userId) => "$baseUrl/api/drivers/reward-points?user_id=$userId";
   static const String verifyFuelBill = "$baseUrl/api/vehicles/verify-fuel-bill";
   // Maintenance
   static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";

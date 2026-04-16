@@ -61,6 +61,16 @@ class DriverStore extends ChangeNotifier {
   bool _isLoadingMaintenance = false;
   bool get isLoadingMaintenance => _isLoadingMaintenance;
 
+  // Reward Points State
+  int _totalPoints = 0;
+  int get totalPoints => _totalPoints;
+  List<Map<String, dynamic>> _rewardHistory = [];
+  List<Map<String, dynamic>> get rewardHistory => _rewardHistory;
+  bool _isLoadingRewards = false;
+  bool get isLoadingRewards => _isLoadingRewards;
+  String? _rewardError;
+  String? get rewardError => _rewardError;
+
   static const Map<int, String> LEAVE_TYPE = {
     1: "Sick",
     2: "Casual",
@@ -561,6 +571,64 @@ class DriverStore extends ChangeNotifier {
         return Icons.home_work_rounded;
       default:
         return Icons.help_outline_rounded;
+    }
+  }
+
+  Future<void> fetchRewardPoints() async {
+    _isLoadingRewards = true;
+    _rewardError = null;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      final userId = await UserStore.getUserId();
+
+      if (token == null || userId == null) {
+        _rewardError = "Session expired or User ID missing.";
+        return;
+      }
+
+      final url = ApiConstants.rewardPoints(userId);
+      
+      debugPrint("--- [DEBUG] FETCH REWARD POINTS CURL ---");
+      debugPrint("curl --location '$url' \\");
+      final headers = ApiConstants.getHeaders(token);
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("------------------------------------");
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      debugPrint("--- [DEBUG] FETCH REWARD POINTS RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("---------------------------------------");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final data = decoded['data'];
+          _totalPoints = data['total_points'] ?? 0;
+          final List<dynamic> history = data['history'] ?? [];
+          _rewardHistory = history.map((e) => e as Map<String, dynamic>).toList();
+        } else {
+          _rewardError = decoded['message'] ?? "Failed to fetch reward points";
+        }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _rewardError = "Session expired. Please login again.";
+      } else {
+        _rewardError = "Server error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _rewardError = "Connection error: $e";
+    } finally {
+      _isLoadingRewards = false;
+      notifyListeners();
     }
   }
 

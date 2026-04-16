@@ -6,6 +6,7 @@ import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/fuel_page.dart';
 import 'package:tripzo/screens/driver/maintenance/service_page.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
+import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
 import '../../providers/notification_provider.dart';
 import '../../utils/routes.dart';
 
@@ -23,6 +24,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       useDriverStore.fetchProfile();
       useDriverStore.fetchMissions();
+      useDriverStore.fetchRewardPoints();
       context.read<NotificationProvider>().fetchNotifications();
     });
   }
@@ -88,7 +90,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                         const SizedBox(height: 24),
                         _buildHeader(driverName, titleColor, subColor, screenWidth, primaryBlue, isTamil),
                         const SizedBox(height: 32),
-                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList, profile),
+                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList, profile, store),
                         const SizedBox(height: 36),
                         _buildSectionTitle(isTamil ? "இன்றைய பணிகள்" : "Your Assignments", titleColor),
                         const SizedBox(height: 18),
@@ -230,7 +232,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     );
   }
 
-  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList, Map<String, dynamic>? profile) {
+  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList, Map<String, dynamic>? profile, DriverStore store) {
     // Helper to normalize status for filtering
     bool isCompleted(dynamic s) {
       if (s is int) return s >= 8;
@@ -241,29 +243,42 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     final pendingCount = missionList.where((m) => !isCompleted(m['status'])).length;
     final double rewardValue = double.tryParse((profile?['reward_points'] ?? "150").toString()) ?? 150.0;
     
-    return Row(
-      children: [
-        _statItem(
-          label: isTamil ? "வெகுமதி புள்ளிகள்" : "Reward Point",
-          value: rewardValue.toInt().toString(),
-          animatedValue: rewardValue,
-          icon: Icons.military_tech_rounded,
-          accentColor: const Color(0xFFF59E0B),
-          surface: surface,
-          isDark: isDark,
-          statusLabel: isTamil ? "செயலில்" : "ACTIVE",
-          statusColor: Colors.green,
-        ),
-        const SizedBox(width: 16),
-        _statItem(
-          label: isTamil ? "நிலுவையில்" : "Pending",
-          value: pendingCount.toString().padLeft(2, '0'),
-          icon: Icons.assignment_late_rounded,
-          accentColor: Colors.orangeAccent,
-          surface: surface,
-          isDark: isDark,
-        ),
-      ],
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RewardPointsHistoryScreen()),
+              ),
+              child: _statItem(
+                label: isTamil ? "வெகுமதி புள்ளிகள்" : "Reward Point",
+                value: useDriverStore.totalPoints.toString(),
+                animatedValue: useDriverStore.totalPoints.toDouble(),
+                icon: Icons.military_tech_rounded,
+                accentColor: const Color(0xFFF59E0B),
+                surface: surface,
+                isDark: isDark,
+                statusLabel: isTamil ? "செயலில்" : "ACTIVE",
+                statusColor: Colors.green,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _statItem(
+              label: isTamil ? "நிலுவையில்" : "Pending",
+              value: pendingCount.toString().padLeft(2, '0'),
+              icon: Icons.assignment_late_rounded,
+              accentColor: Colors.orangeAccent,
+              surface: surface,
+              isDark: isDark,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -278,8 +293,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     Color? statusColor,
     double? animatedValue,
   }) {
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: surface,
@@ -370,7 +384,6 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
