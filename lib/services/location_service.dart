@@ -48,6 +48,13 @@ class LocationService {
   }
 
   Future<void> startTracking(int tripInstanceId) async {
+    // 0. Only Drivers should be tracked
+    final role = await UserStore.getRole();
+    if (role != 'driver') {
+      print("[LocationService] Role is '$role'. Tracking is restricted to drivers only. Aborting.");
+      return;
+    }
+
     print("[LocationService] Preparing to start tracking for Trip #$tripInstanceId");
 
     // 1. Check & Request Permissions

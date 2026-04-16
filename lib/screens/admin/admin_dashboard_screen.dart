@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/components/request_card.dart';
 import 'package:tripzo/store/request_store.dart';
 import '../../providers/notification_provider.dart';
+import '../../components/notification_card.dart';
+import '../../utils/routes.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends StatefulWidget {
@@ -136,7 +138,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       _buildSectionTitle('Recent Notifications', titleColor),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
                         child: Text(
                           'See All',
                           style: TextStyle(
@@ -639,33 +641,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
 
-    // Show top 3 recent notifications
     final recentNotifications = notifications.take(3).toList();
-
     return Column(
       children: recentNotifications.map((notification) {
-        String timeAgo = _formatDateTime(notification.createdAt);
-        IconData icon = Icons.info_outline_rounded;
-        Color color = primaryBlue;
-
-        if (notification.type == 'SUCCESS') {
-          icon = Icons.check_circle_rounded;
-          color = Colors.green.shade400;
-        } else if (notification.type == 'WARNING') {
-          icon = Icons.warning_amber_rounded;
-          color = Colors.orange;
-        } else if (notification.type == 'ERROR') {
-          icon = Icons.error_outline_rounded;
-          color = Colors.redAccent;
-        }
-
-        return _buildNotifyItem(
-          notification.title,
-          notification.message,
-          timeAgo,
-          icon,
-          color,
-          surface,
+        return NotificationCard(
+          notification: notification,
+          isDashboard: true,
         );
       }).toList(),
     );
@@ -679,71 +660,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
     if (diff.inHours < 24) return "${diff.inHours}h ago";
     return "${dt.day}/${dt.month}";
-  }
-
-  Widget _buildNotifyItem(
-    String title,
-    String body,
-    String time,
-    IconData icon,
-    Color color,
-    Color surface,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: color.withOpacity(0.08)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      time,
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  body,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildActiveMissions(BuildContext context, Color primaryBlue, bool isDark) {

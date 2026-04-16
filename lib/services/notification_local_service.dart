@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../utils/routes.dart';
 
 class NotificationLocalService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -22,7 +23,8 @@ class NotificationLocalService {
     await _notificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // Handle notification tap logic here if needed
+        // Navigate to notification list screen when notification is tapped
+        AppRoutes.navigatorKey.currentState?.pushNamed(AppRoutes.notifications);
       },
     );
   }

@@ -162,7 +162,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: (_isInternetOk && _isLocationOk && _isNotificationOk) ? _completeOnboarding : null,
+                  onPressed: (_isInternetOk && _isNotificationOk) ? _completeOnboarding : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

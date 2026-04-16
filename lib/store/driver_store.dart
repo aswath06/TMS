@@ -383,7 +383,10 @@ class DriverStore extends ChangeNotifier {
           });
           
           if (hasStartedMission && startedTripId != null) {
-             LocationService().startTracking(startedTripId!);
+             final role = await UserStore.getRole();
+             if (role == 'driver') {
+               LocationService().startTracking(startedTripId!);
+             }
           }
         } else {
           _missionsError = decoded['message'] ?? "Failed to fetch missions";
@@ -682,11 +685,14 @@ class DriverStore extends ChangeNotifier {
 
       final decoded = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // 🚀 Start or Stop Tracking
-        if (isStart) {
-          LocationService().startTracking(routeId);
-        } else {
-          LocationService().stopTracking();
+        // 🚀 Start or Stop Tracking (Only for Drivers)
+        final role = await UserStore.getRole();
+        if (role == 'driver') {
+          if (isStart) {
+            LocationService().startTracking(routeId);
+          } else {
+            LocationService().stopTracking();
+          }
         }
         return {"success": true, "message": decoded['message'] ?? "Operation successful"};
       } else {
