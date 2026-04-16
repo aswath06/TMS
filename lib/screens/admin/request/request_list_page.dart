@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/store/request_store.dart';
@@ -14,6 +15,8 @@ class RequestListPage extends StatefulWidget {
 
 class _RequestListPageState extends State<RequestListPage> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
   String _selectedFilter = 'ALL';
 
   @override
@@ -28,6 +31,8 @@ class _RequestListPageState extends State<RequestListPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -36,6 +41,15 @@ class _RequestListPageState extends State<RequestListPage> {
         _scrollController.position.maxScrollExtent - 200) {
       context.read<RequestStore>().fetchNextPage();
     }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        context.read<RequestStore>().fetchRequests(isRefresh: true, search: query);
+      }
+    });
   }
 
   @override
@@ -53,17 +67,7 @@ class _RequestListPageState extends State<RequestListPage> {
 
     final store = context.watch<RequestStore>();
     
-    // Dynamic filtering based on selection
-    final missions = store.requests.where((req) {
-      final String s = (req['status'] ?? "").toString().toUpperCase();
-      final int rs = req['rawStatus'] ?? 0;
-      
-      if (_selectedFilter == 'ALL') return true;
-      if (_selectedFilter == 'APPROVED') return s == 'APPROVED' || s == 'VEHICLE APPROVED' || rs == 4;
-      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || rs == 1 || rs == 10;
-      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING' || rs == 7;
-      return true;
-    }).toList();
+    final missions = store.requests;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -146,6 +150,8 @@ class _RequestListPageState extends State<RequestListPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  _buildSearchBar(isDark, primaryBlue, subColor),
                   const SizedBox(height: 18),
                   _buildFilterChips(primaryBlue, titleColor, isDark),
                 ],
@@ -585,6 +591,56 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
+  Widget _buildSearchBar(bool isDark, Color primaryBlue, Color subColor) {
+    return Container(
+      height: 54,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        style: TextStyle(
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: "Search by vehicle, faculty, or route...",
+          hintStyle: TextStyle(
+            color: subColor.withValues(alpha: 0.6),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(Icons.search_rounded, color: primaryBlue, size: 22),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close_rounded, color: subColor, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged('');
+                    setState(() {});
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterChips(Color p, Color t, bool d) {
     final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED'];
     return SingleChildScrollView(
@@ -599,7 +655,17 @@ class _RequestListPageState extends State<RequestListPage> {
   Widget _buildChipItem(String label, Color p, Color t, bool d) {
     bool isS = _selectedFilter == label;
     return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = label),
+      onTap: () {
+        if (_selectedFilter == label) return;
+        setState(() => _selectedFilter = label);
+        
+        String mappedStatus = "";
+        if (label == 'APPROVED') mappedStatus = "APPROVED,VEHICLE APPROVED";
+        else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING";
+        else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
+        
+        context.read<RequestStore>().fetchRequests(isRefresh: true, statuses: mappedStatus);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: const EdgeInsets.only(right: 8),

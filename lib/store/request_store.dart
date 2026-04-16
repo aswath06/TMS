@@ -23,6 +23,8 @@ class RequestStore extends ChangeNotifier {
 
   String? _errorMessage;
   String? _leavesErrorMessage;
+  String _currentSearch = "";
+  String _currentStatuses = "";
 
   // Getters
   List<Map<String, dynamic>> get requests => _requests;
@@ -38,8 +40,16 @@ class RequestStore extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get leavesErrorMessage => _leavesErrorMessage;
 
-  /// Fetches all requests with optional pagination
-  Future<void> fetchRequests({int page = 1, int limit = 10, bool isRefresh = false}) async {
+  /// Fetches all requests with optional pagination, search and status filtering
+  Future<void> fetchRequests({int page = 1, int limit = 10, bool isRefresh = false, String? search, String? statuses}) async {
+    if (search != null) {
+      _currentSearch = search;
+    }
+    
+    if (statuses != null) {
+      _currentStatuses = statuses;
+    }
+
     if (isRefresh) {
       _currentPage = 1;
       _hasMore = true;
@@ -62,6 +72,14 @@ class RequestStore extends ChangeNotifier {
       }
 
       String url = "${ApiConstants.getAllRequests}?page=$page&limit=$limit";
+
+      if (_currentSearch.isNotEmpty) {
+        url += "&search=${Uri.encodeComponent(_currentSearch)}";
+      }
+
+      if (_currentStatuses.isNotEmpty) {
+        url += "&statuses=${Uri.encodeComponent(_currentStatuses)}";
+      }
 
       // Append user email for faculty requests
       final String? role = await UserStore.getRole();

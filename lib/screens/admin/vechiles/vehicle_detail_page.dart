@@ -48,7 +48,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
     try {
       final String? token = await UserStore.getToken();
       final response = await http.get(
-        Uri.parse("${ApiConstants.getVehicleById}${widget.vehicleId}"),
+        Uri.parse("${ApiConstants.vehicleDashboard}${widget.vehicleId}"),
         headers: ApiConstants.getHeaders(token),
       );
 
@@ -123,10 +123,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
                             const SizedBox(height: 16),
                             _buildInfoGrid(
                               [
-                                _InfoItem(Icons.airline_seat_recline_normal, "Capacity", "${_vehicleData!['capacity'] ?? 0} Seats"),
-                                _InfoItem(Icons.speed, "Odometer", "${_vehicleData!['current_odometer'] ?? _vehicleData!['current_kilometer'] ?? 0} km"),
-                                _InfoItem(Icons.local_gas_station_rounded, "Fuel Type", _vehicleData!['fuel_type'] ?? 'N/A'),
-                                _InfoItem(Icons.business_center_rounded, "Ownership", _vehicleData!['ownership_type'] ?? 'N/A'),
+                                _InfoItem(Icons.airline_seat_recline_normal, "Capacity", "${_vehicleData!['vehicleData']['capacity'] ?? 0} Seats"),
+                                _InfoItem(Icons.speed, "Odometer", "${_vehicleData!['vehicleData']['current_odometer'] ?? 0} km"),
+                                _InfoItem(Icons.local_gas_station_rounded, "Fuel Type", _vehicleData!['vehicleData']['fuel_type'] ?? 'N/A'),
+                                _InfoItem(Icons.business_center_rounded, "Ownership", _vehicleData!['vehicleData']['ownership_type'] ?? 'N/A'),
                               ],
                               surfaceColor,
                               isDark,
@@ -135,15 +135,15 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
                             const SizedBox(height: 16),
                             _buildInfoGrid(
                               [
-                                _InfoItem(Icons.verified_user, "Insurance", _formatDate(_vehicleData!['insurance_expiry_date'])),
-                                _InfoItem(Icons.science, "Pollution", _formatDate(_vehicleData!['pollution_expiry_date'])),
-                                _InfoItem(Icons.description, "RC Date", _formatDate(_vehicleData!['rc_expiry_date'])),
-                                _InfoItem(Icons.fact_check, "FC Date", _formatDate(_vehicleData!['fc_expiry_date'])),
+                                _InfoItem(Icons.verified_user, "Insurance", _formatDate(_vehicleData!['vehicleData']['insurance_expiry_date'])),
+                                _InfoItem(Icons.science, "Pollution", _formatDate(_vehicleData!['vehicleData']['pollution_expiry_date'])),
+                                _InfoItem(Icons.description, "RC Date", _formatDate(_vehicleData!['vehicleData']['rc_expiry_date'])),
+                                _InfoItem(Icons.fact_check, "FC Date", _formatDate(_vehicleData!['vehicleData']['fc_expiry_date'])),
                               ],
                               surfaceColor,
                               isDark,
                             ),
-                            if (_vehicleData!['default_driver'] != null) ...[
+                            if (_vehicleData!['defaultDriver'] != null) ...[
                               const SizedBox(height: 32),
                               _buildSectionTitle("Default Driver", titleColor),
                               const SizedBox(height: 16),
@@ -172,8 +172,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildVehicleHero(bool isDark, Color surfaceColor, Color primaryBlue) {
-    final status = _vehicleData!['status'] ?? 2;
-    final bool isActive = status == 2 || status.toString() == '2';
+    final veh = _vehicleData!['vehicleData'] ?? {};
+    final status = veh['status'] ?? 'ACTIVE';
+    final bool isActive = status == 'ACTIVE' || status.toString() == '2';
     final Color statusColor = isActive ? Colors.green : Colors.orange;
 
     return Container(
@@ -216,7 +217,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
               ),
               child: Center(
                 child: Icon(
-                  _getVehicleIcon(_vehicleData!['vehicle_type'] ?? ''),
+                  _getVehicleIcon(veh['vehicleType']?['name'] ?? veh['vehicle_type'] ?? ''),
                   color: Colors.white,
                   size: 48,
                 ),
@@ -225,7 +226,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
           ),
           const SizedBox(height: 16),
           Text(
-            _vehicleData!['vehicle_number'] ?? 'N/A',
+            veh['vehicle_number'] ?? 'N/A',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -235,18 +236,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
           ),
           const SizedBox(height: 4),
           Text(
-            (_vehicleData!['make'] != null || _vehicleData!['model'] != null)
-                ? "${_vehicleData!['make'] ?? ''} ${_vehicleData!['model'] ?? ''}".trim()
-                : (_vehicleData!['vehicle_type_name'] ?? _vehicleData!['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
+            (veh['make'] != null || veh['model'] != null)
+                ? "${veh['make'] ?? ''} ${veh['model'] ?? ''}".trim()
+                : (veh['vehicleType']?['name'] ?? veh['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
             style: const TextStyle(
               color: Colors.grey,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
-          if (_vehicleData!['make'] != null || _vehicleData!['model'] != null)
+          if (veh['make'] != null || veh['model'] != null)
             Text(
-              (_vehicleData!['vehicle_type_name'] ?? _vehicleData!['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
+              (veh['vehicleType']?['name'] ?? veh['vehicle_type'] ?? 'Vehicle').toString().toUpperCase(),
               style: TextStyle(
                 color: Colors.grey.withOpacity(0.5),
                 fontSize: 10,
@@ -473,13 +474,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildStatsRow(Color primaryBlue, Color surfaceColor, bool isDark) {
-    final fuel = _vehicleData!['fuel_summary'] ?? {};
+    final summary = _vehicleData!['summary'] ?? {};
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
             "Fuel Refills",
-            "${fuel['total_entries'] ?? 0}",
+            "${summary['fuel_history_count'] ?? 0}",
             Icons.local_gas_station,
             Colors.blue,
             surfaceColor,
@@ -489,9 +490,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
         const SizedBox(width: 12),
         Expanded(
           child: _buildStatCard(
-            "Total Volume",
-            "${fuel['total_volume'] ?? 0} L",
-            Icons.water_drop,
+            "Completed Trips",
+            "${summary['completed_trip_count'] ?? 0}",
+            Icons.route_rounded,
             Colors.cyan,
             surfaceColor,
             isDark,
@@ -655,13 +656,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildMaintenanceList(Color surface, bool isDark) {
-    final List<dynamic> history = _vehicleData!['maintenance_history'] ?? [];
+    final List<dynamic> history = _vehicleData!['serviceHistory'] ?? [];
     if (history.isEmpty) return const Center(child: Text("No maintenance records", style: TextStyle(color: Colors.grey)));
     return Column(
       children: history.map((m) => _buildLogCard(
-        m['service_title'] ?? 'Maintenance',
-        "₹${m['cost'] ?? 0}",
-        _formatTimestamp(m['maintenance_date']),
+        m['service_title'] ?? m['service_type'] ?? 'Maintenance',
+        "₹${m['final_cost'] ?? m['estimated_cost'] ?? 0}",
+        _formatTimestamp(m['service_date'] ?? m['created_at']),
         isDark,
         Icons.build_circle_rounded,
         const Color(0xFF6366F1),
@@ -670,13 +671,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildFuelList(Color surface, bool isDark) {
-    final List<dynamic> history = _vehicleData!['fuel_history'] ?? [];
+    final List<dynamic> history = _vehicleData!['fuelHistory'] ?? [];
     if (history.isEmpty) return const Center(child: Text("No fuel records", style: TextStyle(color: Colors.grey)));
     return Column(
       children: history.map((f) => _buildLogCard(
         f['bunk_name'] ?? 'Fuel Refill',
         "₹${f['total_cost'] ?? 0}",
-        _formatTimestamp(f['date']),
+        _formatTimestamp(f['entry_date'] ?? f['created_at']),
         isDark,
         Icons.local_gas_station_rounded,
         const Color(0xFF3B82F6),
@@ -685,13 +686,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildRoutesList(Color surface, bool isDark) {
-    final List<dynamic> routes = _vehicleData!['assigned_routes'] ?? [];
+    final List<dynamic> routes = _vehicleData!['travelHistory'] ?? [];
     if (routes.isEmpty) return const Center(child: Text("No assigned routes", style: TextStyle(color: Colors.grey)));
     return Column(
       children: routes.map((r) => _buildLogCard(
         r['route_name'] ?? 'Assigned Route',
         r['driver_name'] ?? 'Assigned',
-        _formatTimestamp(r['start_time']),
+        _formatTimestamp(r['created_at'] ?? r['updated_at']),
         isDark,
         Icons.route_rounded,
         const Color(0xFFF59E0B),
@@ -805,7 +806,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildDefaultDriver(Color surfaceColor, bool isDark, Color primaryBlue) {
-    final def = _vehicleData!['default_driver'];
+    final def = _vehicleData!['defaultDriver'];
     final driver = def['driver'] ?? {};
     final t = isDark ? Colors.white : const Color(0xFF1E293B);
 
@@ -868,13 +869,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
   }
 
   Widget _buildFuelSummary(Color surfaceColor, bool isDark, Color primaryBlue) {
-    final fuel = _vehicleData!['fuel_summary'] ?? {};
+    final summary = _vehicleData!['summary'] ?? {};
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
-            "Total Amount",
-            "₹${fuel['total_amount'] ?? 0}",
+            "Total Fuel Cost",
+            "₹${summary['total_fuel_amount'] ?? 0}",
             Icons.payments_rounded,
             Colors.green,
             surfaceColor,
@@ -884,8 +885,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> with TickerPr
         const SizedBox(width: 12),
         Expanded(
           child: _buildStatCard(
-            "Estimated Mileage",
-            "${fuel['estimated_mileage'] ?? 'N/A'} km/L",
+            "Trips Count",
+            "${summary['completed_trip_count'] ?? 0}",
             Icons.auto_graph_rounded,
             Colors.purple,
             surfaceColor,
