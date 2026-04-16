@@ -18,7 +18,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerPr
 
   final List<Map<String, String>> _onboardingData = [
     {
-      "title": "Smart Fleet Logistics",
+      "title": "Smart Fleet Management",
       "subtitle": "Streamline vehicle requests and management for your entire organization.",
       "title_tn": "புத்திசாலித்தனமான போக்குவரத்து",
       "subtitle_tn": "உங்கள் நிறுவனத்திற்கான வாகன கோரிக்கைகளை எளிதாக நிர்வகிக்கவும்.",
