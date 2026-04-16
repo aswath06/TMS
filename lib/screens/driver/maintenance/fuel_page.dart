@@ -248,9 +248,9 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
 
     if (!mounted) return;
     setState(() => _isSubmitting = true);
-
     try {
       final token = await UserStore.getToken();
+      final userId = await UserStore.getUserId();
       final request = http.MultipartRequest(
         'POST',
         Uri.parse(ApiConstants.fuelLog),
@@ -266,6 +266,9 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
 
       if (!isOthers) {
         request.fields['instance_id'] = _indentNumberController.text;
+        if (userId != null) {
+          request.fields['filled_by_user_id'] = userId.toString();
+        }
       }
 
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
@@ -279,14 +282,16 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
           : _remarksController.text;
       
       if (isOthers) {
-        request.files.add(await http.MultipartFile.fromPath('file', _billImage!.path));
+        request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
       }
 
       // DEBUG: Log the CURL equivalent
       StringBuffer curl = StringBuffer("curl --location '${ApiConstants.fuelLog}' \\\n");
       request.headers.forEach((key, value) => curl.write("--header '$key: $value' \\\n"));
       request.fields.forEach((key, value) => curl.write("--form '$key=\"$value\"' \\\n"));
-      curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
+      if (isOthers && _billImage != null) {
+        curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
+      }
       debugPrint("\n--- FUEL SUBMISSION CURL ---\n${curl.toString()}\n---------------------------\n");
 
       final streamedResponse = await request.send();
