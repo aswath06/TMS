@@ -8,6 +8,7 @@ import 'package:tripzo/screens/driver/maintenance/service_page.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
 import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
 import '../../providers/notification_provider.dart';
+import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 
 class DriverDutiesScreen extends StatefulWidget {
@@ -167,7 +168,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -184,38 +185,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
           ),
         ),
         // Notification Bell Icon
-        Consumer<NotificationProvider>(
-          builder: (context, provider, _) {
-            return Stack(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
-                  icon: Icon(Icons.notifications_none_rounded, color: titleColor, size: 28),
-                ),
-                if (provider.unreadCount > 0)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        provider.unreadCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+        NotificationBell(iconColor: titleColor),
         const SizedBox(width: 8),
         Hero(
           tag: 'driver_avatar',
@@ -469,7 +439,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),

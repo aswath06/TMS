@@ -9,6 +9,7 @@ import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 import 'package:tripzo/components/request_card.dart';
 import '../../providers/notification_provider.dart';
 import '../../components/notification_card.dart';
+import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -75,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryBlue.withOpacity(isDark ? 0.1 : 0.05),
+                color: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
               ),
             ),
           ),
@@ -201,7 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -227,12 +228,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
+        NotificationBell(iconColor: titleColor),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [primary, primary.withOpacity(0.4)],
+              colors: [primary, primary.withValues(alpha: 0.4)],
             ),
           ),
           child: CircleAvatar(
@@ -263,11 +266,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -277,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Icon(
             Icons.search_rounded,
-            color: subColor.withOpacity(0.8),
+            color: subColor.withValues(alpha: 0.8),
             size: 24,
           ),
           const SizedBox(width: 14),
@@ -286,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: InputDecoration(
                 hintText: "Track Mission ID...",
                 hintStyle: TextStyle(
-                  color: subColor.withOpacity(0.5),
+                  color: subColor.withValues(alpha: 0.5),
                   fontSize: 15,
                 ),
                 border: InputBorder.none,
@@ -372,11 +375,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: surface,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
         ),
         boxShadow: [
           BoxShadow(
-            color: accent.withOpacity(0.08),
+            color: accent.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -388,7 +391,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: accent.withOpacity(0.12),
+              color: accent.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: accent, size: 24),
@@ -483,10 +486,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           decoration: BoxDecoration(
             color: surface,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: color.withOpacity(0.12)),
+            border: Border.all(color: color.withValues(alpha: 0.12)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -528,11 +531,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Column(
           children: [
-            Icon(Icons.notifications_none_rounded, color: Colors.grey.withOpacity(0.5), size: 40),
+            Icon(Icons.notifications_none_rounded, color: Colors.grey.withValues(alpha: 0.5), size: 40),
             const SizedBox(height: 12),
             Text(
               "No new notifications",
