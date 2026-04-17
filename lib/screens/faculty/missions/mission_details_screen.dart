@@ -1641,6 +1641,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isDriver = _userRole?.toLowerCase() == 'driver';
     final travelInfo = _missionData?['travel_info'];
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
@@ -1736,65 +1737,67 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Text(
                   tType.replaceAll('_', ' ').toUpperCase(),
                   style: TextStyle(
-                    color: subColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 1.5,
+                    color: primaryBlue,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    letterSpacing: 1.0,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Icon(Icons.calendar_today_rounded, size: 14, color: subColor.withValues(alpha: 0.6)),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (travelInfo?['start_datetime'] != null) ...[
-                      Row(
-                        children: [
-                          Text(
-                            "START: ",
-                            style: TextStyle(color: subColor.withValues(alpha: 0.7), fontWeight: FontWeight.w800, fontSize: 9),
-                          ),
-                          Text(
-                            DateFormat('MMM dd, hh:mm a').format(DateTime.parse(travelInfo!['start_datetime']).toLocal()).toUpperCase(),
-                            style: TextStyle(color: subColor, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                    ],
-                    if (travelInfo?['end_datetime'] != null) ...[
-                      Row(
-                        children: [
-                          Text(
-                            "END:   ",
-                            style: TextStyle(color: subColor.withValues(alpha: 0.7), fontWeight: FontWeight.w800, fontSize: 9),
-                          ),
-                          Text(
-                            DateFormat('MMM dd, hh:mm a').format(DateTime.parse(travelInfo!['end_datetime']).toLocal()).toUpperCase(),
-                            style: TextStyle(color: subColor, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
-                          ),
-                        ],
-                      ),
-                    ] else ...[
-                      Text(
-                        widget.time.toUpperCase(),
-                        style: TextStyle(color: subColor, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
-                      ),
-                    ],
-                  ],
                 ),
               ),
             ],
           ),
+          
+          const SizedBox(height: 24),
+          
+          // Redesigned Schedule Section
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: subColor.withValues(alpha: 0.05)),
+            ),
+            child: Row(
+              children: [
+                _buildScheduleItem(
+                  icon: Icons.departure_board_rounded,
+                  label: "DEPARTURE",
+                  dateTimeStr: travelInfo?['start_datetime'],
+                  fallback: widget.time,
+                  color: Colors.blueAccent,
+                  subColor: subColor,
+                  titleColor: titleColor,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Container(
+                    height: 40,
+                    width: 1,
+                    color: subColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                _buildScheduleItem(
+                  icon: Icons.auto_awesome_motion_rounded,
+                  label: "ARRIVAL",
+                  dateTimeStr: travelInfo?['end_datetime'],
+                  fallback: "TBD",
+                  color: Colors.greenAccent,
+                  subColor: subColor,
+                  titleColor: titleColor,
+                ),
+              ],
+            ),
+          ),
+
           if (purpose != null && purpose.toString().isNotEmpty && purpose.toString() != 'null') ...[
             const SizedBox(height: 12),
             Container(
@@ -1828,6 +1831,61 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               const SizedBox(width: 16),
               Expanded(child: _buildMetric(Icons.alt_route_rounded, _getTotalStopsCount().toString(), "STOPS", primaryBlue, subColor)),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleItem({
+    required IconData icon,
+    required String label,
+    String? dateTimeStr,
+    required String fallback,
+    required Color color,
+    required Color subColor,
+    required Color titleColor,
+  }) {
+    DateTime? dt = dateTimeStr != null ? DateTime.tryParse(dateTimeStr) : null;
+    String datePart = dt != null ? DateFormat('MMM dd, yyyy').format(dt.toLocal()) : "---";
+    String timePart = dt != null ? DateFormat('hh:mm a').format(dt.toLocal()) : fallback;
+
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  color: subColor.withValues(alpha: 0.6),
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            timePart,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: titleColor,
+              letterSpacing: -0.2,
+            ),
+          ),
+          Text(
+            datePart,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: subColor.withValues(alpha: 0.5),
+            ),
           ),
         ],
       ),
