@@ -15,11 +15,12 @@ class SetupPermissionsScreen extends StatefulWidget {
   State<SetupPermissionsScreen> createState() => _SetupPermissionsScreenState();
 }
 
-class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
+class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with WidgetsBindingObserver {
   bool _isInternetOk = false;
   bool _isLocationOk = false;
   bool _isNotificationOk = false;
   bool _isLocationAlways = false;
+  bool _isBatteryOk = false;
   bool _isProcessing = false;
 
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
@@ -27,6 +28,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkAll();
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
        _checkInternet(results.first);
@@ -34,7 +36,15 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
     super.dispose();
   }
@@ -53,11 +63,13 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
     final locationStatus = await Permission.location.status;
     final locationAlwaysStatus = await Permission.locationAlways.status;
     final notificationStatus = await Permission.notification.status;
+    final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
 
     setState(() {
       _isLocationOk = locationStatus.isGranted;
       _isLocationAlways = locationAlwaysStatus.isGranted;
       _isNotificationOk = notificationStatus.isGranted;
+      _isBatteryOk = batteryStatus.isGranted;
     });
   }
 
@@ -72,6 +84,11 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
 
   Future<void> _requestNotification() async {
     await Permission.notification.request();
+    _checkPermissions();
+  }
+
+  Future<void> _requestBatteryExemption() async {
+    final status = await Permission.ignoreBatteryOptimizations.request();
     _checkPermissions();
   }
 
@@ -151,6 +168,15 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                       onTap: _requestNotification,
                       isDark: isDark,
                     ),
+
+                    _buildRequirementCard(
+                      title: isTamil ? "பேட்டரி மேம்படுத்தல் விலக்கு" : "Battery Optimization",
+                      subtitle: isTamil ? "பின்னணியில் இயங்க விலக்கு தேவை" : "Exemption required for uninterrupted background tracking",
+                      icon: Icons.battery_charging_full_rounded,
+                      isOk: _isBatteryOk,
+                      onTap: _requestBatteryExemption,
+                      isDark: isDark,
+                    ),
                   ],
                 ),
               ),
@@ -162,7 +188,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> {
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: (_isInternetOk && _isNotificationOk) ? _completeOnboarding : null,
+                  onPressed: (_isInternetOk && _isNotificationOk && _isLocationAlways && _isBatteryOk) ? _completeOnboarding : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

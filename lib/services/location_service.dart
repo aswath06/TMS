@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:tripzo/services/location_callback_handler.dart';
 import 'package:tripzo/store/user_store.dart';
 
@@ -36,9 +38,10 @@ class LocationService {
         autoStart: false,
         isForegroundMode: true,
         notificationChannelId: 'location_tracking_channel',
-        initialNotificationTitle: 'TripZo Active',
-        initialNotificationContent: 'Connecting to GPS...',
+        initialNotificationTitle: 'TripZo Tracking Active',
+        initialNotificationContent: 'Initializing GPS Fix...',
         foregroundServiceNotificationId: 888,
+        foregroundServiceTypes: [AndroidForegroundType.location],
       ),
       iosConfiguration: IosConfiguration(
         autoStart: false,
@@ -51,35 +54,42 @@ class LocationService {
     // 0. Only Drivers should be tracked
     final role = await UserStore.getRole();
     if (role != 'driver') {
-      print("[LocationService] Role is '$role'. Tracking is restricted to drivers only. Aborting.");
+      debugPrint("[LocationService] Role is '$role'. Tracking is restricted to drivers only. Aborting.");
       return;
     }
 
-    print("[LocationService] Preparing to start tracking for Trip #$tripInstanceId");
+    debugPrint("[LocationService] Preparing to start tracking for Trip #$tripInstanceId");
 
     // 1. Check & Request Permissions
     bool isEnabled = await Geolocator.isLocationServiceEnabled();
     if (!isEnabled) {
-      print("[LocationService] GPS is disabled. Tracking cannot start.");
+      debugPrint("[LocationService] GPS is disabled. Tracking cannot start.");
       await Geolocator.openLocationSettings();
       return;
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      print("[LocationService] Requesting location permission...");
+      debugPrint("[LocationService] Requesting location permission...");
       permission = await Geolocator.requestPermission();
     }
     
     // Request Notification permission (Android 13+)
-    print("[LocationService] Requesting notification permission...");
+    debugPrint("[LocationService] Requesting notification permission...");
     await FlutterLocalNotificationsPlugin()
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
 
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      print("[LocationService] Location permissions blocked. Tracking aborted.");
+      debugPrint("[LocationService] Location permissions blocked. Tracking aborted.");
       return;
+    }
+
+    // 1.5 Check Battery Optimization (Critical for unplugged reliability)
+    final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+    if (!batteryStatus.isGranted) {
+      debugPrint("[LocationService] Battery optimization exemption not granted. Requesting...");
+      await Permission.ignoreBatteryOptimizations.request();
     }
 
     // 2. Save trip state persistently for the background isolate
@@ -95,14 +105,14 @@ class LocationService {
     final token = await UserStore.getToken();
 
     if (!isRunning) {
-      print("[LocationService] Launching background service...");
+      debugPrint("[LocationService] Launching background service...");
       await service.startService();
     } else {
-      print("[LocationService] Service already running. Re-syncing trip state.");
+      debugPrint("[LocationService] Service already running. Re-syncing trip state.");
     }
 
     // Always push latest config to the background isolate
-    print("[LocationService] Pushing config to background: Trip #$tripInstanceId");
+    debugPrint("[LocationService] Pushing config to background: Trip #$tripInstanceId");
     service.invoke('updateConfig', {
       'token': token,
       'tripId': tripInstanceId,
@@ -110,7 +120,7 @@ class LocationService {
   }
 
   Future<void> stopTracking() async {
-    print("[LocationService] Stopping tracking process...");
+    debugPrint("[LocationService] Stopping tracking process...");
     final service = FlutterBackgroundService();
     service.invoke('stopService');
     

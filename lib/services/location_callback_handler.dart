@@ -12,74 +12,80 @@ import 'package:tripzo/store/user_store.dart';
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  WidgetsFlutterBinding.ensureInitialized();
-  DartPluginRegistrant.ensureInitialized();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    DartPluginRegistrant.ensureInitialized();
 
-  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    bool isGpsDisabled = false;
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('ic_notification');
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    // 1. Setup Service Listeners
+    service.on('stopService').listen((event) {
+      debugPrint("[BackgroundService] Stopping service...");
+      service.stopSelf();
+    });
 
-  print("[BackgroundService] Isolate initialized successfully");
+    // 2. Initialize Notification Plugin
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-  service.on('stopService').listen((event) {
-    print("[BackgroundService] Stopping service...");
-    service.stopSelf();
-  });
+    debugPrint("[BackgroundService] Isolate initialized successfully");
+    _updateNotificationUI(flutterLocalNotificationsPlugin, "GPS Service Active. Polling...");
 
-  // Track if GPS is currently disabled to avoid spamming notifications
-  bool isGpsDisabled = false;
+    // 3. Start UI Timer immediately
+    int secondsToNextSync = 120;
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      secondsToNextSync--;
+      if (secondsToNextSync < 0) secondsToNextSync = 120;
+      if (!isGpsDisabled) {
+        _updateNotificationUI(flutterLocalNotificationsPlugin, "Next update in: ${secondsToNextSync}s");
+      }
+    });
 
-  // 0. Monitor GPS Status changes
-  Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
-    if (status == ServiceStatus.disabled) {
-      isGpsDisabled = true;
-      _updateNotificationUI(
-        flutterLocalNotificationsPlugin, 
-        "⚠️ GPS DISABLED! Please turn on GPS.",
-        isCritical: true,
+    // 4. Monitor GPS Status
+    Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
+      isGpsDisabled = status == ServiceStatus.disabled;
+      if (isGpsDisabled) {
+        _updateNotificationUI(flutterLocalNotificationsPlugin, "⚠️ GPS DISABLED! Please turn on GPS.", isHighPriority: true);
+      }
+    });
+
+    // 5. Initial Update (Non-blocking)
+    _performUpdate(service, flutterLocalNotificationsPlugin).catchError((e) => debugPrint("Init update error: $e"));
+
+    // 6. Sync Timer
+    Timer.periodic(const Duration(seconds: 120), (timer) async {
+      await _performUpdate(service, flutterLocalNotificationsPlugin).catchError((e) => debugPrint("Sync Error: $e"));
+      secondsToNextSync = 120;
+    });
+  } catch (e, stack) {
+    debugPrint("[BackgroundService] CRITICAL ISOLATE ERROR: $e");
+    debugPrint(stack.toString());
+    try {
+      final notifications = FlutterLocalNotificationsPlugin();
+      notifications.show(
+        888,
+        'TripZo Service Crash',
+        'Error: ${e.toString().split('\n')[0]}',
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'location_tracking_channel',
+            'TripZo Tracking',
+            ongoing: false,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
       );
-    } else {
-      isGpsDisabled = false;
-      _updateNotificationUI(
-        flutterLocalNotificationsPlugin, 
-        "GPS Restored. Resuming tracking...",
-        isCritical: false,
-      );
-    }
-  });
-
-  int secondsToNextSync = 120;
-
-  // Perform initial update immediately
-  _performUpdate(service, flutterLocalNotificationsPlugin);
-
-  // 1. Countdown Timer (Updates UI every second)
-  Timer.periodic(const Duration(seconds: 1), (timer) {
-    secondsToNextSync--;
-    if (secondsToNextSync < 0) secondsToNextSync = 120;
-    
-    // Update notification with countdown (only if GPS is active)
-    if (!isGpsDisabled) {
-      _updateNotificationUI(flutterLocalNotificationsPlugin, "Next sync in: ${secondsToNextSync}s");
-    }
-  });
-
-  // 2. Sync Timer (Polls GPS and sends data every 2 minutes)
-  Timer.periodic(const Duration(seconds: 120), (timer) async {
-    if (service is AndroidServiceInstance) {
-      if (!(await service.isForegroundService())) return;
-    }
-    await _performUpdate(service, flutterLocalNotificationsPlugin);
-    secondsToNextSync = 120; // Reset countdown after sync
-  });
+    } catch (_) {}
+  }
 }
 
 // Helper to update notification without full GPS poll
-void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText, {bool isCritical = false}) {
+void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText, {bool isHighPriority = false}) {
   notifications.show(
     888,
     'TripZo Tracking',
@@ -89,11 +95,11 @@ void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String
         'location_tracking_channel',
         'TripZo Tracking',
         ongoing: true,
-        icon: 'ic_notification',
-        importance: isCritical ? Importance.max : Importance.low,
-        priority: isCritical ? Priority.high : Priority.low,
+        icon: 'ic_launcher',
+        importance: isHighPriority ? Importance.high : Importance.low,
+        priority: isHighPriority ? Priority.high : Priority.low,
         showWhen: false,
-        color: isCritical ? Colors.red : null,
+        color: isHighPriority ? Colors.red : null,
       ),
     ),
   );
@@ -102,18 +108,53 @@ void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String
 Future<void> _performUpdate(
     ServiceInstance service, FlutterLocalNotificationsPlugin notifications) async {
   try {
-    print("[BackgroundService] Polling GPS...");
-    Position position = await Geolocator.getCurrentPosition(
-      locationSettings: AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 0,
-      ),
-    );
-    print("[BackgroundService] GPS Fix: ${position.latitude}, ${position.longitude}");
-
+    // 0. Verify Trip State BEFORE polling GPS
     final prefs = await SharedPreferences.getInstance();
-    double? lastLat = prefs.getDouble('last_lat');
-    double? lastLon = prefs.getDouble('last_lon');
+    final tripId = prefs.getInt('active_trip_instance_id');
+    final token = await UserStore.getToken();
+
+    if (tripId == null || token == null) {
+      debugPrint("[BackgroundService] No active trip or token. Stopping service.");
+      service.stopSelf();
+      return;
+    }
+
+    _updateNotificationUI(notifications, "Syncing current position...");
+    debugPrint("[BackgroundService] Polling GPS...");
+    
+    Position? position;
+    
+    // Try last known first for speed
+    position = await Geolocator.getLastKnownPosition();
+    if (position != null) {
+      debugPrint("[BackgroundService] Quick fix from LastKnown.");
+    }
+
+    // Attempt high accuracy fix if quick fix is old or missing
+    try {
+      final highAccPosition = await Geolocator.getCurrentPosition(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 0,
+          forceLocationManager: true,
+        ),
+      ).timeout(const Duration(seconds: 25));
+      position = highAccPosition;
+      debugPrint("[BackgroundService] High accuracy fix obtained.");
+    } catch (e) {
+      debugPrint("[BackgroundService] High accuracy failed/timeout. Using best available.");
+    }
+
+    if (position == null) {
+      debugPrint("[BackgroundService] Total GPS Fail.");
+      _updateNotificationUI(notifications, "⚠️ GPS FIX FAILED! Check signals.", isHighPriority: true);
+      return;
+    }
+
+    debugPrint("[BackgroundService] GPS Fix: ${position.latitude}, ${position.longitude}");
+
+    final lastLat = prefs.getDouble('last_lat');
+    final lastLon = prefs.getDouble('last_lon');
 
     bool shouldSend = true;
     if (lastLat != null && lastLon != null) {
@@ -121,59 +162,43 @@ Future<void> _performUpdate(
           lastLat, lastLon, position.latitude, position.longitude);
       if (distance < 2.0) {
         shouldSend = false;
-        print("[BackgroundService] Moved only $distance m. Skipping API sync.");
+        debugPrint("[BackgroundService] Moved only $distance m. Skipping API sync.");
       }
     }
 
     if (shouldSend) {
       final timeStr = "${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}";
-      notifications.show(
-        888,
-        'TripZo Tracking',
-        'Last Sync: $timeStr',
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'location_tracking_channel',
-            'TripZo Tracking',
-            ongoing: true,
-            icon: 'ic_notification',
-            importance: Importance.low,
-            priority: Priority.low,
-          ),
-        ),
-      );
+      
+      // Update Notification
+      _updateNotificationUI(notifications, 'Last Sync: $timeStr');
 
       // Backend Sync
-      await _syncLocation(position.latitude, position.longitude);
+      await _syncLocation(position.latitude, position.longitude, tripId, token);
 
       // Save Last State
       await prefs.setDouble('last_lat', position.latitude);
       await prefs.setDouble('last_lon', position.longitude);
     }
   } catch (e) {
-    print("[BackgroundService] System Error: $e");
+    debugPrint("[BackgroundService] System Error: $e");
+    String errorMsg = "⚠️ System Error - Retrying...";
     if (e.toString().contains("LocationServiceDisabledException") || 
         e.toString().contains("location services are disabled")) {
-       _updateNotificationUI(
-        notifications, 
-        "⚠️ GPS OFF - Tracking Paused!", 
-        isCritical: true
-      );
+      errorMsg = "⚠️ GPS OFF - Tracking Paused!";
+    } else if (e is TimeoutException) {
+      errorMsg = "⚠️ GPS Search Timeout - Retrying...";
     }
+    
+    _updateNotificationUI(
+      notifications, 
+      errorMsg, 
+      isHighPriority: true
+    );
   }
 }
 
-Future<void> _syncLocation(double lat, double lon) async {
+Future<void> _syncLocation(double lat, double lon, int tripId, String token) async {
   try {
-    final token = await UserStore.getToken();
-    final prefs = await SharedPreferences.getInstance();
-    final tripId = prefs.getInt('active_trip_instance_id');
-
-    if (token == null || tripId == null) {
-      print("[BackgroundService] Missing Token or TripID ($tripId)");
-      return;
-    }
-
     final body = {
       "latitude": lat,
       "longitude": lon,
@@ -184,12 +209,12 @@ Future<void> _syncLocation(double lat, double lon) async {
     final headers = ApiConstants.getHeaders(token);
 
     final timeStamp = "[${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}]";
-    print("--- $timeStamp BACKGROUND LOCATION PING ---");
-    print("URL: $url");
+    debugPrint("--- $timeStamp BACKGROUND LOCATION PING ---");
+    debugPrint("URL: $url");
     String curl = "curl --location --request POST '$url' \\\n";
     headers.forEach((k, v) => curl += "--header '$k: $v' \\\n");
     curl += "--data '${jsonEncode(body)}'";
-    print(curl);
+    debugPrint(curl);
 
     final response = await http.post(
       Uri.parse(url),
@@ -197,11 +222,11 @@ Future<void> _syncLocation(double lat, double lon) async {
       body: jsonEncode(body),
     );
 
-    print("--- RESPONSE ---");
-    print("Status: ${response.statusCode}");
-    print("Body: ${response.body}");
-    print("------------------------------------------");
+    debugPrint("--- RESPONSE ---");
+    debugPrint("Status: ${response.statusCode}");
+    debugPrint("Body: ${response.body}");
+    debugPrint("------------------------------------------");
   } catch (e) {
-    print("[BackgroundService] API Error: $e");
+    debugPrint("[BackgroundService] API Error: $e");
   }
 }
