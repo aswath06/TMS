@@ -20,8 +20,15 @@ class LocationService {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'location_tracking_channel',
       'TripZo Tracking',
-      description: 'Foreground service for driver location tracking',
+      description: 'Background service for notifications and tracking',
       importance: Importance.low,
+    );
+
+    const AndroidNotificationChannel notificationChannel = AndroidNotificationChannel(
+      'tms_notifications',
+      'TMS Notifications',
+      description: 'Real-time notifications for TripZo TMS',
+      importance: Importance.max,
     );
 
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -30,6 +37,11 @@ class LocationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(notificationChannel);
 
     // 2. Configure Service with top-level entry point
     await service.configure(
@@ -48,6 +60,17 @@ class LocationService {
         onForeground: onStart, // From location_callback_handler.dart
       ),
     );
+
+    // 3. Auto-start if driver is logged in
+    final role = await UserStore.getRole();
+    final token = await UserStore.getToken();
+    if (role == 'driver' && token != null) {
+      bool isRunning = await service.isRunning();
+      if (!isRunning) {
+        debugPrint("[LocationService] Background service auto-starting for driver notifications.");
+        await service.startService();
+      }
+    }
   }
 
   Future<void> startTracking(int tripInstanceId) async {

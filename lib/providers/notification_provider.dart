@@ -3,6 +3,7 @@ import '../models/notification_model.dart';
 import '../services/notification_socket_service.dart';
 import '../services/notification_local_service.dart';
 import '../services/notification_api_service.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import '../utils/api_constants.dart';
 
 class NotificationProvider extends ChangeNotifier {
@@ -32,42 +33,26 @@ class NotificationProvider extends ChangeNotifier {
     await fetchNotifications();
     await fetchUnreadCount();
 
-    socketService.connect(
-      socketBaseUrl: socketBaseUrl ?? ApiConstants.baseUrl,
-      token: token,
-      onConnected: () {
-        debugPrint("✅ Notification Socket Connected");
-        isSocketConnected = true;
-        notifyListeners();
-      },
-      onDisconnected: () {
-        debugPrint("❌ Notification Socket Disconnected");
-        isSocketConnected = false;
-        notifyListeners();
-      },
-      onError: (error) {
-        debugPrint("⚠️ Socket error: $error");
-      },
-      onNewNotification: (data) {
-        debugPrint("🔔 New Notification Received: $data");
+    // Instead of direct socket connection, we listen to the Background Service
+    // which now owns the persistent socket.
+    final service = FlutterBackgroundService();
+    
+    service.on('new_notification_received').listen((data) {
+      if (data != null) {
+        debugPrint("🔔 Foreground received notification from Background Service: $data");
         final notification = NotificationModel.fromJson(data);
         
-        // Avoid duplicate if already in list (some sockets might re-emit)
+        // Avoid duplicate if already in list
         if (notifications.any((n) => n.id == notification.id)) return;
 
         notifications.insert(0, notification);
         unreadCount += 1;
-
-        // Show Local Notification Pop-up
-        NotificationLocalService.showNotification(
-          id: notification.id,
-          title: notification.title,
-          body: notification.message,
-        );
-
         notifyListeners();
-      },
-    );
+      }
+    });
+
+    // Check if service is running, if not, we might want to start it in standby
+    // But for now, we assume it's managed by LocationService
   }
 
   Future<void> fetchNotifications() async {
