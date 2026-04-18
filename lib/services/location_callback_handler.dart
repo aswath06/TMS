@@ -27,6 +27,16 @@ void onStart(ServiceInstance service) async {
       service.stopSelf();
     });
 
+    service.on('updateConfig').listen((event) async {
+      if (event != null) {
+        final tripId = event['tripId'];
+        debugPrint("[BackgroundService] New configuration received for Trip #$tripId. Forcing sync...");
+        
+        // Force an immediate update
+        await _performUpdate(service, flutterLocalNotificationsPlugin);
+      }
+    });
+
     // 2. Initialize Notification Plugin
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('ic_launcher');
@@ -39,9 +49,18 @@ void onStart(ServiceInstance service) async {
 
     // 3. Start UI Timer immediately
     int secondsToNextSync = 120;
+    
+    // Listen for manual sync triggers to reset countdown
+    service.on('sync_triggered').listen((event) {
+      secondsToNextSync = 120;
+    });
+
     Timer.periodic(const Duration(seconds: 1), (timer) {
       secondsToNextSync--;
-      if (secondsToNextSync < 0) secondsToNextSync = 120;
+      if (secondsToNextSync < 0) {
+        secondsToNextSync = 120;
+      }
+      
       if (!isGpsDisabled) {
         _updateNotificationUI(flutterLocalNotificationsPlugin, "Next update in: ${secondsToNextSync}s");
       }
@@ -58,10 +77,12 @@ void onStart(ServiceInstance service) async {
     // 5. Initial Update (Non-blocking)
     _performUpdate(service, flutterLocalNotificationsPlugin).catchError((e) => debugPrint("Init update error: $e"));
 
-    // 6. Sync Timer
+    // 6. Sync Timer (Heartbeat and Location)
     Timer.periodic(const Duration(seconds: 120), (timer) async {
+      debugPrint("[BackgroundService] Scheduled Sync Timer Fired.");
       await _performUpdate(service, flutterLocalNotificationsPlugin).catchError((e) => debugPrint("Sync Error: $e"));
-      secondsToNextSync = 120;
+      // Reset UI countdown
+      service.invoke('sync_triggered');
     });
 
     // 7. Initialize Notification Socket (PERSISTENT LOGIC)
@@ -178,7 +199,7 @@ Future<void> _performUpdate(
     }
 
     _updateNotificationUI(notifications, "Syncing current position...");
-    debugPrint("[BackgroundService] Polling GPS...");
+    debugPrint("[BackgroundService] Attempting to acquire GPS fix for Trip #$tripId...");
     
     Position? position;
     
@@ -218,9 +239,22 @@ Future<void> _performUpdate(
     if (lastLat != null && lastLon != null) {
       double distance = Geolocator.distanceBetween(
           lastLat, lastLon, position.latitude, position.longitude);
+      
+      // If movement is very small (< 2m), check when we last synced
       if (distance < 2.0) {
-        shouldSend = false;
-        debugPrint("[BackgroundService] Moved only $distance m. Skipping API sync.");
+        final lastSyncTimeStr = prefs.getString('last_sync_timestamp');
+        if (lastSyncTimeStr != null) {
+          final lastSync = DateTime.parse(lastSyncTimeStr);
+          final minutesSinceLastSync = DateTime.now().difference(lastSync).inMinutes;
+          
+          // Force a heartbeat every 10 minutes even if no movement
+          if (minutesSinceLastSync < 10) {
+            shouldSend = false;
+            debugPrint("[BackgroundService] Minimal movement ($distance m) and last sync was only $minutesSinceLastSync mins ago. Skipping sync.");
+          } else {
+            debugPrint("[BackgroundService] Minimal movement ($distance m) but forcing heartbeat sync after $minutesSinceLastSync mins.");
+          }
+        }
       }
     }
 
@@ -236,6 +270,10 @@ Future<void> _performUpdate(
       // Save Last State
       await prefs.setDouble('last_lat', position.latitude);
       await prefs.setDouble('last_lon', position.longitude);
+      await prefs.setString('last_sync_timestamp', DateTime.now().toIso8601String());
+      
+      // Notify timer to reset
+      service.invoke('sync_triggered');
     }
   } catch (e) {
     debugPrint("[BackgroundService] System Error: $e");

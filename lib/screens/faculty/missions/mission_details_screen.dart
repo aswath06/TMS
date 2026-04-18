@@ -20,6 +20,7 @@ import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:tripzo/services/location_service.dart';
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -661,6 +662,66 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     }
   }
 
+  Future<void> _handleAutoStart() async {
+    setState(() => _isApproving = true); 
+    try {
+      final String? token = await UserStore.getToken();
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
+
+      if (tripId == null) throw "Trip ID not found";
+
+      // 1. Call API with mode AUTO
+      final url = ApiConstants.startTrip(tripId);
+      final headers = ApiConstants.getHeaders(token);
+      final body = {"mode": "DIRECT"};
+
+      // Console the CURL
+      debugPrint("--- [DEBUG] AUTO START TRIP CURL ---");
+      String curl = "curl --location --request POST '$url' \\\n";
+      headers.forEach((k, v) => curl += "--header '$k: $v' \\\n");
+      curl += "--data '${jsonEncode(body)}'";
+      debugPrint(curl);
+      debugPrint("------------------------------------");
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint("--- [DEBUG] AUTO START TRIP RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("---------------------------------------");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // 2. Start Location Tracking
+        final role = await UserStore.getRole();
+        if (role == 'driver') {
+          LocationService().startTracking(tripId);
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Trip auto-started successfully! Tracking active."), backgroundColor: Colors.green),
+        );
+        _fetchMissionDetails();
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Auto start failed";
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      setState(() => _isApproving = false);
+    }
+  }
+
   Future<void> _markAllowanceReceived(int allowanceId, String mode, String remarks) async {
     setState(() => _isMarkingReceived = true);
     try {
@@ -1111,11 +1172,28 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     // Check if any trip instance has allowances
     final bool hasAllowance = (_missionData?['trip_instances'] as List?)?.any((t) => (t['allowances'] as List?)?.isNotEmpty ?? false) ?? false;
 
-    // Status 4 (Approved), 5 (Driver Assigned), 6 (Driver Reassigned), 7 (Started), 12 (Planned)
-    // Also checking string status for robustness
     final bool isApprovedState = statusString == 'APPROVED' || statusString == 'PLANNED' || 
                                 currentStatus == 4 || currentStatus == 5 || currentStatus == 6 || currentStatus == 12;
     
+    final travelInfo = _missionData?['travel_info'];
+    bool showAutoStart = false;
+    if (isDriver && isApprovedState) {
+      try {
+        final startStr = travelInfo?['start_datetime'];
+        if (startStr != null) {
+          final startTime = DateTime.parse(startStr);
+          final now = DateTime.now();
+          final diff = now.difference(startTime).inMinutes;
+          // Within +/- 30 minutes window
+          if (diff.abs() <= 30) {
+            showAutoStart = true;
+          }
+        }
+      } catch (e) {
+        debugPrint("Error parsing start_datetime: $e");
+      }
+    }
+
     final bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING';
     
     String actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') 
@@ -1397,6 +1475,31 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             elevation: 4,
                             shadowColor: Colors.orange.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (showAutoStart)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isApproving || _isLoadingOtp ? null : _handleAutoStart,
+                          icon: _isApproving 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                            : const Icon(Icons.flash_auto_rounded, size: 20),
+                          label: const Text(
+                            "AUTO START TRIP",
+                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 4,
+                            shadowColor: Colors.green.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
