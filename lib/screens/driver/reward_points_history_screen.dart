@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 class RewardPointsHistoryScreen extends StatefulWidget {
   const RewardPointsHistoryScreen({super.key});
@@ -47,7 +48,7 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
       body: Consumer<DriverStore>(
         builder: (context, store, _) {
           if (store.isLoadingRewards && store.rewardHistory.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildSkeletonLoading(isDark);
           }
 
           if (store.rewardError != null && store.rewardHistory.isEmpty) {
@@ -257,6 +258,51 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
             style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonLoading(bool isDark) {
+    final Color baseColor = isDark ? const Color(0xFF1E293B) : Colors.grey[300]!;
+    final Color highlightColor = isDark ? const Color(0xFF334155) : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            // Header Skeleton
+            Container(
+              margin: const EdgeInsets.all(20),
+              height: 160,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+              ),
+            ),
+            // List Items Skeleton
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
