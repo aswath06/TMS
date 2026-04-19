@@ -422,7 +422,7 @@ class _LeaveDetailBottomSheetState extends State<_LeaveDetailBottomSheet> {
     if (timestamp == null) return "Unknown date";
     try {
       final DateTime dt = DateTime.parse(timestamp.toString());
-      return DateFormat('MMM dd, yyyy • hh:mm a').format(dt.toLocal());
+      return DateFormat('MMM dd, yyyy • hh:mm a').format(dt.toUtc());
     } catch (e) {
       return timestamp.toString();
     }

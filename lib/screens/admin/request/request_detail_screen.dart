@@ -652,7 +652,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
   String _formatDate(dynamic iso) {
     if (iso == null || iso.toString().isEmpty) return "N/A";
     try {
-      final dt = DateTime.parse(iso.toString());
+      final dt = DateTime.parse(iso.toString()).toUtc();
       return DateFormat('EEE, MMM dd, yyyy • hh:mm a').format(dt);
     } catch (_) {
       return iso.toString();

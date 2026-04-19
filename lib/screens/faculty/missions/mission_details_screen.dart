@@ -1181,11 +1181,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       try {
         final startStr = travelInfo?['start_datetime'];
         if (startStr != null) {
-          final startTime = DateTime.parse(startStr);
-          final now = DateTime.now();
+          // Parse and ensure we compare in UTC
+          final startTime = DateTime.parse(startStr).toUtc();
+          final now = DateTime.now().toUtc();
           final diff = now.difference(startTime).inMinutes;
-          // Within +/- 30 minutes window
-          if (diff.abs() <= 30) {
+          
+          // Show button from 30 minutes before departure onwards
+          // if it hasn't been started yet (isApprovedState is true)
+          if (diff >= -30) {
             showAutoStart = true;
           }
         }
@@ -1950,8 +1953,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     required Color titleColor,
   }) {
     DateTime? dt = dateTimeStr != null ? DateTime.tryParse(dateTimeStr) : null;
-    String datePart = dt != null ? DateFormat('MMM dd, yyyy').format(dt.toLocal()) : "---";
-    String timePart = dt != null ? DateFormat('hh:mm a').format(dt.toLocal()) : fallback;
+    String datePart = dt != null ? DateFormat('MMM dd, yyyy').format(dt.toUtc()) : "---";
+    String timePart = dt != null ? DateFormat('hh:mm a').format(dt.toUtc()) : fallback;
 
     return Expanded(
       child: Column(
