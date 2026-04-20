@@ -619,7 +619,42 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     }
   }
 
+  Future<void> _handleAutoEnd(int? legId) async {
+    if (legId == null) {
+      _showTopToast("Unable to identify leg ID to end.", Colors.red);
+      return;
+    }
+
+    setState(() => _isApproving = true);
+    try {
+      final token = await UserStore.getToken();
+      final url = ApiConstants.endTripLeg(legId);
+      final body = {"mode": "DIRECT"};
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode(body),
+      );
+
+      debugPrint("DEBUG: Auto End Leg Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showTopToast("Trip leg ended successfully!", Colors.green);
+        _fetchMissionDetails();
+      } else {
+        final error = jsonDecode(response.body);
+        _showTopToast(error['message'] ?? "End Trip Leg failed", Colors.red);
+      }
+    } catch (e) {
+      _showTopToast("Error: $e", Colors.red);
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
   Future<void> _handleDirectStart() async {
+
     setState(() => _isApproving = true); // Using _isApproving state for loading
     try {
       final String? token = await UserStore.getToken();
@@ -1172,23 +1207,49 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     // Check if any trip instance has allowances
     final bool hasAllowance = (_missionData?['trip_instances'] as List?)?.any((t) => (t['allowances'] as List?)?.isNotEmpty ?? false) ?? false;
 
-    final bool isApprovedState = statusString == 'APPROVED' || statusString == 'PLANNED' || 
+    final bool isApprovedState = statusString == 'APPROVED' || statusString == 'PLANNED' || statusString == 'ASSIGNED' || 
                                 currentStatus == 4 || currentStatus == 5 || currentStatus == 6 || currentStatus == 12;
     
     final travelInfo = _missionData?['travel_info'];
     bool showAutoStart = false;
+    bool showAutoEnd = false;
+    int? legIdToEnd;
+
+    if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      if (tripInstances != null && tripInstances.isNotEmpty) {
+        final latestTrip = tripInstances[0];
+        final legs = latestTrip['legs'] as List?;
+        if (legs != null && legs.isNotEmpty) {
+          final firstLeg = legs[0];
+          legIdToEnd = firstLeg['id'];
+          final stops = firstLeg['stops'] as List?;
+          if (stops != null && stops.isNotEmpty) {
+            // Check if all stops are either ARRIVED or COMPLETED or SKIPPED
+            // (i.e., none are PENDING)
+            final allHandled = stops.every((s) => s['stop_status'] != 'PENDING');
+            if (allHandled) {
+              showAutoEnd = true;
+            }
+          }
+        }
+      }
+    }
+
     if (isDriver && isApprovedState) {
       try {
         final startStr = travelInfo?['start_datetime'];
         if (startStr != null) {
-          // Parse and ensure we compare in UTC
           final startTime = DateTime.parse(startStr).toUtc();
           final now = DateTime.now().toUtc();
           final diff = now.difference(startTime).inMinutes;
           
-          // Show button from 30 minutes before departure onwards
-          // if it hasn't been started yet (isApprovedState is true)
-          if (diff >= -30) {
+          debugPrint("[AutoStartDebug] Now (UTC): $now");
+          debugPrint("[AutoStartDebug] Start (UTC): $startTime");
+          debugPrint("[AutoStartDebug] Diff (mins): $diff");
+          debugPrint("[AutoStartDebug] Status: $statusString, Raw: $currentStatus, isDriver: $isDriver");
+
+          if (diff >= -30 && diff <= 30) {
             showAutoStart = true;
           }
         }
@@ -1482,7 +1543,33 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
+                  if (showAutoEnd)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isApproving || _isLoadingOtp ? null : () => _handleAutoEnd(legIdToEnd),
+                          icon: _isApproving 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                            : const Icon(Icons.stop_circle_rounded, size: 20),
+                          label: const Text(
+                            "Auto end button",
+                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 4,
+                            shadowColor: Colors.green.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (showAutoStart)
+
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -1953,8 +2040,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     required Color titleColor,
   }) {
     DateTime? dt = dateTimeStr != null ? DateTime.tryParse(dateTimeStr) : null;
-    String datePart = dt != null ? DateFormat('MMM dd, yyyy').format(dt.toUtc()) : "---";
-    String timePart = dt != null ? DateFormat('hh:mm a').format(dt.toUtc()) : fallback;
+    String datePart = dt != null ? DateFormat('MMM dd, yyyy').format(dt.toLocal()) : "---";
+    String timePart = dt != null ? DateFormat('hh:mm a').format(dt.toLocal()) : fallback;
 
     return Expanded(
       child: Column(

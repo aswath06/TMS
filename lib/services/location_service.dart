@@ -47,7 +47,7 @@ class LocationService {
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart, // From location_callback_handler.dart
-        autoStart: false,
+        autoStart: true,
         isForegroundMode: true,
         notificationChannelId: 'location_tracking_channel',
         initialNotificationTitle: 'TripZo Tracking Active',
@@ -56,8 +56,9 @@ class LocationService {
         foregroundServiceTypes: [AndroidForegroundType.location],
       ),
       iosConfiguration: IosConfiguration(
-        autoStart: false,
+        autoStart: true,
         onForeground: onStart, // From location_callback_handler.dart
+        onBackground: onIosBackground, // Need to define this or handle it
       ),
     );
 

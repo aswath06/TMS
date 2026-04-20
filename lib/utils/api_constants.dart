@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = "https://tripzo.bitsathy.ac.in";
+  static const String baseUrl = "https://18x50gz9-8055.inc1.devtunnels.ms";
 
   // DevTunnels bypass header
   static const String bypassHeaderKey = "X-Tunnel-Skip-Anti-Phishing-Page";
@@ -50,6 +50,8 @@ class ApiConstants {
   static String startTrip(dynamic tripId) =>
       "$baseUrl/request/trips/$tripId/start";
   static String endLeg(dynamic tripId) => "$baseUrl/request/trips/$tripId/end";
+  static String endTripLeg(dynamic legId) =>
+      "$baseUrl/api/routes/trips/legs/$legId/end";
 
   // Trip actions
   static String getStartOtp(dynamic tripId) =>

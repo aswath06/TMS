@@ -406,7 +406,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
   String _formatDate(String? dateStr) {
     if (dateStr == null) return "TBD";
     try {
-      final dt = DateTime.parse(dateStr).toUtc();
+      final dt = DateTime.parse(dateStr).toLocal();
       return "${dt.day}/${dt.month}/${dt.year}";
     } catch (_) {
       return dateStr;

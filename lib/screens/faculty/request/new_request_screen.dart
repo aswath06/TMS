@@ -743,7 +743,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!.toUtc()),
+                DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!.toLocal()),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -825,7 +825,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   Text(
                     val == null
                         ? "Set Schedule"
-                        : DateFormat('EEE, MMM dd • hh:mm a').format(val.toUtc()),
+                        : DateFormat('EEE, MMM dd • hh:mm a').format(val.toLocal()),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,

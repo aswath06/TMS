@@ -15,7 +15,10 @@ class NotificationSocketService {
       socketBaseUrl,
       IO.OptionBuilder()
           .setTransports(['websocket'])
-          .disableAutoConnect()
+          .enableAutoConnect()
+          .enableReconnection()
+          .setReconnectionDelay(5000)
+          .setReconnectionAttempts(99999)
           .setAuth({'token': token})
           .setExtraHeaders({'X-Tunnel-Skip-Anti-Phishing-Page': 'true'})
           .build(),
