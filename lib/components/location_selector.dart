@@ -356,7 +356,7 @@ class _LocationSelectorState extends State<LocationSelector> {
           ),
           child: Row(
             children: [
-              _infoCell(Icons.directions_car_filled_rounded, 'DISTANCE', _totalDistanceText),
+              _infoCell(Icons.directions_car_filled_rounded, 'APPROX DISTANCE', _totalDistanceText),
               _infoCell(Icons.access_time_filled_rounded, 'EST. TIME', _totalDurationText),
             ],
           ),
@@ -374,7 +374,14 @@ class _LocationSelectorState extends State<LocationSelector> {
             children: [
               Icon(icon, color: widget.accentColor, size: 18),
               const SizedBox(width: 6),
-              Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),

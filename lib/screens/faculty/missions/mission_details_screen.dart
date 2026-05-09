@@ -342,7 +342,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   void _showStartInformationPopup() {
     final TextEditingController odometerController = TextEditingController();
-    final TextEditingController capacityController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -424,48 +423,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: capacityController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "Number of Capacity",
-                      labelStyle: TextStyle(
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      floatingLabelStyle: const TextStyle(
-                        color: Color(0xFF6366F1),
-                        fontWeight: FontWeight.w700,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      prefixIcon: const Icon(Icons.people, color: Color(0xFF6366F1)),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 32),
                 Row(
                   children: [
@@ -485,9 +442,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       child: ElevatedButton(
                         onPressed: () {
                           final odo = odometerController.text;
-                          final cap = capacityController.text;
                           Navigator.pop(context);
-                          _submitStartInformation(odo, cap);
+                          _submitStartInformation(odo, "0");
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6366F1),
@@ -511,7 +467,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   void _showEndInformationPopup() {
     final TextEditingController odometerController = TextEditingController();
-    final TextEditingController capacityController = TextEditingController();
+    bool? allowanceNeeded;
 
     showModalBottomSheet(
       context: context,
@@ -519,159 +475,265 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       backgroundColor: Colors.transparent,
       builder: (context) {
         final bool isDark = Theme.of(context).brightness == Brightness.dark;
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  "End Mission Information",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Please enter the final details before completing the mission.",
-                  style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: odometerController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "End Odometer",
-                      labelStyle: TextStyle(
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      floatingLabelStyle: const TextStyle(
-                        color: Color(0xFF6366F1),
-                        fontWeight: FontWeight.w700,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      prefixIcon: const Icon(Icons.speed, color: Color(0xFF6366F1)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: capacityController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "Final Capacity",
-                      labelStyle: TextStyle(
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      floatingLabelStyle: const TextStyle(
-                        color: Color(0xFF6366F1),
-                        fontWeight: FontWeight.w700,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      prefixIcon: const Icon(Icons.people, color: Color(0xFF6366F1)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text("Close", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final odo = odometerController.text;
-                          final cap = capacityController.text;
-                          Navigator.pop(context);
-                          _submitEndInformation(odo, cap);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981), // Green for end
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
+                    const SizedBox(height: 24),
+                    const Text(
+                      "End Mission Information",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Please enter the final details before completing the mission.",
+                      style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          width: 1.5,
                         ),
-                        child: const Text("SUBMIT", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: odometerController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        decoration: InputDecoration(
+                          labelText: "End Odometer",
+                          labelStyle: TextStyle(
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          floatingLabelStyle: const TextStyle(
+                            color: Color(0xFF6366F1),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          prefixIcon: const Icon(Icons.speed, color: Color(0xFF6366F1)),
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "DA/TA is required for driver*",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              // "YES" option
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      allowanceNeeded = true;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: allowanceNeeded == true
+                                          ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                                          : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: allowanceNeeded == true
+                                            ? const Color(0xFF10B981)
+                                            : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                                        width: allowanceNeeded == true ? 2.0 : 1.0,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          allowanceNeeded == true
+                                              ? Icons.radio_button_checked_rounded
+                                              : Icons.radio_button_off_rounded,
+                                          color: allowanceNeeded == true
+                                              ? const Color(0xFF10B981)
+                                              : Colors.grey,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          "Yes",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            color: allowanceNeeded == true
+                                                ? const Color(0xFF10B981)
+                                                : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              // "NO" option
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      allowanceNeeded = false;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: allowanceNeeded == false
+                                          ? Colors.red.withValues(alpha: 0.08)
+                                          : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: allowanceNeeded == false
+                                            ? Colors.red
+                                            : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                                        width: allowanceNeeded == false ? 2.0 : 1.0,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          allowanceNeeded == false
+                                              ? Icons.radio_button_checked_rounded
+                                              : Icons.radio_button_off_rounded,
+                                          color: allowanceNeeded == false
+                                              ? Colors.red
+                                              : Colors.grey,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          "No",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            color: allowanceNeeded == false
+                                                ? Colors.red
+                                                : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text("Close", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final odo = odometerController.text;
+                              if (odo.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Please enter the end odometer reading"), backgroundColor: Colors.orange),
+                                );
+                                return;
+                              }
+                              if (allowanceNeeded == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Please select whether DA/TA is required"), backgroundColor: Colors.orange),
+                                );
+                                return;
+                              }
+                              Navigator.pop(context);
+                              _submitEndInformation(odo, "0", allowanceNeeded: allowanceNeeded ?? false);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981), // Green for end
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 0,
+                            ),
+                            child: const Text("SUBMIT", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -824,7 +886,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     }
   }
 
-  Future<void> _submitEndInformation(String odometer, String capacity) async {
+  Future<void> _submitEndInformation(String odometer, String capacity, {bool allowanceNeeded = false}) async {
     setState(() => _isApproving = true);
     try {
       final token = await UserStore.getToken();
@@ -836,8 +898,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       final url = ApiConstants.endRegister(tripId);
       final body = {
         "end_odometer": double.tryParse(odometer) ?? 0.0,
-        "end_capacity": int.tryParse(capacity) ?? 0,
+        "allowance_needed": allowanceNeeded,
       };
+
+      final curl = "curl --location '$url' \\\n"
+                   "--header 'Authorization: TMS $token' \\\n"
+                   "--header 'Content-Type: application/json' \\\n"
+                   "--data '${jsonEncode(body)}'";
+      debugPrint("DEBUG: End Register CURL:\n$curl");
 
       final response = await http.post(
         Uri.parse(url),
@@ -1158,6 +1226,12 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       final url = ApiConstants.endTripLeg(legId);
       final body = {"mode": "DIRECT"};
 
+      final curl = "curl --location '$url' \\\n"
+                   "--header 'Authorization: TMS $token' \\\n"
+                   "--header 'Content-Type: application/json' \\\n"
+                   "--data '${jsonEncode(body)}'";
+      debugPrint("DEBUG: Auto End Leg CURL:\n$curl");
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -1190,15 +1264,23 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
       if (tripId == null) throw "Trip ID not found";
 
+      final url = ApiConstants.startTrip(tripId);
+      final body = {"mode": "DIRECT"};
+
+      final curl = "curl --location '$url' \\\n"
+                   "--header 'Authorization: TMS $token' \\\n"
+                   "--header 'Content-Type: application/json' \\\n"
+                   "--data '${jsonEncode(body)}'";
+      debugPrint("DEBUG: Direct Start CURL:\n$curl");
+
       final response = await http.post(
-        Uri.parse(ApiConstants.startTrip(tripId)),
+        Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({"mode": "DIRECT"}),
+        body: jsonEncode(body),
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         debugPrint("Direct Start API Error!");
-        // debugPrint("Curl: curl -X POST '${ApiConstants.startTrip(tripId)}' -H 'Authorization: TMS $token' -H 'Content-Type: application/json' --data '${jsonEncode({"mode": "DIRECT"})}'");
         debugPrint("Response Status: ${response.statusCode}");
         debugPrint("Response Body: ${response.body}");
       }
@@ -1212,6 +1294,68 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       } else {
         final error = jsonDecode(response.body);
         throw error['message'] ?? "Direct start failed";
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
+  Future<void> _deleteRoute() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text("Delete Route", style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text("Are you sure you want to delete this route? This action cannot be undone."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isApproving = true);
+    try {
+      final String? token = await UserStore.getToken();
+      final String requestId = widget.requestId;
+
+      final response = await http.delete(
+        Uri.parse(ApiConstants.deleteRoute(requestId)),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      debugPrint("DEBUG: Delete Route Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Route deleted successfully!"), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context, true); // Go back to the list and signal refresh
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Failed to delete route";
       }
     } catch (e) {
       if (mounted) {
@@ -1741,12 +1885,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final travelInfo = _missionData?['travel_info'];
     bool showAutoStart = false;
     bool showAutoEnd = false;
+    int? tripIdToEnd;
     int? legIdToEnd;
 
-    if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+    if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && (statusString == 'STARTED' || statusString == 'ONGOING')) {
       final tripInstances = _missionData?['trip_instances'] as List?;
       if (tripInstances != null && tripInstances.isNotEmpty) {
         final latestTrip = tripInstances[0];
+        tripIdToEnd = latestTrip['id'];
         final legs = latestTrip['legs'] as List?;
         if (legs != null && legs.isNotEmpty) {
           final firstLeg = legs[0];
@@ -1807,7 +1953,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     hasEndOdometer = endOdoCheck != null;
 
     bool isEligibleForEndInfo = false;
-    if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+    if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && (statusString == 'STARTED' || statusString == 'ONGOING')) {
       final tripInstances = _missionData?['trip_instances'] as List?;
       if (tripInstances != null && tripInstances.isNotEmpty) {
         final latestTrip = tripInstances[0];
@@ -1876,8 +2022,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildHeroCard(cardColor, titleColor, subColor, primaryBlue),
-                          const SizedBox(height: 32),
-                          _buildTripMetrics(cardColor, primaryBlue, subColor),
                           const SizedBox(height: 32),
                           _buildOdometerMetrics(cardColor, primaryBlue, subColor, isDark),
                           const SizedBox(height: 32),
@@ -2094,7 +2238,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isApprovedState && _userRole?.toLowerCase() == 'transport admin')
+                  if (isApprovedState && _userRole?.toLowerCase() == 'transport admin' && hasStartOdometer)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2117,13 +2261,36 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
+                  if ((statusString == 'STARTED' || statusString == 'ONGOING') && _userRole?.toLowerCase() == 'transport admin' && hasEndOdometer && tripIdToEnd != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isApproving || _isLoadingOtp ? null : () => _handleAutoEnd(tripIdToEnd),
+                          icon: _isApproving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.stop_circle_rounded, size: 20),
+                          label: const Text(
+                            "DIRECT END",
+                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 4,
+                            shadowColor: Colors.redAccent.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (showAutoEnd)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _isApproving || _isLoadingOtp ? null : () => _handleAutoEnd(legIdToEnd),
+                          onPressed: _isApproving || _isLoadingOtp ? null : () => _handleAutoEnd(tripIdToEnd),
                           icon: _isApproving 
                             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
                             : const Icon(Icons.stop_circle_rounded, size: 20),
@@ -2168,7 +2335,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if (isDriver && statusString == 'APPROVED' && !hasStartOdometer)
+                  if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && statusString == 'APPROVED' && !hasStartOdometer)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2177,7 +2344,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           onPressed: _showStartInformationPopup,
                           icon: const Icon(Icons.info_outline_rounded, size: 20),
                           label: const Text(
-                            "START INFORMATION",
+                            "START",
                             style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
                           ),
                           style: ElevatedButton.styleFrom(
@@ -2191,7 +2358,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && !hasEndOdometer)
+                  if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && !hasEndOdometer)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2200,7 +2367,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           onPressed: _showEndInformationPopup,
                           icon: const Icon(Icons.info_outline_rounded, size: 20),
                           label: const Text(
-                            "END INFORMATION",
+                            "END",
                             style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
                           ),
                           style: ElevatedButton.styleFrom(
@@ -2214,9 +2381,10 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if (!isDriver || 
+                  if (_userRole?.toLowerCase() != 'transport admin' &&
+                      (!isDriver || 
                       (isDriver && statusString == 'APPROVED' && hasStartOdometer) || 
-                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || hasEndOdometer)))
+                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || hasEndOdometer))))
                     _SwipeToConfirm(
                       label: actionLabel.toUpperCase(),
                       onConfirm: () {
@@ -2336,12 +2504,15 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 children: [
                   Icon(Icons.route, color: primaryColor),
                   const SizedBox(width: 12),
-                  Text(
-                    "Total Distance: ${difference.toStringAsFixed(1)} KM",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: primaryColor,
+                  Flexible(
+                    child: Text(
+                      "Total Distance: ${difference.toStringAsFixed(1)} KM",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -2585,6 +2756,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildHeader(BuildContext context, Color titleColor) {
+    final String statusString = (_missionData?['status'] ?? _missionData?['travel_info']?['status'] ?? widget.status ?? "").toString().toUpperCase();
+    final bool isApproved = statusString == 'APPROVED';
+    final bool isAdmin = _userRole?.toLowerCase() == 'transport admin';
+    final bool showDeleteIcon = isApproved && isAdmin;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -2604,7 +2780,16 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             color: titleColor,
           ),
         ),
-        const SizedBox(width: 48),
+        showDeleteIcon
+            ? IconButton(
+                onPressed: _isApproving ? null : _deleteRoute,
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red,
+                  size: 24,
+                ),
+              )
+            : const SizedBox(width: 48),
       ],
     );
   }
@@ -2795,6 +2980,33 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                     child: Text(
                       "PURPOSE: ${travelInfo?['purpose']}",
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: primaryBlue, letterSpacing: 0.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          if (travelInfo?['department'] != null &&
+              travelInfo?['department']['department_name'] != null &&
+              travelInfo?['department']['department_name'].toString().isNotEmpty == true &&
+              travelInfo?['department']['department_name'].toString() != 'null') ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.purple.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.purple.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.business_rounded, size: 14, color: Colors.purple),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "DEPARTMENT: ${travelInfo?['department']?['department_name']}",
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.purple, letterSpacing: 0.3),
                     ),
                   ),
                 ],
@@ -3183,24 +3395,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       ),
                     ],
                   ),
-                  if (status == 'PENDING' && isDriver && tripId != null && stopId != null) ...[
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showStopStatusModal(tripId, stopId),
-                        icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                        label: const Text("MARK AS COMPLETED", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.withValues(alpha: 0.1),
-                          foregroundColor: Colors.green,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                  ] else if (status != 'PENDING') ...[
+                  if (status != 'PENDING') ...[
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,

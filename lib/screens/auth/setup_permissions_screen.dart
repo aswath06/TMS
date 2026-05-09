@@ -151,30 +151,11 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Wi
                     ),
                     
                     _buildRequirementCard(
-                      title: isTamil ? "இருப்பிட அனுமதி" : "Location Access",
-                      subtitle: isTamil ? "பின்னணிக் கண்காணிப்புக்கு 'சரியான இருப்பிடம்' தேவை" : "Required for precise background tracking",
-                      icon: Icons.location_on_rounded,
-                      isOk: _isLocationOk && _isLocationAlways,
-                      onTap: _requestLocation,
-                      isDark: isDark,
-                    ),
-                    
-                    
-                    _buildRequirementCard(
                       title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
                       subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
                       icon: Icons.notifications_active_rounded,
                       isOk: _isNotificationOk,
                       onTap: _requestNotification,
-                      isDark: isDark,
-                    ),
-
-                    _buildRequirementCard(
-                      title: isTamil ? "பேட்டரி மேம்படுத்தல் விலக்கு" : "Battery Optimization",
-                      subtitle: isTamil ? "பின்னணியில் இயங்க விலக்கு தேவை" : "Exemption required for uninterrupted background tracking",
-                      icon: Icons.battery_charging_full_rounded,
-                      isOk: _isBatteryOk,
-                      onTap: _requestBatteryExemption,
                       isDark: isDark,
                     ),
                   ],
@@ -188,7 +169,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Wi
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: (_isInternetOk && _isNotificationOk && _isLocationAlways && _isBatteryOk) ? _completeOnboarding : null,
+                  onPressed: (_isInternetOk && _isNotificationOk) ? _completeOnboarding : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

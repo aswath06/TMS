@@ -14,6 +14,10 @@ class LocationService {
   LocationService._internal();
 
   Future<void> initializeService() async {
+    // Live tracking disabled per user request
+    debugPrint("[LocationService] Background service initialization bypassed (disabled).");
+    return;
+
     final service = FlutterBackgroundService();
 
     // 1. Create Notification Channel
@@ -75,6 +79,10 @@ class LocationService {
   }
 
   Future<void> startTracking(int tripInstanceId) async {
+    // Live tracking disabled per user request
+    debugPrint("[LocationService] Background tracking start bypassed for Trip #$tripInstanceId.");
+    return;
+
     // 0. Only Drivers should be tracked
     final role = await UserStore.getRole();
     if (role != 'driver') {
