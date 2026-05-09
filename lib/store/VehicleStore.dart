@@ -32,6 +32,16 @@ class VehicleStore extends ChangeNotifier {
     return status == 'active' || status == 'available';
   }).length;
 
+  int get vehiclesInCampus => _allVehicles.where((v) {
+    final status = v['status']?.toString().toLowerCase() ?? '';
+    return status == 'available';
+  }).length;
+
+  int get vehiclesOutCampus => _allVehicles.where((v) {
+    final status = v['status']?.toString().toLowerCase() ?? '';
+    return status == 'active' || status == 'on_trip'; // Example logic based on common statuses
+  }).length;
+
   // --- Actions ---
 
   /// Initial Load or Refresh
@@ -85,10 +95,19 @@ class VehicleStore extends ChangeNotifier {
     );
 
     try {
+      debugPrint("---- API CALL ----");
+      debugPrint("curl -X GET '${uri.toString()}' \\");
+      debugPrint("  -H 'Authorization: Bearer $token'");
+
       final response = await http.get(
         uri,
         headers: ApiConstants.getHeaders(token),
       );
+
+      debugPrint("---- API RESPONSE ----");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("----------------------");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

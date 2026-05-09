@@ -340,6 +340,533 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     );
   }
 
+  void _showStartInformationPopup() {
+    final TextEditingController odometerController = TextEditingController();
+    final TextEditingController capacityController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Start Mission Information",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Please enter the starting details before continuing.",
+                  style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: odometerController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: "Start Odometer",
+                      labelStyle: TextStyle(
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      floatingLabelStyle: const TextStyle(
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      prefixIcon: const Icon(Icons.speed, color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: capacityController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: "Number of Capacity",
+                      labelStyle: TextStyle(
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      floatingLabelStyle: const TextStyle(
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      prefixIcon: const Icon(Icons.people, color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text("Close", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final odo = odometerController.text;
+                          final cap = capacityController.text;
+                          Navigator.pop(context);
+                          _submitStartInformation(odo, cap);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: const Text("SUBMIT", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEndInformationPopup() {
+    final TextEditingController odometerController = TextEditingController();
+    final TextEditingController capacityController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "End Mission Information",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Please enter the final details before completing the mission.",
+                  style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: odometerController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: "End Odometer",
+                      labelStyle: TextStyle(
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      floatingLabelStyle: const TextStyle(
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      prefixIcon: const Icon(Icons.speed, color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: capacityController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      labelText: "Final Capacity",
+                      labelStyle: TextStyle(
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      floatingLabelStyle: const TextStyle(
+                        color: Color(0xFF6366F1),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      prefixIcon: const Icon(Icons.people, color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text("Close", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final odo = odometerController.text;
+                          final cap = capacityController.text;
+                          Navigator.pop(context);
+                          _submitEndInformation(odo, cap);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981), // Green for end
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: const Text("SUBMIT", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _fetchAndShowStartQR() async {
+    setState(() => _isApproving = true);
+    try {
+      final token = await UserStore.getToken();
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
+
+      if (tripId == null) throw "Trip ID not found";
+
+      final url = ApiConstants.getStartOtp(tripId);
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: "", 
+      );
+
+      debugPrint("DEBUG: Generate QR Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final encryptedOtp = data['data']?['encrypted_otp']?.toString() ?? "";
+        
+        if (!mounted) return;
+        
+        if (encryptedOtp.isEmpty || encryptedOtp == "N/A") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No QR code data received"), backgroundColor: Colors.red),
+          );
+          return;
+        }
+
+        final qrPayload = jsonEncode({
+          "trip_instance_id": data['data']['trip_instance_id'],
+          "otp_type": data['data']['otp_type'],
+          "otp": encryptedOtp
+        });
+
+        _showOtpModal(encryptedOtp, "START OTP", qrPayload: qrPayload);
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Failed to generate Start QR (${response.statusCode})";
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
+  Future<void> _fetchAndShowEndQR() async {
+    setState(() => _isApproving = true);
+    try {
+      final token = await UserStore.getToken();
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
+
+      if (tripId == null) throw "Trip ID not found";
+
+      final url = ApiConstants.getEndOtp(tripId);
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: "", 
+      );
+
+      debugPrint("DEBUG: Generate End QR Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final encryptedOtp = data['data']?['encrypted_otp']?.toString() ?? "";
+        
+        if (!mounted) return;
+        
+        if (encryptedOtp.isEmpty || encryptedOtp == "N/A") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No QR code data received"), backgroundColor: Colors.red),
+          );
+          return;
+        }
+
+        final qrPayload = jsonEncode({
+          "trip_instance_id": data['data']['trip_instance_id'],
+          "otp_type": data['data']['otp_type'],
+          "otp": encryptedOtp
+        });
+
+        _showOtpModal(encryptedOtp, "END OTP", qrPayload: qrPayload);
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Failed to generate End QR (${response.statusCode})";
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
+  Future<void> _submitStartInformation(String odometer, String capacity) async {
+    setState(() => _isApproving = true);
+    try {
+      final token = await UserStore.getToken();
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
+
+      if (tripId == null) throw "Trip ID not found";
+
+      final url = ApiConstants.startRegister(tripId);
+      final body = {
+        "start_odometer": int.tryParse(odometer) ?? 0,
+        "start_capacity": int.tryParse(capacity) ?? 0,
+      };
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode(body),
+      );
+
+      debugPrint("DEBUG: Start Register Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Trip start reading registered successfully"), backgroundColor: Colors.green),
+        );
+        _fetchMissionDetails();
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Failed to register start reading";
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
+  Future<void> _submitEndInformation(String odometer, String capacity) async {
+    setState(() => _isApproving = true);
+    try {
+      final token = await UserStore.getToken();
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
+
+      if (tripId == null) throw "Trip ID not found";
+
+      final url = ApiConstants.endRegister(tripId);
+      final body = {
+        "end_odometer": double.tryParse(odometer) ?? 0.0,
+        "end_capacity": int.tryParse(capacity) ?? 0,
+      };
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode(body),
+      );
+
+      debugPrint("DEBUG: End Register Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Trip end reading registered successfully"), backgroundColor: Colors.green),
+        );
+        _fetchMissionDetails();
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Failed to register end reading";
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isApproving = false);
+    }
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
@@ -615,7 +1142,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         );
       }
     } finally {
-      setState(() => _isLoadingOtp = false);
+      if (mounted) setState(() => _isLoadingOtp = false);
     }
   }
 
@@ -693,7 +1220,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         );
       }
     } finally {
-      setState(() => _isApproving = false);
+      if (mounted) setState(() => _isApproving = false);
     }
   }
 
@@ -753,7 +1280,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         );
       }
     } finally {
-      setState(() => _isApproving = false);
+      if (mounted) setState(() => _isApproving = false);
     }
   }
 
@@ -921,7 +1448,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
 
-  void _showOtpModal(String otp, String title) {
+  void _showOtpModal(String otp, String title, {String? qrPayload}) {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -929,6 +1456,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         pageBuilder: (context, _, __) => OtpFlashScreen(
           otp: otp,
           title: title,
+          qrDataPayload: qrPayload,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
@@ -1258,6 +1786,50 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       }
     }
 
+    bool hasStartOdometer = false;
+    var startOdoCheck = _missionData?['travel_info']?['start_odometer'];
+    if (startOdoCheck == null) {
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      if (tripInstances != null && tripInstances.isNotEmpty) {
+        startOdoCheck = tripInstances[0]['start_odometer'];
+      }
+    }
+    hasStartOdometer = startOdoCheck != null;
+
+    bool hasEndOdometer = false;
+    var endOdoCheck = _missionData?['travel_info']?['end_odometer'];
+    if (endOdoCheck == null) {
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      if (tripInstances != null && tripInstances.isNotEmpty) {
+        endOdoCheck = tripInstances[0]['end_odometer'];
+      }
+    }
+    hasEndOdometer = endOdoCheck != null;
+
+    bool isEligibleForEndInfo = false;
+    if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      if (tripInstances != null && tripInstances.isNotEmpty) {
+        final latestTrip = tripInstances[0];
+        final legs = latestTrip['legs'] as List?;
+        if (legs != null && legs.isNotEmpty) {
+          final stops = legs[0]['stops'] as List?;
+          if (stops != null && stops.isNotEmpty) {
+             if (stops.length > 1) {
+                isEligibleForEndInfo = stops.sublist(0, stops.length - 1).every((s) => s['stop_status'] != 'PENDING');
+             } else {
+                isEligibleForEndInfo = true;
+             }
+          }
+        }
+      }
+    }
+
+    if (isDriver) {
+      showAutoStart = false;
+      showAutoEnd = false;
+    }
+
     final bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING';
     
     String actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') 
@@ -1265,11 +1837,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
         : "GENERATE START OTP";
         
     if (isDriver) {
-      actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') ? "ARRIVED OTP" : "START OTP";
+      actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') ? "ARRIVED OTP" : "SWIPE TO START";
     }
 
     // if status is approved and allowance exists, show START OTP
-    if (isApprovedState && hasAllowance) {
+    if (isApprovedState && hasAllowance && !isDriver) {
        actionLabel = "SWIPE TO START (GET OTP/QR)";
     }
 
@@ -1306,6 +1878,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           _buildHeroCard(cardColor, titleColor, subColor, primaryBlue),
                           const SizedBox(height: 32),
                           _buildTripMetrics(cardColor, primaryBlue, subColor),
+                          const SizedBox(height: 32),
+                          _buildOdometerMetrics(cardColor, primaryBlue, subColor, isDark),
                           const SizedBox(height: 32),
                           _buildSectionTitle(
                             "Live tracking path",
@@ -1594,15 +2168,228 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  _SwipeToConfirm(
-                    label: actionLabel.toUpperCase(),
-                    onConfirm: () {
-                      _handleAction();
-                    },
+                  if (isDriver && statusString == 'APPROVED' && !hasStartOdometer)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _showStartInformationPopup,
+                          icon: const Icon(Icons.info_outline_rounded, size: 20),
+                          label: const Text(
+                            "START INFORMATION",
+                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 4,
+                            shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && !hasEndOdometer)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _showEndInformationPopup,
+                          icon: const Icon(Icons.info_outline_rounded, size: 20),
+                          label: const Text(
+                            "END INFORMATION",
+                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            elevation: 4,
+                            shadowColor: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!isDriver || 
+                      (isDriver && statusString == 'APPROVED' && hasStartOdometer) || 
+                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || hasEndOdometer)))
+                    _SwipeToConfirm(
+                      label: actionLabel.toUpperCase(),
+                      onConfirm: () {
+                        if (isDriver && statusString == 'APPROVED') {
+                           _fetchAndShowStartQR();
+                        } else if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && hasEndOdometer) {
+                           _fetchAndShowEndQR();
+                        } else {
+                           _handleAction();
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOdometerMetrics(Color cardColor, Color primaryColor, Color subColor, bool isDark) {
+    Map<String, dynamic>? travelInfo = _missionData?['travel_info'];
+    
+    var startOdometer = travelInfo?['start_odometer'];
+    var endOdometer = travelInfo?['end_odometer'];
+    var startCapacity = travelInfo?['start_capacity'];
+    var endCapacity = travelInfo?['end_capacity'];
+
+    // Fallback if nested or in trip_instances
+    if (startOdometer == null) {
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      if (tripInstances != null && tripInstances.isNotEmpty) {
+        final trip = tripInstances[0];
+        startOdometer = trip['start_odometer'];
+        endOdometer = trip['end_odometer'];
+        startCapacity = trip['start_capacity'];
+        endCapacity = trip['end_capacity'];
+      }
+    }
+
+    startCapacity ??= 0;
+    endCapacity ??= 0;
+
+    double? startVal = startOdometer != null ? double.tryParse(startOdometer.toString()) : null;
+    double? endVal = endOdometer != null ? double.tryParse(endOdometer.toString()) : null;
+
+    double? difference;
+    if (startVal != null && endVal != null && endVal >= startVal) {
+      difference = endVal - startVal;
+    }
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.speed_rounded, color: primaryColor, size: 24),
+              const SizedBox(width: 10),
+              Text(
+                "Travel Metrics",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile("Start Odometer", startOdometer?.toString() ?? "N/A", Icons.flag, Colors.blue, isDark),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricTile("Start Capacity", startCapacity.toString(), Icons.people, Colors.orange, isDark),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile("End Odometer", endOdometer?.toString() ?? "N/A", Icons.sports_score, Colors.green, isDark),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricTile("End Capacity", endCapacity.toString(), Icons.people_outline, Colors.deepOrange, isDark),
+              ),
+            ],
+          ),
+          if (difference != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.route, color: primaryColor),
+                  const SizedBox(width: 12),
+                  Text(
+                    "Total Distance: ${difference.toStringAsFixed(1)} KM",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: primaryColor,
+                    ),
                   ),
                 ],
               ),
             ),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile(String title, String value, IconData icon, Color iconColor, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
         ],
       ),
     );

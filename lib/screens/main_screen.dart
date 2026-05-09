@@ -19,6 +19,9 @@ import 'faculty/dashboard_screen.dart';
 import 'faculty/requests_screen.dart';
 
 import '../components/custom_bottom_bar.dart';
+import 'package:tripzo/screens/security/security_dashboard_screen.dart';
+import 'package:tripzo/screens/security/security_vehicle_screen.dart';
+import 'package:tripzo/screens/security/security_qr_scanner_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String userRole;
@@ -136,6 +139,13 @@ class _MainScreenState extends State<MainScreen> {
           const MissionsScreen(),
           const RequestsScreen(),
           const ProfileScreen(),
+        ];
+      case 'security':
+        return [
+          const SecurityDashboardScreen(),
+          const SecurityVehicleScreen(),
+          const SecurityQrScannerScreen(),
+          const AdminProfileScreen(),
         ];
       case 'driver':
       default:  

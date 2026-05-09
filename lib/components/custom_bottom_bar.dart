@@ -133,6 +133,25 @@ class CustomBottomBar extends StatelessWidget {
             'Profile',
           ),
         ];
+      case 'security':
+        return [
+          _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Dashboard'),
+          _NavItem(
+            Icons.local_shipping_outlined,
+            Icons.local_shipping_rounded,
+            'Vehicle',
+          ),
+          _NavItem(
+            Icons.qr_code_scanner_outlined,
+            Icons.qr_code_scanner_rounded,
+            'Scan QR',
+          ),
+          _NavItem(
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+            'Profile',
+          ),
+        ];
       case 'driver':
       default:
         return [

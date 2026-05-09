@@ -8,11 +8,13 @@ import 'package:flutter/services.dart';
 class OtpFlashScreen extends StatefulWidget {
   final String otp;
   final String title;
+  final String? qrDataPayload;
 
   const OtpFlashScreen({
     super.key,
     required this.otp,
     required this.title,
+    this.qrDataPayload,
   });
 
   @override
@@ -57,7 +59,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     // Robustly determine raw OTP for display and encrypted data for QR
     final String rawOtp;
-    final String qrData;
+    String qrData;
     
     if (RegExp(r'^\d{6}$').hasMatch(widget.otp)) {
       // Input is raw numeric string
@@ -70,6 +72,10 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
       // If decryption fails to produce 6 digits, it might return the hex, 
       // so we should handle that gracefully in the UI.
       rawOtp = decrypted;
+    }
+
+    if (widget.qrDataPayload != null) {
+      qrData = widget.qrDataPayload!;
     }
 
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
