@@ -677,8 +677,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   void _updateEndDate() {
     if (_routeType != 'Multi Day' && _startDate != null) {
-      final addedMinutes = (_travelDurationMinutes * 2) + (2 * 60);
-      _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
+      if (_routeType == 'One Way') {
+        final addedMinutes = _travelDurationMinutes + (1 * 60);
+        _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
+      } else { // Round Trip
+        final addedMinutes = (_travelDurationMinutes * 2) + (2 * 60);
+        _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
+      }
     }
   }
 
@@ -985,6 +990,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 return GestureDetector(
                   onTap: () => setState(() {
                     _routeType = type;
+                    _updateEndDate();
                   }),
                   child: Container(
                     margin: const EdgeInsets.only(right: 8),

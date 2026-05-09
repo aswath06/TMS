@@ -6,6 +6,9 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:provider/provider.dart';
 import 'scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -204,6 +207,30 @@ class _SettingsPageState extends State<SettingsPage> {
                           );
                         }
                       },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // LOGOUT TILE
+                    _settingsTile(
+                      Icons.logout_rounded,
+                      isTamil ? "வெளியேறு" : "Sign Out",
+                      isTamil
+                          ? "கணக்கிலிருந்து பாதுகாப்பாக வெளியேறவும்"
+                          : "Log out of your account",
+                      cardColor,
+                      Colors.redAccent,
+                      subTitleColor,
+                      Colors.red,
+                      onTap: () => _showLogoutBottomSheet(
+                        context,
+                        isTamil,
+                        primaryBlue,
+                        isDark,
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                      ),
                     ),
 
                     const SizedBox(height: 60),
@@ -618,4 +645,258 @@ class _SettingsPageState extends State<SettingsPage> {
     ),
     child: Icon(icon, color: color, size: 22),
   );
+
+  void _showLogoutBottomSheet(BuildContext context, bool isTamil, Color p, bool isDark, Color cardColor, Color titleColor, Color subTitleColor) {
+    final TextEditingController passwordController = TextEditingController();
+    bool isObscured = true;
+    bool isLoading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, -5),
+                    )
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handlebar
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Header Row
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.logout_rounded,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isTamil ? "வெளியேறுதல்" : "Account Logout",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: titleColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isTamil ? "தொடர உங்கள் கடவுச்சொல்லை உள்ளிடவும்" : "Enter your password to confirm",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: subTitleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Password Input
+                    Text(
+                      isTamil ? "கடவுச்சொல்*" : "Confirm Password*",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor.withOpacity(0.8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: TextField(
+                        controller: passwordController,
+                        obscureText: isObscured,
+                        style: TextStyle(color: titleColor, fontSize: 15),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.lock_outline_rounded, color: isDark ? Colors.white54 : Colors.grey),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              isObscured ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              color: isDark ? Colors.white54 : Colors.grey,
+                            ),
+                            onPressed: () {
+                              setModalState(() {
+                                isObscured = !isObscured;
+                              });
+                            },
+                          ),
+                          hintText: isTamil ? "உங்கள் கடவுச்சொல்" : "••••••••",
+                          hintStyle: const TextStyle(color: Colors.grey, fontSize: 15),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: isLoading ? null : () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: Text(
+                              isTamil ? "ரத்துசெய்" : "Cancel",
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    final pwd = passwordController.text.trim();
+                                    if (pwd.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(isTamil ? "கடவுச்சொல்லை உள்ளிடவும்" : "Please enter your password"),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    setModalState(() {
+                                      isLoading = true;
+                                    });
+
+                                    try {
+                                      final token = await UserStore.getToken();
+                                      final response = await http.post(
+                                        Uri.parse(ApiConstants.logoutMe),
+                                        headers: {
+                                          "Authorization": "TMS $token",
+                                          "Content-Type": "application/json",
+                                          ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
+                                        },
+                                        body: jsonEncode({
+                                          "password": pwd,
+                                        }),
+                                      );
+
+                                      if (response.statusCode == 200) {
+                                        Navigator.pop(context); // Close bottom sheet
+                                        showTopToast(
+                                          context,
+                                          isTamil ? "வெற்றிகரமாக வெளியேறப்பட்டது" : "Logged out successfully",
+                                        );
+                                        await UserStore.forceLogout();
+                                      } else {
+                                        String errorMsg = "Incorrect password";
+                                        try {
+                                          final decoded = jsonDecode(response.body);
+                                          errorMsg = decoded['message'] ?? decoded['error'] ?? "Incorrect password";
+                                        } catch (_) {}
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(errorMsg),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } catch (err) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text("Error: $err"),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    } finally {
+                                      setModalState(() {
+                                        isLoading = false;
+                                      });
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 0,
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : Text(
+                                    isTamil ? "வெளியேறு" : "LOGOUT",
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }

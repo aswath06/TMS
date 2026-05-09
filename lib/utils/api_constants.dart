@@ -10,6 +10,7 @@ class ApiConstants {
   static const String login = "$baseUrl/auth/login-by-username";
   static const String forgotPassword = "$baseUrl/auth/forgot-password";
   static const String userMe = "$baseUrl/auth/user/me";
+  static const String logoutMe = "$baseUrl/auth/logout-me";
 
   // Vehicles
   static const String getAllVehicles = "$baseUrl/api/vehicles/get-all";
