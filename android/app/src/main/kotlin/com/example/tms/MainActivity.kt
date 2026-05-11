@@ -1,5 +1,1 @@
-package com.example.tms
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
+// Moved to com.aswath.tripzo package

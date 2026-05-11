@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripzo/utils/routes.dart';
+import 'package:tripzo/services/location_service.dart';
 
 class UserStore {
   // Keys
@@ -71,6 +72,11 @@ class UserStore {
 
   // Force logout and redirect to login
   static Future<void> forceLogout() async {
+    try {
+      await LocationService().stopTracking();
+    } catch (e) {
+      debugPrint("Error stopping background service on logout: $e");
+    }
     await clear();
     AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
       AppRoutes.login,

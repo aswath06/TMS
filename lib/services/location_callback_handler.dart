@@ -26,7 +26,6 @@ void onStart(ServiceInstance service) async {
     DartPluginRegistrant.ensureInitialized();
 
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    bool isGpsDisabled = false;
 
     // 1. Setup Service Listeners
     service.on('stopService').listen((event) {
@@ -35,13 +34,8 @@ void onStart(ServiceInstance service) async {
     });
 
     service.on('updateConfig').listen((event) async {
-      if (event != null) {
-        final tripId = event['tripId'];
-        debugPrint("[BackgroundService] New configuration received for Trip #$tripId. Forcing sync...");
-        
-        // Force an immediate update
-        await _performUpdate(service, flutterLocalNotificationsPlugin);
-      }
+      // Config updates handle socket refreshes if needed
+      _initializeSocket(service, flutterLocalNotificationsPlugin);
     });
 
     // 2. Initialize Notification Plugin
@@ -52,93 +46,36 @@ void onStart(ServiceInstance service) async {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     debugPrint("[BackgroundService] Isolate initialized successfully");
-    _updateNotificationUI(flutterLocalNotificationsPlugin, "GPS Service Active. Polling...");
+    _updateNotificationUI(flutterLocalNotificationsPlugin, "Listening for real-time notifications...");
 
-    // 3. Start UI Timer immediately
-    int secondsToNextSync = 120;
-    
-    // Listen for manual sync triggers to reset countdown
-    service.on('sync_triggered').listen((event) {
-      secondsToNextSync = 120;
-    });
-
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      secondsToNextSync--;
-      if (secondsToNextSync < 0) {
-        secondsToNextSync = 120;
-      }
-      
-      if (!isGpsDisabled) {
-        _updateNotificationUI(flutterLocalNotificationsPlugin, "Next update in: ${secondsToNextSync}s");
-      }
-    });
-
-    // 4. Monitor GPS Status
-    Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
-      isGpsDisabled = status == ServiceStatus.disabled;
-      if (isGpsDisabled) {
-        _updateNotificationUI(flutterLocalNotificationsPlugin, "⚠️ GPS DISABLED! Please turn on GPS.", isHighPriority: true);
-      }
-    });
-
-    // 5. Initial Update (Non-blocking)
-    _performUpdate(service, flutterLocalNotificationsPlugin).catchError((e) => debugPrint("Init update error: $e"));
-
-    // 6. Sync Timer (Heartbeat and Location)
-    Timer.periodic(const Duration(seconds: 120), (timer) async {
-      debugPrint("[BackgroundService] Scheduled Sync Timer Fired.");
-      await _performUpdate(service, flutterLocalNotificationsPlugin).catchError((e) => debugPrint("Sync Error: $e"));
-      // Reset UI countdown
-      service.invoke('sync_triggered');
-    });
-
-    // 7. Initialize Notification Socket (PERSISTENT LOGIC)
+    // 3. Initialize Notification Socket (PERSISTENT SOCKET LOGIC)
     _initializeSocket(service, flutterLocalNotificationsPlugin);
 
-    // 8. Robustness: Periodically check socket connection
+    // 4. Robustness: Periodically check/reconnect socket connection to keep it alive
     Timer.periodic(const Duration(minutes: 5), (timer) async {
       _initializeSocket(service, flutterLocalNotificationsPlugin);
     });
   } catch (e, stack) {
-  } catch (e, stack) {
     debugPrint("[BackgroundService] CRITICAL ISOLATE ERROR: $e");
     debugPrint(stack.toString());
-    try {
-      final notifications = FlutterLocalNotificationsPlugin();
-      notifications.show(
-        888,
-        'TripZo Service Crash',
-        'Error: ${e.toString().split('\n')[0]}',
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'location_tracking_channel',
-            'TripZo Tracking',
-            ongoing: false,
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-        ),
-      );
-    } catch (_) {}
   }
 }
 
-// Helper to update notification without full GPS poll
+// Helper to update background persistent service indicator
 void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText, {bool isHighPriority = false}) {
   notifications.show(
     888,
-    'TripZo Tracking',
+    'TripZo Service',
     subText,
-    NotificationDetails(
+    const NotificationDetails(
       android: AndroidNotificationDetails(
-        'location_tracking_channel',
-        'TripZo Tracking',
+        'notification_channel',
+        'TripZo Service',
         ongoing: true,
         icon: 'ic_launcher',
-        importance: isHighPriority ? Importance.high : Importance.low,
-        priority: isHighPriority ? Priority.high : Priority.low,
+        importance: Importance.low,
+        priority: Priority.low,
         showWhen: false,
-        color: isHighPriority ? Colors.red : null,
       ),
     ),
   );

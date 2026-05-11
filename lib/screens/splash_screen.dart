@@ -160,11 +160,7 @@ class _SplashScreenState extends State<SplashScreen>
         });
       }
 
-      // 5. Check location permission for drivers
-      if (role == 'driver') {
-        final bool hasPermission = await _handleLocationPermission();
-        if (!hasPermission) return; // Blocked, UI will show warning
-      }
+      // On startup, we no longer block the user or require 'Always Allow' location permission.
 
       // Navigation to correct landing page
       if (isPinEnabled) {

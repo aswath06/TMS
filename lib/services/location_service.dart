@@ -14,17 +14,13 @@ class LocationService {
   LocationService._internal();
 
   Future<void> initializeService() async {
-    // Live tracking disabled per user request
-    debugPrint("[LocationService] Background service initialization bypassed (disabled).");
-    return;
-
     final service = FlutterBackgroundService();
 
-    // 1. Create Notification Channel
+    // 1. Create Notification Channels
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'location_tracking_channel',
-      'TripZo Tracking',
-      description: 'Background service for notifications and tracking',
+      'notification_channel',
+      'TripZo Service',
+      description: 'Persistent notification service for background updates',
       importance: Importance.low,
     );
 
@@ -53,26 +49,24 @@ class LocationService {
         onStart: onStart, // From location_callback_handler.dart
         autoStart: true,
         isForegroundMode: true,
-        notificationChannelId: 'location_tracking_channel',
-        initialNotificationTitle: 'TripZo Tracking Active',
-        initialNotificationContent: 'Initializing GPS Fix...',
+        notificationChannelId: 'notification_channel',
+        initialNotificationTitle: 'TripZo Active',
+        initialNotificationContent: 'Listening for real-time notifications...',
         foregroundServiceNotificationId: 888,
-        foregroundServiceTypes: [AndroidForegroundType.location],
       ),
       iosConfiguration: IosConfiguration(
         autoStart: true,
         onForeground: onStart, // From location_callback_handler.dart
-        onBackground: onIosBackground, // Need to define this or handle it
+        onBackground: onIosBackground,
       ),
     );
 
-    // 3. Auto-start if driver is logged in
-    final role = await UserStore.getRole();
+    // 3. Auto-start background service if any user is logged in
     final token = await UserStore.getToken();
-    if (role == 'driver' && token != null) {
+    if (token != null && token.isNotEmpty) {
       bool isRunning = await service.isRunning();
       if (!isRunning) {
-        debugPrint("[LocationService] Background service auto-starting for driver notifications.");
+        debugPrint("[LocationService] Background service auto-starting for real-time notifications.");
         await service.startService();
       }
     }

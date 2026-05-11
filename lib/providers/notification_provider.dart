@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/notification_model.dart';
 import '../services/notification_socket_service.dart';
 import '../services/notification_local_service.dart';
 import '../services/notification_api_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import '../utils/api_constants.dart';
+import '../utils/animated_notification.dart';
 
 class NotificationProvider extends ChangeNotifier {
   late NotificationApiService apiService;
@@ -19,6 +22,7 @@ class NotificationProvider extends ChangeNotifier {
   int unreadCount = 0;
   bool isSocketConnected = false;
   bool isLoading = false;
+  StreamSubscription? _connectivitySubscription;
 
   Future<void> initialize({
     String? socketBaseUrl,
@@ -33,8 +37,53 @@ class NotificationProvider extends ChangeNotifier {
     await fetchNotifications();
     await fetchUnreadCount();
 
-    // Instead of direct socket connection, we listen to the Background Service
-    // which now owns the persistent socket.
+    // 1. Establish direct Socket Connection in the foreground for real-time push notifications
+    socketService.connect(
+      socketBaseUrl: ApiConstants.baseUrl,
+      token: token,
+      onNewNotification: (data) async {
+        debugPrint("🔔 Foreground direct socket received notification: $data");
+        try {
+          final notification = NotificationModel.fromJson(data);
+          
+          // Avoid duplicate if already in list
+          if (notifications.any((n) => n.id == notification.id)) return;
+
+          notifications.insert(0, notification);
+          unreadCount += 1;
+          notifyListeners();
+
+          // Show real-time local push notification on screen
+          await NotificationLocalService.showNotification(
+            id: notification.id,
+            title: notification.title,
+            body: notification.message,
+          );
+
+          // Show beautifully animated top-sliding premium in-app overlay banner
+          showPremiumInAppNotification(
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+          );
+        } catch (e) {
+          debugPrint("Error handling new socket notification in foreground: $e");
+        }
+      },
+      onConnected: () {
+        isSocketConnected = true;
+        notifyListeners();
+        debugPrint("🔔 Foreground Notification Socket Connected");
+      },
+      onDisconnected: () {
+        isSocketConnected = false;
+        notifyListeners();
+        debugPrint("🔔 Foreground Notification Socket Disconnected");
+      },
+      onError: (err) => debugPrint("🔔 Foreground Notification Socket Error: $err"),
+    );
+
+    // 2. Backup Listener: Also listen to the Background Service if running
     final service = FlutterBackgroundService();
     
     service.on('new_notification_received').listen((data) {
@@ -51,8 +100,51 @@ class NotificationProvider extends ChangeNotifier {
       }
     });
 
-    // Check if service is running, if not, we might want to start it in standby
-    // But for now, we assume it's managed by LocationService
+    // 3. Monitor internet connection restoration to sync missed notifications
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
+      if (results.isNotEmpty && results.first != ConnectivityResult.none) {
+        debugPrint("🔔 NotificationProvider: Connection restored! Syncing missed notifications...");
+        await fetchNotificationsAndSyncMissed();
+      }
+    });
+  }
+
+  Future<void> fetchNotificationsAndSyncMissed() async {
+    try {
+      final fetchedList = await apiService.getMyNotifications();
+      
+      // Filter out notifications we already have in our list, AND are unread
+      final List<NotificationModel> newUnread = [];
+      for (final item in fetchedList) {
+        final bool alreadyHave = notifications.any((n) => n.id == item.id);
+        if (!alreadyHave && !item.isRead) {
+          newUnread.add(item);
+        }
+      }
+
+      // Sync local list and update unread count
+      notifications = fetchedList;
+      await fetchUnreadCount();
+      notifyListeners();
+
+      // Trigger standard local & top sliding animated push notifications for any missed unread notifications!
+      for (final notification in newUnread.reversed) {
+        await NotificationLocalService.showNotification(
+          id: notification.id,
+          title: notification.title,
+          body: notification.message,
+        );
+
+        showPremiumInAppNotification(
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+        );
+      }
+    } catch (e) {
+      debugPrint("Error syncing missed notifications on reconnect: $e");
+    }
   }
 
   Future<void> fetchNotifications() async {
@@ -132,6 +224,7 @@ class NotificationProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     socketService.disconnect();
     super.dispose();
   }
