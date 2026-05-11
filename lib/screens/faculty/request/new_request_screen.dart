@@ -147,8 +147,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     setState(() => _isLoadingVehicles = true);
     try {
       final token = await UserStore.getToken();
-      final start = _toIso(_startDate!);
-      final end = _endDate != null ? _toIso(_endDate!) : start;
+      final start = Uri.encodeComponent(_toIso(_startDate!));
+      final end = _endDate != null ? Uri.encodeComponent(_toIso(_endDate!)) : start;
       final url =
           "${ApiConstants.getAvailableVehicles}?start_datetime=$start&end_datetime=$end";
       debugPrint("Fetching vehicles: $url");
@@ -179,8 +179,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     setState(() => _isLoadingDrivers = true);
     try {
       final token = await UserStore.getToken();
-      final start = _toIso(_startDate!);
-      final end = _endDate != null ? _toIso(_endDate!) : start;
+      final start = Uri.encodeComponent(_toIso(_startDate!));
+      final end = _endDate != null ? Uri.encodeComponent(_toIso(_endDate!)) : start;
       final url =
           "${ApiConstants.getAvailableDrivers}?start_datetime=$start&end_datetime=$end";
       debugPrint("Fetching drivers: $url");
@@ -687,7 +687,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     }
   }
 
-  String _toIso(DateTime dt) => DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(dt);
+  String _toIso(DateTime dt) {
+    final datePart = DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(dt);
+    final offset = dt.timeZoneOffset;
+    final sign = offset.isNegative ? "-" : "+";
+    final hours = offset.inHours.abs().toString().padLeft(2, '0');
+    final minutes = (offset.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    return "$datePart$sign$hours:$minutes";
+  }
 
   Future<void> _submitForm() async {
     setState(() => _isSubmitting = true);
@@ -708,14 +715,33 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         });
       }
 
+      final goingStart = _startDate;
+      DateTime? goingEnd;
+      DateTime? returnStart;
+      DateTime? returnEnd;
+
+      if (_routeType == 'Multi Day') {
+        goingEnd = _endDate;
+      } else if (goingStart != null) {
+        final oneLegMinutes = _travelDurationMinutes + 60; // 1 hr buffer
+        goingEnd = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
+        
+        if (_routeType != 'One Way') {
+          returnStart = goingEnd;
+          returnEnd = returnStart.add(Duration(minutes: oneLegMinutes.toInt()));
+        }
+      }
+
       final Map<String, dynamic> body = {
         "route_name": _routeNameController.text.trim(),
-        "trip_type": _routeType == 'One Way' ? 'ONE_WAY' : 'ROUND_TRIP',
+        "trip_type": _routeType == 'One Way'
+            ? 'ONE_WAY'
+            : (_routeType == 'Multi Day' ? 'MULTI_DAY' : 'ROUND_TRIP'),
         "requested_for_date": DateFormat(
           'yyyy-MM-dd',
         ).format(_startDate ?? DateTime.now()),
-        "start_datetime": _startDate != null ? _toIso(_startDate!) : null,
-        "end_datetime": _endDate != null ? _toIso(_endDate!) : null,
+        "start_datetime": goingStart != null ? _toIso(goingStart) : null,
+        "end_datetime": goingEnd != null ? _toIso(goingEnd) : null,
         "purpose": _purposeController.text.trim(),
         "passenger_count": int.tryParse(_passengerCountController.text) ?? 1,
         "vehicle_count": int.tryParse(_vehicleCountController.text) ?? 1,
@@ -727,6 +753,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         "passengers": passengers,
         "department_id": _selectedDepartmentId,
       };
+
+      if (_routeType != 'One Way' && _routeType != 'Multi Day') {
+        body["return_start_datetime"] = returnStart != null ? _toIso(returnStart) : null;
+        body["return_end_datetime"] = returnEnd != null ? _toIso(returnEnd) : null;
+      }
 
       if (isAdmin) {
         // ADMIN FLOW: Uses admin_assignments
