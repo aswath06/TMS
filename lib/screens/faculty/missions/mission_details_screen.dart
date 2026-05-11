@@ -1615,9 +1615,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   void _showStopStatusModal(int tripId, int stopId) {
     String selectedAction = "ARRIVED";
     bool isSubmitting = false;
-    LocationPermission? permissionStatus;
-    bool isLocationEnabled = false;
-    bool isCheckingPermission = true;
 
     showModalBottomSheet(
       context: context,
@@ -1629,33 +1626,6 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             final bool isDark = Theme.of(context).brightness == Brightness.dark;
             final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
             final Color primaryBlue = const Color(0xFF6366F1);
-
-            // Proactive permission check
-            if (isCheckingPermission) {
-              Future.microtask(() async {
-                try {
-                  final enabled = await Geolocator.isLocationServiceEnabled();
-                  final perm = await Geolocator.checkPermission();
-                  if (mounted) {
-                    setModalState(() {
-                      isLocationEnabled = enabled;
-                      permissionStatus = perm;
-                      isCheckingPermission = false;
-                    });
-                  }
-                } catch (e) {
-                   if (mounted) {
-                     setModalState(() {
-                       isCheckingPermission = false;
-                     });
-                   }
-                }
-              });
-            }
-
-            final bool canSubmit = !isCheckingPermission && 
-                                   isLocationEnabled && 
-                                   (permissionStatus == LocationPermission.whileInUse || permissionStatus == LocationPermission.always);
 
             return Container(
               padding: const EdgeInsets.all(24),
@@ -1688,61 +1658,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                       }),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  if (isCheckingPermission)
-                    const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(strokeWidth: 2)))
-                  else if (!canSubmit)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.location_off_rounded, color: Colors.red, size: 18),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  !isLocationEnabled 
-                                    ? "Location services are disabled." 
-                                    : "Location permission is required to update status.",
-                                  style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: TextButton(
-                              onPressed: () async {
-                                setModalState(() => isCheckingPermission = true);
-                                if (!isLocationEnabled) {
-                                  await Geolocator.openLocationSettings();
-                                } else {
-                                  await Geolocator.requestPermission();
-                                }
-                                // Re-check will happen via StatefulBuilder rebuild
-                              },
-                              style: TextButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.1)),
-                              child: Text(
-                                !isLocationEnabled ? "OPEN SETTINGS" : "GRANT PERMISSION",
-                                style: const TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w900),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: (!canSubmit || isSubmitting) ? null : () async {
+                      onPressed: isSubmitting ? null : () async {
                         setModalState(() => isSubmitting = true);
                         try {
                           await _updateStopStatus(tripId, stopId, selectedAction);
@@ -1800,29 +1720,21 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Future<void> _updateStopStatus(int tripId, int stopId, String action) async {
-    // 1. Get Location
+    // 1. Get Location (Fallback silently to 0.0, 0.0 if any error occurs or disabled)
     Position? position;
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-         throw "Location services are disabled. Please enable them in settings.";
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
         if (permission == LocationPermission.denied) {
-          throw "Location permissions are denied.";
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
         }
       }
-      
-      if (permission == LocationPermission.deniedForever) {
-        throw "Location permissions are permanently denied. Please enable them in settings.";
-      }
-
-      position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
     } catch (e) {
-       throw e.toString();
+       debugPrint("Silently caught location error: $e");
     }
 
     // 2. PATCH Request
@@ -1830,8 +1742,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final url = ApiConstants.updateStopStatus(tripId, stopId);
     final body = {
       "action": action,
-      "latitude": position.latitude,
-      "longitude": position.longitude,
+      "latitude": position?.latitude ?? 0.0,
+      "longitude": position?.longitude ?? 0.0,
       "recorded_at": DateTime.now().toUtc().toIso8601String(),
     };
 

@@ -49,15 +49,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _startLocationMonitor() {
-    _locationSubscription = Geolocator.getServiceStatusStream().listen((status) {
-      _evaluateGpsStatus(status);
-    });
-    
-    // Initial check after build
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final isEnabled = await Geolocator.isLocationServiceEnabled();
-      _evaluateGpsStatus(isEnabled ? ServiceStatus.enabled : ServiceStatus.disabled);
-    });
+    // Location monitor and prompt dialog disabled as per user request
   }
 
   Future<void> _evaluateGpsStatus(ServiceStatus status) async {
