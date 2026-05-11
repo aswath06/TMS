@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:tripzo/services/location_callback_handler.dart';
@@ -73,76 +72,8 @@ class LocationService {
   }
 
   Future<void> startTracking(int tripInstanceId) async {
-    // Live tracking disabled per user request
-    debugPrint("[LocationService] Background tracking start bypassed for Trip #$tripInstanceId.");
+    debugPrint("[LocationService] Background tracking is completely disabled.");
     return;
-
-    // 0. Only Drivers should be tracked
-    final role = await UserStore.getRole();
-    if (role != 'driver') {
-      debugPrint("[LocationService] Role is '$role'. Tracking is restricted to drivers only. Aborting.");
-      return;
-    }
-
-    debugPrint("[LocationService] Preparing to start tracking for Trip #$tripInstanceId");
-
-    // 1. Check & Request Permissions
-    bool isEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!isEnabled) {
-      debugPrint("[LocationService] GPS is disabled. Tracking cannot start.");
-      await Geolocator.openLocationSettings();
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      debugPrint("[LocationService] Requesting location permission...");
-      permission = await Geolocator.requestPermission();
-    }
-    
-    // Request Notification permission (Android 13+)
-    debugPrint("[LocationService] Requesting notification permission...");
-    await FlutterLocalNotificationsPlugin()
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      debugPrint("[LocationService] Location permissions blocked. Tracking aborted.");
-      return;
-    }
-
-    // 1.5 Check Battery Optimization (Critical for unplugged reliability)
-    final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
-    if (!batteryStatus.isGranted) {
-      debugPrint("[LocationService] Battery optimization exemption not granted. Requesting...");
-      await Permission.ignoreBatteryOptimizations.request();
-    }
-
-    // 2. Save trip state persistently for the background isolate
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('active_trip_instance_id', tripInstanceId);
-    await prefs.remove('last_lat'); // Reset for new trip
-    await prefs.remove('last_lon');
-
-    // 3. Start the service
-    final service = FlutterBackgroundService();
-    bool isRunning = await service.isRunning();
-    
-    final token = await UserStore.getToken();
-
-    if (!isRunning) {
-      debugPrint("[LocationService] Launching background service...");
-      await service.startService();
-    } else {
-      debugPrint("[LocationService] Service already running. Re-syncing trip state.");
-    }
-
-    // Always push latest config to the background isolate
-    debugPrint("[LocationService] Pushing config to background: Trip #$tripInstanceId");
-    service.invoke('updateConfig', {
-      'token': token,
-      'tripId': tripInstanceId,
-    });
   }
 
   Future<void> stopTracking() async {
