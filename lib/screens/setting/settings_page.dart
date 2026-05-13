@@ -805,11 +805,10 @@ class _SettingsPageState extends State<SettingsPage> {
                                 : () async {
                                     final pwd = passwordController.text.trim();
                                     if (pwd.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(isTamil ? "கடவுச்சொல்லை உள்ளிடவும்" : "Please enter your password"),
-                                          backgroundColor: Colors.orange,
-                                        ),
+                                      showTopToast(
+                                        context,
+                                        isTamil ? "கடவுச்சொல்லை உள்ளிடவும்" : "Please enter your password",
+                                        isError: true,
                                       );
                                       return;
                                     }
@@ -845,19 +844,17 @@ class _SettingsPageState extends State<SettingsPage> {
                                           final decoded = jsonDecode(response.body);
                                           errorMsg = decoded['message'] ?? decoded['error'] ?? "Incorrect password";
                                         } catch (_) {}
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(errorMsg),
-                                            backgroundColor: Colors.red,
-                                          ),
+                                        showTopToast(
+                                          context,
+                                          errorMsg,
+                                          isError: true,
                                         );
                                       }
                                     } catch (err) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text("Error: $err"),
-                                          backgroundColor: Colors.red,
-                                        ),
+                                      showTopToast(
+                                        context,
+                                        "Error: $err",
+                                        isError: true,
                                       );
                                     } finally {
                                       setModalState(() {

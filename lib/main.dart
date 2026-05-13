@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 // Stores
 import 'package:tripzo/store/VehicleStore.dart';
@@ -91,6 +92,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         navigatorKey: AppRoutes.navigatorKey,
         debugShowCheckedModeBanner: false,
+        builder: (context, child) => CustomScaffoldMessenger(child: child!),
         title: 'TripZo',
         themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
         theme: ThemeData(
