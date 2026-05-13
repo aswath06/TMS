@@ -1,10 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tripzo/store/request_store.dart';
-import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
-import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:tripzo/store/user_store.dart';
 
 class RequestListPage extends StatefulWidget {
   const RequestListPage({super.key});
@@ -138,14 +147,9 @@ class _RequestListPageState extends State<RequestListPage> {
                             ),
                           ),
                           IconButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const MissionHistoryScreen(),
-                              ),
-                            ),
+                            onPressed: () => _showReportGenerationSheet(primaryBlue, titleColor, subColor, isDark),
                             icon: Icon(
-                              Icons.history_rounded,
+                              Icons.file_download_outlined,
                               color: subColor,
                               size: 26,
                             ),
@@ -697,6 +701,348 @@ class _RequestListPageState extends State<RequestListPage> {
             fontSize: 11,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
+  void _showReportGenerationSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    DateTime selectedDate = DateTime.now();
+    String selectedFormat = 'pdf';
+    bool downloading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Download Report",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          Text(
+                            "Select date and format to generate report",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: subColor.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    "REPORT DATE",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: subColor.withOpacity(0.6),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.fromSeed(
+                                seedColor: primaryBlue,
+                                primary: primaryBlue,
+                                onPrimary: Colors.white,
+                                surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 22),
+                          const SizedBox(width: 16),
+                          Text(
+                            DateFormat('MMMM dd, yyyy').format(selectedDate),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: titleColor,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    "REPORT FORMAT",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: subColor.withOpacity(0.6),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildFormatRadio(
+                        "PDF",
+                        selectedFormat == 'pdf',
+                        () => setModalState(() => selectedFormat = 'pdf'),
+                        primaryBlue,
+                        titleColor,
+                        isDark,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildFormatRadio(
+                        "Excel",
+                        selectedFormat == 'excel',
+                        () => setModalState(() => selectedFormat = 'excel'),
+                        primaryBlue,
+                        titleColor,
+                        isDark,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: subColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: downloading
+                              ? null
+                              : () async {
+                                  setModalState(() => downloading = true);
+                                  try {
+                                    final String? token = await UserStore.getToken();
+                                    final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                    final String url =
+                                        "${ApiConstants.baseUrl}/request/reports/date-wise?date=$dateStr&template=summary&format=$selectedFormat";
+
+                                    // ── DEBUG LOGS ──────────────────────────────────────────────────
+                                    debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
+                                    debugPrint("URL: $url");
+                                    debugPrint(
+                                      "curl --location '$url' \\\n"
+                                      "  --header 'Authorization: TMS $token' \\\n"
+                                      "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
+                                    );
+                                    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                                    final response = await http.get(
+                                      Uri.parse(url),
+                                      headers: ApiConstants.getHeaders(token),
+                                    );
+
+                                    if (response.statusCode == 200) {
+                                      final bytes = response.bodyBytes;
+                                      final tempDir = await getTemporaryDirectory();
+                                      final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
+                                      final fileName = "Transport_Report_$dateStr.$ext";
+                                      final file = File("${tempDir.path}/$fileName");
+                                      await file.writeAsBytes(bytes);
+
+                                      await OpenFilex.open(file.path);
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
+                                            backgroundColor: const Color(0xFF10B981),
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      debugPrint("Report Download Error: ${response.statusCode}");
+                                      debugPrint("Body: ${response.body}");
+                                      String message = "Failed to generate report";
+                                      try {
+                                        final data = json.decode(response.body);
+                                        message = data['message'] ?? message;
+                                      } catch (_) {}
+                                      throw Exception(message);
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(e.toString().replaceAll("Exception: ", "")),
+                                          backgroundColor: Colors.redAccent,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    if (context.mounted) {
+                                      setModalState(() => downloading = false);
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            elevation: 0,
+                            shadowColor: primaryBlue.withOpacity(0.4),
+                          ),
+                          child: downloading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : Text(
+                                  "Generate ${selectedFormat.toUpperCase()}",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFormatRadio(String label, bool isSelected, VoidCallback onTap, Color primaryBlue, Color titleColor, bool isDark) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isSelected ? primaryBlue.withOpacity(0.08) : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? primaryBlue : Colors.grey.withOpacity(0.15),
+              width: 2,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  color: isSelected ? primaryBlue : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(width: 10),
+                Icon(Icons.check_circle_rounded, color: primaryBlue, size: 20),
+              ],
+            ],
           ),
         ),
       ),

@@ -152,14 +152,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   Widget _buildProfileContent(
-    Map<String, dynamic>? data,
+    Map<String, dynamic>? profileData,
     bool isLoading,
     bool isDark,
     Color titleColor,
     Color surfaceColor,
     Color primaryBlue,
   ) {
-    if (isLoading && data == null) {
+    if (isLoading && profileData == null) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.only(top: 100),
@@ -168,22 +168,23 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       );
     }
 
-    final String name = data?['name'] ?? "Admin User";
-    final String username = data?['user_name'] ?? 'admin';
+    final String name = profileData?['name'] ?? "Admin User";
+    final String username = profileData?['user_name'] ?? 'admin';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildProfileHero(name, username, isDark, surfaceColor, primaryBlue),
+        _buildProfileHero(profileData, name, username, isDark, surfaceColor, primaryBlue),
         const SizedBox(height: 32),
         _buildSectionTitle("System Access", titleColor, primaryBlue),
         const SizedBox(height: 16),
-        _buildInfoGrid(data, isDark, surfaceColor, primaryBlue),
+        _buildInfoGrid(profileData, isDark, surfaceColor, primaryBlue),
       ],
     );
   }
 
   Widget _buildProfileHero(
+    Map<String, dynamic>? profileData,
     String name,
     String username,
     bool isDark,
@@ -248,12 +249,16 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                "System Administrator • @$username",
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  "${_getRoleName(profileData?['role'])} • @$username",
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
@@ -263,8 +268,25 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
+  String _getRoleName(dynamic role) {
+    if (role == null) return 'Administrator';
+    String roleStr = '';
+    if (role is String) {
+      roleStr = role;
+    } else if (role is Map) {
+      roleStr = role['name'] ?? role['code'] ?? role.toString();
+    } else {
+      roleStr = role.toString();
+    }
+
+    return roleStr.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   Widget _buildInfoGrid(
-    Map<String, dynamic>? data,
+    Map<String, dynamic>? profileData,
     bool isDark,
     Color surfaceColor,
     Color primaryBlue,
@@ -272,25 +294,25 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     final List<Map<String, dynamic>> items = [
       {
         'title': 'Email Address',
-        'val': data?['email'] ?? 'N/A',
+        'val': profileData?['email'] ?? 'N/A',
         'icon': Icons.alternate_email_rounded,
         'color': Colors.blue,
       },
       {
         'title': 'Contact Number',
-        'val': data?['phone'] ?? 'N/A',
+        'val': profileData?['phone'] ?? 'N/A',
         'icon': Icons.phone_android_rounded,
         'color': Colors.green,
       },
       {
         'title': 'Login Status',
-        'val': data?['isLogin'] == true ? 'Online' : 'Active',
+        'val': profileData?['isLogin'] == true ? 'Online' : 'Active',
         'icon': Icons.bolt_rounded,
         'color': Colors.amber,
       },
       {
         'title': 'Authority Role',
-        'val': 'Super Admin',
+        'val': _getRoleName(profileData?['role']),
         'icon': Icons.verified_rounded,
         'color': primaryBlue,
       },

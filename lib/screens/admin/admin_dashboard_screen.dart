@@ -30,11 +30,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (useFacultyStore.profileData.value == null) {
       useFacultyStore.fetchProfile();
     }
-    
-    // Fetch requests for the "Active Missions" section
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests();
-    });
 
     // Listen for remote logouts
     useFacultyStore.errorMessage.addListener(_handleAuthError);
@@ -152,10 +147,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   ),
                   _buildNotificationList(primaryBlue, surfaceColor, isDark),
-                  const SizedBox(height: 36),
-                  _buildSectionTitle('Active Missions', titleColor),
-                  const SizedBox(height: 18),
-                  _buildActiveMissions(context, primaryBlue, isDark),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -543,24 +534,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         const SizedBox(width: 15),
         _buildActionBtn(
-          'Track',
-          Icons.gps_fixed_rounded,
-          Colors.cyan.shade600,
+          'Fuel',
+          Icons.local_gas_station_rounded,
+          const Color(0xFFF59E0B), // Amber 500
           surface,
+          onTap: () {
+            // TODO: Navigate to Fuel management
+          },
         ),
         const SizedBox(width: 15),
         _buildActionBtn(
-          'History',
-          Icons.history_rounded,
-          Colors.blueGrey,
+          'Allowance',
+          Icons.payments_rounded,
+          const Color(0xFF0D9488), // Teal 600
           surface,
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MissionHistoryScreen(),
-              ),
-            );
+            // TODO: Navigate to Allowance management
           },
         ),
       ],
@@ -664,34 +653,4 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return "${dt.day}/${dt.month}";
   }
 
-  Widget _buildActiveMissions(BuildContext context, Color primaryBlue, bool isDark) {
-    final store = context.watch<RequestStore>();
-    
-    if (store.isLoading && store.requests.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (store.requests.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Text(
-            "No active missions",
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
-        ),
-      );
-    }
-
-    // Show top 2 pending/recently updated requests
-    final activeReqs = store.requests.take(2).toList();
-
-    return Column(
-      children: activeReqs.map((req) => RequestCard(
-        req: req,
-        isDark: isDark,
-        accentColor: primaryBlue,
-      )).toList(),
-    );
-  }
 }
