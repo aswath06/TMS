@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:ui';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
@@ -21,6 +22,9 @@ import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:tripzo/services/location_service.dart';
+import 'package:provider/provider.dart';
+import 'package:tripzo/providers/notification_provider.dart';
+import 'package:tripzo/models/notification_model.dart';
 
 
 class MissionDetailsScreen extends StatefulWidget {
@@ -82,6 +86,13 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   bool _isMapReady = false;
   bool _isMarkingReceived = false;
   int? _driverId;
+  bool _isQrCodeOpen = false;
+  Timer? _qrPollTimer;
+  NotificationProvider? _notificationProvider;
+
+  bool get _isTransportOrSuperAdmin =>
+      _userRole?.toLowerCase() == 'transport admin' ||
+      _userRole?.toLowerCase() == 'super admin';
 
 
   @override
@@ -96,7 +107,57 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMissionDetails();
       _fetchUserRole();
+      _setupNotificationListener();
     });
+  }
+
+  void _setupNotificationListener() {
+    try {
+      _notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+      _notificationProvider?.addListener(_handleNotificationUpdate);
+      debugPrint("[NOTIFICATION LISTENER] Successfully registered notification listener in MissionDetailsScreen.");
+    } catch (e) {
+      debugPrint("[NOTIFICATION LISTENER] Error registering notification listener: $e");
+    }
+  }
+
+  void _handleNotificationUpdate() {
+    if (!mounted) return;
+    
+    final provider = _notificationProvider;
+    if (provider != null && provider.notifications.isNotEmpty) {
+      final NotificationModel latestNotification = provider.notifications.first;
+      debugPrint("[SOCKET REFRESH] Driver details screen detected notification: '${latestNotification.title}' | '${latestNotification.message}'");
+      
+      // Let's inspect the notification message and reference ID
+      final currentRequestIdInt = int.tryParse(widget.requestId);
+      final isMatchingRequest = latestNotification.referenceId == currentRequestIdInt || 
+          latestNotification.message.contains(widget.requestId) || 
+          latestNotification.title.contains(widget.requestId);
+          
+      bool isMatchingTrip = false;
+      final tripInstances = _missionData?['trip_instances'] as List?;
+      if (tripInstances != null && tripInstances.isNotEmpty) {
+        final firstTrip = tripInstances[0];
+        final tripId = firstTrip['id'];
+        if (tripId != null) {
+          isMatchingTrip = latestNotification.referenceId == tripId ||
+              latestNotification.message.contains(tripId.toString());
+        }
+      }
+      
+      // If we got a real-time notification matching this request or trip instance, auto-refresh and close QR!
+      if (isMatchingRequest || isMatchingTrip) {
+        debugPrint("[SOCKET REFRESH] Match verified! Closing QR popup and auto-reloading mission details...");
+        
+        if (_isQrCodeOpen && mounted) {
+          _isQrCodeOpen = false;
+          Navigator.of(context).pop();
+        }
+        
+        _fetchMissionDetails();
+      }
+    }
   }
 
   Future<void> _fetchUserRole() async {
@@ -937,6 +998,8 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   @override
   void dispose() {
+    _stopQrPolling();
+    _notificationProvider?.removeListener(_handleNotificationUpdate);
     _pulseController.dispose();
     _mapController.dispose();
     super.dispose();
@@ -1592,7 +1655,73 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
 
+  void _startQrPolling(String title) {
+    _stopQrPolling();
+    debugPrint("[QR POLL] Starting periodic status polling for: $title");
+    _qrPollTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      await _pollMissionStatus(title);
+    });
+  }
+
+  void _stopQrPolling() {
+    if (_qrPollTimer != null) {
+      debugPrint("[QR POLL] Stopping periodic status polling.");
+      _qrPollTimer?.cancel();
+      _qrPollTimer = null;
+    }
+  }
+
+  Future<void> _pollMissionStatus(String title) async {
+    try {
+      final token = await UserStore.getToken();
+      final url = "${ApiConstants.getRouteById}${widget.requestId}";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final freshData = data['data'];
+          final String statusString = (freshData?['status'] ?? freshData?['travel_info']?['status'] ?? "").toString().toUpperCase();
+          final currentStatus = freshData?['route_status'];
+
+          debugPrint("[QR POLL] Current Poll status: $statusString, currentStatus: $currentStatus, modal: $title");
+
+          bool shouldDismiss = false;
+          if (title.toUpperCase().contains("START")) {
+            // Looking for STARTED/ONGOING
+            if (statusString == 'STARTED' || statusString == 'ONGOING' || currentStatus == 7 || currentStatus == 4) {
+              shouldDismiss = true;
+            }
+          } else if (title.toUpperCase().contains("END")) {
+            // Looking for COMPLETED
+            if (statusString == 'COMPLETED' || currentStatus == 8) {
+              shouldDismiss = true;
+            }
+          }
+
+          if (shouldDismiss) {
+            debugPrint("[QR POLL] Target status matched! Automatically dismissing QR modal...");
+            _stopQrPolling();
+            if (_isQrCodeOpen && mounted) {
+              _isQrCodeOpen = false;
+              Navigator.of(context).pop();
+            }
+            _fetchMissionDetails();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("[QR POLL] Error polling mission status: $e");
+    }
+  }
+
+
   void _showOtpModal(String otp, String title, {String? qrPayload}) {
+    _isQrCodeOpen = true;
+    _startQrPolling(title);
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -1609,7 +1738,10 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           );
         },
       ),
-    );
+    ).then((_) {
+      _isQrCodeOpen = false;
+      _stopQrPolling();
+    });
   }
 
   void _showStopStatusModal(int tripId, int stopId) {
@@ -1800,7 +1932,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     int? tripIdToEnd;
     int? legIdToEnd;
 
-    if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+    if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING')) {
       final tripInstances = _missionData?['trip_instances'] as List?;
       if (tripInstances != null && tripInstances.isNotEmpty) {
         final latestTrip = tripInstances[0];
@@ -1865,7 +1997,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     hasEndOdometer = endOdoCheck != null;
 
     bool isEligibleForEndInfo = false;
-    if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+    if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING')) {
       final tripInstances = _missionData?['trip_instances'] as List?;
       if (tripInstances != null && tripInstances.isNotEmpty) {
         final latestTrip = tripInstances[0];
@@ -2150,7 +2282,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isApprovedState && _userRole?.toLowerCase() == 'transport admin' && hasStartOdometer)
+                  if (isApprovedState && _isTransportOrSuperAdmin && hasStartOdometer)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2173,7 +2305,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if ((statusString == 'STARTED' || statusString == 'ONGOING') && _userRole?.toLowerCase() == 'transport admin' && hasEndOdometer && tripIdToEnd != null)
+                  if ((statusString == 'STARTED' || statusString == 'ONGOING') && _isTransportOrSuperAdmin && hasEndOdometer && tripIdToEnd != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2247,7 +2379,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && statusString == 'APPROVED' && !hasStartOdometer)
+                  if ((isDriver || _isTransportOrSuperAdmin) && statusString == 'APPROVED' && !hasStartOdometer)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2270,7 +2402,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if ((isDriver || _userRole?.toLowerCase() == 'transport admin') && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && !hasEndOdometer)
+                  if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && !hasEndOdometer)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
@@ -2293,7 +2425,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if (_userRole?.toLowerCase() != 'transport admin' &&
+                  if (!_isTransportOrSuperAdmin &&
                       (!isDriver || 
                       (isDriver && statusString == 'APPROVED' && hasStartOdometer) || 
                       (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || hasEndOdometer))))
@@ -2320,6 +2452,12 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Widget _buildOdometerMetrics(Color cardColor, Color primaryColor, Color subColor, bool isDark) {
     Map<String, dynamic>? travelInfo = _missionData?['travel_info'];
     
+    final tripInstances = _missionData?['trip_instances'] as List?;
+    final activeTrip = (tripInstances != null && tripInstances.isNotEmpty) ? tripInstances[0] : null;
+    
+    var startedAt = activeTrip?['started_at'] ?? _missionData?['started_at'] ?? travelInfo?['started_at'];
+    var endedAt = activeTrip?['ended_at'] ?? _missionData?['ended_at'] ?? travelInfo?['ended_at'];
+
     var startOdometer = travelInfo?['start_odometer'];
     var endOdometer = travelInfo?['end_odometer'];
     var startCapacity = travelInfo?['start_capacity'];
@@ -2327,13 +2465,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
     // Fallback if nested or in trip_instances
     if (startOdometer == null) {
-      final tripInstances = _missionData?['trip_instances'] as List?;
-      if (tripInstances != null && tripInstances.isNotEmpty) {
-        final trip = tripInstances[0];
-        startOdometer = trip['start_odometer'];
-        endOdometer = trip['end_odometer'];
-        startCapacity = trip['start_capacity'];
-        endCapacity = trip['end_capacity'];
+      if (activeTrip != null) {
+        startOdometer = activeTrip['start_odometer'];
+        endOdometer = activeTrip['end_odometer'];
+        startCapacity = activeTrip['start_capacity'];
+        endCapacity = activeTrip['end_capacity'];
       }
     }
 
@@ -2379,7 +2515,11 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+          _buildTimeDurationSection(startedAt, endedAt, primaryColor, isDark),
+          const SizedBox(height: 24),
+          Divider(height: 1, thickness: 1, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+          const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
@@ -2670,7 +2810,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   Widget _buildHeader(BuildContext context, Color titleColor) {
     final String statusString = (_missionData?['status'] ?? _missionData?['travel_info']?['status'] ?? widget.status ?? "").toString().toUpperCase();
     final bool isApproved = statusString == 'APPROVED';
-    final bool isAdmin = _userRole?.toLowerCase() == 'transport admin';
+    final bool isAdmin = _isTransportOrSuperAdmin;
     final bool showDeleteIcon = isApproved && isAdmin;
 
     return Row(
@@ -3179,7 +3319,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final Color blueIcon = const Color(0xFF6366F1);
     
     // Handle isDriver role locally
-    final bool isDriver = _userRole?.toLowerCase() == 'driver' || _userRole?.toLowerCase() == 'transport admin';
+    final bool isDriver = _userRole?.toLowerCase() == 'driver' || _isTransportOrSuperAdmin;
 
     Color statusColor = Colors.grey;
     if (status == 'ARRIVED' || status == 'COMPLETED') statusColor = Colors.green;
@@ -3192,36 +3332,16 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
           // Timeline indicator
           Column(
             children: [
-              if (isCurrentLocation)
-                Container(
-                  margin: const EdgeInsets.only(top: 20),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.9, end: 1.1).animate(
-                      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-                    ),
-                    child: const Icon(
-                      Icons.directions_car_rounded,
-                      color: Colors.green,
-                      size: 24,
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  margin: const EdgeInsets.only(top: 24),
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isFirst ? Colors.green : (isLast ? Colors.red : statusColor.withValues(alpha: 0.6)),
-                    border: Border.all(color: (isFirst ? Colors.green : (isLast ? Colors.red : statusColor)).withValues(alpha: 0.2), width: 4),
-                  ),
+              Container(
+                margin: const EdgeInsets.only(top: 24),
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isFirst ? Colors.green : (isLast ? Colors.red : blueIcon),
+                  border: Border.all(color: (isFirst ? Colors.green : (isLast ? Colors.red : blueIcon)).withValues(alpha: 0.2), width: 4),
                 ),
+              ),
               if (!isLast)
                 Expanded(
                   child: Container(
@@ -3256,76 +3376,25 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                 children: [
                   Row(
                     children: [
-                      // Blue Car Icon
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: blueIcon.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(Icons.directions_car_rounded, color: blueIcon, size: 22),
-                      ),
-                      const SizedBox(width: 16),
-                      // Location Details
+                      // Location Pin Icon instead of Blue Car Icon container
+                      Icon(Icons.location_on_rounded, color: isFirst ? Colors.green : (isLast ? Colors.red : blueIcon), size: 20),
+                      const SizedBox(width: 12),
+                      // Location Details alone
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              location,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: titleColor,
-                                letterSpacing: 0.3,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.access_time_rounded, size: 12, color: titleColor.withValues(alpha: 0.4)),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    actualTime != null 
-                                      ? "Actual: ${_formatActualTime(actualTime)}" 
-                                      : (eta.isNotEmpty ? "Scheduled: ${_formatDateTimeString(eta)}" : "Time not set"),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: actualTime != null ? Colors.green : titleColor.withValues(alpha: 0.4),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                        child: Text(
+                          location,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  if (status != 'PENDING') ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor, letterSpacing: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -3345,16 +3414,429 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     }
   }
 
-  String _formatDateTimeString(String timeStr) {
+  String _formatDateTimeString(String timeStr, {bool showDate = false}) {
      if (timeStr.contains('T') || timeStr.contains('-')) {
         try {
           final dt = DateTime.parse(timeStr).toLocal();
-          return "${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+          final timePart = "${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+          if (showDate) {
+            final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return "${dt.day} ${months[dt.month - 1]}, $timePart";
+          }
+          return timePart;
         } catch (_) {}
      }
      return timeStr;
   }
 
+  DateTime? _parseTimestamp(dynamic val) {
+    if (val == null) return null;
+    try {
+      final str = val.toString().replaceAll(' ', 'T');
+      return DateTime.parse(str);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final hours = d.inHours;
+    final minutes = d.inMinutes % 60;
+    final seconds = d.inSeconds % 60;
+    
+    List<String> parts = [];
+    if (hours > 0) {
+      parts.add("$hours hr${hours > 1 ? 's' : ''}");
+    }
+    if (minutes > 0) {
+      parts.add("$minutes min${minutes > 1 ? 's' : ''}");
+    }
+    if (hours == 0 && minutes == 0) {
+      parts.add("$seconds sec${seconds > 1 ? 's' : ''}");
+    }
+    return parts.join(" ");
+  }
+
+  Widget _buildTimeDurationSection(dynamic startedAt, dynamic endedAt, Color primaryColor, bool isDark) {
+    final startDt = _parseTimestamp(startedAt);
+    final endDt = _parseTimestamp(endedAt);
+    Duration? duration;
+    if (startDt != null && endDt != null) {
+      duration = endDt.difference(startDt);
+    } else if (startDt != null && endedAt == null) {
+      duration = DateTime.now().difference(startDt);
+    }
+
+    final bool isOngoing = startedAt != null && endedAt == null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Start Node
+            Expanded(
+              child: _buildTimeNodeCard(
+                "STARTED",
+                startedAt,
+                Icons.play_circle_fill_rounded,
+                Colors.green,
+                isDark,
+              ),
+            ),
+            
+            // Bridge Animation
+            _buildConnectingBridge(primaryColor, isOngoing),
+            
+            // End Node
+            Expanded(
+              child: _buildTimeNodeCard(
+                endedAt != null ? "ENDED" : (startedAt != null ? "ONGOING" : "PENDING"),
+                endedAt ?? (startedAt != null ? "In Progress" : null),
+                Icons.stop_circle_rounded,
+                endedAt != null ? Colors.redAccent : (startedAt != null ? Colors.orange : Colors.grey),
+                isDark,
+              ),
+            ),
+          ],
+        ),
+        _buildDurationBadge(duration, primaryColor, isOngoing),
+      ],
+    );
+  }
+
+  Widget _buildConnectingBridge(Color activeColor, bool isOngoing) {
+    return SizedBox(
+      width: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            height: 2,
+            width: 32,
+            color: activeColor.withValues(alpha: 0.2),
+          ),
+          ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.2).animate(
+              CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+            ),
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isOngoing ? Colors.orange : activeColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: (isOngoing ? Colors.orange : activeColor).withValues(alpha: 0.6),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  )
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDurationBadge(Duration? duration, Color primaryColor, bool isOngoing) {
+    final String label = duration != null ? _formatDuration(duration) : (isOngoing ? "Calculating..." : "N/A");
+    
+    return Center(
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.98, end: 1.02).animate(
+          CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+        ),
+        child: Container(
+          margin: const EdgeInsets.only(top: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                primaryColor.withValues(alpha: 0.15),
+                primaryColor.withValues(alpha: 0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: primaryColor.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withValues(alpha: 0.1),
+                blurRadius: 15,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.timer_outlined, 
+                color: primaryColor, 
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "Duration: $label",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: primaryColor,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeNodeCard(String title, dynamic rawTime, IconData icon, Color accentColor, bool isDark) {
+    final String timeStr = (rawTime != null && rawTime != "In Progress") ? _formatActualTime(rawTime.toString()) : (rawTime == "In Progress" ? "In Progress" : "N/A");
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTextColor = isDark ? Colors.white60 : const Color(0xFF64748B);
+    final Color cardBg = isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: accentColor, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: subTextColor,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: titleColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  void _showAllGuestsBottomSheet(List<dynamic> guests, Color cardColor, Color blue, Color subColor, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0F172A) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).padding.bottom + 20,
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Pull Bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Header Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded, color: blue, size: 24),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Assigned Guests",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${guests.length} Total",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: blue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // List of guests
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: guests.length,
+                  itemBuilder: (context, index) {
+                    final g = guests[index];
+                    final phone = g['phone'];
+                    final isPrimary = g['is_primary_contact'] == true;
+                    final dept = g['department'];
+                    
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: blue.withValues(alpha: 0.1)),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: blue.withValues(alpha: 0.1),
+                              child: Text(
+                                "${index + 1}",
+                                style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          g['passenger_name'] ?? "Guest",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800, 
+                                            fontSize: 16, 
+                                            color: isDark ? Colors.white : Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isPrimary)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text(
+                                            "PRIMARY",
+                                            style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          phone ?? 'No Phone Provided',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: subColor),
+                                        ),
+                                      ),
+                                      if (dept != null && dept.toString().isNotEmpty && dept != 'null')
+                                         Text(
+                                           dept,
+                                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: blue.withValues(alpha: 0.6)),
+                                         ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (phone != null && phone.toString().isNotEmpty)
+                              IconButton(
+                                onPressed: () async {
+                                  final Uri url = Uri.parse("tel:$phone");
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url);
+                                  }
+                                },
+                                icon: const Icon(Icons.call_rounded, color: Colors.green, size: 22),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.green.withValues(alpha: 0.1),
+                                  padding: const EdgeInsets.all(10),
+                                ),
+                              )
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildGuestContacts(Color cardColor, Color blue, Color subColor) {
     final guests = _missionData?['passengers'] as List?;
@@ -3374,101 +3856,133 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       );
     }
 
-    return Column(
-      children: guests.asMap().entries.map((entry) {
-        final i = entry.key;
-        final g = entry.value;
-        final phone = g['phone'];
-        final isPrimary = g['is_primary_contact'] == true;
-        final dept = g['department'];
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final List<dynamic> displayedGuests = guests.take(2).toList();
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: blue.withValues(alpha: 0.1)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: blue.withValues(alpha: 0.1),
-                  child: Text(
-                    "${i + 1}",
-                    style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              g['passenger_name'] ?? "Guest",
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
-                            ),
-                          ),
-                          if (isPrimary)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                "PRIMARY",
-                                style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              phone ?? 'No Phone Provided',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: subColor),
-                            ),
-                          ),
-                          if (dept != null && dept.toString().isNotEmpty && dept != 'null')
-                             Text(
-                               dept,
-                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: blue.withValues(alpha: 0.6)),
-                             ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (phone != null && phone.toString().isNotEmpty)
-                  IconButton(
-                    onPressed: () async {
-                      final Uri url = Uri.parse("tel:$phone");
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url);
-                      }
-                    },
-                    icon: const Icon(Icons.call_rounded, color: Colors.green, size: 22),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.green.withValues(alpha: 0.1),
-                      padding: const EdgeInsets.all(10),
+    return Column(
+      children: [
+        ...displayedGuests.asMap().entries.map((entry) {
+          final i = entry.key;
+          final g = entry.value;
+          final phone = g['phone'];
+          final isPrimary = g['is_primary_contact'] == true;
+          final dept = g['department'];
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: blue.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: blue.withValues(alpha: 0.1),
+                    child: Text(
+                      "${i + 1}",
+                      style: TextStyle(fontWeight: FontWeight.w900, color: blue, fontSize: 13),
                     ),
-                  )
-              ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                g['passenger_name'] ?? "Guest",
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: cardColor == Colors.white ? Colors.black87 : Colors.white),
+                              ),
+                            ),
+                            if (isPrimary)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  "PRIMARY",
+                                  style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                phone ?? 'No Phone Provided',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: subColor),
+                              ),
+                            ),
+                            if (dept != null && dept.toString().isNotEmpty && dept != 'null')
+                               Text(
+                                 dept,
+                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: blue.withValues(alpha: 0.6)),
+                               ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (phone != null && phone.toString().isNotEmpty)
+                    IconButton(
+                      onPressed: () async {
+                        final Uri url = Uri.parse("tel:$phone");
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url);
+                        }
+                      },
+                      icon: const Icon(Icons.call_rounded, color: Colors.green, size: 22),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.green.withValues(alpha: 0.1),
+                        padding: const EdgeInsets.all(10),
+                      ),
+                    )
+                ],
+              ),
+            ),
+          );
+        }),
+        if (guests.length > 2)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: () => _showAllGuestsBottomSheet(guests, cardColor, blue, subColor, isDark),
+                icon: Icon(Icons.people_outline_rounded, color: blue, size: 20),
+                label: Text(
+                  "View All Guests (+${guests.length - 2} more)",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: blue,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: blue.withValues(alpha: 0.4), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  backgroundColor: blue.withValues(alpha: 0.02),
+                ),
+              ),
             ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
@@ -3647,7 +4161,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           ],
                         ),
                         const SizedBox(height: 12),
-                        ...passengers.asMap().entries.map((entry) {
+                        ...passengers.take(2).toList().asMap().entries.map((entry) {
                           final i = entry.key;
                           final g = entry.value;
                           final phone = g['phone'];
@@ -3736,6 +4250,36 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                             ),
                           );
                         }),
+                        if (passengers.length > 2)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 12),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  final bool isDark = Theme.of(context).brightness == Brightness.dark;
+                                  _showAllGuestsBottomSheet(passengers, cardColor, blue, subColor, isDark);
+                                },
+                                icon: Icon(Icons.people_outline_rounded, color: blue, size: 18),
+                                label: Text(
+                                  "View All Assigned Guests (+${passengers.length - 2} more)",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: blue,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: blue.withValues(alpha: 0.3), width: 1.2),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  backgroundColor: blue.withValues(alpha: 0.02),
+                                ),
+                              ),
+                            ),
+                          ),
                       ]
                     ],
                   ),
@@ -4120,7 +4664,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               Flexible(
                 child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
               ),
-            if (firstTripId != null && _userRole?.toLowerCase() == 'transport admin')
+            if (firstTripId != null && _isTransportOrSuperAdmin)
               TextButton.icon(
                 onPressed: () {
                   Navigator.push(

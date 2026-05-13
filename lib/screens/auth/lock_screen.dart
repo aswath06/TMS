@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/routes.dart';
 
@@ -43,12 +44,14 @@ class _LockScreenState extends State<LockScreen> {
 
   void _verifyPin() async {
     if (enteredPin == storedPin) {
+      HapticFeedback.mediumImpact();
       Navigator.pushReplacementNamed(
         context,
         AppRoutes.dashboard,
         arguments: widget.role,
       );
     } else {
+      HapticFeedback.heavyImpact();
       setState(() {
         isError = true;
         enteredPin = ""; // Reset on error
@@ -58,47 +61,83 @@ class _LockScreenState extends State<LockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryBlue = const Color(0xFF6366F1);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryBlue = const Color(0xFF6366F1); // Elegant premium indigo
+    
+    // Adaptive color system
+    final Color bgColor = isDark ? const Color(0xFF0F172A) : Colors.white; // Slate 900 vs White
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTextColor = isDark ? Colors.white60 : const Color(0xFF64748B);
+    final Color dotUnselectedColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
             const Spacer(),
-            Icon(Icons.lock_person_rounded, size: 64, color: primaryBlue),
+            // Lock Icon with premium glowing effect in dark mode
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark ? primaryBlue.withOpacity(0.1) : primaryBlue.withOpacity(0.05),
+              ),
+              child: Icon(Icons.lock_person_rounded, size: 68, color: primaryBlue),
+            ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               "Enter App PIN",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 24, 
+                fontWeight: FontWeight.w900, 
+                color: textColor,
+                letterSpacing: -0.5,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               isError
                   ? "Incorrect PIN. Try again."
                   : "Please enter your 4-digit security code",
-              style: TextStyle(color: isError ? Colors.red : Colors.grey),
+              style: TextStyle(
+                color: isError ? Colors.redAccent : subTextColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const SizedBox(height: 40),
-            // PIN dots
+            const SizedBox(height: 48),
+            
+            // PIN dots with smooth animations and glows
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(4, (index) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                final bool isFilled = index < enteredPin.length;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
                   width: 16,
                   height: 16,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: index < enteredPin.length
-                        ? primaryBlue
-                        : Colors.grey.shade300,
+                    color: isFilled ? primaryBlue : dotUnselectedColor,
+                    border: Border.all(
+                      color: isFilled ? primaryBlue : (isDark ? Colors.white12 : Colors.black12),
+                      width: 1.5,
+                    ),
+                    boxShadow: isFilled ? [
+                      BoxShadow(
+                        color: primaryBlue.withOpacity(0.4),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      )
+                    ] : [],
                   ),
                 );
               }),
             ),
             const Spacer(),
-            _buildNumPad(),
+            _buildNumPad(context),
             const SizedBox(height: 40),
           ],
         ),
@@ -106,7 +145,7 @@ class _LockScreenState extends State<LockScreen> {
     );
   }
 
-  Widget _buildNumPad() {
+  Widget _buildNumPad(BuildContext context) {
     return Column(
       children: [
         for (var row in [
@@ -116,48 +155,68 @@ class _LockScreenState extends State<LockScreen> {
         ])
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: row.map((val) => _numButton(val)).toList(),
+            children: row.map((val) => _numButton(context, val)).toList(),
           ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            const SizedBox(width: 80), // Empty space
-            _numButton("0"),
-            _numButton("backspace", isIcon: true),
+            const SizedBox(width: 100), // Perfect column spacer (width 76 + margin 24)
+            _numButton(context, "0"),
+            _numButton(context, "backspace", isIcon: true),
           ],
         ),
       ],
     );
   }
 
-  Widget _numButton(String val, {bool isIcon = false}) {
+  Widget _numButton(BuildContext context, String val, {bool isIcon = false}) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color buttonBg = isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF1F5F9); // Slate 100 vs dark glass
+    final Color activeSplashColor = const Color(0xFF6366F1).withOpacity(0.2);
+
     return Container(
       margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: buttonBg,
+        shape: BoxShape.circle,
+        boxShadow: isDark ? [] : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: InkWell(
         onTap: () {
           if (isIcon) {
             if (enteredPin.isNotEmpty) {
               setState(
-                () =>
-                    enteredPin = enteredPin.substring(0, enteredPin.length - 1),
+                () => enteredPin = enteredPin.substring(0, enteredPin.length - 1),
               );
+              HapticFeedback.lightImpact();
             }
           } else {
             _handleKeyPress(val);
+            HapticFeedback.lightImpact();
           }
         },
         borderRadius: BorderRadius.circular(50),
+        splashColor: activeSplashColor,
+        highlightColor: activeSplashColor,
         child: Container(
-          width: 80,
-          height: 80,
+          width: 76,
+          height: 76,
           alignment: Alignment.center,
           child: isIcon
-              ? const Icon(Icons.backspace_outlined, size: 28)
+              ? Icon(Icons.backspace_outlined, size: 24, color: textColor)
               : Text(
                   val,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
                 ),
         ),

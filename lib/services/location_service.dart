@@ -20,7 +20,7 @@ class LocationService {
       'notification_channel',
       'TripZo Service',
       description: 'Persistent notification service for background updates',
-      importance: Importance.low,
+      importance: Importance.min,
     );
 
     const AndroidNotificationChannel notificationChannel = AndroidNotificationChannel(
@@ -47,10 +47,10 @@ class LocationService {
       androidConfiguration: AndroidConfiguration(
         onStart: onStart, // From location_callback_handler.dart
         autoStart: true,
-        isForegroundMode: true,
+        isForegroundMode: false,
         notificationChannelId: 'notification_channel',
         initialNotificationTitle: 'TripZo Active',
-        initialNotificationContent: 'Listening for real-time notifications...',
+        initialNotificationContent: '',
         foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(

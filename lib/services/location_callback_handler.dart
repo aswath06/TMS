@@ -45,7 +45,7 @@ void onStart(ServiceInstance service) async {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     debugPrint("[BackgroundService] Isolate initialized successfully");
-    _updateNotificationUI(flutterLocalNotificationsPlugin, "Listening for real-time notifications...");
+    _updateNotificationUI(flutterLocalNotificationsPlugin, "");
 
     // 3. Initialize Notification Socket (PERSISTENT SOCKET LOGIC)
     _initializeSocket(service, flutterLocalNotificationsPlugin);
@@ -62,24 +62,17 @@ void onStart(ServiceInstance service) async {
 
 // Helper to update background persistent service indicator
 void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText, {bool isHighPriority = false}) {
-  notifications.show(
-    888,
-    'TripZo Service',
-    'Listening for real-time notifications in the background...',
-    const NotificationDetails(
-      android: AndroidAndroidNotificationDetailsSpec(),
-    ),
-  );
+  // No-op to completely hide the background service notification in the notification drawer
 }
 
 class AndroidAndroidNotificationDetailsSpec extends AndroidNotificationDetails {
   const AndroidAndroidNotificationDetailsSpec() : super(
     'notification_channel',
     'TripZo Service',
-    ongoing: true,
+    ongoing: false,
     icon: 'ic_launcher',
-    importance: Importance.low,
-    priority: Priority.low,
+    importance: Importance.min,
+    priority: Priority.min,
     showWhen: false,
   );
 }
