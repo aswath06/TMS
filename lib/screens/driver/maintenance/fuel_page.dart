@@ -8,6 +8,8 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 class FuelPage extends StatefulWidget {
   const FuelPage({super.key});
@@ -143,11 +145,23 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
 
     final file = File(image.path);
     if (!mounted) return;
-    setState(() {
-      _billImage = file;
-      _billVerified = null;
-      _verificationResult = null;
-    });
+
+    setState(() => _isVerifying = true); // Show loading while compressing
+    final compressedFile = await _compressImage(file);
+    
+    if (compressedFile == null) {
+      if (mounted) setState(() => _isVerifying = false);
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _billImage = compressedFile;
+        _billVerified = null;
+        _verificationResult = null;
+        _isVerifying = false;
+      });
+    }
 
     // Only verify if we have the required fields and NOT "OTHERS"
     // (OTHERS verification is still good for match pct, but user says image is ONLY needed for Others)
@@ -215,6 +229,8 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _handleSubmit() async {
+    final bool isOthers = _selectedBunk?['id'] == 'OTHERS';
+
     if (_selectedVehicle == null) {
       _showSnack("Please select a vehicle", Colors.orange);
       return;
@@ -229,9 +245,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       _showSnack("Please fill all required fields", Colors.orange);
       return;
     }
-    final bool isOthers = _selectedBunk?['id'] == 'OTHERS';
-
-    if (isOthers && _billImage == null) {
+    if (_billImage == null) {
       _showSnack("Please upload proof document", Colors.orange);
       return;
     }
@@ -281,7 +295,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
           ? (isOthers ? "Fuel filled from local vendor" : "Fuel filled at bunk") 
           : _remarksController.text;
       
-      if (isOthers) {
+      if (_billImage != null) {
         request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
       }
 
@@ -289,7 +303,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       StringBuffer curl = StringBuffer("curl --location '${ApiConstants.fuelLog}' \\\n");
       request.headers.forEach((key, value) => curl.write("--header '$key: $value' \\\n"));
       request.fields.forEach((key, value) => curl.write("--form '$key=\"$value\"' \\\n"));
-      if (isOthers && _billImage != null) {
+      if (_billImage != null) {
         curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
       }
       debugPrint("\n--- FUEL SUBMISSION CURL ---\n${curl.toString()}\n---------------------------\n");
@@ -430,6 +444,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                         icon: Icons.directions_bus_rounded,
                         iconColor: primary,
                         title: isTamil ? "வாகன எண்" : "Vehicle Number",
+                        isRequired: true,
                         surface: surface,
                         titleColor: titleColor,
                         subColor: subColor,
@@ -454,6 +469,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                         icon: Icons.local_gas_station_rounded,
                         iconColor: const Color(0xFF06B6D4),
                         title: isTamil ? "எரிபொருள் பங்க்" : "Fuel Bunk",
+                        isRequired: true,
                         surface: surface,
                         titleColor: titleColor,
                         subColor: subColor,
@@ -478,6 +494,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                         icon: Icons.opacity_rounded,
                         iconColor: const Color(0xFF06B6D4),
                         title: isTamil ? "நிரப்பல் விவரங்கள்" : "Refuel Details",
+                        isRequired: true,
                         surface: surface,
                         titleColor: titleColor,
                         subColor: subColor,
@@ -489,7 +506,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _formLabel(isTamil ? "அளவு (லிட்டர்)" : "Volume (Ltrs)", titleColor),
+                                    _formLabel(isTamil ? "அளவு (லிட்டர்)" : "Volume (Ltrs)", titleColor, isRequired: true),
                                     const SizedBox(height: 8),
                                     _buildTextField("0.00", Icons.opacity_rounded, isDark, primary,
                                         keyboardType: TextInputType.number, controller: _volumeController),
@@ -501,7 +518,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _formLabel(isTamil ? "மொத்த தொகை" : "Amount (₹)", titleColor),
+                                    _formLabel(isTamil ? "மொத்த தொகை" : "Amount (₹)", titleColor, isRequired: true),
                                     const SizedBox(height: 8),
                                     _buildTextField("0", Icons.currency_rupee_rounded, isDark, primary,
                                         keyboardType: TextInputType.number, controller: _amountController),
@@ -517,7 +534,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _formLabel(isTamil ? "நிரப்பும் தேதி" : "Filling Date", titleColor),
+                                    _formLabel(isTamil ? "நிரப்பும் தேதி" : "Filling Date", titleColor, isRequired: true),
                                     const SizedBox(height: 8),
                                     _buildDateField(context, isDark, primary, _fillingDate,
                                         (d) => setState(() => _fillingDate = d)),
@@ -529,7 +546,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _formLabel(isTamil ? "ஓடோமீட்டர் (KM)" : "Odometer (KM)", titleColor),
+                                    _formLabel(isTamil ? "ஓடோமீட்டர் (KM)" : "Odometer (KM)", titleColor, isRequired: true),
                                     const SizedBox(height: 8),
                                     _buildTextField("KM", Icons.speed_rounded, isDark, primary,
                                         keyboardType: TextInputType.number, controller: _odometerController),
@@ -544,7 +561,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _formLabel(isTamil ? "இண்டென்ட் எண்" : "Indent Number", titleColor),
+                                _formLabel(isTamil ? "இண்டென்ட் எண்" : "Indent Number", titleColor, isRequired: true),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   isTamil ? "இண்டென்ட் எண்ணை உள்ளிடவும்" : "Enter indent number",
@@ -560,7 +577,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _formLabel(isTamil ? "குறிப்புகள்" : "Remarks", titleColor),
+                              _formLabel(isTamil ? "குறிப்புகள் (விருப்பத்தேர்வு)" : "Remarks (Optional)", titleColor),
                               const SizedBox(height: 8),
                               _buildTextField(
                                 isTamil ? "கருத்துக்களை உள்ளிடவும்" : "Enter remarks",
@@ -576,12 +593,12 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
 
                       const SizedBox(height: 16),
 
-                      // Proof Upload with Verification (Only shown for OTHERS)
-                      if (_selectedBunk?['id'] == 'OTHERS')
-                        _buildSectionCard(
+                      // Proof Upload with Verification (Required for all)
+                      _buildSectionCard(
                           icon: Icons.photo_camera_rounded,
                           iconColor: const Color(0xFFF59E0B),
                           title: isTamil ? "ஆதாரம்" : "Proof Document (Required)",
+                          isRequired: true,
                           surface: surface,
                           titleColor: titleColor,
                           subColor: subColor,
@@ -811,6 +828,7 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
     required Color subColor,
     required bool isDark,
     required List<Widget> children,
+    bool isRequired = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -841,9 +859,18 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: titleColor),
+                  child: Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: titleColor),
+                      ),
+                      if (isRequired)
+                        const Text(
+                          " *",
+                          style: TextStyle(color: Colors.red, fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -911,9 +938,19 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _formLabel(String label, Color color) => Text(
-        label,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color.withOpacity(0.7)),
+  Widget _formLabel(String label, Color color, {bool isRequired = false}) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color.withOpacity(0.7)),
+          ),
+          if (isRequired)
+            const Text(
+              " *",
+              style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+        ],
       );
 
   Widget _buildTextField(
@@ -1229,5 +1266,28 @@ class _FuelPageState extends State<FuelPage> with SingleTickerProviderStateMixin
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       margin: const EdgeInsets.all(16),
     ));
+  }
+
+  Future<File?> _compressImage(File file) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final path = tempDir.path;
+      final targetPath =
+          "$path/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+      final XFile? result = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        targetPath,
+        quality: 80,
+        minWidth: 1024,
+        minHeight: 1024,
+      );
+
+      if (result == null) return null;
+      return File(result.path);
+    } catch (e) {
+      debugPrint("Compression error: $e");
+      return file; // Fallback to original if compression fails
+    }
   }
 }

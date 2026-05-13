@@ -67,6 +67,7 @@ dependencies:
   permission_handler: ^11.3.1
   path_provider: ^2.1.5
   open_filex: ^4.7.0
+  flutter_image_compress: ^2.4.0
 
 flutter_launcher_icons:
   android: true

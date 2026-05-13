@@ -2409,6 +2409,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                     _EndButtonWithTimer(
                       endedAtStr: endedAt.toString(),
                       onPressed: _showEndInformationPopup,
+                      isAdmin: _isTransportOrSuperAdmin,
                     ),
                   if (!_isTransportOrSuperAdmin &&
                       (!isDriver || 
@@ -5686,10 +5687,12 @@ class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProvi
 class _EndButtonWithTimer extends StatefulWidget {
   final String endedAtStr;
   final VoidCallback onPressed;
+  final bool isAdmin;
 
   const _EndButtonWithTimer({
     required this.endedAtStr,
     required this.onPressed,
+    this.isAdmin = false,
   });
 
   @override
@@ -5738,57 +5741,59 @@ class _EndButtonWithTimerState extends State<_EndButtonWithTimer> {
 
   @override
   Widget build(BuildContext context) {
-    if (_remainingSeconds <= 0) {
+    if (!widget.isAdmin && _remainingSeconds <= 0) {
       return const SizedBox.shrink();
     }
 
     final minutes = _remainingSeconds ~/ 60;
     final seconds = _remainingSeconds % 60;
     final timeFormatted = "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+    final bool showTimer = _remainingSeconds > 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.orange, width: 1.5),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.timer_outlined, color: Colors.orange, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  "Submit End Info in: ",
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
-                  ),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
-                  child: Text(
-                    timeFormatted,
-                    key: ValueKey<String>(timeFormatted),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.orange,
+          if (showTimer)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.orange, width: 1.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.timer_outlined, color: Colors.orange, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Submit End Info in: ",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
                     ),
                   ),
-                ),
-              ],
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                    child: Text(
+                      timeFormatted,
+                      key: ValueKey<String>(timeFormatted),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
