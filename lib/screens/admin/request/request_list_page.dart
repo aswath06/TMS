@@ -67,7 +67,20 @@ class _RequestListPageState extends State<RequestListPage> {
 
     final store = context.watch<RequestStore>();
     
-    final missions = store.requests;
+    final missions = store.requests.where((req) {
+      final String s = (req['status'] ?? "").toString().toUpperCase();
+      
+      if (_selectedFilter == 'ALL') return true;
+      if (_selectedFilter == 'APPROVED') {
+        return (s == 'APPROVED' || s == 'VEHICLE APPROVED' || s == 'PLANNED') && 
+               s != 'STARTED' && s != 'ONGOING';
+      }
+      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || s == 'SUBMITTED';
+      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING';
+      if (_selectedFilter == 'COMPLETED') return s == 'COMPLETED';
+      
+      return true;
+    }).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -642,7 +655,7 @@ class _RequestListPageState extends State<RequestListPage> {
   }
 
   Widget _buildFilterChips(Color p, Color t, bool d) {
-    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED'];
+    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED', 'COMPLETED'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -660,9 +673,10 @@ class _RequestListPageState extends State<RequestListPage> {
         setState(() => _selectedFilter = label);
         
         String mappedStatus = "";
-        if (label == 'APPROVED') mappedStatus = "APPROVED,VEHICLE APPROVED";
-        else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING";
+        if (label == 'APPROVED') mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
+        else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
         else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
+        else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
         
         context.read<RequestStore>().fetchRequests(isRefresh: true, statuses: mappedStatus);
       },

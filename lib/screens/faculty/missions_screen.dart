@@ -54,14 +54,16 @@ class _MissionsScreenState extends State<MissionsScreen> {
     final store = context.watch<RequestStore>();
     final missions = store.requests.where((req) {
       final String s = (req['status'] ?? "").toString().toUpperCase();
-      final int rs = req['rawStatus'] ?? 0;
       
-      // Global restriction: Only show missions that have actually started
-      final bool isStarted = s == 'STARTED' || s == 'ONGOING' || rs == 7;
-      if (!isStarted) return false;
-
       if (_selectedFilter == 'ALL') return true;
-      if (_selectedFilter == 'STARTED') return true;
+      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING';
+      if (_selectedFilter == 'APPROVED') {
+        return (s == 'APPROVED' || s == 'VEHICLE APPROVED' || s == 'PLANNED') && 
+               s != 'STARTED' && s != 'ONGOING';
+      }
+      if (_selectedFilter == 'COMPLETED') return s == 'COMPLETED';
+      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || s == 'SUBMITTED';
+      
       return true;
     }).toList();
 
@@ -332,7 +334,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
   }
 
   Widget _buildFilterChips(Color p, Color t, bool d) {
-    final List<String> filters = ['ALL', 'STARTED'];
+    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED', 'COMPLETED'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),

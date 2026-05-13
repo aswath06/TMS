@@ -1927,6 +1927,9 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                                 currentStatus == 4 || currentStatus == 5 || currentStatus == 6 || currentStatus == 12;
     
     final travelInfo = _missionData?['travel_info'];
+    final tripInstancesForEnd = _missionData?['trip_instances'] as List?;
+    final activeTripForEnd = (tripInstancesForEnd != null && tripInstancesForEnd.isNotEmpty) ? tripInstancesForEnd[0] : null;
+    var endedAt = activeTripForEnd?['ended_at'] ?? _missionData?['ended_at'] ?? travelInfo?['ended_at'];
     bool showAutoStart = false;
     bool showAutoEnd = false;
     int? tripIdToEnd;
@@ -1997,7 +2000,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     hasEndOdometer = endOdoCheck != null;
 
     bool isEligibleForEndInfo = false;
-    if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING')) {
+    if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING' || statusString == 'COMPLETED' || currentStatus == 7 || currentStatus == 8)) {
       final tripInstances = _missionData?['trip_instances'] as List?;
       if (tripInstances != null && tripInstances.isNotEmpty) {
         final latestTrip = tripInstances[0];
@@ -2020,14 +2023,14 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
       showAutoEnd = false;
     }
 
-    final bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING';
+    final bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING' || (statusString == 'COMPLETED' && !hasEndOdometer);
     
     String actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') 
         ? "GENERATE END OTP" 
         : "GENERATE START OTP";
         
     if (isDriver) {
-      actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') ? "ARRIVED OTP" : "SWIPE TO START";
+      actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') ? "GENERATE END OTP" : "SWIPE TO START";
     }
 
     // if status is approved and allowance exists, show START OTP
@@ -2402,39 +2405,21 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && !hasEndOdometer)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _showEndInformationPopup,
-                          icon: const Icon(Icons.info_outline_rounded, size: 20),
-                          label: const Text(
-                            "END",
-                            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 4,
-                            shadowColor: const Color(0xFF10B981).withValues(alpha: 0.3),
-                          ),
-                        ),
-                      ),
+                  if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING' || statusString == 'COMPLETED' || currentStatus == 7 || currentStatus == 8) && isEligibleForEndInfo && !hasEndOdometer && endedAt != null)
+                    _EndButtonWithTimer(
+                      endedAtStr: endedAt.toString(),
+                      onPressed: _showEndInformationPopup,
                     ),
                   if (!_isTransportOrSuperAdmin &&
                       (!isDriver || 
                       (isDriver && statusString == 'APPROVED' && hasStartOdometer) || 
-                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || hasEndOdometer))))
+                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || endedAt == null))))
                     _SwipeToConfirm(
                       label: actionLabel.toUpperCase(),
                       onConfirm: () {
                         if (isDriver && statusString == 'APPROVED') {
                            _fetchAndShowStartQR();
-                        } else if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && hasEndOdometer) {
+                        } else if (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && isEligibleForEndInfo && endedAt == null) {
                            _fetchAndShowEndQR();
                         } else {
                            _handleAction();
@@ -5693,6 +5678,137 @@ class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProvi
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EndButtonWithTimer extends StatefulWidget {
+  final String endedAtStr;
+  final VoidCallback onPressed;
+
+  const _EndButtonWithTimer({
+    required this.endedAtStr,
+    required this.onPressed,
+  });
+
+  @override
+  State<_EndButtonWithTimer> createState() => _EndButtonWithTimerState();
+}
+
+class _EndButtonWithTimerState extends State<_EndButtonWithTimer> {
+  late Timer _timer;
+  int _remainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateRemaining();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _calculateRemaining();
+    });
+  }
+
+  void _calculateRemaining() {
+    try {
+      final endedTime = DateTime.parse(widget.endedAtStr).toUtc();
+      final now = DateTime.now().toUtc();
+      final diff = now.difference(endedTime);
+      final elapsedSeconds = diff.inSeconds;
+      final rem = (15 * 60) - elapsedSeconds;
+      if (mounted) {
+        setState(() {
+          _remainingSeconds = rem > 0 ? rem : 0;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _remainingSeconds = 0;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_remainingSeconds <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    final timeFormatted = "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.orange, width: 1.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, color: Colors.orange, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  "Submit End Info in: ",
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                  child: Text(
+                    timeFormatted,
+                    key: ValueKey<String>(timeFormatted),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: widget.onPressed,
+              icon: const Icon(Icons.info_outline_rounded, size: 20),
+              label: const Text(
+                "END",
+                style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 4,
+                shadowColor: const Color(0xFF10B981).withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

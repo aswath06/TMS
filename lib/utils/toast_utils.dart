@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:tripzo/utils/routes.dart';
 
 OverlayEntry? _activeToastEntry;
 Timer? _toastTimer;
@@ -30,7 +31,9 @@ void showTopToast(BuildContext context, String message, {bool isError = false}) 
     _activeToastEntry = null;
   }
 
-  final overlay = Overlay.of(context);
+  final overlayState = AppRoutes.navigatorKey.currentState?.overlay ?? Overlay.of(context);
+  if (overlayState == null) return;
+
   late OverlayEntry overlayEntry;
 
   overlayEntry = OverlayEntry(
@@ -57,7 +60,7 @@ void showTopToast(BuildContext context, String message, {bool isError = false}) 
   );
 
   _activeToastEntry = overlayEntry;
-  overlay.insert(overlayEntry);
+  overlayState.insert(overlayEntry);
 }
 
 /// A custom ScaffoldMessenger that intercepts standard showSnackBar calls

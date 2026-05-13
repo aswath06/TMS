@@ -85,7 +85,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   final ScrollController _mainScroll = ScrollController();
   final PageStorageKey _scrollKey = const PageStorageKey("request_scroll");
-  int _visibleGuestSlots = 2;
+  int _visibleGuestSlots = 1;
 
   @override
   void initState() {
@@ -105,8 +105,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       });
     }
     if (_visibleGuestSlots > count) setState(() => _visibleGuestSlots = count);
-    if (_visibleGuestSlots < 2 && count >= 2)
-      setState(() => _visibleGuestSlots = 2);
+    if (_visibleGuestSlots < 1 && count >= 1)
+      setState(() => _visibleGuestSlots = 1);
   }
 
   Future<void> _checkRole() async {
@@ -1124,7 +1124,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           const SizedBox(height: 16),
           ...List.generate(_visibleGuestSlots, (i) {
             if (i >= _guests.length) return const SizedBox.shrink();
-            bool isCompulsory = i < 2;
+            bool isCompulsory = i < 1;
             return _premiumGuestEntry(
               i,
               _guests[i],
