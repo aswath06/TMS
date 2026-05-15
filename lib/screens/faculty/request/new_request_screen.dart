@@ -2156,37 +2156,17 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         filteredItems.sort((a, b) {
           int ac = int.tryParse(a['capacity']?.toString() ?? "0") ?? 0;
           int bc = int.tryParse(b['capacity']?.toString() ?? "0") ?? 0;
+          
+          bool aAvail = (a['available'] != false);
+          bool bAvail = (b['available'] != false);
 
-          bool as = ac < currentGuestCount;
-          bool al = ac > (currentGuestCount + 5);
-          bool bs = bc < currentGuestCount;
-          bool bl = bc > (currentGuestCount + 5);
+          if (aAvail != bAvail) return aAvail ? -1 : 1;
+          
+          bool aDef = a['default_driver'] != null;
+          bool bDef = b['default_driver'] != null;
+          if (aDef != bDef) return aDef ? -1 : 1;
 
-          bool aAvail =
-              (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") &&
-              (a['available'] != false);
-          bool bAvail =
-              (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") &&
-              (b['available'] != false);
-
-          bool aFit = !as && !al;
-          bool bFit = !bs && !bl;
-
-          // Priority for Selection Modal Sorting:
-          // 0: Available & Fit & Default Driver
-          // 1: Available & Fit (no Default Driver)
-          // 2: Available & Too Large
-          // 3: Available & Too Small
-          // 4: Not Available (Busy or Status-blocked)
-          int aPrio = !aAvail
-              ? 4
-              : (aFit ? (a['default_driver'] != null ? 0 : 1) : (as ? 3 : 2));
-          int bPrio = !bAvail
-              ? 4
-              : (bFit ? (b['default_driver'] != null ? 0 : 1) : (bs ? 3 : 2));
-
-          if (aPrio != bPrio) return aPrio.compareTo(bPrio);
-          return bc.compareTo(ac); // Within same group, prefer higher capacity
+          return ac.compareTo(bc);
         });
       }
     }
@@ -2284,7 +2264,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              "REQUIRED CAPACITY: $currentGuestCount - ${currentGuestCount + 5} SEATS",
+                              "REQUIRED CAPACITY: $currentGuestCount SEATS",
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
@@ -2406,32 +2386,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           String status = (item['status'] ?? "AVAILABLE")
                               .toString()
                               .toUpperCase();
-                          bool isNotAvailable = isVehicle
-                              ? ((status != "AVAILABLE" && status != "ACTIVE") ||
-                                    item['available'] == false)
-                              : (item['available'] == false);
-                          bool tooSmall = false;
-                          bool tooLarge = false;
-                          if (isVehicle &&
-                              currentGuestCount != null &&
-                              capacity > 0) {
-                            tooSmall = capacity < currentGuestCount;
-                            tooLarge = capacity > (currentGuestCount + 5);
-                          }
-                          bool isDisabled = isVehicle
-                              ? (tooSmall || tooLarge || isNotAvailable)
-                              : isNotAvailable;
+                          bool isDisabled = (item['available'] == false);
 
                           return GestureDetector(
                             onTap: isDisabled
                                 ? () {
-                                    String msg = item['available'] == false
-                                        ? "⚠️ Not Available for this schedule"
-                                        : (isNotAvailable
-                                              ? "⚠️ Status: $status"
-                                              : (tooSmall
-                                                    ? "⚠️ Too Small"
-                                                    : "⚠️ Too Large"));
+                                    String msg = "⚠️ Not Available for this schedule";
                                     ScaffoldMessenger.of(
                                       ctx,
                                     ).showSnackBar(SnackBar(content: Text(msg)));
@@ -2640,36 +2600,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                               ? "UNAVAILABLE"
                                               : (status == "ON_LEAVE"
                                                     ? "ON LEAVE"
-                                                    : (tooSmall
-                                                          ? "TOO SMALL"
-                                                          : (tooLarge
-                                                                ? "TOO LARGE"
-                                                                : status))),
+                                                    : status),
                                           style: const TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w800,
                                             color: Colors.red,
-                                          ),
-                                        ),
-                                      )
-                                    else if (tooLarge)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: const Text(
-                                          "LARGE VEHICLE",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.orange,
                                           ),
                                         ),
                                       )

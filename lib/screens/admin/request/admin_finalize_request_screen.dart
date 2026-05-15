@@ -142,26 +142,16 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
         int ac = int.tryParse(a['capacity']?.toString() ?? "0") ?? 0;
         int bc = int.tryParse(b['capacity']?.toString() ?? "0") ?? 0;
         
-        bool aAvail = (a['status'] == "ACTIVE" || a['status'] == "AVAILABLE") && (a['available'] != false);
-        bool bAvail = (b['status'] == "ACTIVE" || b['status'] == "AVAILABLE") && (b['available'] != false);
-        bool aTooSmall = ac < currentGuestCount;
-        bool aTooLarge = ac > (currentGuestCount + 5);
-        bool bTooSmall = bc < currentGuestCount;
-        bool bTooLarge = bc > (currentGuestCount + 5);
-        
-        bool aDisabled = !aAvail || aTooSmall || aTooLarge;
-        bool bDisabled = !bAvail || bTooSmall || bTooLarge;
+        bool aAvail = (a['available'] != false);
+        bool bAvail = (b['available'] != false);
 
-        if (aDisabled != bDisabled) return aDisabled ? 1 : -1;
+        if (aAvail != bAvail) return aAvail ? -1 : 1;
 
-        bool aFit = !aTooSmall && !aTooLarge;
-        bool bFit = !bTooSmall && !bTooLarge;
-        
-        // Among enabled/disabled, sort by priority
-        int aPrio = aFit ? (a['default_driver'] != null ? 0 : 1) : (aTooSmall ? 3 : 2);
-        int bPrio = bFit ? (b['default_driver'] != null ? 0 : 1) : (bTooSmall ? 3 : 2);
+        // Secondary sort: default driver first
+        bool aDef = a['default_driver'] != null;
+        bool bDef = b['default_driver'] != null;
+        if (aDef != bDef) return aDef ? -1 : 1;
 
-        if (aPrio != bPrio) return aPrio.compareTo(bPrio);
         return ac.compareTo(bc); 
       });
     } else if (!isVehicle) {
@@ -223,12 +213,7 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
                     int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
                     
                     String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
-                    bool isAvail = isVehicle 
-                        ? (item['available'] != false) && (status == "AVAILABLE" || status == "ACTIVE")
-                        : (item['available'] == true);
-                    bool tooSmall = isVehicle && currentGuestCount != null && cap < currentGuestCount;
-                    bool tooLarge = isVehicle && currentGuestCount != null && cap > (currentGuestCount + 5);
-                    bool isDisabled = !isAvail || tooSmall || tooLarge;
+                    bool isDisabled = (item['available'] == false);
 
                     return GestureDetector(
                       onTap: isDisabled ? null : () {
@@ -270,9 +255,7 @@ class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen>
                                   ],
                                 ),
                               ),
-                              if (tooSmall) Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("TOO SMALL", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w900)))
-                              else if (tooLarge) Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("TOO LARGE", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w900)))
-                              else if (!isAvail) Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: Text(status == "ON_LEAVE" ? "ON LEAVE" : "BUSY/MAINT", style: const TextStyle(color: Colors.orange, fontSize: 9, fontWeight: FontWeight.w900)))
+                              if (isDisabled) Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("UNAVAILABLE", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w900)))
                               else if (!isVehicle && status == "AVAILABLE") Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("AVAILABLE", style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.w900))),
                               if (isSelected) Icon(Icons.check_circle_rounded, color: p, size: 20),
                             ],
