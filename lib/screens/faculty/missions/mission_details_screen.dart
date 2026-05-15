@@ -4082,13 +4082,29 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 
   Widget _buildDynamicResources(Color cardColor, Color blue, Color subColor) {
+    final travelInfo = _missionData?['travel_info'];
     final tripInstances = _missionData?['trip_instances'] as List?;
+    
+    // Extract effective driver/vehicle info from _missionData for fallbacks
+    final rootDriver = _missionData?['driver'] ?? travelInfo?['driver'];
+    final rootVehicle = _missionData?['vehicle'] ?? travelInfo?['vehicle'];
+    
+    final effectiveDriverName = rootDriver?['name'] ?? widget.driverName;
+    final effectiveDriverPhone = rootDriver?['phone'] ?? widget.driverPhone;
+    
+    final effectiveVehicleInfo = rootVehicle != null 
+        ? "${rootVehicle['vehicle_type_name'] ?? 'Vehicle'} (${rootVehicle['vehicle_number']})" 
+        : widget.vehicleInfo;
+    final effectiveCapacity = rootVehicle != null 
+        ? "${rootVehicle['capacity']} Seats" 
+        : widget.capacity;
+
     if (tripInstances == null || tripInstances.isEmpty) {
       return Column(
         children: [
-          _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
+          _buildDriverCard(cardColor, blue, subColor, effectiveDriverName, effectiveDriverPhone),
           const SizedBox(height: 12),
-          _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
+          _buildVehicleDetails(cardColor, blue, subColor, effectiveVehicleInfo, effectiveCapacity),
         ],
       );
     }
@@ -4293,17 +4309,17 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         children: [
                            if (notes != null && notes != 'null' && notes.toString().isNotEmpty)
                              Text("NOTES: $notes", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: subColor.withValues(alpha: 0.7))),
-                           _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
+                           _buildDriverCard(cardColor, blue, subColor, effectiveDriverName, effectiveDriverPhone),
                            const SizedBox(height: 12),
-                           _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
+                           _buildVehicleDetails(cardColor, blue, subColor, effectiveVehicleInfo, effectiveCapacity),
                         ],
                       ),
                     );
                  }),
                if (assignmentWidgets.isEmpty && (_missionData?['trip_instances'] == null || (_missionData?['trip_instances'] as List).isEmpty)) ...[
-                 _buildDriverCard(cardColor, blue, subColor, widget.driverName, widget.driverPhone),
+                 _buildDriverCard(cardColor, blue, subColor, effectiveDriverName, effectiveDriverPhone),
                  const SizedBox(height: 12),
-                 _buildVehicleDetails(cardColor, blue, subColor, widget.vehicleInfo, widget.capacity),
+                 _buildVehicleDetails(cardColor, blue, subColor, effectiveVehicleInfo, effectiveCapacity),
                ]
             ],
     );

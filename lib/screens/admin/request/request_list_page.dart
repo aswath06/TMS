@@ -176,7 +176,7 @@ class _RequestListPageState extends State<RequestListPage> {
             ),
             Expanded(
               child: store.isLoading && missions.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _buildRequestsSkeleton(isDark, cardColor)
                   : RefreshIndicator(
                       onRefresh: () => store.fetchRequests(isRefresh: true),
                       child: missions.isEmpty
@@ -203,63 +203,7 @@ class _RequestListPageState extends State<RequestListPage> {
                                 ),
                               ],
                             )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 16,
-                              ),
-                              itemCount: missions.length + (store.hasMore ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index == missions.length) {
-                                  return const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 24),
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                }
-                                final mission = missions[index];
-                                return _buildMissionCard(
-                                  context,
-                                  cardColor: cardColor,
-                                  titleColor: titleColor,
-                                  subColor: subColor,
-                                  requestId: mission['dbId']?.toString() ?? mission['id']?.toString() ?? "",
-                                  rawStatus: mission['rawStatus'] ?? 0,
-                                  missionTitle: mission['vehicle'] ?? "Transport Request",
-                                  time: mission['date'] ?? "TBD",
-                                  drivers: mission['drivers'] ?? [],
-                                  vehicleInfo: mission['vehicleInfo'] ?? mission['vehicle'] ?? "Pending",
-                                  capacity: mission['passengers'].toString(),
-                                  pathType: "Admin View",
-                                  detailedStops: [
-                                    {
-                                      'location': mission['pickup'] ?? "Start",
-                                      'eta': "Start",
-                                      'type': 'Pickup',
-                                    },
-                                    if (mission['intermediateStops'] is List)
-                                    ... (mission['intermediateStops'] as List).map((s) => {
-                                      'location': s.toString(),
-                                      'eta': "Transit",
-                                      'type': 'Transit',
-                                    }),
-                                    {
-                                      'location': mission['drop'] ?? "Destination",
-                                      'eta': "End",
-                                      'type': 'Drop',
-                                    },
-                                  ],
-                                  status: mission['status'] ?? "Active",
-                                  statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
-                                  statusColor: _getStatusColor(mission['status'] ?? "Active"),
-                                  primaryBlue: primaryBlue,
-                                  creatorName: mission['faculty'] ?? "Unknown Faculty",
-                                );
-                              },
-                            ),
+                          : _buildGroupedMissionsList(missions, cardColor, titleColor, subColor, primaryBlue),
                     ),
             ),
           ],
@@ -1048,4 +992,135 @@ class _RequestListPageState extends State<RequestListPage> {
       ),
     );
   }
+
+  Widget _buildGroupedMissionsList(List<dynamic> missions, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    // Group missions by date
+    final Map<String, List<dynamic>> grouped = {};
+    for (var m in missions) {
+      final String date = m['date'] ?? "TBD";
+      if (!grouped.containsKey(date)) grouped[date] = [];
+      grouped[date]!.add(m);
+    }
+
+    final List<String> sortedDates = grouped.keys.toList();
+    final store = context.read<RequestStore>();
+
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: sortedDates.length + (store.hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == sortedDates.length) {
+          return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 24), child: CircularProgressIndicator()));
+        }
+
+        final date = sortedDates[index];
+        final dayMissions = grouped[date]!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDateHeader(date, primaryBlue),
+            const SizedBox(height: 16),
+            ...dayMissions.map((mission) => _buildMissionCard(
+              context,
+              cardColor: cardColor,
+              titleColor: titleColor,
+              subColor: subColor,
+              requestId: mission['dbId']?.toString() ?? mission['id']?.toString() ?? "",
+              rawStatus: mission['rawStatus'] ?? 0,
+              missionTitle: mission['vehicle'] ?? "Transport Request",
+              time: mission['date'] ?? "TBD",
+              drivers: mission['drivers'] ?? [],
+              vehicleInfo: mission['vehicleInfo'] ?? mission['vehicle'] ?? "Pending",
+              capacity: mission['passengers'].toString(),
+              pathType: "Admin View",
+              detailedStops: [
+                {
+                  'location': mission['pickup'] ?? "Start",
+                  'eta': "Start",
+                  'type': 'Pickup',
+                },
+                if (mission['intermediateStops'] is List)
+                ... (mission['intermediateStops'] as List).map((s) => {
+                  'location': s.toString(),
+                  'eta': "Transit",
+                  'type': 'Transit',
+                }),
+                {
+                  'location': mission['drop'] ?? "Destination",
+                  'eta': "End",
+                  'type': 'Drop',
+                },
+              ],
+              status: mission['status'] ?? "Active",
+              statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
+              statusColor: _getStatusColor(mission['status'] ?? "Active"),
+              primaryBlue: primaryBlue,
+              creatorName: mission['faculty'] ?? "Unknown Faculty",
+            )),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDateHeader(String date, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            date.toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(child: Divider(thickness: 1, height: 1)),
+      ],
+    );
+  }
+
+  Widget _buildRequestsSkeleton(bool isDark, Color cardColor) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: 3,
+      itemBuilder: (context, index) => Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(width: 80, height: 16, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+                Container(width: 60, height: 24, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(width: 200, height: 20, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+            const SizedBox(height: 12),
+            Container(width: 140, height: 14, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

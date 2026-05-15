@@ -158,64 +158,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
                                 ),
                               ],
                             )
-                            : ListView.builder(
-                                controller: _scrollController,
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
-                                ),
-                                itemCount: missions.length + (store.hasMore ? 1 : 0),
-                                itemBuilder: (context, index) {
-                                  if (index == missions.length) {
-                                    return const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 24),
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    );
-                                  }
-                                  final mission = missions[index];
-                                  return _buildMissionCard(
-                                    context,
-                                    cardColor: cardColor,
-                                    titleColor: titleColor,
-                                    subColor: subColor,
-                                    requestId: mission['dbId']?.toString() ?? "",
-                                    rawStatus: mission['rawStatus'] ?? 0,
-                                    missionTitle: mission['routeName'] ?? "Transport Request",
-                                    time: mission['date'] ?? "TBD",
-                                    drivers: mission['drivers'] ?? [],
-                                    vehicleInfo: mission['vehicle'] ?? "Pending",
-                                    capacity: mission['passengers'].toString(),
-                                    pathType: mission['travelType'] ?? "One-Way",
-                                    duration: mission['approx_duration']?.toString() ?? "0",
-                                    detailedStops: [
-                                      {
-                                        'location': mission['pickup'] ?? "Start",
-                                        'eta': "Start",
-                                        'type': 'Pickup',
-                                      },
-                                      if (mission['intermediateStops'] is List)
-                                      ... (mission['intermediateStops'] as List).map((s) => {
-                                        'location': s.toString(),
-                                        'eta': "Transit",
-                                        'type': 'Transit',
-                                      }),
-                                      {
-                                        'location': mission['drop'] ?? "Destination",
-                                        'eta': "End",
-                                        'type': 'Drop',
-                                      },
-                                    ],
-                                    status: mission['status'] ?? "Active",
-                                    statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
-                                    statusColor: _getStatusColor(mission['status'] ?? "Active"),
-                                    primaryBlue: primaryBlue,
-                                    creatorName: mission['faculty'] ?? "Faculty Member",
-                                  );
-                                },
-                              ),
+                          : _buildGroupedMissionsList(missions, cardColor, titleColor, subColor, primaryBlue),
                     ),
             ),
           ],
@@ -457,6 +400,79 @@ class _MissionsScreenState extends State<MissionsScreen> {
   }
 
   // ... (Keeping your existing helper methods _buildDateBucket, _buildMissionCard, etc.)
+  Widget _buildGroupedMissionsList(List<dynamic> missions, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    final Map<String, List<dynamic>> grouped = {};
+    for (var m in missions) {
+      final String date = m['date'] ?? "TBD";
+      if (!grouped.containsKey(date)) grouped[date] = [];
+      grouped[date]!.add(m);
+    }
+
+    final List<String> sortedDates = grouped.keys.toList();
+    final store = context.read<RequestStore>();
+
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: sortedDates.length + (store.hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == sortedDates.length) {
+          return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 24), child: CircularProgressIndicator()));
+        }
+
+        final date = sortedDates[index];
+        final dayMissions = grouped[date]!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDateBucket(date, primaryBlue),
+            const SizedBox(height: 16),
+            ...dayMissions.map((mission) => _buildMissionCard(
+              context,
+              cardColor: cardColor,
+              titleColor: titleColor,
+              subColor: subColor,
+              requestId: mission['dbId']?.toString() ?? "",
+              rawStatus: mission['rawStatus'] ?? 0,
+              missionTitle: mission['routeName'] ?? "Transport Request",
+              time: mission['date'] ?? "TBD",
+              drivers: mission['drivers'] ?? [],
+              vehicleInfo: mission['vehicle'] ?? "Pending",
+              capacity: mission['passengers'].toString(),
+              pathType: mission['travelType'] ?? "One-Way",
+              duration: mission['approx_duration']?.toString() ?? "0",
+              detailedStops: [
+                {
+                  'location': mission['pickup'] ?? "Start",
+                  'eta': "Start",
+                  'type': 'Pickup',
+                },
+                if (mission['intermediateStops'] is List)
+                ... (mission['intermediateStops'] as List).map((s) => {
+                  'location': s.toString(),
+                  'eta': "Transit",
+                  'type': 'Transit',
+                }),
+                {
+                  'location': mission['drop'] ?? "Destination",
+                  'eta': "End",
+                  'type': 'Drop',
+                },
+              ],
+              status: mission['status'] ?? "Active",
+              statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
+              statusColor: _getStatusColor(mission['status'] ?? "Active"),
+              primaryBlue: primaryBlue,
+              creatorName: mission['faculty'] ?? "Faculty Member",
+            )),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildDateBucket(String label, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16, left: 4),

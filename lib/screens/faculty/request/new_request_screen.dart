@@ -3147,7 +3147,14 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           if (_currentStep > 0)
             Expanded(
               child: TextButton(
-                onPressed: () => setState(() => _currentStep--),
+                onPressed: () {
+                  int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
+                  if (_currentStep == 2 && vCount == 1) {
+                    setState(() => _currentStep = 0);
+                  } else {
+                    setState(() => _currentStep--);
+                  }
+                },
                 child: const Text(
                   "BACK",
                   style: TextStyle(
@@ -3202,7 +3209,17 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                             return;
                           }
                           _prepareGrouping();
-                          setState(() => _currentStep++);
+                          if (vCount == 1) {
+                            _autoAllocateGuests();
+                            if (!isAdmin) {
+                              _submitForm();
+                            } else {
+                              _fetchAvailableVehicles();
+                              setState(() => _currentStep = 2);
+                            }
+                          } else {
+                            setState(() => _currentStep++);
+                          }
                         }
                       } else if (_currentStep == 1) {
                         if (_unassignedGuests.isNotEmpty) {
