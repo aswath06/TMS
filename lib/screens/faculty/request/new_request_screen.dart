@@ -115,16 +115,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       setState(() {
         _userRole = role?.toLowerCase() ?? 'faculty';
         _totalSteps = _userRole.contains('admin') ? 5 : 2;
-        if (_stops.isEmpty) {
-          _stops.addAll([
-            {
-              "address": ApiConstants.bitLocation['display_name'],
-              "lat": ApiConstants.bitLocation['lat'],
-              "lon": ApiConstants.bitLocation['lon'],
-            },
-            {"address": "Tiruppur", "lat": 11.1085, "lon": 77.3411},
-          ]);
-        }
       });
     }
   }
@@ -3204,6 +3194,20 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                                 content: Text(
                                   "Please select return date and time",
                                 ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Location Validation
+                          if (_stops.length < 2 || 
+                              _stops.first['address'].toString().isEmpty || 
+                              _stops.last['address'].toString().isEmpty ||
+                              _stops.first['lat'] == null ||
+                              _stops.last['lat'] == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please select both Start and End locations"),
                               ),
                             );
                             return;

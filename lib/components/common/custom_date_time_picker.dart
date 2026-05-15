@@ -136,6 +136,12 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
     return day.isBefore(minDay);
   }
 
+  bool get _isValid {
+    final res = _buildResult();
+    if (widget.minDate == null) return true;
+    return !res.isBefore(widget.minDate!);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -295,7 +301,27 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
               const SizedBox(width: 8),
               Text("Set Time", style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: widget.titleColor)),
               const Spacer(),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(gradient: LinearGradient(colors: [widget.accent.withOpacity(0.15), widget.accent.withOpacity(0.05)]), borderRadius: BorderRadius.circular(10), border: Border.all(color: widget.accent.withOpacity(0.1))), child: Text('${_selectedHour.toString().padLeft(2, '0')}:${_selectedMinute.toString().padLeft(2, '0')} ${_isAM ? 'AM' : 'PM'}', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: widget.accent, letterSpacing: 0.5))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), 
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _isValid 
+                        ? [widget.accent.withOpacity(0.15), widget.accent.withOpacity(0.05)]
+                        : [Colors.red.withOpacity(0.15), Colors.red.withOpacity(0.05)]
+                  ), 
+                  borderRadius: BorderRadius.circular(10), 
+                  border: Border.all(color: _isValid ? widget.accent.withOpacity(0.1) : Colors.red.withOpacity(0.3))
+                ), 
+                child: Text(
+                  '${_selectedHour.toString().padLeft(2, '0')}:${_selectedMinute.toString().padLeft(2, '0')} ${_isAM ? 'AM' : 'PM'}', 
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w800, 
+                    color: _isValid ? widget.accent : Colors.red, 
+                    letterSpacing: 0.5
+                  )
+                )
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -361,8 +387,26 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
           Expanded(child: Container(
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: widget.accent.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 6))]),
             child: ElevatedButton(
-              onPressed: () => Navigator.pop(context, _buildResult()),
-              style: ElevatedButton.styleFrom(backgroundColor: widget.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), elevation: 0),
+              onPressed: () {
+                if (!_isValid) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Selected time cannot be in the past"),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context, _buildResult());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isValid ? widget.accent : widget.accent.withOpacity(0.3), 
+                foregroundColor: Colors.white, 
+                padding: const EdgeInsets.symmetric(vertical: 18), 
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), 
+                elevation: 0
+              ),
               child: Text("Confirm", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5))
             ),
           )),
