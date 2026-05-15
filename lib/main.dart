@@ -12,6 +12,8 @@ import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/istamil.dart';
 
+import 'package:tripzo/components/common/shake_support_wrapper.dart';
+
 // Utils
 import 'utils/routes.dart';
 import 'package:tripzo/services/location_service.dart';
@@ -92,7 +94,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         navigatorKey: AppRoutes.navigatorKey,
         debugShowCheckedModeBanner: false,
-        builder: (context, child) => CustomScaffoldMessenger(child: child!),
+        builder: (context, child) => CustomScaffoldMessenger(child: ShakeSupportWrapper(child: child!)),
         title: 'TripZo',
         themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
         theme: ThemeData(
