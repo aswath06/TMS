@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../components/common/custom_date_time_picker.dart';
+import '../../../utils/api_constants.dart';
+import '../../../store/user_store.dart';
 
 class CreateFuelRequestPage extends StatefulWidget {
   const CreateFuelRequestPage({super.key});
@@ -13,47 +20,135 @@ class CreateFuelRequestPage extends StatefulWidget {
 
 class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   final TextEditingController _volumeController = TextEditingController();
+  final TextEditingController _filledVolumeController = TextEditingController();
+  final TextEditingController _odometerController = TextEditingController();
+  final TextEditingController _remarksController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  File? _billImage;
   DateTime _selectedDate = DateTime.now();
   
   Map<String, dynamic>? _selectedVehicle;
   Map<String, dynamic>? _selectedDriver;
-  String? _selectedBunk;
+  Map<String, dynamic>? _selectedBunk;
+  final TextEditingController _amountController = TextEditingController();
 
-  final double _fuelPricePerLiter = 100.0; // Default price as requested
-
-  // Mock data for demo
-  final List<Map<String, dynamic>> _vehicles = [
-    {"id": 1, "number": "TN 37 B 1234", "type": "SUV", "default_driver": {"id": 101, "name": "Rajesh Kumar"}},
-    {"id": 2, "number": "TN 38 C 5678", "type": "Bus", "default_driver": {"id": 102, "name": "Suresh Raina"}},
-    {"id": 3, "number": "TN 39 D 9012", "type": "Truck", "default_driver": null},
-  ];
-
-  final List<Map<String, dynamic>> _drivers = [
-    {"id": 101, "name": "Rajesh Kumar", "phone": "9876543210"},
-    {"id": 102, "name": "Suresh Raina", "phone": "9876543211"},
-    {"id": 103, "name": "MS Dhoni", "phone": "9876543212"},
-    {"id": 104, "name": "Virat Kohli", "phone": "9876543213"},
-  ];
-
-  final List<String> _bunks = ["HP Fuel - Kovai Road", "Indian Oil - Sathyamangalam", "Bharat Petroleum - Anthiyur", "Other"];
+  List<Map<String, dynamic>> _vehicles = [];
+  List<Map<String, dynamic>> _drivers = [];
+  List<Map<String, dynamic>> _bunks = [];
+  bool _isLoadingVehicles = true;
+  bool _isLoadingDrivers = true;
+  bool _isLoadingBunks = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
     _volumeController.addListener(() => setState(() {}));
+    _amountController.addListener(() => setState(() {}));
+    _fetchVehicles();
+    _fetchDrivers();
+    _fetchBunks();
+  }
+
+  Future<void> _fetchBunks() async {
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConstants.fuelBunks),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          setState(() {
+            _bunks = List<Map<String, dynamic>>.from(responseData['data']);
+            _isLoadingBunks = false;
+          });
+        }
+      } else {
+        setState(() => _isLoadingBunks = false);
+        debugPrint("Failed to load bunks: ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _isLoadingBunks = false);
+      debugPrint("Error fetching bunks: $e");
+    }
+  }
+
+  Future<void> _fetchDrivers() async {
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConstants.getAllDriversWithoutPagination),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          setState(() {
+            _drivers = List<Map<String, dynamic>>.from(responseData['data']);
+            _isLoadingDrivers = false;
+          });
+        }
+      } else {
+        setState(() => _isLoadingDrivers = false);
+        debugPrint("Failed to load drivers: ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _isLoadingDrivers = false);
+      debugPrint("Error fetching drivers: $e");
+    }
+  }
+
+  Future<void> _fetchVehicles() async {
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConstants.getAllVehiclesWithoutPagination),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          setState(() {
+            _vehicles = List<Map<String, dynamic>>.from(responseData['data']);
+            _isLoadingVehicles = false;
+          });
+        }
+      } else {
+        setState(() => _isLoadingVehicles = false);
+        debugPrint("Failed to load vehicles: ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _isLoadingVehicles = false);
+      debugPrint("Error fetching vehicles: $e");
+    }
   }
 
   @override
   void dispose() {
     _volumeController.dispose();
+    _filledVolumeController.dispose();
+    _odometerController.dispose();
+    _amountController.dispose();
+    _remarksController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  bool get _isBITBunk => _selectedBunk?['owner_name']?.toString().toUpperCase() == 'BIT';
+
   double get _totalAmount {
-    final vol = double.tryParse(_volumeController.text) ?? 0.0;
-    return vol * _fuelPricePerLiter;
+    if (_isBITBunk) {
+      final vol = double.tryParse(_volumeController.text) ?? 0.0;
+      final price = double.tryParse(_selectedBunk?['price_per_liter']?.toString() ?? "0") ?? 0.0;
+      return vol * price;
+    } else {
+      return double.tryParse(_amountController.text) ?? 0.0;
+    }
   }
 
   Future<void> _showSelectionSheet({
@@ -65,23 +160,52 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     required bool isDriver,
   }) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color primaryBlue = const Color(0xFF6366F1);
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color p = const Color(0xFF6366F1);
+    final Color t = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color s = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-    List<dynamic> filteredItems = List.from(items);
-    _searchController.clear();
+    String searchQuery = "";
 
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.8,
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: StatefulBuilder(
+          builder: (context, setModalState) {
+            final List<dynamic> currentFilteredList = items.where((item) {
+              if (searchQuery.isEmpty) return true;
+              if (isVehicle) {
+                final vNumber = (item['vehicle_number'] ?? "").toString().toLowerCase();
+                final vType = (item['vehicle_type_name'] ?? "").toString().toLowerCase();
+                return vNumber.contains(searchQuery.toLowerCase()) || 
+                       vType.contains(searchQuery.toLowerCase());
+              } else if (isDriver) {
+                final dName = (item['name'] ?? "").toString().toLowerCase();
+                final dPhone = (item['phone'] ?? "").toString().toLowerCase();
+                return dName.contains(searchQuery.toLowerCase()) || 
+                       dPhone.contains(searchQuery.toLowerCase());
+              } else {
+                final bName = (item['name'] ?? "").toString().toLowerCase();
+                final bOwner = (item['owner_name'] ?? "").toString().toLowerCase();
+                return bName.contains(searchQuery.toLowerCase()) || 
+                       bOwner.contains(searchQuery.toLowerCase());
+              }
+            }).toList();
+
+            // Sort drivers to put default at top
+            if (isDriver && _selectedVehicle != null && _selectedVehicle?['default_driver'] != null) {
+              final defaultId = _selectedVehicle?['default_driver']?['id'];
+              currentFilteredList.sort((a, b) {
+                if (a['id'] == defaultId) return -1;
+                if (b['id'] == defaultId) return 1;
+                return 0;
+              });
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.95),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -89,119 +213,183 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 12),
-                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+                  Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
                       children: [
-                        Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: titleColor)),
+                        Text(
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: t,
+                          ),
+                        ),
                         const Spacer(),
-                        IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded))
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.close_rounded, size: 20, color: t.withValues(alpha: 0.5)),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Search Bar
+                  const SizedBox(height: 24),
+                  // Sleek Search Bar
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                        color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                          width: 1.5,
+                        ),
                       ),
                       child: TextField(
-                        controller: _searchController,
-                        style: TextStyle(color: titleColor),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t),
                         decoration: InputDecoration(
-                          hintText: "Search...",
-                          hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5)),
+                          hintText: isVehicle ? "Search vehicle..." : "Search...",
+                          hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white24 : Colors.grey.shade400, fontWeight: FontWeight.w700),
+                          prefixIcon: Icon(Icons.search_rounded, color: p.withValues(alpha: 0.6), size: 22),
                           border: InputBorder.none,
-                          icon: Icon(Icons.search_rounded, color: primaryBlue, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         ),
-                        onChanged: (val) {
-                          setModalState(() {
-                            filteredItems = items.where((item) {
-                              final String searchTarget = isVehicle 
-                                  ? item['number'].toString().toLowerCase() 
-                                  : (isDriver ? item['name'].toString().toLowerCase() : item.toString().toLowerCase());
-                              return searchTarget.contains(val.toLowerCase());
-                            }).toList();
-                          });
-                        },
+                        onChanged: (val) => setModalState(() => searchQuery = val),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
                   Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                      itemCount: filteredItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) {
-                        final item = filteredItems[i];
-                        bool isSelected = false;
-                        if (isVehicle || isDriver) {
-                          isSelected = selected != null && (item['id'] == selected['id']);
-                        } else {
-                          isSelected = selected == item;
-                        }
-                        
-                        String mainText = isVehicle ? item['number'] : (isDriver ? item['name'] : item.toString());
-                        String subText = isVehicle ? item['type'] : (isDriver ? item['phone'] : "Fuel Bunk");
-                        
-                        return GestureDetector(
-                          onTap: () {
-                            onSelect(item);
-                            Navigator.pop(ctx);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: isSelected ? primaryBlue.withValues(alpha: 0.1) : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02)),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: isSelected ? primaryBlue : Colors.transparent, width: 1.5),
-                            ),
-                            child: Row(
+                    child: currentFilteredList.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: (isSelected ? primaryBlue : titleColor).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-                                  child: Icon(isVehicle ? Icons.directions_bus_rounded : (isDriver ? Icons.person_rounded : Icons.store_rounded), size: 20, color: isSelected ? primaryBlue : titleColor.withValues(alpha: 0.5)),
+                                Icon(isVehicle ? Icons.directions_bus_rounded : Icons.person_off_rounded, size: 48, color: t.withValues(alpha: 0.1)),
+                                const SizedBox(height: 16),
+                                Text(
+                                  searchQuery.isEmpty 
+                                      ? (isDriver ? "No drivers available" : "No items available")
+                                      : "No matches found", 
+                                  style: TextStyle(color: t.withValues(alpha: 0.3), fontWeight: FontWeight.w600)
                                 ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                if (searchQuery.isEmpty && isDriver) ...[
+                                  const SizedBox(height: 24),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _fetchDrivers();
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded),
+                                    label: const Text("Retry Loading Drivers"),
+                                    style: TextButton.styleFrom(foregroundColor: p),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                            itemCount: currentFilteredList.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                            itemBuilder: (ctx2, i) {
+                              final item = currentFilteredList[i];
+                              bool isSelected = selected != null && (item['id'] == selected['id']);
+                              
+                              String mainText = isVehicle ? item['vehicle_number'] : (isDriver ? item['name'] : item['name']);
+                              String subText = isVehicle 
+                                  ? (item['default_driver'] != null ? "Driver: ${item['default_driver']['name']}" : (item['vehicle_type_name'] ?? "Vehicle")) 
+                                  : (isDriver 
+                                      ? "${item['employee_code'] ?? 'N/A'} • ${(item['status'] ?? 'UNKNOWN').toString().replaceAll('_', ' ')} • 📞 ${item['phone'] ?? 'No Contact'}" 
+                                      : "Owner: ${item['owner_name'] ?? 'Unknown'}");
+                              
+                              return GestureDetector(
+                                onTap: () {
+                                  onSelect(item);
+                                  Navigator.pop(ctx);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? p.withValues(alpha: 0.1) : t.withValues(alpha: 0.03),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: isSelected ? p : Colors.transparent, width: 1.5),
+                                  ),
+                                  child: Row(
                                     children: [
-                                      Text(mainText, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: titleColor)),
-                                      const SizedBox(height: 4),
-                                      Text(subText, style: TextStyle(fontSize: 12, color: subColor.withValues(alpha: 0.6), fontWeight: FontWeight.w600)),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: (isSelected ? p : t).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Icon(
+                                          isVehicle ? Icons.directions_bus_filled_rounded : (isDriver ? Icons.person_rounded : Icons.store_rounded), 
+                                          size: 20, 
+                                          color: isSelected ? p : t.withValues(alpha: 0.5)
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(child: Text(mainText, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: t))),
+                                                if (isDriver && _selectedVehicle != null && item['id'] == _selectedVehicle?['default_driver']?['id'])
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green.withValues(alpha: 0.1),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: const Text("DEFAULT", style: TextStyle(color: Colors.green, fontSize: 8, fontWeight: FontWeight.w900)),
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(subText, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected) Icon(Icons.check_circle_rounded, color: p, size: 20),
                                     ],
                                   ),
                                 ),
-                                if (isSelected) Icon(Icons.check_circle_rounded, color: primaryBlue, size: 20),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
-  void _showIndentPopup() {
+  void _showIndentPopup(String indentNumber) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final String indentNumber = "IND-${1000 + (DateTime.now().millisecond % 1000)}";
 
     showDialog(
       context: context,
@@ -321,62 +509,93 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildLabel("Select Vehicle", primaryBlue),
-            const SizedBox(height: 12),
             _buildSelectTile(
-              _selectedVehicle?['number'] ?? "Choose Vehicle",
-              Icons.directions_bus_rounded,
+              "Select Vehicle",
+              _selectedVehicle?['vehicle_number'] ?? "Choose Vehicle",
+              _selectedVehicle?['vehicle_type_name'],
+              Icons.directions_bus_filled_rounded,
               _selectedVehicle != null,
-              () => _showSelectionSheet(
-                title: "Select Vehicle",
-                items: _vehicles,
-                selected: _selectedVehicle,
-                onSelect: (v) {
-                  setState(() {
-                    _selectedVehicle = v;
-                    _selectedDriver = v['default_driver'];
-                  });
-                },
-                isVehicle: true,
-                isDriver: false,
-              ),
-              surfaceColor, titleColor, isDark, primaryBlue
+              () {
+                if (_isLoadingVehicles) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Loading vehicles, please wait...")),
+                  );
+                  return;
+                }
+                _showSelectionSheet(
+                  title: "Select Vehicle",
+                  items: _vehicles,
+                  selected: _selectedVehicle,
+                  onSelect: (v) {
+                    setState(() {
+                      _selectedVehicle = v;
+                      _selectedDriver = v['default_driver'];
+                    });
+                  },
+                  isVehicle: true,
+                  isDriver: false,
+                );
+              },
+              surfaceColor, titleColor, isDark, primaryBlue,
+              defaultDriver: _selectedVehicle?['default_driver']?['name'],
+              isRequired: true,
             ),
-            const SizedBox(height: 24),
-            _buildLabel("Driver Assignment", primaryBlue),
             const SizedBox(height: 12),
             _buildSelectTile(
+              "Driver Assignment",
               _selectedDriver?['name'] ?? "Choose Driver",
+              _selectedDriver != null ? "📞 ${_selectedDriver?['phone'] ?? 'No Contact'}" : null,
               Icons.person_rounded,
               _selectedDriver != null,
-              () => _showSelectionSheet(
-                title: "Select Driver",
-                items: _drivers,
-                selected: _selectedDriver,
-                onSelect: (d) => setState(() => _selectedDriver = d),
-                isVehicle: false,
-                isDriver: true,
-              ),
+              () {
+                if (_isLoadingDrivers) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Loading drivers, please wait...")),
+                  );
+                  return;
+                }
+                _showSelectionSheet(
+                  title: "Select Driver",
+                  items: _drivers,
+                  selected: _selectedDriver,
+                  onSelect: (d) => setState(() => _selectedDriver = d),
+                  isVehicle: false,
+                  isDriver: true,
+                );
+              },
               surfaceColor, titleColor, isDark, primaryBlue,
-              isDefault: _selectedVehicle != null && _selectedVehicle?['default_driver']?['id'] == _selectedDriver?['id']
+              isDefault: _selectedVehicle != null && 
+                        _selectedVehicle?['default_driver'] != null && 
+                        _selectedVehicle?['default_driver']?['name'] == _selectedDriver?['name'],
+              isRequired: true,
             ),
-            const SizedBox(height: 24),
-            _buildLabel("Fuel Bunk Name", primaryBlue),
             const SizedBox(height: 12),
             _buildSelectTile(
-              _selectedBunk ?? "Choose Fuel Bunk",
+              "Fuel Bunk Name",
+              _selectedBunk?['name'] ?? "Choose Fuel Bunk",
+              _selectedBunk != null ? "Owner: ${_selectedBunk?['owner_name']}" : null,
               Icons.store_rounded,
               _selectedBunk != null,
-              () => _showSelectionSheet(
-                title: "Select Fuel Bunk",
-                items: _bunks,
-                selected: _selectedBunk,
-                onSelect: (b) => setState(() => _selectedBunk = b),
-                isVehicle: false,
-                isDriver: false,
-              ),
-              surfaceColor, titleColor, isDark, primaryBlue
+              () {
+                if (_isLoadingBunks) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Loading bunks, please wait...")),
+                  );
+                  return;
+                }
+                _showSelectionSheet(
+                  title: "Select Fuel Bunk",
+                  items: _bunks,
+                  selected: _selectedBunk,
+                  onSelect: (b) => setState(() => _selectedBunk = b),
+                  isVehicle: false,
+                  isDriver: false,
+                );
+              },
+              surfaceColor, titleColor, isDark, primaryBlue,
+              isRequired: true,
             ),
+            const SizedBox(height: 24),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -384,7 +603,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel("Volume (Liters)", primaryBlue),
+                      _buildLabel(_isBITBunk ? "Required Volume" : "Volume", primaryBlue, isRequired: true),
                       const SizedBox(height: 12),
                       _buildTextField(_volumeController, "e.g. 50", Icons.opacity_rounded, surfaceColor, titleColor, isDark, isNumber: true),
                     ],
@@ -395,7 +614,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel("Date of Filled", primaryBlue),
+                      _buildLabel("Date", primaryBlue, isRequired: true),
                       const SizedBox(height: 12),
                       _buildDatePickerTile(surfaceColor, titleColor, isDark, primaryBlue),
                     ],
@@ -403,52 +622,98 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 40),
-            // Total Amount Display
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: primaryBlue.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            
+            if (_selectedBunk != null && !_isBITBunk) ...[
+              const SizedBox(height: 24),
+              Row(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "ESTIMATED COST",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          color: subColor,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "₹$_fuelPricePerLiter / liter",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    "₹${_totalAmount.toStringAsFixed(2)}",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: titleColor,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel("Odometer", primaryBlue, isRequired: true),
+                        const SizedBox(height: 12),
+                        _buildTextField(_odometerController, "e.g. 45200", Icons.speed_rounded, surfaceColor, titleColor, isDark, isNumber: true),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 16),
+                  const Spacer(), // Keeps layout consistent
                 ],
               ),
+              const SizedBox(height: 24),
+              _buildLabel("Bill Image", primaryBlue, isRequired: true),
+              const SizedBox(height: 12),
+              _buildImagePicker(surfaceColor, titleColor, isDark, primaryBlue),
+            ],
+
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLabel("Remarks (Optional)", primaryBlue),
+                const SizedBox(height: 12),
+                _buildTextField(_remarksController, "e.g. Special trip for BIT", Icons.notes_rounded, surfaceColor, titleColor, isDark),
+              ],
             ),
+            const SizedBox(height: 40),
+            if (_selectedBunk != null) ...[
+              const SizedBox(height: 24),
+              _buildLabel(_isBITBunk ? "Estimated Cost" : "Filled Amount", primaryBlue),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isBITBunk ? "AUTO CALCULATION" : "MANUAL ENTRY",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: subColor,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _isBITBunk 
+                              ? "₹${_selectedBunk?['price_per_liter']} / liter" 
+                              : "Enter total amount",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_isBITBunk)
+                      Text(
+                        "₹${_totalAmount.toStringAsFixed(2)}",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: titleColor,
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        width: 120,
+                        child: _buildTextField(_amountController, "Amount", Icons.payments_rounded, Colors.transparent, titleColor, isDark, isNumber: true),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
             _buildCreateButton(primaryBlue),
           ],
@@ -457,53 +722,134 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     );
   }
 
-  Widget _buildLabel(String text, Color color) {
-    return Text(
-      text.toUpperCase(),
-      style: GoogleFonts.plusJakartaSans(
-        fontSize: 10,
-        fontWeight: FontWeight.w900,
-        color: color,
-        letterSpacing: 1.2,
-      ),
+  Widget _buildLabel(String text, Color color, {bool isRequired = false}) {
+    return Row(
+      children: [
+        Text(
+          text.toUpperCase(),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: color,
+            letterSpacing: 1.2,
+          ),
+        ),
+        if (isRequired)
+          const Text(" *", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 
-  Widget _buildSelectTile(String value, IconData icon, bool hasValue, VoidCallback onTap, Color surface, Color title, bool isDark, Color primary, {bool isDefault = false}) {
+  Widget _buildSelectTile(
+    String label, 
+    String value, 
+    String? subValue,
+    IconData icon, 
+    bool hasValue, 
+    VoidCallback onTap, 
+    Color surface, 
+    Color title, 
+    bool isDark, 
+    Color primary, 
+    {bool isDefault = false, String? defaultDriver, bool isRequired = false}
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(18),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: title.withValues(alpha: 0.05)),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: title.withValues(alpha: 0.04), width: 1.5),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: hasValue ? primary : Colors.grey, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                value,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: hasValue ? title : Colors.grey,
+            _buildLabel(label, primary, isRequired: isRequired),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (hasValue ? primary : title).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    icon, 
+                    color: hasValue ? primary : title.withValues(alpha: 0.3), 
+                    size: 20
+                  ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        value,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: hasValue ? title : title.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      if (subValue != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subValue,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: title.withValues(alpha: 0.5),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      if (defaultDriver != null) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "DEFAULT: $defaultDriver",
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (isDefault) 
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8)
+                    ),
+                    child: const Text(
+                      "DEFAULT", 
+                      style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.w900)
+                    ),
+                  ),
+                Icon(Icons.expand_more_rounded, color: title.withValues(alpha: 0.2), size: 20),
+              ],
             ),
-            if (isDefault) 
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text("DEFAULT", style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.w900)),
-              ),
-            Icon(Icons.expand_more_rounded, color: Colors.grey, size: 20),
           ],
         ),
       ),
@@ -581,15 +927,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          if (_selectedVehicle == null || _selectedBunk == null || _volumeController.text.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Please fill all fields")),
-            );
-            return;
-          }
-          _showIndentPopup();
-        },
+        onPressed: _isSubmitting ? null : _generateFuelRequest,
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           padding: const EdgeInsets.symmetric(vertical: 20),
@@ -597,16 +935,248 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           elevation: 8,
           shadowColor: primary.withValues(alpha: 0.4),
         ),
-        child: Text(
-          "CREATE REQUEST",
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            letterSpacing: 1.0,
+        child: _isSubmitting 
+          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : Text(
+              _isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 1.0,
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildImagePicker(Color surface, Color title, bool isDark, Color primary) {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: title.withValues(alpha: 0.05)),
+          image: _billImage != null ? DecorationImage(image: FileImage(_billImage!), fit: BoxFit.cover) : null,
+        ),
+        child: _billImage == null ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo_rounded, color: primary.withValues(alpha: 0.5), size: 32),
+            const SizedBox(height: 8),
+            Text("Tap to upload bill receipt", style: TextStyle(color: title.withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ) : Container(
+          decoration: BoxDecoration(
+            color: Colors.black26,
+            borderRadius: BorderRadius.circular(20),
           ),
+          child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
         ),
       ),
     );
+  }
+
+  Future<void> _pickImage() async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: titleColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Select Bill Image",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSourceTile(
+                    Icons.camera_alt_rounded,
+                    "Camera",
+                    () async {
+                      Navigator.pop(context);
+                      final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                      if (picked != null) setState(() => _billImage = File(picked.path));
+                    },
+                    primaryBlue, titleColor, isDark,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildSourceTile(
+                    Icons.photo_library_rounded,
+                    "Gallery",
+                    () async {
+                      Navigator.pop(context);
+                      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
+                      if (picked != null) setState(() => _billImage = File(picked.path));
+                    },
+                    primaryBlue, titleColor, isDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceTile(IconData icon, String label, VoidCallback onTap, Color primary, Color title, bool isDark) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: primary.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: primary, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: title,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generateFuelRequest() async {
+    // Validation
+    bool hasBasicFields = _selectedVehicle != null && _selectedDriver != null && _selectedBunk != null && _volumeController.text.isEmpty == false;
+    
+    if (!hasBasicFields) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all required fields")));
+      return;
+    }
+
+    if (!_isBITBunk) {
+      if (_odometerController.text.isEmpty || _amountController.text.isEmpty || _billImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields and upload bill image for Non-BIT bunk"), backgroundColor: Colors.red));
+        return;
+      }
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final token = await UserStore.getToken();
+      var request = http.MultipartRequest('POST', Uri.parse(ApiConstants.fuelLog));
+      request.headers.addAll(ApiConstants.getHeaders(token));
+      
+      request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
+      request.fields['driver_id'] = _selectedDriver!['id'].toString();
+      request.fields['bunk_id'] = _selectedBunk!['id'].toString();
+      request.fields['required_volume'] = _volumeController.text;
+      request.fields['filled_at'] = _selectedDate.toIso8601String();
+      request.fields['remarks'] = _remarksController.text;
+      request.fields['bill_amount'] = _totalAmount.toString();
+
+      if (!_isBITBunk) {
+        request.fields['current_odometer'] = _odometerController.text;
+        request.fields['filled_volume'] = _volumeController.text; // Sending same as required_volume
+        request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
+      }
+
+      // Console log curl equivalent
+      StringBuffer curl = StringBuffer();
+      curl.write('curl --location ');
+      if (!_isBITBunk) curl.write('--request POST ');
+      curl.write("'${ApiConstants.fuelLog}' \\\n");
+      ApiConstants.getHeaders(token).forEach((k, v) => curl.write("--header '$k: $v' \\\n"));
+      request.fields.forEach((k, v) => curl.write("--form '$k=\"$v\"' \\\n"));
+      if (_billImage != null) curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
+      debugPrint("\n--- REQUEST CURL ---\n${curl.toString()}\n-------------------\n");
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint("\n--- RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final instanceId = responseData['data']['instance_id'] ?? "SUCCESS";
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseData['message'] ?? "Success"),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          _showIndentPopup(instanceId);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseData['message'] ?? "Error"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        String errorMsg = "Something went wrong, please try again";
+        try {
+          final Map<String, dynamic> responseData = json.decode(response.body);
+          if (responseData['message'] != null) {
+            errorMsg = responseData['message'];
+          }
+        } catch (_) {}
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Network error"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
   }
 }

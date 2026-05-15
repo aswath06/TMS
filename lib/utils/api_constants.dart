@@ -15,6 +15,7 @@ class ApiConstants {
 
   // Vehicles
   static const String getAllVehicles = "$baseUrl/api/vehicles/get-all";
+  static const String getAllVehiclesWithoutPagination = "$baseUrl/api/vehicles/get-all-without-pagination";
   static const String createVehicle = "$baseUrl/api/vehicles/create";
   static const String vehicleDashboard =
       "$baseUrl/api/vehicles/vehicle-dashboard/";
@@ -25,6 +26,8 @@ class ApiConstants {
       "$baseUrl/api/vehicles/vehicle-maintenance";
   static const String fuelBunks = "$baseUrl/api/vehicles/fuel-bunk";
   static const String fuelLog = "$baseUrl/api/vehicles/fuel-log";
+  static const String driverComplete = "$baseUrl/api/vehicles/driver-complete";
+  static String deleteFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id";
 
   // Requests (Added these for your RequestStore)
   static const String getAllRequests = "$baseUrl/request/get-all";
@@ -32,7 +35,7 @@ class ApiConstants {
   static const String createTransportRequest =
       "$baseUrl/request/create-transport-request";
   static const String updateStatus = "$baseUrl/request/update-status";
-  static const String getRequestById = "$baseUrl/request/get-by-id/";
+  static const String getRequestById = "$baseUrl/request/getth-by-id/";
   static const String getRouteById = "$baseUrl/request/get-by-id/";
   static const String createAllowance = "$baseUrl/request/create-allowance";
   static const String startRoute = "$baseUrl/request/start-route";
@@ -84,6 +87,7 @@ class ApiConstants {
 
   // OCR
   static const String licenseCheck = "$baseUrl/api/drivers/license-check";
+  static const String getAllDriversWithoutPagination = "$baseUrl/api/drivers/get-all-without-pagination";
   static const String getDriverMissions = "$baseUrl/api/drivers/drive-routes";
   static const String driverDashboard =
       "$baseUrl/api/drivers/driver-dashboard/";
