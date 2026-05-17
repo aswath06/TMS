@@ -71,6 +71,160 @@ class DriverStore extends ChangeNotifier {
   String? _rewardError;
   String? get rewardError => _rewardError;
 
+  // Pending Fuel Entries
+  List<Map<String, dynamic>> _pendingFuelEntries = [];
+  List<Map<String, dynamic>> get pendingFuelEntries => _pendingFuelEntries;
+  bool _isLoadingPendingFuel = false;
+  bool get isLoadingPendingFuel => _isLoadingPendingFuel;
+
+  // Active Routes To Complete
+  List<Map<String, dynamic>> _activeRoutesToComplete = [];
+  List<Map<String, dynamic>> get activeRoutesToComplete => _activeRoutesToComplete;
+  bool _isLoadingActiveRoutes = false;
+  bool get isLoadingActiveRoutes => _isLoadingActiveRoutes;
+
+  // Pending Allowances
+  int _pendingAllowanceCount = 0;
+  int get pendingAllowanceCount => _pendingAllowanceCount;
+
+  Future<void> fetchPendingAllowanceCount() async {
+    try {
+      final token = await UserStore.getToken();
+      final driverId = await UserStore.getDriverId();
+      if (token == null || driverId == null) return;
+      
+      final url = "${ApiConstants.getDriverAllowances}?page=1&limit=1&driver_id=$driverId&payment_status=Assigned";
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          _pendingAllowanceCount = decoded['pagination']?['totalItems'] ?? 0;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching allowance count: $e");
+    }
+  }
+
+  // Allowances List State
+  List<Map<String, dynamic>> _allowances = [];
+  List<Map<String, dynamic>> get allowances => _allowances;
+  
+  bool _isLoadingAllowances = false;
+  bool get isLoadingAllowances => _isLoadingAllowances;
+  
+  bool _isFetchingMoreAllowances = false;
+  bool get isFetchingMoreAllowances => _isFetchingMoreAllowances;
+  
+  int _allowancePage = 1;
+  bool _hasMoreAllowances = true;
+  bool get hasMoreAllowances => _hasMoreAllowances;
+
+  Future<void> fetchAllowances({bool isRefresh = false}) async {
+    if (isRefresh) {
+      _allowancePage = 1;
+      _hasMoreAllowances = true;
+    }
+    
+    if (_allowancePage == 1) {
+      _isLoadingAllowances = true;
+    } else {
+      _isFetchingMoreAllowances = true;
+    }
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      final driverId = await UserStore.getDriverId();
+      if (token == null || driverId == null) return;
+
+      final url = "${ApiConstants.getDriverAllowances}?page=$_allowancePage&limit=10&driver_id=$driverId";
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final List<dynamic> items = decoded['data'] ?? [];
+          final newAllowances = items.map((e) => e as Map<String, dynamic>).toList();
+          
+          if (isRefresh || _allowancePage == 1) {
+            _allowances = newAllowances;
+          } else {
+            _allowances.addAll(newAllowances);
+          }
+          
+          final pagination = decoded['pagination'];
+          if (pagination != null) {
+            _hasMoreAllowances = _allowancePage < (pagination['totalPages'] ?? 1);
+          } else {
+             _hasMoreAllowances = false;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching allowances: $e");
+    } finally {
+      _isLoadingAllowances = false;
+      _isFetchingMoreAllowances = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchMoreAllowances() async {
+    if (_isFetchingMoreAllowances || !_hasMoreAllowances) return;
+    _allowancePage++;
+    await fetchAllowances();
+  }
+
+  Future<Map<String, dynamic>> markAllowanceSeen(int allowanceId) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final response = await http.patch(
+        Uri.parse(ApiConstants.allowanceSeen(allowanceId)),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchAllowances();
+        await fetchPendingAllowanceCount();
+        return {"success": true, "message": decoded['message'] ?? "Allowance marked as seen"};
+      } else {
+        return {"success": false, "message": decoded['message'] ?? "Failed to mark as seen"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  Future<Map<String, dynamic>> requestAllowanceRecheck(int allowanceId, String reason) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final response = await http.patch(
+        Uri.parse(ApiConstants.allowanceRecheck(allowanceId)),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({"recheck_reason": reason}),
+      );
+
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchAllowances();
+        await fetchPendingAllowanceCount();
+        return {"success": true, "message": decoded['message'] ?? "Recheck requested successfully"};
+      } else {
+        return {"success": false, "message": decoded['message'] ?? "Failed to request recheck"};
+      }
+    } catch (e) {
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
   static const Map<int, String> LEAVE_TYPE = {
     1: "Sick",
     2: "Casual",
@@ -916,6 +1070,148 @@ class DriverStore extends ChangeNotifier {
   void updateSearch(String query) {
     _searchQuery = query;
     notifyListeners();
+  }
+
+  Future<void> fetchPendingFuelEntries() async {
+    _isLoadingPendingFuel = true;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+
+      final url = ApiConstants.pendingFuelEntries;
+      
+      debugPrint("--- [DEBUG] FETCH PENDING FUEL ENTRIES CURL ---");
+      debugPrint("curl --location '$url' \\");
+      final headers = ApiConstants.getHeaders(token);
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("----------------------------------------------");
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      debugPrint("--- [DEBUG] FETCH PENDING FUEL ENTRIES RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("--------------------------------------------------");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final List<dynamic> items = decoded['data'] ?? [];
+          _pendingFuelEntries = items.map((e) => e as Map<String, dynamic>).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching pending fuel entries: $e");
+    } finally {
+      _isLoadingPendingFuel = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> completeFuelEntry({
+    required int fuelLogId,
+    required int vehicleId,
+    required int driverId,
+    required String currentOdometer,
+    required String filledVolume,
+    required String billAmount,
+    required String filledAt,
+    String? billFilePath,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = Uri.parse(ApiConstants.driverComplete);
+      final request = http.MultipartRequest('PATCH', url);
+      
+      request.headers.addAll(ApiConstants.getHeaders(token));
+
+      request.fields['fuel_log_id'] = fuelLogId.toString();
+      request.fields['vehicle_id'] = vehicleId.toString();
+      request.fields['driver_id'] = driverId.toString();
+      request.fields['current_odometer'] = currentOdometer;
+      request.fields['filled_volume'] = filledVolume;
+      request.fields['bill_amount'] = billAmount;
+      request.fields['filled_at'] = filledAt;
+
+      if (billFilePath != null) {
+        request.files.add(await http.MultipartFile.fromPath('bill_file', billFilePath));
+      }
+
+      // Log CURL for debugging
+      debugPrint("--- [DEBUG] COMPLETE FUEL ENTRY CURL ---");
+      StringBuffer curl = StringBuffer("curl --location --request PATCH '$url' \\\n");
+      request.headers.forEach((key, value) => curl.write("--header '$key: $value' \\\n"));
+      request.fields.forEach((key, value) => curl.write("--form '$key=\"$value\"' \\\n"));
+      if (billFilePath != null) curl.write("--form 'bill_file=@\"$billFilePath\"'");
+      debugPrint(curl.toString());
+      debugPrint("---------------------------------------");
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint("--- [DEBUG] COMPLETE FUEL ENTRY RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("-------------------------------------------");
+
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        fetchPendingFuelEntries(); // Refresh pending list
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Fuel log completed successfully"
+        };
+      } else {
+        return {
+          "success": false,
+          "message": decoded['message'] ?? "Failed to complete fuel log"
+        };
+      }
+    } catch (e) {
+      debugPrint("Error completing fuel entry: $e");
+      return {"success": false, "message": "Error: $e"};
+    }
+  }
+
+  Future<void> fetchActiveRoutesToComplete() async {
+    _isLoadingActiveRoutes = true;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.pendingRoutesToComplete),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      debugPrint("--- [DEBUG] FETCH ACTIVE ROUTES TO COMPLETE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("-----------------------------------------------");
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          _activeRoutesToComplete = List<Map<String, dynamic>>.from(decoded['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching active routes to complete: $e");
+    } finally {
+      _isLoadingActiveRoutes = false;
+      notifyListeners();
+    }
   }
 }
 

@@ -28,6 +28,7 @@ class ApiConstants {
   static const String fuelLog = "$baseUrl/api/vehicles/fuel-log";
   static const String driverComplete = "$baseUrl/api/vehicles/driver-complete";
   static String deleteFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id";
+  static String updateBunkPrice(dynamic id) => "$baseUrl/api/vehicles/fuel-bunk/$id/price";
 
   // Requests (Added these for your RequestStore)
   static const String getAllRequests = "$baseUrl/request/get-all";
@@ -37,6 +38,9 @@ class ApiConstants {
   static const String updateStatus = "$baseUrl/request/update-status";
   static const String getRequestById = "$baseUrl/request/getth-by-id/";
   static const String getRouteById = "$baseUrl/request/get-by-id/";
+  static const String getDriverAllowances = "$baseUrl/request/allowances-all";
+  static String allowanceSeen(dynamic id) => "$baseUrl/request/allowances/$id/seen";
+  static String allowanceRecheck(dynamic id) => "$baseUrl/request/allowances/$id/recheck";
   static const String createAllowance = "$baseUrl/request/create-allowance";
   static const String startRoute = "$baseUrl/request/start-route";
   static const String completeRouteOtp = "$baseUrl/request/complete-route-otp";
@@ -94,6 +98,8 @@ class ApiConstants {
   static const String driverVehicles = "$baseUrl/api/drivers/drive-vehicles";
   static String rewardPoints(dynamic userId) => "$baseUrl/api/drivers/reward-points?user_id=$userId";
   static const String verifyFuelBill = "$baseUrl/api/vehicles/verify-fuel-bill";
+  static const String pendingFuelEntries = "$baseUrl/api/vehicles/fuel-log/pending-driver";
+  static const String pendingRoutesToComplete = "$baseUrl/request/driver/pending-routes-to-complete";
   // Maintenance
   static const String fuelEntry = "$baseUrl/api/maintenance/fuel-entry";
   static const String serviceEntry = "$baseUrl/api/maintenance/service-entry";

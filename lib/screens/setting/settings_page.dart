@@ -211,27 +211,28 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     const SizedBox(height: 16),
 
-                    // LOGOUT TILE
-                    _settingsTile(
-                      Icons.logout_rounded,
-                      isTamil ? "வெளியேறு" : "Sign Out",
-                      isTamil
-                          ? "கணக்கிலிருந்து பாதுகாப்பாக வெளியேறவும்"
-                          : "Log out of your account",
-                      cardColor,
-                      Colors.redAccent,
-                      subTitleColor,
-                      Colors.red,
-                      onTap: () => _showLogoutBottomSheet(
-                        context,
-                        isTamil,
-                        primaryBlue,
-                        isDark,
+                    // LOGOUT TILE (Hidden for Drivers)
+                    if (_userRole.toLowerCase() != "driver")
+                      _settingsTile(
+                        Icons.logout_rounded,
+                        isTamil ? "வெளியேறு" : "Sign Out",
+                        isTamil
+                            ? "கணக்கிலிருந்து பாதுகாப்பாக வெளியேறவும்"
+                            : "Log out of your account",
                         cardColor,
-                        titleColor,
+                        Colors.redAccent,
                         subTitleColor,
+                        Colors.red,
+                        onTap: () => _showLogoutBottomSheet(
+                          context,
+                          isTamil,
+                          primaryBlue,
+                          isDark,
+                          cardColor,
+                          titleColor,
+                          subTitleColor,
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: 60),
                     _buildAppVersion(subTitleColor, isTamil),

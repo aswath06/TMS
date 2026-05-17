@@ -74,7 +74,7 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final item = store.rewardHistory[index];
-                          return _buildHistoryItem(item, isTamil, isDark, primaryBlue, surfaceColor, titleColor, subColor);
+                          return _buildHistoryItem(item, isTamil, isDark, primaryBlue, surfaceColor, titleColor, subColor, index);
                         },
                         childCount: store.rewardHistory.length,
                       ),
@@ -147,6 +147,7 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
     Color surface,
     Color titleColor,
     Color subColor,
+    int index,
   ) {
     final routeName = item['route']?['route_name'] ?? (isTamil ? "தெரியாத வழி" : "Unknown Route");
     final points = item['points'] ?? 0;
@@ -155,19 +156,32 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
     final date = DateTime.tryParse(item['awarded_at'] ?? '') ?? DateTime.now();
     final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(date);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 500 + (index * 100).clamp(0, 1000)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 50 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
           ),
-        ],
-      ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
@@ -243,7 +257,7 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildEmptyState(bool isTamil, Color subColor) {

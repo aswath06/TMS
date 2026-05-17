@@ -9,6 +9,7 @@ import '../../../components/common/custom_date_time_picker.dart';
 import '../../../utils/api_constants.dart';
 import '../../../store/user_store.dart';
 import 'create_fuel_request_page.dart';
+import 'fuel_price_update_page.dart';
 
 class FuelPage extends StatefulWidget {
   const FuelPage({super.key});
@@ -19,7 +20,7 @@ class FuelPage extends StatefulWidget {
 
 class _FuelPageState extends State<FuelPage> {
   bool _isRequestGeneration = true;
-  DateTime _selectedDate = DateTime.now();
+  DateTime? _selectedDate; // Null means "Show All"
   int? _expandedIndex;
   List<dynamic> _fuelLogs = [];
   bool _isLoading = true;
@@ -180,7 +181,7 @@ class _FuelPageState extends State<FuelPage> {
               ),
             ),
             Text(
-              DateFormat('EEEE, MMM dd yyyy').format(_selectedDate),
+              _selectedDate == null ? "All Records" : DateFormat('EEEE, MMM dd yyyy').format(_selectedDate!),
               style: GoogleFonts.plusJakartaSans(
                 color: subColor,
                 fontWeight: FontWeight.w600,
@@ -202,7 +203,7 @@ class _FuelPageState extends State<FuelPage> {
             onPressed: () async {
               final picked = await CustomDateTimePicker.show(
                 context,
-                initialDate: _selectedDate,
+                initialDate: _selectedDate ?? DateTime.now(),
                 showTime: false,
                 accent: primaryBlue,
                 titleColor: titleColor,
@@ -210,6 +211,27 @@ class _FuelPageState extends State<FuelPage> {
               if (picked != null) {
                 setState(() => _selectedDate = picked);
               }
+            },
+          ),
+          if (_selectedDate != null)
+            IconButton(
+              icon: Icon(Icons.clear_rounded, color: subColor, size: 20),
+              onPressed: () => setState(() => _selectedDate = null),
+            ),
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.currency_rupee_rounded, color: Colors.green, size: 18),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FuelPriceUpdatePage()),
+              ).then((_) => _fetchFuelLogs()); // Refresh logs in case prices changed
             },
           ),
           IconButton(
@@ -612,11 +634,13 @@ class _FuelPageState extends State<FuelPage> {
     if (_isLoading) return _buildShimmerLoading(isDark);
     
     final List<dynamic> filteredLogs = _fuelLogs.where((log) {
+      if (log['fuel_entry_status'] != "PENDING_DRIVER_FILL") return false;
+      if (_selectedDate == null) return true;
+      
       final DateTime logDate = DateTime.parse(log['created_at']);
-      return log['fuel_entry_status'] == "PENDING_DRIVER_FILL" &&
-             logDate.year == _selectedDate.year &&
-             logDate.month == _selectedDate.month &&
-             logDate.day == _selectedDate.day;
+      return logDate.year == _selectedDate!.year &&
+             logDate.month == _selectedDate!.month &&
+             logDate.day == _selectedDate!.day;
     }).toList();
 
     if (filteredLogs.isEmpty) {
@@ -626,7 +650,10 @@ class _FuelPageState extends State<FuelPage> {
           children: [
             Icon(Icons.assignment_turned_in_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
             const SizedBox(height: 16),
-            Text("No requests for ${DateFormat('MMM dd').format(_selectedDate)}", style: TextStyle(color: subColor, fontWeight: FontWeight.w600)),
+            Text(
+              _selectedDate == null ? "No pending requests found" : "No requests for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+              style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+            ),
           ],
         ),
       );
@@ -677,11 +704,13 @@ class _FuelPageState extends State<FuelPage> {
     if (_isLoading) return _buildShimmerLoading(isDark);
 
     final List<dynamic> historyItems = _fuelLogs.where((log) {
+      if (log['fuel_entry_status'] != "COMPLETED") return false;
+      if (_selectedDate == null) return true;
+
       final DateTime logDate = DateTime.parse(log['filled_at'] ?? log['created_at']);
-      return log['fuel_entry_status'] == "COMPLETED" &&
-             logDate.year == _selectedDate.year &&
-             logDate.month == _selectedDate.month &&
-             logDate.day == _selectedDate.day;
+      return logDate.year == _selectedDate!.year &&
+             logDate.month == _selectedDate!.month &&
+             logDate.day == _selectedDate!.day;
     }).toList();
 
     if (historyItems.isEmpty) {
@@ -691,7 +720,10 @@ class _FuelPageState extends State<FuelPage> {
           children: [
             Icon(Icons.history_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
             const SizedBox(height: 16),
-            Text("No history for ${DateFormat('MMM dd').format(_selectedDate)}", style: TextStyle(color: subColor, fontWeight: FontWeight.w600)),
+            Text(
+              _selectedDate == null ? "No history found" : "No history for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+              style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+            ),
           ],
         ),
       );
@@ -792,7 +824,11 @@ class _FuelPageState extends State<FuelPage> {
 
   Widget _buildFuelCard(int index, dynamic item, Color titleColor, Color subColor, Color primary, bool isDark, {required bool isHistory, required bool isExpanded}) {
     final String vNumber = item['vehicle']?['vehicle_number'] ?? "Unknown";
-    final String driverName = item['driver']?['name'] ?? item['filledByUser']?['name'] ?? "System";
+    final String driverName = item['driver']?['user']?['name'] ?? 
+                             item['driver']?['name'] ?? 
+                             item['filledByUser']?['name'] ?? 
+                             "System";
+    final String filledBy = item['filledByUser']?['name'] ?? "Admin";
     final String volume = isHistory 
         ? "${item['filled_volume'] ?? 0}L" 
         : "${item['required_volume'] ?? 0}L";
@@ -861,13 +897,19 @@ class _FuelPageState extends State<FuelPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        driverName,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: subColor,
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline_rounded, size: 12, color: subColor.withValues(alpha: 0.7)),
+                          const SizedBox(width: 4),
+                          Text(
+                            driverName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: subColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -917,7 +959,20 @@ class _FuelPageState extends State<FuelPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildDetailItem("Bunk Name", bunkName, Icons.store_rounded, primary, subColor, titleColor),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildDetailItem("Bunk Name", bunkName, Icons.store_rounded, primary, subColor, titleColor),
+                  _buildDetailItem("Driver", driverName, Icons.person_rounded, primary, subColor, titleColor),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildDetailItem("Filled By", filledBy, Icons.admin_panel_settings_rounded, primary, subColor, titleColor),
+                ],
+              ),
               if (isHistory && item['bill_file_url'] != null) ...[
                 const SizedBox(height: 20),
                 _buildOptionLabel("FUEL PROOF IMAGE", subColor),

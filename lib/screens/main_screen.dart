@@ -28,14 +28,22 @@ class MainScreen extends StatefulWidget {
   const MainScreen({super.key, required this.userRole});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late PageController _pageController;
   StreamSubscription<ServiceStatus>? _locationSubscription;
   bool _isGpsDialogOpen = false;
+
+  void setIndex(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOutQuart,
+    );
+  }
 
   @override
   void initState() {

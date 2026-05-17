@@ -3,13 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
-import 'package:tripzo/screens/driver/maintenance/fuel_page.dart';
-import 'package:tripzo/screens/driver/maintenance/service_page.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
 import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
+import 'package:tripzo/screens/driver/driver_allowance_screen.dart';
+import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart';
 import '../../providers/notification_provider.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
+import '../main_screen.dart';
+import 'dart:async';
 
 class DriverDutiesScreen extends StatefulWidget {
   const DriverDutiesScreen({super.key});
@@ -19,6 +21,8 @@ class DriverDutiesScreen extends StatefulWidget {
 }
 
 class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
@@ -26,12 +30,20 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
       useDriverStore.fetchProfile();
       useDriverStore.fetchMissions();
       useDriverStore.fetchRewardPoints();
+      useDriverStore.fetchPendingFuelEntries();
+      useDriverStore.fetchActiveRoutesToComplete();
+      useDriverStore.fetchPendingAllowanceCount();
       context.read<NotificationProvider>().fetchNotifications();
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) setState(() {});
     });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -73,14 +85,17 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                   return aTime.compareTo(bTime);
                 });
 
-                // Show all upcoming missions on the dashboard
-                final priorityMissions = upcoming;
+                // Show only the most immediate upcoming mission on the dashboard
+                final priorityMissions = upcoming.take(1).toList();
                 final String driverName = profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver");
 
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchProfile();
                     await store.fetchMissions();
+                    await store.fetchPendingFuelEntries();
+                    await store.fetchActiveRoutesToComplete();
+                    await store.fetchPendingAllowanceCount();
                   },
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -93,7 +108,37 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                         const SizedBox(height: 32),
                         _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList, profile, store),
                         const SizedBox(height: 36),
-                        _buildSectionTitle(isTamil ? "இன்றைய பணிகள்" : "Your Assignments", titleColor),
+                        _buildActiveRoutesSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
+                        const SizedBox(height: 36),
+                        _buildPendingFuelSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
+                        const SizedBox(height: 36),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${upcoming.length})", titleColor),
+                            ),
+                            const SizedBox(width: 12),
+                            if (upcoming.length > 1)
+                              GestureDetector(
+                                onTap: () {
+                                  final mainState = context.findAncestorStateOfType<MainScreenState>();
+                                  if (mainState != null) {
+                                    mainState.setIndex(1);
+                                  }
+                                },
+                                child: Text(
+                                  isTamil ? "அனைத்தையும் பார்" : "View All",
+                                  style: TextStyle(
+                                    color: primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 18),
                         if (store.isLoadingMissions && priorityMissions.isEmpty)
                           const Center(child: CircularProgressIndicator())
@@ -238,13 +283,19 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: _statItem(
-              label: isTamil ? "நிலுவையில்" : "Pending",
-              value: pendingCount.toString().padLeft(2, '0'),
-              icon: Icons.assignment_late_rounded,
-              accentColor: Colors.orangeAccent,
-              surface: surface,
-              isDark: isDark,
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DriverAllowanceScreen()),
+              ),
+              child: _statItem(
+                label: isTamil ? "படி" : "Allowance",
+                value: store.pendingAllowanceCount.toString().padLeft(2, '0'),
+                icon: Icons.payments_rounded,
+                accentColor: Colors.orangeAccent,
+                surface: surface,
+                isDark: isDark,
+              ),
             ),
           ),
         ],
@@ -358,7 +409,12 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
   }
 
   Widget _buildSectionTitle(String title, Color color) {
-    return Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color, letterSpacing: -0.8));
+    return Text(
+      title, 
+      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color, letterSpacing: -0.8),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    );
   }
 
   Widget _buildMissionCard({
@@ -544,18 +600,6 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
             Expanded(
               child: _buildNavigationCard(
                 context: context,
-                title: isTamil ? "எரிபொருள்" : "Fuel Entry",
-                subtitle: isTamil ? "பதிவு செய்யவும்" : "Log Refill",
-                icon: Icons.local_gas_station_rounded,
-                color: const Color(0xFF3B82F6),
-                isDark: isDark,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelPage())),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildNavigationCard(
-                context: context,
                 title: isTamil ? "விபத்து" : "Accident Entry",
                 subtitle: isTamil ? "சம்பவத்தை பதிவு செய்யவும்" : "Report Incident",
                 icon: Icons.report_problem_rounded,
@@ -564,17 +608,8 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AccidentPage())),
               ),
             ),
-            // Expanded(
-            //   child: _buildNavigationCard(
-            //     context: context,
-            //     title: isTamil ? "சேவை" : "Service Entry",
-            //     subtitle: isTamil ? "பதிவு செய்யவும்" : "Log Maintenance",
-            //     icon: Icons.home_repair_service_rounded,
-            //     color: const Color(0xFF10B981),
-            //     isDark: isDark,
-            //     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ServicePage())),
-            //   ),
-            // ),
+            const SizedBox(width: 16),
+            const Spacer(),
           ],
         ),
       ],
@@ -638,6 +673,179 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
   }
 
 
+  Widget _buildPendingFuelSection(DriverStore store, Color titleColor, Color surfaceColor, Color primaryBlue, bool isDark, bool isTamil) {
+    if (store.pendingFuelEntries.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(isTamil ? "எரிபொருள் பதிவு நிலுவையில் உள்ளது" : "Fuel Entry Pending", titleColor),
+        const SizedBox(height: 18),
+        ...store.pendingFuelEntries.map((entry) => _buildFuelPendingCard(
+          entry: entry,
+          surface: surfaceColor,
+          primary: primaryBlue,
+          titleColor: titleColor,
+          subColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          isDark: isDark,
+          isTamil: isTamil,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildFuelPendingCard({
+    required Map<String, dynamic> entry,
+    required Color surface,
+    required Color primary,
+    required Color titleColor,
+    required Color subColor,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final vehicleNumber = entry['vehicle']?['vehicle_number'] ?? "N/A";
+    final driverName = entry['driver']?['user']?['name'] ?? "N/A";
+    final instanceId = entry['instance_id'] ?? "N/A";
+    final bunkName = entry['bunk']?['name'] ?? "N/A";
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CompleteFuelEntryPage(entry: entry),
+          ),
+        ).then((result) {
+          if (result == true) {
+            useDriverStore.fetchPendingFuelEntries();
+          }
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withValues(alpha: isDark ? 0.1 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.local_gas_station_rounded, color: Colors.orange, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vehicleNumber,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: titleColor),
+                      ),
+                      Text(
+                        isTamil ? "வாகன எண்" : "Vehicle Number",
+                        style: TextStyle(fontSize: 11, color: subColor, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    isTamil ? "நிலுவையில்" : "PENDING",
+                    style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 32, thickness: 1),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCardDetail(
+                    icon: Icons.person_rounded,
+                    label: isTamil ? "ஓட்டுநர்" : "Driver",
+                    value: driverName,
+                    subColor: subColor,
+                    titleColor: titleColor,
+                  ),
+                ),
+                Expanded(
+                  child: _buildCardDetail(
+                    icon: Icons.tag_rounded,
+                    label: isTamil ? "நிகழ்வு ஐடி" : "Instance ID",
+                    value: instanceId,
+                    subColor: subColor,
+                    titleColor: titleColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildCardDetail(
+              icon: Icons.store_rounded,
+              label: isTamil ? "பங்க் பெயர்" : "Bunk Name",
+              value: bunkName,
+              subColor: subColor,
+              titleColor: titleColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardDetail({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color subColor,
+    required Color titleColor,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: subColor.withValues(alpha: 0.5)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 10, color: subColor, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                value,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: titleColor),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   String _formatDate(String? dateStr) {
     if (dateStr == null) return "TBD";
     try {
@@ -647,5 +855,168 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     } catch (_) {
       return dateStr;
     }
+  }
+
+  Widget _buildActiveRoutesSection(DriverStore store, Color titleColor, Color surface, Color primary, bool isDark, bool isTamil) {
+    final activeRoutes = store.activeRoutesToComplete;
+    if (activeRoutes.isEmpty) return const SizedBox.shrink();
+
+    // Filter routes based on the 15-minute rule
+    final validRoutes = activeRoutes.where((route) {
+      final tripInstances = route['trip_instances'] as List<dynamic>? ?? [];
+      final firstTrip = tripInstances.isNotEmpty ? tripInstances[0] : null;
+      final endedAtStr = firstTrip?['ended_at'];
+      
+      if (endedAtStr != null) {
+        final endedAt = DateTime.tryParse(endedAtStr);
+        if (endedAt == null) return false;
+        // If ended, show only until 15 minutes after the actual end time
+        return DateTime.now().isBefore(endedAt.add(const Duration(minutes: 15)));
+      } else {
+        // If not ended yet (active), show based on planned end time (if available)
+        final legs = route['legs'] as List<dynamic>? ?? [];
+        if (legs.isEmpty) return true; // Show active trips without legs too
+        final lastLeg = legs.last;
+        final plannedEndAt = DateTime.tryParse(lastLeg['planned_end_at'] ?? '');
+        if (plannedEndAt == null) return true;
+        // For ongoing trips, show until planned end + 15 mins (grace period)
+        return DateTime.now().isBefore(plannedEndAt.add(const Duration(minutes: 15)));
+      }
+    }).toList();
+
+    if (validRoutes.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...validRoutes.map((route) => _buildActiveRouteCard(route, titleColor, surface, primary, isDark, isTamil)),
+      ],
+    );
+  }
+
+  Widget _buildActiveRouteCard(Map<String, dynamic> route, Color titleColor, Color surface, Color primary, bool isDark, bool isTamil) {
+    final routeName = route['route_name'] ?? "Unknown Route";
+    final legs = route['legs'] as List<dynamic>? ?? [];
+    final lastLeg = legs.isNotEmpty ? legs.last : null;
+    final plannedEndAt = lastLeg != null ? DateTime.tryParse(lastLeg['planned_end_at'] ?? '') : null;
+    
+    String remainingStr = "00:00";
+    final tripInstances = route['trip_instances'] as List<dynamic>? ?? [];
+    final firstTrip = tripInstances.isNotEmpty ? tripInstances[0] : null;
+    final endedAtStr = firstTrip?['ended_at'];
+    
+    DateTime? referenceTime;
+    if (endedAtStr != null) {
+      referenceTime = DateTime.tryParse(endedAtStr)?.add(const Duration(minutes: 15));
+    } else {
+      final lastLeg = legs.isNotEmpty ? legs.last : null;
+      if (lastLeg != null) {
+        referenceTime = DateTime.tryParse(lastLeg['planned_end_at'] ?? '')?.add(const Duration(minutes: 15));
+      }
+    }
+    
+    if (referenceTime != null) {
+      final diff = referenceTime.difference(DateTime.now());
+      if (diff.isNegative) {
+        remainingStr = "00:00";
+      } else {
+        final hours = diff.inHours;
+        final minutes = diff.inMinutes % 60;
+        final seconds = diff.inSeconds % 60;
+        
+        if (hours > 0) {
+          remainingStr = "${hours}:${minutes.toString().padLeft(2, '0')}";
+        } else {
+          remainingStr = "${minutes}:${seconds.toString().padLeft(2, '0')}";
+        }
+      }
+    }
+
+    Color accentColor = Colors.orange;
+    final diffInMinutes = referenceTime != null ? referenceTime.difference(DateTime.now()).inMinutes : 99;
+    if (diffInMinutes < 5) {
+      accentColor = Colors.red;
+    }
+
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return GestureDetector(
+      onTap: () {
+        final List<dynamic> vehicles = route['vehicles'] as List<dynamic>? ?? [];
+        final String vehicleInfo = vehicles.isNotEmpty ? vehicles[0]['vehicle_number'] ?? "N/A" : "N/A";
+        
+        final List<dynamic> legsList = route['legs'] as List<dynamic>? ?? [];
+        final String pickup = legsList.isNotEmpty && (legsList[0]['stops'] as List).isNotEmpty 
+            ? legsList[0]['stops'][0]['stop_name'] ?? "N/A" 
+            : "N/A";
+        final String drop = legsList.isNotEmpty && (legsList.last['stops'] as List).isNotEmpty 
+            ? legsList.last['stops'].last['stop_name'] ?? "N/A" 
+            : "N/A";
+            
+        final List<Map<String, String>> mappedStops = [
+          {'location': pickup, 'eta': 'Start'},
+          {'location': drop, 'eta': 'End'},
+        ];
+
+        final String startTime = legsList.isNotEmpty ? legsList[0]['planned_start_at'] ?? "" : "";
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MissionDetailsScreen(
+              missionTitle: routeName,
+              time: _formatDate(startTime),
+              driverName: "You",
+              driverPhone: "",
+              vehicleInfo: vehicleInfo,
+              capacity: "${route['passenger_count'] ?? 0} Guests",
+              passengerCount: route['passenger_count']?.toString() ?? "0",
+              pathType: route['trip_type'] ?? "One-Way",
+              stops: mappedStops,
+              status: isTamil ? "நடைபெறுகிறது" : "Ongoing",
+              statusColor: Colors.orange,
+              requestId: route['id'].toString(),
+              rawStatus: 3, // ON_TRIP
+              creatorName: route['created_by']?['name'] ?? "Admin",
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: accentColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.timer_outlined, color: accentColor, size: 18),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                routeName,
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: titleColor),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              remainingStr,
+              style: TextStyle(
+                fontSize: 15, 
+                fontWeight: FontWeight.w800, 
+                color: accentColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios_rounded, color: accentColor.withValues(alpha: 0.5), size: 12),
+          ],
+        ),
+      ),
+    );
   }
 }
