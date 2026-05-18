@@ -219,6 +219,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                                             titleColor: titleColor,
                                             subColor: subColor,
                                             primaryBlue: primaryBlue,
+                                            allowanceNeeded: mission['allowance_needed'],
                                           ),
                                         );
                                       }
@@ -492,6 +493,29 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
   }
 
 
+  Widget _buildAllowanceBadge(bool allowanceNeeded) {
+    if (!allowanceNeeded) return const SizedBox.shrink();
+    return Tooltip(
+      message: "Allowance Required",
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: const Icon(
+          Icons.payments_outlined,
+          color: Colors.green,
+          size: 14,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHistoryCard({
     required String title,
     required String date,
@@ -504,6 +528,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
     required Color titleColor,
     required Color subColor,
     required Color primaryBlue,
+    bool? allowanceNeeded,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -526,7 +551,16 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
                   fontSize: 12,
                 ),
               ),
-              _buildPathBadge(pathType, primaryBlue),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (allowanceNeeded != null) ...[
+                    _buildAllowanceBadge(allowanceNeeded),
+                    const SizedBox(width: 8),
+                  ],
+                  _buildPathBadge(pathType, primaryBlue),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),

@@ -133,6 +133,10 @@ class DashboardStore extends ChangeNotifier {
   }
 
   Map<String, dynamic> _formatHistoryItem(dynamic req) {
+    final tripInstances = req['trip_instances'] as List?;
+    final activeTrip = (tripInstances != null && tripInstances.isNotEmpty) ? tripInstances[0] : null;
+    final bool? allowanceNeeded = activeTrip?['allowance_needed'] ?? req['allowance_needed'] ?? req['travel_info']?['allowance_needed'];
+
     return {
       'id': 'REQ-${req['id']}',
       'dbId': req['id'],
@@ -145,6 +149,7 @@ class DashboardStore extends ChangeNotifier {
       'rawStatus': 8,
       'vehicle': req['assignedVehicle']?['model'] ?? 'N/A',
       'intermediateStops': req['intermediateStops'] ?? [],
+      'allowance_needed': allowanceNeeded,
     };
   }
 }

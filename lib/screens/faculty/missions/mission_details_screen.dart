@@ -2308,13 +2308,21 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if ((statusString == 'STARTED' || statusString == 'ONGOING') && _isTransportOrSuperAdmin && hasEndOdometer && tripIdToEnd != null)
+                  if ((statusString == 'STARTED' || statusString == 'ONGOING') && _isTransportOrSuperAdmin)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _isApproving || _isLoadingOtp ? null : () => _handleAutoEnd(tripIdToEnd),
+                          onPressed: _isApproving || _isLoadingOtp 
+                            ? null 
+                            : () {
+                                if (!hasEndOdometer) {
+                                  _showEndInformationPopup();
+                                } else if (tripIdToEnd != null) {
+                                  _handleAutoEnd(tripIdToEnd);
+                                }
+                              },
                           icon: _isApproving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.stop_circle_rounded, size: 20),
                           label: const Text(
                             "DIRECT END",
@@ -2444,6 +2452,12 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     var startedAt = activeTrip?['started_at'] ?? _missionData?['started_at'] ?? travelInfo?['started_at'];
     var endedAt = activeTrip?['ended_at'] ?? _missionData?['ended_at'] ?? travelInfo?['ended_at'];
 
+    final String? startedBy = (activeTrip?['started_by'] is Map ? activeTrip?['started_by']?['name']?.toString() : activeTrip?['started_by']?.toString()) ??
+                              (_missionData?['started_by'] is Map ? _missionData?['started_by']?['name']?.toString() : _missionData?['started_by']?.toString());
+
+    final String? endedBy = (activeTrip?['ended_by'] is Map ? activeTrip?['ended_by']?['name']?.toString() : activeTrip?['ended_by']?.toString()) ??
+                            (_missionData?['ended_by'] is Map ? _missionData?['ended_by']?['name']?.toString() : _missionData?['ended_by']?.toString());
+
     var startOdometer = travelInfo?['start_odometer'];
     var endOdometer = travelInfo?['end_odometer'];
     var startCapacity = travelInfo?['start_capacity'];
@@ -2502,7 +2516,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             ],
           ),
           const SizedBox(height: 24),
-          _buildTimeDurationSection(startedAt, endedAt, primaryColor, isDark),
+          _buildTimeDurationSection(startedAt, endedAt, startedBy, endedBy, primaryColor, isDark),
           const SizedBox(height: 24),
           Divider(height: 1, thickness: 1, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
           const SizedBox(height: 24),
@@ -2867,6 +2881,10 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     final passengerCount = _missionData?['vehicle_config']?['passenger_count']?.toString() ?? widget.passengerCount;
     final dynamic purpose = travelInfo?['purpose'];
 
+    final tripInstances = _missionData?['trip_instances'] as List?;
+    final activeTrip = (tripInstances != null && tripInstances.isNotEmpty) ? tripInstances[0] : null;
+    final bool? allowanceNeeded = activeTrip?['allowance_needed'];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(26),
@@ -2888,23 +2906,58 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
-                      letterSpacing: 0.8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        status.toUpperCase(),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          letterSpacing: 0.8,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+                    if (sUpper == 'COMPLETED' && (allowanceNeeded ?? false)) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.green.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.payments_outlined, color: Colors.green, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              "ALLOWANCE REQUIRED",
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 9,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -3443,7 +3496,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     return parts.join(" ");
   }
 
-  Widget _buildTimeDurationSection(dynamic startedAt, dynamic endedAt, Color primaryColor, bool isDark) {
+  Widget _buildTimeDurationSection(dynamic startedAt, dynamic endedAt, String? startedBy, String? endedBy, Color primaryColor, bool isDark) {
     final startDt = _parseTimestamp(startedAt);
     final endDt = _parseTimestamp(endedAt);
     Duration? duration;
@@ -3466,6 +3519,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               child: _buildTimeNodeCard(
                 "STARTED",
                 startedAt,
+                startedBy,
                 Icons.play_circle_fill_rounded,
                 Colors.green,
                 isDark,
@@ -3480,6 +3534,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               child: _buildTimeNodeCard(
                 endedAt != null ? "ENDED" : (startedAt != null ? "ONGOING" : "PENDING"),
                 endedAt ?? (startedAt != null ? "In Progress" : null),
+                endedBy,
                 Icons.stop_circle_rounded,
                 endedAt != null ? Colors.redAccent : (startedAt != null ? Colors.orange : Colors.grey),
                 isDark,
@@ -3584,7 +3639,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
     );
   }
 
-  Widget _buildTimeNodeCard(String title, dynamic rawTime, IconData icon, Color accentColor, bool isDark) {
+  Widget _buildTimeNodeCard(String title, dynamic rawTime, String? byName, IconData icon, Color accentColor, bool isDark) {
     final String timeStr = (rawTime != null && rawTime != "In Progress") ? _formatActualTime(rawTime.toString()) : (rawTime == "In Progress" ? "In Progress" : "N/A");
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subTextColor = isDark ? Colors.white60 : const Color(0xFF64748B);
@@ -3627,6 +3682,27 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
               color: titleColor,
             ),
           ),
+          if (byName != null && byName.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 12, color: subTextColor),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    "By: $byName",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: subTextColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

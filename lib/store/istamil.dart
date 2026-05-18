@@ -18,7 +18,6 @@ class LanguageStore extends ChangeNotifier {
     isTamil = prefs.getBool(_languageKey) ?? false;
     notifyListeners();
   }
-
   /// Sets the language and persists it to local storage
   Future<void> setLanguage(String language) async {
     isTamil = (language == "தமிழ்");

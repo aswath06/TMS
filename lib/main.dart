@@ -11,8 +11,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/istamil.dart';
-
-import 'package:tripzo/components/common/shake_support_wrapper.dart';
+import 'package:tripzo/store/admin_allowance_store.dart';
 
 // Utils
 import 'utils/routes.dart';
@@ -63,6 +62,7 @@ void main() async {
         ChangeNotifierProvider.value(value: dashboardStore),
         ChangeNotifierProvider.value(value: themeStore),
         ChangeNotifierProvider.value(value: languageStore),
+        ChangeNotifierProvider.value(value: adminAllowanceStore),
         ChangeNotifierProvider(
           create: (_) => NotificationProvider(
             apiService: NotificationApiService(baseUrl: "", token: ""),
@@ -94,7 +94,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         navigatorKey: AppRoutes.navigatorKey,
         debugShowCheckedModeBanner: false,
-        builder: (context, child) => CustomScaffoldMessenger(child: ShakeSupportWrapper(child: child!)),
+        builder: (context, child) => CustomScaffoldMessenger(child: child!),
         title: 'TripZo',
         themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
         theme: ThemeData(

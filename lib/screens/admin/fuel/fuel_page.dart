@@ -643,6 +643,13 @@ class _FuelPageState extends State<FuelPage> {
              logDate.day == _selectedDate!.day;
     }).toList();
 
+    // Sort by date (newest first)
+    filteredLogs.sort((a, b) {
+      final DateTime aDate = DateTime.parse(a['created_at']);
+      final DateTime bDate = DateTime.parse(b['created_at']);
+      return bDate.compareTo(aDate);
+    });
+
     if (filteredLogs.isEmpty) {
       return Center(
         child: Column(
@@ -662,43 +669,25 @@ class _FuelPageState extends State<FuelPage> {
     return RefreshIndicator(
       onRefresh: _fetchFuelLogs,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
         itemCount: filteredLogs.length,
         itemBuilder: (context, index) {
-        final req = filteredLogs[index];
-        final bool isExpanded = _expandedIndex == index;
-        final DateTime createdAt = DateTime.parse(req['created_at']);
-        final String dateStr = DateFormat('EEEE, MMM dd').format(createdAt);
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 16, bottom: 8),
-              child: Text(
-                dateStr.toUpperCase(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            _wrapWithDismissible(
+          final req = filteredLogs[index];
+          final bool isExpanded = _expandedIndex == index;
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _wrapWithDismissible(
               child: _buildFuelCard(index, req, titleColor, subColor, primary, isDark, isHistory: false, isExpanded: isExpanded),
               log: req,
               index: index,
               primary: primary,
             ),
-          ],
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildHistoryView(Color titleColor, Color subColor, Color primary, bool isDark) {
     if (_isLoading) return _buildShimmerLoading(isDark);
@@ -712,6 +701,13 @@ class _FuelPageState extends State<FuelPage> {
              logDate.month == _selectedDate!.month &&
              logDate.day == _selectedDate!.day;
     }).toList();
+
+    // Sort by date (newest first)
+    historyItems.sort((a, b) {
+      final DateTime aDate = DateTime.parse(a['filled_at'] ?? a['created_at']);
+      final DateTime bDate = DateTime.parse(b['filled_at'] ?? b['created_at']);
+      return bDate.compareTo(aDate);
+    });
 
     if (historyItems.isEmpty) {
       return Center(
@@ -732,38 +728,20 @@ class _FuelPageState extends State<FuelPage> {
     return RefreshIndicator(
       onRefresh: _fetchFuelLogs,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
         itemCount: historyItems.length,
         itemBuilder: (context, index) {
           final item = historyItems[index];
           final bool isExpanded = _expandedIndex == index;
-          final DateTime filledAt = DateTime.parse(item['filled_at'] ?? item['created_at']);
-          final String dateStr = DateFormat('EEEE, MMM dd').format(filledAt);
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 16, bottom: 8),
-                child: Text(
-                  dateStr.toUpperCase(),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: primary,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
-              _wrapWithDismissible(
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _wrapWithDismissible(
               child: _buildFuelCard(index, item, titleColor, subColor, primary, isDark, isHistory: true, isExpanded: isExpanded),
               log: item,
               index: index,
               primary: primary,
             ),
-            ],
           );
         },
       ),
@@ -950,15 +928,16 @@ class _FuelPageState extends State<FuelPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (isHistory)
+              if (isHistory) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     _buildDetailItem("Filled At", filledAt, Icons.access_time_rounded, primary, subColor, titleColor),
-                  _buildDetailItem("Price", price, Icons.payments_rounded, primary, subColor, titleColor),
-                ],
-              ),
-              const SizedBox(height: 16),
+                    _buildDetailItem("Price", price, Icons.payments_rounded, primary, subColor, titleColor),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

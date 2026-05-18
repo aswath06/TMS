@@ -123,18 +123,25 @@ class AdminDashboardStore {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> items = data['items'] ?? [];
         
-        final List<Map<String, dynamic>> formattedHistory = items.map((req) => {
-          'id': 'REQ-${req['id']}',
-          'dbId': req['id'],
-          'routeName': req['routeName'] ?? 'Unknown Route',
-          'date': req['start_datetime']?.toString().split('T')[0] ?? 'No Date',
-          'pickup': req['startLocation'] ?? 'Unknown',
-          'drop': req['destinationLocation'] ?? 'Unknown',
-          'passengers': req['passengerCount'] ?? 0,
-          'status': 'Completed',
-          'rawStatus': 8,
-          'vehicle': req['assignedVehicle']?['model'] ?? 'N/A',
-          'intermediateStops': req['intermediateStops'] ?? [],
+        final List<Map<String, dynamic>> formattedHistory = items.map((req) {
+          final tripInstances = req['trip_instances'] as List?;
+          final activeTrip = (tripInstances != null && tripInstances.isNotEmpty) ? tripInstances[0] : null;
+          final bool? allowanceNeeded = activeTrip?['allowance_needed'] ?? req['allowance_needed'] ?? req['travel_info']?['allowance_needed'];
+
+          return {
+            'id': 'REQ-${req['id']}',
+            'dbId': req['id'],
+            'routeName': req['routeName'] ?? 'Unknown Route',
+            'date': req['start_datetime']?.toString().split('T')[0] ?? 'No Date',
+            'pickup': req['startLocation'] ?? 'Unknown',
+            'drop': req['destinationLocation'] ?? 'Unknown',
+            'passengers': req['passengerCount'] ?? 0,
+            'status': 'Completed',
+            'rawStatus': 8,
+            'vehicle': req['assignedVehicle']?['model'] ?? 'N/A',
+            'intermediateStops': req['intermediateStops'] ?? [],
+            'allowance_needed': allowanceNeeded,
+          };
         }).toList();
 
         if (page == 1) {

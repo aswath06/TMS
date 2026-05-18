@@ -12,6 +12,7 @@ import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 import 'fuel/fuel_page.dart';
+import 'admin_allowance_screen.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends StatefulWidget {
@@ -553,7 +554,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const Color(0xFF0D9488), // Teal 600
           surface,
           onTap: () {
-            // TODO: Navigate to Allowance management
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminAllowanceScreen()),
+            );
           },
         ),
       ],

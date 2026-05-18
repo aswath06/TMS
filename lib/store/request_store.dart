@@ -223,6 +223,10 @@ class RequestStore extends ChangeNotifier {
       }
     }
 
+    final tripInstances = req['trip_instances'] as List?;
+    final activeTrip = (tripInstances != null && tripInstances.isNotEmpty) ? tripInstances[0] : null;
+    final bool? allowanceNeeded = activeTrip?['allowance_needed'] ?? req['allowance_needed'] ?? req['travel_info']?['allowance_needed'];
+
     return {
       'id': 'REQ-${req['id']}',
       'dbId': req['id'],
@@ -248,6 +252,7 @@ class RequestStore extends ChangeNotifier {
         'phone': d['phone'],
         'status': d['status'],
       }).toList() ?? [],
+      'allowance_needed': allowanceNeeded,
     };
   }
 

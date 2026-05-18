@@ -297,6 +297,29 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
+  Widget _buildAllowanceBadge(bool allowanceNeeded) {
+    if (!allowanceNeeded) return const SizedBox.shrink();
+    return Tooltip(
+      message: "Allowance Required",
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: const Icon(
+          Icons.payments_outlined,
+          color: Colors.green,
+          size: 14,
+        ),
+      ),
+    );
+  }
+
   Widget _buildMissionCard(
     BuildContext context, {
     required Color cardColor,
@@ -316,6 +339,7 @@ class _RequestListPageState extends State<RequestListPage> {
     required String requestId,
     required int rawStatus,
     required String creatorName,
+    bool? allowanceNeeded,
   }) {
     // Determine primary driver or list
     String driverNameHead = "Driver Assigned";
@@ -384,7 +408,16 @@ class _RequestListPageState extends State<RequestListPage> {
                     ),
                   ],
                 ),
-                statusBadge,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status.toUpperCase() == 'COMPLETED' && allowanceNeeded != null) ...[
+                      _buildAllowanceBadge(allowanceNeeded),
+                      const SizedBox(width: 8),
+                    ],
+                    statusBadge,
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -1059,6 +1092,7 @@ class _RequestListPageState extends State<RequestListPage> {
               statusColor: _getStatusColor(mission['status'] ?? "Active"),
               primaryBlue: primaryBlue,
               creatorName: mission['faculty'] ?? "Unknown Faculty",
+              allowanceNeeded: mission['allowance_needed'],
             )),
           ],
         );

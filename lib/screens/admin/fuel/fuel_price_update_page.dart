@@ -45,20 +45,23 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
     }
   }
 
-  Future<void> _updatePrice(int id, double newPrice) async {
+  Future<void> _updatePrice(int id, String type, double newPrice) async {
     try {
       final token = await UserStore.getToken();
       final response = await http.patch(
         Uri.parse(ApiConstants.updateBunkPrice(id)),
         headers: ApiConstants.getHeaders(token),
-        body: json.encode({"price_per_liter": newPrice}),
+        body: json.encode({
+          "type": type,
+          "amount": newPrice,
+        }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Price updated successfully"), backgroundColor: Colors.green),
+            SnackBar(content: Text("$type price updated successfully"), backgroundColor: Colors.green),
           );
           _fetchBunks();
         } else {
@@ -66,6 +69,10 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
             SnackBar(content: Text(responseData['message'] ?? "Update failed"), backgroundColor: Colors.red),
           );
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Server error: ${response.statusCode}"), backgroundColor: Colors.red),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,8 +81,17 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
     }
   }
 
-  void _showEditSheet(dynamic bunk) {
-    final TextEditingController priceController = TextEditingController(text: bunk['price_per_liter'].toString());
+  void _showEditSheet(dynamic bunk, String type) {
+    String currentPrice = '0.00';
+    if (type == 'PETROL') {
+      currentPrice = bunk['petrol_price']?.toString() ?? '0.00';
+    } else if (type == 'DIESEL') {
+      currentPrice = bunk['diesel_price']?.toString() ?? '0.00';
+    } else if (type == 'CNG') {
+      currentPrice = bunk['cng_price']?.toString() ?? '0.00';
+    }
+
+    final TextEditingController priceController = TextEditingController(text: currentPrice);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color primary = const Color(0xFF6366F1);
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -111,7 +127,7 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
             ),
             const SizedBox(height: 24),
             Text(
-              "Update Price",
+              "Update $type Price",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -150,7 +166,7 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
                   final price = double.tryParse(priceController.text);
                   if (price != null) {
                     Navigator.pop(context);
-                    _updatePrice(bunk['id'], price);
+                    _updatePrice(bunk['id'], type, price);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -161,6 +177,81 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
                 ),
                 child: const Text("Update Price", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFuelPriceTag(
+    String type,
+    dynamic priceVal,
+    dynamic bunk,
+    Color primary,
+    Color titleColor,
+    bool isDark,
+  ) {
+    final double price = double.tryParse(priceVal?.toString() ?? '0.0') ?? 0.0;
+    
+    Color typeColor;
+    IconData icon;
+    if (type == 'PETROL') {
+      typeColor = const Color(0xFFF59E0B);
+      icon = Icons.local_gas_station_rounded;
+    } else if (type == 'DIESEL') {
+      typeColor = const Color(0xFF10B981);
+      icon = Icons.oil_barrel_rounded;
+    } else {
+      typeColor = const Color(0xFF06B6D4);
+      icon = Icons.local_gas_station_outlined;
+    }
+
+    return GestureDetector(
+      onTap: () => _showEditSheet(bunk, type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: typeColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: typeColor.withValues(alpha: 0.15), width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: typeColor),
+            const SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  type,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: typeColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  "₹${price.toStringAsFixed(2)}",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: typeColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.edit_rounded, size: 8, color: typeColor),
             ),
           ],
         ),
@@ -219,62 +310,52 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
                       BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8)),
                     ],
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(Icons.local_gas_station_rounded, color: primary),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              bunk['name'],
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: titleColor,
-                              ),
-                            ),
-                            Text(
-                              bunk['owner_name'],
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: titleColor.withValues(alpha: 0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      Row(
                         children: [
-                          Text(
-                            "₹${bunk['price_per_liter']}",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: primary,
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(Icons.local_gas_station_rounded, color: primary),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  bunk['name'],
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: titleColor,
+                                  ),
+                                ),
+                                Text(
+                                  bunk['owner_name'],
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: titleColor.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: () => _showEditSheet(bunk),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.edit_rounded, color: Colors.blue, size: 16),
-                            ),
-                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildFuelPriceTag("PETROL", bunk['petrol_price'], bunk, primary, titleColor, isDark),
+                          _buildFuelPriceTag("DIESEL", bunk['diesel_price'], bunk, primary, titleColor, isDark),
+                          _buildFuelPriceTag("CNG", bunk['cng_price'], bunk, primary, titleColor, isDark),
                         ],
                       ),
                     ],

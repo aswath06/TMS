@@ -141,11 +141,42 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
 
   bool get _isBITBunk => _selectedBunk?['owner_name']?.toString().toUpperCase() == 'BIT';
 
+  double get _pricePerLiter {
+    if (_selectedBunk == null || _selectedVehicle == null) return 0.0;
+    if (!_isBITBunk) return 0.0;
+
+    final String fuelType = (_selectedVehicle?['fuel_type'] ?? '').toString().toUpperCase();
+    if (fuelType == 'PETROL') {
+      return double.tryParse(_selectedBunk?['petrol_price']?.toString() ?? '0.0') ?? 0.0;
+    } else if (fuelType == 'DIESEL') {
+      return double.tryParse(_selectedBunk?['diesel_price']?.toString() ?? '0.0') ?? 0.0;
+    } else if (fuelType == 'CNG') {
+      return double.tryParse(_selectedBunk?['cng_price']?.toString() ?? '0.0') ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  String _getBunkPriceString(Map<String, dynamic> bunk) {
+    if (_selectedVehicle == null) return "";
+    final isBit = bunk['owner_name']?.toString().toUpperCase() == 'BIT';
+    if (!isBit) return "";
+    
+    final String fuelType = (_selectedVehicle?['fuel_type'] ?? '').toString().toUpperCase();
+    double price = 0.0;
+    if (fuelType == 'PETROL') {
+      price = double.tryParse(bunk['petrol_price']?.toString() ?? '0.0') ?? 0.0;
+    } else if (fuelType == 'DIESEL') {
+      price = double.tryParse(bunk['diesel_price']?.toString() ?? '0.0') ?? 0.0;
+    } else if (fuelType == 'CNG') {
+      price = double.tryParse(bunk['cng_price']?.toString() ?? '0.0') ?? 0.0;
+    }
+    return " • ₹${price.toStringAsFixed(2)} / L (${fuelType})";
+  }
+
   double get _totalAmount {
     if (_isBITBunk) {
       final vol = double.tryParse(_volumeController.text) ?? 0.0;
-      final price = double.tryParse(_selectedBunk?['price_per_liter']?.toString() ?? "0") ?? 0.0;
-      return vol * price;
+      return vol * _pricePerLiter;
     } else {
       return double.tryParse(_amountController.text) ?? 0.0;
     }
@@ -315,10 +346,10 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                               
                               String mainText = isVehicle ? item['vehicle_number'] : (isDriver ? item['name'] : item['name']);
                               String subText = isVehicle 
-                                  ? (item['default_driver'] != null ? "Driver: ${item['default_driver']['name']}" : (item['vehicle_type_name'] ?? "Vehicle")) 
+                                  ? "${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
                                   : (isDriver 
                                       ? "${item['employee_code'] ?? 'N/A'} • ${(item['status'] ?? 'UNKNOWN').toString().replaceAll('_', ' ')} • 📞 ${item['phone'] ?? 'No Contact'}" 
-                                      : "Owner: ${item['owner_name'] ?? 'Unknown'}");
+                                      : "Owner: ${item['owner_name'] ?? 'Unknown'}${_getBunkPriceString(item)}");
                               
                               return GestureDetector(
                                 onTap: () {
@@ -512,7 +543,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
             _buildSelectTile(
               "Select Vehicle",
               _selectedVehicle?['vehicle_number'] ?? "Choose Vehicle",
-              _selectedVehicle?['vehicle_type_name'],
+              _selectedVehicle != null
+                  ? "${_selectedVehicle?['vehicle_type_name'] ?? 'Vehicle'} • Fuel: ${_selectedVehicle?['fuel_type'] ?? 'N/A'}"
+                  : null,
               Icons.directions_bus_filled_rounded,
               _selectedVehicle != null,
               () {
@@ -686,7 +719,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                         const SizedBox(height: 4),
                         Text(
                           _isBITBunk 
-                              ? "₹${_selectedBunk?['price_per_liter']} / liter" 
+                              ? "₹${_pricePerLiter.toStringAsFixed(2)} / liter (${_selectedVehicle?['fuel_type'] ?? 'N/A'})" 
                               : "Enter total amount",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,

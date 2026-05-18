@@ -29,6 +29,29 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
     return const Color(0xFFEC4899); // Pink for Approved/Planned
   }
 
+  Widget _buildAllowanceBadge(bool allowanceNeeded) {
+    if (!allowanceNeeded) return const SizedBox.shrink();
+    return Tooltip(
+      message: "Allowance Required",
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: const Icon(
+          Icons.payments_outlined,
+          color: Colors.green,
+          size: 14,
+        ),
+      ),
+    );
+  }
+
   void _filterRequests(String query) {
     setState(() {
       _filteredRequests = widget.requests
@@ -226,7 +249,16 @@ class _ViewAllRequestsPageState extends State<ViewAllRequestsPage> {
                     ],
                   ),
                 ),
-                _buildStatusBadge(status),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status.toUpperCase() == 'COMPLETED' && req['allowance_needed'] != null) ...[
+                      _buildAllowanceBadge(req['allowance_needed']),
+                      const SizedBox(width: 8),
+                    ],
+                    _buildStatusBadge(status),
+                  ],
+                ),
               ],
             ),
           ),
