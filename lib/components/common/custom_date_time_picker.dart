@@ -164,50 +164,53 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                 BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 40, offset: const Offset(0, 10)),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: widget.subTitleColor.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: widget.accent.withOpacity(0.1), shape: BoxShape.circle),
-                        child: Icon(Icons.event_note_rounded, color: widget.accent, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          widget.showTime ? "Select Schedule" : "Choose Date",
-                          style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: widget.titleColor),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(color: widget.subTitleColor.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildCalendar(),
-                if (widget.showTime) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: widget.accent.withOpacity(0.1), shape: BoxShape.circle),
+                          child: Icon(Icons.event_note_rounded, color: widget.accent, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.showTime ? "Select Schedule" : "Choose Date",
+                            style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: widget.titleColor),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildCalendar(),
+                  if (widget.showTime) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Divider(height: 1, color: dividerColor),
+                    ),
+                    _buildTimePicker(isDark),
+                  ],
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Divider(height: 1, color: dividerColor),
                   ),
-                  _buildTimePicker(isDark),
+                  _buildActions(),
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
                 ],
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Divider(height: 1, color: dividerColor),
-                ),
-                _buildActions(),
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
-              ],
+              ),
             ),
           ),
         ),

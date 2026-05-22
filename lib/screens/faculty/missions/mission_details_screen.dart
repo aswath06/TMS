@@ -2944,13 +2944,17 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
                           children: [
                             Icon(Icons.payments_outlined, color: Colors.green, size: 12),
                             SizedBox(width: 4),
-                            Text(
-                              "ALLOWANCE REQUIRED",
-                              style: TextStyle(
-                                color: Colors.green,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 9,
-                                letterSpacing: 0.5,
+                            Flexible(
+                              child: Text(
+                                "ALLOWANCE REQUIRED",
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 9,
+                                  letterSpacing: 0.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
                             ),
                           ],

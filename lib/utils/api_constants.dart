@@ -6,7 +6,7 @@ class ApiConstants {
   static const String bypassHeaderKey = "X-Tunnel-Skip-Anti-Phishing-Page";
   static const String bypassHeaderValue = "true";
 
-  // Auth
+  // Auth    
   static const String googleLogin = "$baseUrl/auth/google-login";
   static const String login = "$baseUrl/auth/login-by-username";
   static const String forgotPassword = "$baseUrl/auth/forgot-password";

@@ -25,35 +25,107 @@ class _FuelPageState extends State<FuelPage> {
   List<dynamic> _fuelLogs = [];
   bool _isLoading = true;
 
+  int _currentPage = 1;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+
+  late ScrollController _requestScrollController;
+  late ScrollController _historyScrollController;
+
   @override
   void initState() {
     super.initState();
-    _fetchFuelLogs();
+    _requestScrollController = ScrollController()..addListener(_onRequestScroll);
+    _historyScrollController = ScrollController()..addListener(_onHistoryScroll);
+    _fetchFuelLogs(isRefresh: true);
   }
 
-  Future<void> _fetchFuelLogs() async {
+  @override
+  void dispose() {
+    _requestScrollController.dispose();
+    _historyScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onRequestScroll() {
+    if (_requestScrollController.position.pixels >= _requestScrollController.position.maxScrollExtent - 200) {
+      _fetchMoreFuelLogs();
+    }
+  }
+
+  void _onHistoryScroll() {
+    if (_historyScrollController.position.pixels >= _historyScrollController.position.maxScrollExtent - 200) {
+      _fetchMoreFuelLogs();
+    }
+  }
+
+  Future<void> _fetchFuelLogs({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _currentPage = 1;
+        _hasMore = true;
+        _fuelLogs = [];
+        _isLoading = true;
+      });
+    }
+
     try {
       final token = await UserStore.getToken();
+      String url = "${ApiConstants.fuelLog}?page=$_currentPage&limit=20";
+      
+      if (_selectedDate != null) {
+        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+        url += "&from_date=$dateStr&to_date=$dateStr";
+      }
+
       final response = await http.get(
-        Uri.parse(ApiConstants.fuelLog),
+        Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
+          final List<dynamic> newLogs = responseData['data'] ?? [];
           setState(() {
-            _fuelLogs = responseData['data'];
+            if (isRefresh) {
+              _fuelLogs = newLogs;
+            } else {
+              _fuelLogs.addAll(newLogs);
+            }
             _isLoading = false;
+            _isLoadingMore = false;
+            if (newLogs.length < 20) {
+              _hasMore = false;
+            } else {
+              _currentPage++;
+            }
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+            _isLoadingMore = false;
           });
         }
       } else {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
       debugPrint("Error fetching fuel logs: $e");
     }
+  }
+
+  Future<void> _fetchMoreFuelLogs() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    await _fetchFuelLogs();
   }
 
   Future<void> _deleteFuelLog(int id) async {
@@ -79,7 +151,7 @@ class _FuelPageState extends State<FuelPage> {
               backgroundColor: Colors.green,
             ),
           );
-          _fetchFuelLogs();
+          _fetchFuelLogs(isRefresh: true);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -210,13 +282,17 @@ class _FuelPageState extends State<FuelPage> {
               );
               if (picked != null) {
                 setState(() => _selectedDate = picked);
+                _fetchFuelLogs(isRefresh: true);
               }
             },
           ),
           if (_selectedDate != null)
             IconButton(
               icon: Icon(Icons.clear_rounded, color: subColor, size: 20),
-              onPressed: () => setState(() => _selectedDate = null),
+              onPressed: () {
+                setState(() => _selectedDate = null);
+                _fetchFuelLogs(isRefresh: true);
+              },
             ),
           IconButton(
             icon: Container(
@@ -231,7 +307,7 @@ class _FuelPageState extends State<FuelPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const FuelPriceUpdatePage()),
-              ).then((_) => _fetchFuelLogs()); // Refresh logs in case prices changed
+              ).then((_) => _fetchFuelLogs(isRefresh: true)); // Refresh logs in case prices changed
             },
           ),
           IconButton(
@@ -270,7 +346,7 @@ class _FuelPageState extends State<FuelPage> {
             MaterialPageRoute(builder: (context) => const CreateFuelRequestPage()),
           ).then((value) {
             if (value == true) {
-              _fetchFuelLogs();
+              _fetchFuelLogs(isRefresh: true);
               setState(() => _isRequestGeneration = true);
             }
           });
@@ -667,11 +743,30 @@ class _FuelPageState extends State<FuelPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchFuelLogs,
+      onRefresh: () => _fetchFuelLogs(isRefresh: true),
       child: ListView.builder(
+        controller: _requestScrollController,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        itemCount: filteredLogs.length,
+        itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == filteredLogs.length) {
+            if (_isLoadingMore) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+              );
+            } else {
+              return const SizedBox(height: 40);
+            }
+          }
           final req = filteredLogs[index];
           final bool isExpanded = _expandedIndex == index;
           
@@ -726,11 +821,30 @@ class _FuelPageState extends State<FuelPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchFuelLogs,
+      onRefresh: () => _fetchFuelLogs(isRefresh: true),
       child: ListView.builder(
+        controller: _historyScrollController,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        itemCount: historyItems.length,
+        itemCount: historyItems.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == historyItems.length) {
+            if (_isLoadingMore) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+              );
+            } else {
+              return const SizedBox(height: 40);
+            }
+          }
           final item = historyItems[index];
           final bool isExpanded = _expandedIndex == index;
 
@@ -879,12 +993,16 @@ class _FuelPageState extends State<FuelPage> {
                         children: [
                           Icon(Icons.person_outline_rounded, size: 12, color: subColor.withValues(alpha: 0.7)),
                           const SizedBox(width: 4),
-                          Text(
-                            driverName,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: subColor,
+                          Expanded(
+                            child: Text(
+                              driverName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: subColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
                         ],
@@ -922,9 +1040,12 @@ class _FuelPageState extends State<FuelPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildDetailItem("Indent No", indentNo, Icons.tag_rounded, primary, subColor, titleColor),
+                  Expanded(child: _buildDetailItem("Indent No", indentNo, Icons.tag_rounded, primary, subColor, titleColor)),
+                  const SizedBox(width: 16),
                   if (isHistory)
-                    _buildDetailItem("Odometer", odometer, Icons.speed_rounded, primary, subColor, titleColor),
+                    Expanded(child: _buildDetailItem("Odometer", odometer, Icons.speed_rounded, primary, subColor, titleColor))
+                  else
+                    const Expanded(child: SizedBox.shrink()),
                 ],
               ),
               const SizedBox(height: 16),
@@ -932,8 +1053,9 @@ class _FuelPageState extends State<FuelPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildDetailItem("Filled At", filledAt, Icons.access_time_rounded, primary, subColor, titleColor),
-                    _buildDetailItem("Price", price, Icons.payments_rounded, primary, subColor, titleColor),
+                    Expanded(child: _buildDetailItem("Filled At", filledAt, Icons.access_time_rounded, primary, subColor, titleColor)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildDetailItem("Price", price, Icons.payments_rounded, primary, subColor, titleColor)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -941,15 +1063,18 @@ class _FuelPageState extends State<FuelPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildDetailItem("Bunk Name", bunkName, Icons.store_rounded, primary, subColor, titleColor),
-                  _buildDetailItem("Driver", driverName, Icons.person_rounded, primary, subColor, titleColor),
+                  Expanded(child: _buildDetailItem("Bunk Name", bunkName, Icons.store_rounded, primary, subColor, titleColor)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildDetailItem("Driver", driverName, Icons.person_rounded, primary, subColor, titleColor)),
                 ],
               ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildDetailItem("Filled By", filledBy, Icons.admin_panel_settings_rounded, primary, subColor, titleColor),
+                  Expanded(child: _buildDetailItem("Filled By", filledBy, Icons.admin_panel_settings_rounded, primary, subColor, titleColor)),
+                  const SizedBox(width: 16),
+                  const Expanded(child: SizedBox.shrink()),
                 ],
               ),
               if (isHistory && item['bill_file_url'] != null) ...[
@@ -1008,11 +1133,23 @@ class _FuelPageState extends State<FuelPage> {
           children: [
             Icon(icon, size: 14, color: primary.withValues(alpha: 0.6)),
             const SizedBox(width: 4),
-            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: subColor)),
+            Flexible(
+              child: Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: subColor),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
-        Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: titleColor)),
+        Text(
+          value,
+          style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: titleColor),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
       ],
     );
   }

@@ -22,6 +22,7 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
   int? _tempSelectedDriverId;
   DateTime? _tempSelectedDate;
   String? _userRole;
+  bool _showPendingTab = false;
 
   @override
   void initState() {
@@ -265,104 +266,236 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
       appBar: AppBar(
         title: Text(
           isTamil ? "அனைத்து படிகள்" : "All Allowances",
-          style: TextStyle(fontWeight: FontWeight.w900, color: titleColor),
+          style: TextStyle(fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -0.5),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.filter_list_rounded, color: primaryBlue),
-            onPressed: () => _showFilterModal(context),
+        centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 16),
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
-        ],
+        ),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                style: TextStyle(color: titleColor),
-                decoration: InputDecoration(
-                  hintText: isTamil ? "தேடுக..." : "Search allowances...",
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          if (!_showPendingTab)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+                  ],
                 ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  style: TextStyle(color: titleColor),
+                  decoration: InputDecoration(
+                    hintText: isTamil ? "தேடுக..." : "Search allowances...",
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+            child: Container(
+              height: 52,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showPendingTab = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        decoration: BoxDecoration(
+                          color: !_showPendingTab ? primaryBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: !_showPendingTab
+                              ? [BoxShadow(color: primaryBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                              : [],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isTamil ? "உருவாக்கப்பட்டவை" : "Created Allowance",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: !_showPendingTab
+                                ? Colors.white
+                                : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showPendingTab = true),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        decoration: BoxDecoration(
+                          color: _showPendingTab ? const Color(0xFFF59E0B) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: _showPendingTab
+                              ? [BoxShadow(color: const Color(0xFFF59E0B).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                              : [],
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              isTamil ? "நிலுவையில்" : "Pending",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: _showPendingTab
+                                    ? Colors.white
+                                    : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                              ),
+                            ),
+                            Consumer<AdminAllowanceStore>(
+                              builder: (context, store, _) {
+                                if (store.pendingCreations.isEmpty) return const SizedBox.shrink();
+                                return Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _showPendingTab ? Colors.white.withOpacity(0.2) : const Color(0xFFF59E0B).withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    "${store.pendingCreations.length}",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: _showPendingTab ? Colors.white : const Color(0xFFF59E0B),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           Expanded(
             child: Consumer<AdminAllowanceStore>(
               builder: (context, store, _) {
-                if (store.isLoadingAllowances && store.allowances.isEmpty) {
-                  return _buildSkeletonLoading(isDark);
-                }
+                if (_showPendingTab) {
+                  if (store.isLoadingPendingCreations && store.pendingCreations.isEmpty) {
+                    return _buildSkeletonLoading(isDark);
+                  }
 
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    await Future.wait([
-                      store.fetchAllowances(isRefresh: true),
-                      store.fetchPendingAllowanceCreations(),
-                    ]);
-                  },
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                    slivers: [
-                      if (store.pendingCreations.isNotEmpty)
-                        SliverToBoxAdapter(
-                          child: _buildPendingCreationsSection(
-                            store.pendingCreations,
-                            isDark,
-                            isTamil,
-                            primaryBlue,
-                          ),
-                        ),
-                      if (store.allowances.isEmpty)
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 80),
-                            child: _buildEmptyState(isTamil, isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                          ),
-                        )
-                      else
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                return _buildAllowanceCard(store.allowances[index], isDark, isTamil, primaryBlue, titleColor, index);
-                              },
-                              childCount: store.allowances.length,
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await store.fetchPendingAllowanceCreations();
+                    },
+                    child: CustomScrollView(
+                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                      slivers: [
+                        if (store.pendingCreations.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 80),
+                              child: _buildEmptyPendingState(isTamil, isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  return _buildVerticalPendingCard(
+                                    store.pendingCreations[index],
+                                    isDark,
+                                    isTamil,
+                                    primaryBlue,
+                                    titleColor,
+                                    index,
+                                  );
+                                },
+                                childCount: store.pendingCreations.length,
+                              ),
                             ),
                           ),
-                        ),
-                      if (store.isFetchingMoreAllowances)
-                        const SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(child: CircularProgressIndicator()),
+                        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                      ],
+                    ),
+                  );
+                } else {
+                  if (store.isLoadingAllowances && store.allowances.isEmpty) {
+                    return _buildSkeletonLoading(isDark);
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await store.fetchAllowances(isRefresh: true);
+                    },
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                      slivers: [
+                        if (store.allowances.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 80),
+                              child: _buildEmptyState(isTamil, isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  return _buildAllowanceCard(store.allowances[index], isDark, isTamil, primaryBlue, titleColor, index);
+                                },
+                                childCount: store.allowances.length,
+                              ),
+                            ),
                           ),
-                        ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                    ],
-                  ),
-                );
+                        if (store.isFetchingMoreAllowances)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                      ],
+                    ),
+                  );
+                }
               },
             ),
           ),
@@ -954,6 +1087,253 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmptyPendingState(bool isTamil, Color subColor) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle_outline_rounded, size: 64, color: Colors.green.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text(
+            isTamil ? "நிலுவையில் உள்ளவை எதுவும் இல்லை" : "All Caught Up!",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: subColor),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isTamil ? "அனைத்து படிகளும் வெற்றிகரமாக உருவாக்கப்பட்டது" : "No pending allowance creations found.",
+            style: TextStyle(fontSize: 14, color: subColor.withOpacity(0.8)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerticalPendingCard(
+    Map<String, dynamic> item,
+    bool isDark,
+    bool isTamil,
+    Color primaryColor,
+    Color titleColor,
+    int index,
+  ) {
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final routeRequest = item['routeRequest'] ?? {};
+    final routeName = routeRequest['route_name'] ?? (isTamil ? 'தெரியவில்லை' : 'Unknown Route');
+    
+    String driverName = isTamil ? 'தெரியவில்லை' : 'Unknown Driver';
+    String vehicleNumber = isTamil ? 'தெரியவில்லை' : 'Unknown Vehicle';
+    
+    final tripLegs = item['tripLegs'] as List<dynamic>?;
+    if (tripLegs != null && tripLegs.isNotEmpty) {
+      final assignments = tripLegs[0]['assignments'] as List<dynamic>?;
+      if (assignments != null && assignments.isNotEmpty) {
+        final driver = assignments[0]['driver'];
+        if (driver != null) {
+          driverName = driver['user']?['name'] ?? driverName;
+        }
+        final vehicle = assignments[0]['vehicle'];
+        if (vehicle != null) {
+          vehicleNumber = vehicle['vehicle_number'] ?? vehicleNumber;
+        }
+      }
+    }
+
+    final endedAtStr = item['ended_at'];
+    String formattedEndTime = isTamil ? 'தெரியவில்லை' : 'Unknown Date';
+    if (endedAtStr != null) {
+      try {
+        final endedAt = DateTime.parse(endedAtStr).toLocal();
+        formattedEndTime = DateFormat('dd MMM yyyy • hh:mm a').format(endedAt);
+      } catch (_) {}
+    }
+
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + (index * 80).clamp(0, 400)),
+      curve: Curves.easeOutQuart,
+      tween: Tween<double>(begin: 0, end: 1),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withOpacity(0.12),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            String timeStr = "TBD";
+            if (tripLegs != null && tripLegs.isNotEmpty) {
+              final firstLeg = tripLegs[0];
+              if (firstLeg['planned_start_at'] != null) {
+                try {
+                  final dt = DateTime.parse(firstLeg['planned_start_at']).toLocal();
+                  timeStr = DateFormat('hh:mm a').format(dt);
+                } catch (_) {}
+              }
+            }
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MissionDetailsScreen(
+                  missionTitle: routeName,
+                  time: timeStr,
+                  driverName: driverName,
+                  driverPhone: "",
+                  vehicleInfo: vehicleNumber,
+                  capacity: "0",
+                  pathType: routeRequest['trip_type'] ?? "ONE_WAY",
+                  status: item['status'] ?? "UNKNOWN",
+                  statusColor: Colors.orange,
+                  requestId: routeRequest['id']?.toString() ?? "",
+                  creatorName: "Transport Department",
+                  rawStatus: 8,
+                  stops: const [],
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.hourglass_top_rounded, size: 14, color: Color(0xFFF59E0B)),
+                          const SizedBox(width: 6),
+                          Text(
+                            isTamil ? "உருவாக்க நிலுவை" : "PENDING CREATION",
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFFF59E0B),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  routeName,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: titleColor,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.person_rounded, size: 14, color: primaryColor.withOpacity(0.6)),
+                              const SizedBox(width: 4),
+                              Text(
+                                isTamil ? "ஓட்டுநர்" : "DRIVER",
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: subColor),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            driverName,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: titleColor),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.directions_bus_rounded, size: 14, color: primaryColor.withOpacity(0.6)),
+                              const SizedBox(width: 4),
+                              Text(
+                                isTamil ? "வாகனம்" : "VEHICLE",
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: subColor),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            vehicleNumber,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: titleColor),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.check_circle_outline_rounded, size: 14, color: subColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        "${isTamil ? 'முடிந்தது' : 'Completed'}: $formattedEndTime",
+                        style: TextStyle(fontSize: 11, color: subColor, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
