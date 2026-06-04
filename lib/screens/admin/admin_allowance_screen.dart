@@ -13,6 +13,7 @@ import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class AdminAllowanceScreen extends StatefulWidget {
   const AdminAllowanceScreen({super.key});
@@ -714,15 +715,25 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
                                       endDate = startDate;
                                     }
 
-                                    final uri = Uri.parse(
-                                      '${ApiConstants.baseUrl}/request/allowances-report'
-                                      '?start_date=$startDate&end_date=$endDate&format=$selectedFormat',
-                                    );
+                                    final String url = ApiConstants.getAllowanceReport(startDate, endDate, selectedFormat);
+
+                                    debugPrint("====== CURL COMMAND ======");
+                                    debugPrint("curl -X GET '$url' -H 'Authorization: Bearer $token'");
+                                    debugPrint("==========================");
 
                                     final response = await http.get(
-                                      uri,
+                                      Uri.parse(url),
                                       headers: ApiConstants.getHeaders(token),
                                     );
+
+                                    debugPrint("====== RESPONSE ======");
+                                    debugPrint("Status Code: ${response.statusCode}");
+                                    if (response.headers['content-type']?.contains('application/json') ?? false) {
+                                      debugPrint("Body: ${response.body}");
+                                    } else {
+                                      debugPrint("Body: [Binary data, length: ${response.bodyBytes.length}]");
+                                    }
+                                    debugPrint("======================");
 
                                     if (!context.mounted) return;
 
@@ -742,14 +753,7 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
                                       // Open the file
                                       final result = await OpenFilex.open(file.path);
                                       if (result.type != ResultType.done && context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Could not open file: ${result.message}'),
-                                            backgroundColor: Colors.orange,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                          ),
-                                        );
+                                        showTopToast(context, 'Could not open file: ${result.message}', isError: true);
                                       }
                                     } else {
                                       // Try to parse error message
@@ -761,26 +765,12 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
 
                                       if (!context.mounted) return;
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(errorMsg),
-                                          backgroundColor: Colors.red,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                      );
+                                      showTopToast(context, errorMsg, isError: true);
                                     }
                                   } catch (e) {
                                     if (!context.mounted) return;
                                     setModalState(() => downloading = false);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      ),
-                                    );
+                                    showTopToast(context, e.toString(), isError: true);
                                   }
                                 },
                           style: ElevatedButton.styleFrom(

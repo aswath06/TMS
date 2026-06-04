@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +11,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../components/common/custom_date_time_picker.dart';
 import '../../../utils/api_constants.dart';
 import '../../../store/user_store.dart';
+import '../../../utils/toast_utils.dart';
 import 'create_fuel_request_page.dart';
 import 'fuel_price_update_page.dart';
 
@@ -694,25 +698,70 @@ class _FuelPageState extends State<FuelPage> {
                               ? null
                               : () async {
                                   setModalState(() => downloading = true);
-                                  await Future.delayed(const Duration(milliseconds: 1200));
-                                  if (context.mounted) {
-                                    Navigator.pop(context);
-                                    String msg;
-                                    if (isRangeReport) {
-                                      final fromStr = DateFormat('dd MMM yyyy').format(fromDate);
-                                      final toStr = DateFormat('dd MMM yyyy').format(toDate);
-                                      msg = "Fuel report from $fromStr to $toStr generated (${selectedFormat.toUpperCase()})";
-                                    } else {
-                                      msg = "Fuel report for ${DateFormat('dd MMM yyyy').format(selectedDate)} generated (${selectedFormat.toUpperCase()})";
-                                    }
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(msg),
-                                        backgroundColor: const Color(0xFF10B981),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      ),
+                                  try {
+                                    final String startStr = DateFormat('yyyy-MM-dd').format(isRangeReport ? fromDate : selectedDate);
+                                    final String endStr = DateFormat('yyyy-MM-dd').format(isRangeReport ? toDate : selectedDate);
+                                    final String url = ApiConstants.getFuelReport(startStr, endStr, selectedFormat);
+                                    
+                                    final token = await UserStore.getToken();
+
+                                    debugPrint("====== CURL COMMAND ======");
+                                    debugPrint("curl -X GET '$url' -H 'Authorization: Bearer $token'");
+                                    debugPrint("==========================");
+
+                                    final response = await http.get(
+                                      Uri.parse(url),
+                                      headers: ApiConstants.getHeaders(token),
                                     );
+
+                                    debugPrint("====== RESPONSE ======");
+                                    debugPrint("Status Code: ${response.statusCode}");
+                                    if (response.headers['content-type']?.contains('application/json') ?? false) {
+                                      debugPrint("Body: ${response.body}");
+                                    } else {
+                                      debugPrint("Body: [Binary data, length: ${response.bodyBytes.length}]");
+                                    }
+                                    debugPrint("======================");
+                                    
+                                    if (response.statusCode == 200) {
+                                      if (response.headers['content-type']?.contains('application/json') ?? false) {
+                                        final jsonResponse = jsonDecode(response.body);
+                                        if (jsonResponse['success'] == false) {
+                                          throw jsonResponse['message'] ?? "Unknown error occurred.";
+                                        }
+                                      }
+
+                                      final bytes = response.bodyBytes;
+                                      final tempDir = await getTemporaryDirectory();
+                                      final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
+                                      final fileName = "Fuel_Report_${startStr}_to_${endStr}.$ext";
+                                      final file = File("${tempDir.path}/$fileName");
+                                      await file.writeAsBytes(bytes);
+                                      
+                                      await OpenFilex.open(file.path);
+                                      
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        showTopToast(context, "Fuel report generated successfully!");
+                                      }
+                                    } else {
+                                      String errMsg = "Failed to download report. Server responded with ${response.statusCode}.";
+                                      try {
+                                        final jsonResponse = jsonDecode(response.body);
+                                        if (jsonResponse['message'] != null) {
+                                          errMsg = jsonResponse['message'];
+                                        }
+                                      } catch (_) {}
+                                      throw errMsg;
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      showTopToast(context, e.toString(), isError: true);
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setModalState(() => downloading = false);
+                                    }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(

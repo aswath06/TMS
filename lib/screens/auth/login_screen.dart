@@ -425,197 +425,212 @@ curl -X POST "$url" \
   }
 
   void _showTermsDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            final bool isDark = Theme.of(context).brightness == Brightness.dark;
-            final Color textCol = isDark ? Colors.white : const Color(0xFF0F172A);
-            final Color subCol = isDark ? Colors.white60 : const Color(0xFF475569);
-            final Color cardBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TermsAndConditionsScreen(),
+      ),
+    );
+  }
+}
 
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-              elevation: 10,
-              backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 500, maxHeight: 620),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.gavel_rounded, color: Color(0xFF6366F1), size: 24),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            "Terms & Conditions",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: textCol,
-                            ),
-                          ),
+class TermsAndConditionsScreen extends StatelessWidget {
+  const TermsAndConditionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+    final Color textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subCol = isDark ? Colors.white70 : const Color(0xFF475569);
+    final Color accent = const Color(0xFF6366F1);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 160.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: bgColor,
+            elevation: 0,
+            iconTheme: IconThemeData(color: textCol),
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 48, bottom: 16, right: 24),
+              title: Text(
+                "Terms &\nConditions",
+                style: TextStyle(
+                  color: textCol,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  height: 1.2,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [
+                      accent.withValues(alpha: 0.1),
+                      bgColor,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Please read and understand what data & permissions TripZo accesses to deliver a reliable driver experience.",
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: subCol,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildPremiumSection(
+                    title: "Background Synchronization",
+                    content: "Uses a Foreground Data Sync service to reliably synchronize critical mission assignments and updates in real-time, even when the app is in the background.",
+                    isDark: isDark,
+                    accent: accent,
+                  ),
+                  _buildPremiumSection(
+                    title: "Real-Time Notifications",
+                    content: "Connects to a real-time socket server to instantly notify you of new missions, ride changes, and important administrative communications.",
+                    isDark: isDark,
+                    accent: accent,
+                  ),
+                  _buildPremiumSection(
+                    title: "NO GPS Location Tracking",
+                    content: "Background and fine/coarse GPS location tracking packages and services have been completely disabled. We do NOT collect, transmit, or record your physical coordinates.",
+                    isDark: isDark,
+                    accent: Colors.redAccent,
+                  ),
+                  _buildPremiumSection(
+                    title: "Data Security & Access",
+                    content: "Your authentication token and profile details are encrypted locally on your device. We never sell, share, or misuse your private account information.",
+                    isDark: isDark,
+                    accent: accent,
+                  ),
+                  const SizedBox(height: 48),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      "Please read and understand what data & permissions TripZo accesses to deliver a reliable driver experience.",
-                      style: TextStyle(fontSize: 12, color: subCol, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 14),
-                    Flexible(
-                      child: ListView(
-                        shrinkWrap: true,
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          _buildTermItem(
-                            icon: Icons.sync_rounded,
-                            title: "Background Synchronization",
-                            description: "Uses a Foreground Data Sync service to reliably synchronize critical mission assignments and updates in real-time, even when the app is in the background.",
-                            cardBg: cardBg,
-                            textCol: textCol,
-                            subCol: subCol,
-                          ),
-                          _buildTermItem(
-                            icon: Icons.notifications_active_rounded,
-                            title: "Real-Time Notifications",
-                            description: "Connects to a real-time socket server to instantly notify you of new missions, ride changes, and important administrative communications.",
-                            cardBg: cardBg,
-                            textCol: textCol,
-                            subCol: subCol,
-                          ),
-                          _buildTermItem(
-                            icon: Icons.location_off_rounded,
-                            title: "NO GPS Location Tracking",
-                            description: "Background and fine/coarse GPS location tracking packages and services have been completely disabled. We do NOT collect, transmit, or record your physical coordinates.",
-                            iconColor: Colors.redAccent,
-                            cardBg: cardBg,
-                            textCol: textCol,
-                            subCol: subCol,
-                          ),
-                          _buildTermItem(
-                            icon: Icons.security_rounded,
-                            title: "Data Security & Access",
-                            description: "Your authentication token and profile details are encrypted locally on your device. We never sell, share, or misuse your private account information.",
-                            cardBg: cardBg,
-                            textCol: textCol,
-                            subCol: subCol,
-                          ),
-                        ],
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accent,
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 0,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Divider(color: Colors.grey.shade200),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: () {
-                        setStateDialog(() {
-                          _agreeToTerms = !_agreeToTerms;
-                        });
-                        setState(() {});
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Row(
-                          children: [
-                            Checkbox(
-                              value: _agreeToTerms,
-                              activeColor: const Color(0xFF6366F1),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              onChanged: (val) {
-                                setStateDialog(() {
-                                  _agreeToTerms = val ?? false;
-                                });
-                                setState(() {});
-                              },
-                            ),
-                            const Expanded(
-                              child: Text(
-                                "I agree to all the Terms & Conditions mentioned above",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF475569),
-                                ),
-                              ),
-                            ),
-                          ],
+                      child: const Text(
+                        "I UNDERSTAND & AGREE",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: CustomButton(
-                        text: "I Agree & Understand",
-                        onPressed: () {
-                          if (!_agreeToTerms) {
-                            showTopToast(context, "Please check the agreement box to continue.", isError: true);
-                            return;
-                          }
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTermItem({
-    required IconData icon,
+  Widget _buildPremiumSection({
     required String title,
-    required String description,
-    required Color cardBg,
-    required Color textCol,
-    required Color subCol,
-    Color iconColor = const Color(0xFF6366F1),
+    required String content,
+    required bool isDark,
+    required Color accent,
   }) {
+    final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subCol = isDark ? Colors.white70 : const Color(0xFF475569);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
                   title,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textCol),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: textCol,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  description,
-                  style: TextStyle(fontSize: 10, height: 1.35, color: subCol, fontWeight: FontWeight.w500),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 20.0),
+            child: Text(
+              content,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.6,
+                color: subCol,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],

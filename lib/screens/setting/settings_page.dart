@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/SecuritySettingsPage.dart';
 import 'package:tripzo/screens/setting/user_session_management_page.dart';
+import 'package:tripzo/screens/setting/support_tickets_screen.dart';
 import 'package:tripzo/screens/security/security_vehicle_screen.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
@@ -27,6 +28,7 @@ class _SettingsPageState extends State<SettingsPage> {
   // Sync initial state with the Global Stores
   String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
   final TextEditingController _supportController = TextEditingController();
+  bool _isSendingSupport = false;
 
   @override
   void dispose() {
@@ -257,7 +259,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     const SizedBox(height: 12),
 
-                    // USER LOGOUT TILE (Super Admin Only)
+                    // SUPER ADMIN EXCLUSIVE TILES
                     if (_userRole.toLowerCase() == "super admin") ...[ 
                       _settingsTile(
                         Icons.manage_accounts_rounded,
@@ -275,6 +277,22 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      _settingsTile(
+                        Icons.support_agent_rounded,
+                        "Support Tickets",
+                        "View and manage user support requests",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SupportTicketsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
 
                     const SizedBox(height: 4),
@@ -284,8 +302,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     
                     const SizedBox(height: 32),
 
-                    // LOGOUT TILE (Hidden for Drivers)
-                    if (_userRole.toLowerCase() != "driver")
+                    // LOGOUT TILE (Hidden for Driver, Security, Faculty)
+                    if (_userRole.toLowerCase() == "admin" || _userRole.toLowerCase() == "super admin")
                       _settingsTile(
                         Icons.logout_rounded,
                         isTamil ? "வெளியேறு" : "Sign Out",
@@ -370,14 +388,53 @@ class _SettingsPageState extends State<SettingsPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (_supportController.text.trim().isEmpty) return;
-                    showTopToast(context, "Support request sent successfully!");
-                    _supportController.clear();
-                    FocusScope.of(context).unfocus();
-                  },
+                  onPressed: _isSendingSupport
+                      ? null
+                      : () async {
+                          if (_supportController.text.trim().isEmpty) return;
+                          
+                          setState(() {
+                            _isSendingSupport = true;
+                          });
+
+                          final String text = _supportController.text.trim();
+                          final token = await UserStore.getToken();
+                          
+                          try {
+                            final response = await http.post(
+                              Uri.parse(ApiConstants.createSupport),
+                              headers: ApiConstants.getHeaders(token),
+                              body: jsonEncode({
+                                "text": text,
+                              }),
+                            );
+
+                            if (response.statusCode == 200 || response.statusCode == 201) {
+                              if (mounted) {
+                                showTopToast(context, "Support request sent successfully!");
+                                _supportController.clear();
+                                FocusScope.of(context).unfocus();
+                              }
+                            } else {
+                              if (mounted) {
+                                showTopToast(context, "Failed to send support request. Please try again.", isError: true);
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              showTopToast(context, "Error: \${e.toString()}", isError: true);
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isSendingSupport = false;
+                              });
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
+                    disabledBackgroundColor: primaryBlue.withOpacity(0.6),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -385,10 +442,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    "Send Request",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
-                  ),
+                  child: _isSendingSupport
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          "Send Request",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
+                        ),
                 ),
               ),
             ],

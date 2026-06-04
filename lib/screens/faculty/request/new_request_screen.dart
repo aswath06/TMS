@@ -706,19 +706,31 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       }
 
       final goingStart = _startDate;
-      DateTime? goingEnd;
-      DateTime? returnStart;
-      DateTime? returnEnd;
+      DateTime? rootEndDatetime;
+      DateTime? leg1Start;
+      DateTime? leg1End;
+      DateTime? leg2Start;
+      DateTime? leg2End;
 
-      if (_routeType == 'Multi Day') {
-        goingEnd = _endDate;
-      } else if (goingStart != null) {
+      if (goingStart != null) {
         final oneLegMinutes = _travelDurationMinutes + 60; // 1 hr buffer
-        goingEnd = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
+        leg1Start = goingStart;
         
-        if (_routeType != 'One Way') {
-          returnStart = goingEnd;
-          returnEnd = returnStart.add(Duration(minutes: oneLegMinutes.toInt()));
+        if (_routeType == 'One Way') {
+          leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
+          rootEndDatetime = leg1End;
+        } else if (_routeType == 'Round Trip') {
+          leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
+          leg2Start = leg1End;
+          leg2End = leg2Start.add(Duration(minutes: oneLegMinutes.toInt()));
+          rootEndDatetime = leg1End; // Usually same as leg1End in Round Trip (or could be leg2End, but keeping it as before)
+        } else if (_routeType == 'Multi Day') {
+          if (_endDate != null) {
+            leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
+            leg2Start = _endDate!.subtract(Duration(minutes: oneLegMinutes.toInt()));
+            leg2End = _endDate;
+            rootEndDatetime = _endDate;
+          }
         }
       }
 
@@ -727,11 +739,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         "trip_type": _routeType == 'One Way'
             ? 'ONE_WAY'
             : (_routeType == 'Multi Day' ? 'MULTI_DAY' : 'ROUND_TRIP'),
-        "requested_for_date": DateFormat(
-          'yyyy-MM-dd',
-        ).format(_startDate ?? DateTime.now()),
+        "requested_for_date": DateFormat('yyyy-MM-dd').format(_startDate ?? DateTime.now()),
         "start_datetime": goingStart != null ? _toIso(goingStart) : null,
-        "end_datetime": goingEnd != null ? _toIso(goingEnd) : null,
+        "end_datetime": rootEndDatetime != null ? _toIso(rootEndDatetime) : null,
         "purpose": _purposeController.text.trim(),
         "passenger_count": int.tryParse(_passengerCountController.text) ?? 1,
         "vehicle_count": int.tryParse(_vehicleCountController.text) ?? 1,
@@ -744,13 +754,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         "department_id": _selectedDepartmentId,
       };
 
-      if (_routeType != 'One Way' && _routeType != 'Multi Day') {
-        body["return_start_datetime"] = returnStart != null ? _toIso(returnStart) : null;
-        body["return_end_datetime"] = returnEnd != null ? _toIso(returnEnd) : null;
+      if (_routeType != 'One Way') {
+        body["return_start_datetime"] = leg2Start != null ? _toIso(leg2Start) : null;
+        body["return_end_datetime"] = leg2End != null ? _toIso(leg2End) : null;
       }
 
       if (isAdmin) {
-        // ADMIN FLOW: Uses admin_assignments
+        // ADMIN FLOW: Uses admin_assignments and legs
         List<Map<String, dynamic>> leg1Vehicles = [];
         _guestGroups.forEach((idx, guests) {
           leg1Vehicles.add({
@@ -760,7 +770,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           });
         });
 
-        body["stops"] = _stops.asMap().entries.map((entry) {
+        final outboundStops = _stops.asMap().entries.map((entry) {
           final idx = entry.key;
           final s = entry.value;
           return {
@@ -774,6 +784,49 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 : (idx == _stops.length - 1 ? "END" : "VIA"),
           };
         }).toList();
+
+        body["stops"] = outboundStops;
+
+        final returnStops = outboundStops.reversed.toList().asMap().entries.map((entry) {
+            final idx = entry.key;
+            final s = entry.value;
+            return {
+              "stop_name": s['stop_name'],
+              "address": s['address'],
+              "latitude": s['latitude'],
+              "longitude": s['longitude'],
+              "stop_order": idx + 1,
+              "stop_type": idx == 0
+                  ? "START"
+                  : (idx == outboundStops.length - 1 ? "END" : "VIA"),
+            };
+        }).toList();
+
+        body["legs"] = [
+          {
+            "leg_code": "LEG-1",
+            "leg_type": "OUTBOUND",
+            "travel_direction": "START_TO_END",
+            "planned_start_at": leg1Start != null ? _toIso(leg1Start) : null,
+            "planned_end_at": leg1End != null ? _toIso(leg1End) : null,
+            "required_vehicle_count": int.tryParse(_vehicleCountController.text) ?? 1,
+            "stops": outboundStops,
+            "linked_leg_index": _routeType != 'One Way' ? 1 : null,
+            "allow_same_vehicle_as_linked_leg": true
+          },
+          if (_routeType != 'One Way')
+          {
+            "leg_code": "LEG-2",
+            "leg_type": "RETURN",
+            "travel_direction": "END_TO_START",
+            "planned_start_at": leg2Start != null ? _toIso(leg2Start) : null,
+            "planned_end_at": leg2End != null ? _toIso(leg2End) : null,
+            "required_vehicle_count": int.tryParse(_vehicleCountController.text) ?? 1,
+            "stops": returnStops,
+            "linked_leg_index": 0,
+            "allow_same_vehicle_as_linked_leg": true
+          }
+        ];
 
         body["admin_assignments"] = [
           {"leg_code": "LEG-1", "vehicles": leg1Vehicles},
@@ -789,7 +842,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         List<Map<String, dynamic>> groupings = [];
         _guestGroups.forEach((idx, guests) {
           groupings.add({
-            "group_label": "Vehicle Group ${idx + 1}",
+            "group_label": "Vehicle Group \${idx + 1}",
             "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList(),
           });
         });
@@ -863,6 +916,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     child: SingleChildScrollView(
                       key: _scrollKey,
                       controller: _mainScroll,
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: _buildCurrentStage(pColor, isDark),

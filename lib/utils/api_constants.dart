@@ -40,6 +40,7 @@ class ApiConstants {
   static String get getDriverAllowances => "$baseUrl/request/allowances-all";
   static String allowanceSeen(dynamic id) => "$baseUrl/request/allowances/$id/seen";
   static String allowanceRecheck(dynamic id) => "$baseUrl/request/allowances/$id/recheck";
+  static String getAllowanceReport(String start, String end, String format) => "$baseUrl/request/allowances-report?start_date=$start&end_date=$end&format=$format";
   static String get createAllowance => "$baseUrl/request/create-allowance";
   static String get startRoute => "$baseUrl/request/start-route";
   static String get completeRouteOtp => "$baseUrl/request/complete-route-otp";
@@ -84,6 +85,7 @@ class ApiConstants {
   static String get verifyFuelBill => "$baseUrl/api/vehicles/verify-fuel-bill";
   static String get pendingFuelEntries => "$baseUrl/api/vehicles/fuel-log/pending-driver";
   static String get pendingRoutesToComplete => "$baseUrl/request/driver/pending-routes-to-complete";
+  static String getFuelReport(String start, String end, String format) => "$baseUrl/api/vehicles/fuel-reports/date-wise?start_date=$start&end_date=$end&format=$format";
 
   // Maintenance
   static String get fuelEntry => "$baseUrl/api/maintenance/fuel-entry";
@@ -92,12 +94,15 @@ class ApiConstants {
   static String get getVehicleBunks => "$baseUrl/api/maintenance/get-bunks";
   static String get getServiceShops => "$baseUrl/api/maintenance/get-shops";
 
-  // Notifications
   static String get myNotifications => "$baseUrl/api/notifications/my";
   static String get unreadCount => "$baseUrl/api/notifications/unread-count";
   static String markNotificationRead(dynamic id) => "$baseUrl/api/notifications/$id/read";
   static String get markAllRead => "$baseUrl/api/notifications/read-all";
 
+  // Support
+  static String get createSupport => "$baseUrl/api/support/create";
+  static String get getAllSupport => "$baseUrl/api/support/get-all";
+  static String completeSupport(dynamic id) => "$baseUrl/api/support/complete/$id";
 
   // Centralized headers for DevTunnels and common requirements
   static Map<String, String> getHeaders(String? token) {

@@ -14,12 +14,16 @@ class SecurityVehicleScreen extends StatefulWidget {
 }
 
 class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
-  int _selectedIndex = 0; // 0: Inbound, 1: Outbound, 2: Pending
+  static List<Map<String, dynamic>> _cachedApiData = [];
+  static int _cachedSelectedIndex = 0;
+  static DateTime? _lastFetchTime;
+
+  int _selectedIndex = _cachedSelectedIndex; // 0: Outbound, 1: Inbound, 2: Pending
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   String _userRole = "";
 
-  List<Map<String, dynamic>> _apiData = [];
+  List<Map<String, dynamic>> _apiData = List.from(_cachedApiData);
   bool _isLoading = false;
   int _page = 1;
   bool _hasMore = true;
@@ -49,8 +53,11 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
     if (mounted) setState(() => _isFetchingMore = false);
   }
 
-  Future<void> _fetchRoutesData({bool isLoadMore = false}) async {
+  Future<void> _fetchRoutesData({bool isLoadMore = false, bool force = false}) async {
     if (!mounted) return;
+    if (!force && !isLoadMore && _lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inSeconds < 5) {
+      return;
+    }
     if (!isLoadMore) {
       setState(() {
         _isLoading = true;
@@ -62,7 +69,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
 
     try {
       final token = await UserStore.getToken();
-      final types = ['IN_CAMPUS', 'OUT_CAMPUS', 'PENDING'];
+      final types = ['OUT_CAMPUS', 'IN_CAMPUS', 'PENDING'];
       final type = types[_selectedIndex];
       final url = ApiConstants.getSecurityRoutes(_page, 10, type);
       
@@ -91,8 +98,9 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
 
             return {
               "id": e['trip_instance_id']?.toString() ?? e['id']?.toString() ?? '',
-              "status": ["Inbound", "Outbound", "Pending"][_selectedIndex],
+              "status": ["Outbound", "Inbound", "Pending"][_selectedIndex],
               "routeName": e['route_name'] ?? 'Unknown Route',
+              "purpose": e['purpose'] ?? 'No Purpose',
               "vehicleNumber": vNum,
               "driverName": dName,
               "startLocation": e['start_destination'] ?? 'Unknown',
@@ -111,10 +119,13 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
               } else {
                 _apiData = newItems;
               }
+              _cachedApiData = List.from(_apiData);
+              _cachedSelectedIndex = _selectedIndex;
             });
           }
         }
       }
+      if (!isLoadMore) _lastFetchTime = DateTime.now();
     } catch (e) {
       debugPrint("Error fetching routes: $e");
     } finally {
@@ -122,8 +133,8 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
     }
   }
 
-  Future<void> _fetchRoutes() async {
-    await _fetchRoutesData(isLoadMore: false);
+  Future<void> _fetchRoutes({bool force = false}) async {
+    await _fetchRoutesData(isLoadMore: false, force: force);
   }
 
   Future<void> _loadUserRole() async {
@@ -158,8 +169,10 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
       backgroundColor: scaffoldBg,
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          controller: _scrollController,
+        child: RefreshIndicator(
+          onRefresh: () => _fetchRoutes(force: true),
+          child: CustomScrollView(
+            controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             _buildHeader(),
@@ -181,6 +194,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
               ),
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],
+        ),
         ),
       ),
     );
@@ -237,7 +251,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
   }
 
   Widget _buildToggle(bool isDark, Color subColor) {
-    final tabs = ["Inbound", "Outbound", "Pending"];
+    final tabs = ["Outbound", "Inbound", "Pending"];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -261,8 +275,10 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
             return Expanded(
               child: GestureDetector(
                 onTap: () {
-                  setState(() => _selectedIndex = index);
-                  _fetchRoutes();
+                  if (_selectedIndex != index) {
+                    setState(() => _selectedIndex = index);
+                    _fetchRoutes(force: true);
+                  }
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
@@ -329,7 +345,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
       );
     }
 
-    final statuses = ["Inbound", "Outbound", "Pending"];
+    final statuses = ["Outbound", "Inbound", "Pending"];
     final currentStatus = statuses[_selectedIndex];
 
     final filteredData = _apiData.where((d) {
@@ -427,13 +443,23 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      data['routeName'] ?? 'Unknown Route',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: titleColor,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            data['routeName'] ?? 'Unknown Route',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _StatusAnimatedIcon(status: data['status'] ?? ''),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -444,6 +470,8 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
                             data['vehicleNumber'] ?? 'N/A', Colors.orange),
                         _buildBadge(Icons.person_rounded,
                             data['driverName'] ?? 'N/A', Colors.blue),
+                        _buildBadge(Icons.assignment_rounded,
+                            data['purpose'] ?? 'No Purpose', Colors.purple),
                       ],
                     ),
                   ],
@@ -584,7 +612,9 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
           width: 10,
           height: 10,
           decoration: BoxDecoration(
-            color: data['endedBy'] != null ? Colors.redAccent : Colors.grey.withOpacity(0.3),
+            color: (data['endedBy'] != null || data['endedAt'] != null) 
+                ? Colors.redAccent 
+                : Colors.grey.withOpacity(0.3),
             shape: BoxShape.circle,
           ),
         ),
@@ -602,11 +632,15 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                data['endedBy'] ?? 'Not Ended',
+                data['endedBy'] != null 
+                    ? data['endedBy'] 
+                    : (data['endedAt'] != null ? 'Not recorded' : 'Not Ended'),
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: data['endedBy'] != null ? titleColor : subColor),
+                    color: (data['endedBy'] != null || data['endedAt'] != null) 
+                        ? titleColor 
+                        : subColor),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -663,6 +697,73 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
     } catch (_) {
       return isoDate;
     }
+  }
+}
+
+class _StatusAnimatedIcon extends StatefulWidget {
+  final String status;
+  const _StatusAnimatedIcon({required this.status});
+
+  @override
+  State<_StatusAnimatedIcon> createState() => _StatusAnimatedIconState();
+}
+
+class _StatusAnimatedIconState extends State<_StatusAnimatedIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _offsetAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _offsetAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: widget.status == 'Outbound'
+          ? const Offset(0.3, 0.0)
+          : widget.status == 'Inbound'
+              ? const Offset(-0.3, 0.0)
+              : Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    IconData iconData;
+    Color iconColor;
+
+    if (widget.status == 'Outbound') {
+      iconData = Icons.arrow_forward_rounded; // going out
+      iconColor = Colors.orange;
+    } else if (widget.status == 'Inbound') {
+      iconData = Icons.arrow_back_rounded; // coming in
+      iconColor = Colors.green;
+    } else {
+      iconData = Icons.horizontal_rule_rounded; // stable
+      iconColor = Colors.blue;
+    }
+
+    if (widget.status == 'Pending') {
+      return Icon(iconData, color: iconColor, size: 20);
+    }
+
+    return SlideTransition(
+      position: _offsetAnimation,
+      child: Icon(iconData, color: iconColor, size: 20),
+    );
   }
 }
 

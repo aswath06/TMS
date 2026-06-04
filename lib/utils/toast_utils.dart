@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:tripzo/utils/routes.dart';
 
@@ -7,18 +8,38 @@ Timer? _toastTimer;
 
 /// Global function to show a custom top-level toast notification.
 void showTopToast(BuildContext context, String message, {bool isError = false}) {
+  String displayMessage = message;
+  bool displayIsError = isError;
+
+  try {
+    final startIndex = message.indexOf('{');
+    final endIndex = message.lastIndexOf('}');
+    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+      final jsonStr = message.substring(startIndex, endIndex + 1);
+      final json = jsonDecode(jsonStr);
+      if (json is Map) {
+        if (json.containsKey('message')) {
+          displayMessage = json['message'].toString();
+        }
+        if (json.containsKey('success')) {
+          displayIsError = json['success'] == false;
+        }
+      }
+    }
+  } catch (_) {}
+
   final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-  final Color bgColor = isError
+  final Color bgColor = displayIsError
       ? (isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2))
       : (isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5));
 
-  final Color textColor = isError
+  final Color textColor = displayIsError
       ? (isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B))
       : (isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46));
 
-  final IconData icon = isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded;
-  final Color iconColor = isError
+  final IconData icon = displayIsError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded;
+  final Color iconColor = displayIsError
       ? (isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626))
       : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669));
 
@@ -42,7 +63,7 @@ void showTopToast(BuildContext context, String message, {bool isError = false}) 
       left: 20,
       right: 20,
       child: _TopToastWidget(
-        message: message,
+        message: displayMessage,
         bgColor: bgColor,
         textColor: textColor,
         icon: icon,

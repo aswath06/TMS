@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/VehicleStore.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/components/common/structural_loading.dart';
 import '../../components/notification_bell.dart';
 
 class SecurityDashboardScreen extends StatefulWidget {
@@ -13,15 +17,73 @@ class SecurityDashboardScreen extends StatefulWidget {
 }
 
 class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
+  static int _cachedOutCampusCount = 0;
+  static int _cachedInCampusCount = 0;
+  static List<dynamic> _cachedOutCampusList = [];
+  static List<dynamic> _cachedInCampusList = [];
+  static DateTime? _lastFetchTime;
+
+  int _outCampusCount = _cachedOutCampusCount;
+  int _inCampusCount = _cachedInCampusCount;
+  List<dynamic> _outCampusList = _cachedOutCampusList;
+  List<dynamic> _inCampusList = _cachedInCampusList;
+  String _selectedCategory = 'OUT_CAMPUS';
+  bool _isLoadingData = false;
+
   @override
   void initState() {
     super.initState();
     if (useFacultyStore.profileData.value == null) {
       useFacultyStore.fetchProfile();
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<VehicleStore>().fetchVehicles(forceRefresh: true);
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData({bool force = false}) async {
+    if (!mounted) return;
+    if (!force && _lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inSeconds < 5) {
+      return;
+    }
+    setState(() {
+      _isLoadingData = true;
     });
+    
+    try {
+      final token = await UserStore.getToken();
+      
+      final outRes = await http.get(
+        Uri.parse(ApiConstants.getSecurityRoutes(1, 100, 'OUT_CAMPUS')),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (outRes.statusCode == 200) {
+        final body = jsonDecode(outRes.body);
+        _outCampusCount = body['data']['pagination']['totalItems'] ?? 0;
+        _outCampusList = body['data']['data'] ?? [];
+        _cachedOutCampusCount = _outCampusCount;
+        _cachedOutCampusList = _outCampusList;
+      }
+      
+      final inRes = await http.get(
+        Uri.parse(ApiConstants.getSecurityRoutes(1, 100, 'IN_CAMPUS')),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (inRes.statusCode == 200) {
+        final body = jsonDecode(inRes.body);
+        _inCampusCount = body['data']['pagination']['totalItems'] ?? 0;
+        _inCampusList = body['data']['data'] ?? [];
+        _cachedInCampusCount = _inCampusCount;
+        _cachedInCampusList = _inCampusList;
+      }
+      _lastFetchTime = DateTime.now();
+    } catch (e) {
+      debugPrint("Error fetching dashboard data: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingData = false;
+        });
+      }
+    }
   }
 
   @override
@@ -48,44 +110,49 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
+                color: primaryBlue.withOpacity(isDark ? 0.1 : 0.05),
               ),
             ),
           ),
           SafeArea(
             bottom: true,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
-                  ValueListenableBuilder(
-                    valueListenable: useFacultyStore.profileData,
-                    builder: (context, data, _) {
-                      return FutureBuilder<String?>(
-                        future: UserStore.getName(),
-                        builder: (context, snapshot) {
-                          final String displayName =
-                              data?['name'] ?? snapshot.data ?? "Security";
-                          return _buildHeader(
-                            displayName,
-                            titleColor,
-                            subColor,
-                            screenWidth,
-                            primaryBlue,
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 36),
-                  _buildSectionTitle('Campus Vehicle Stats', titleColor),
-                  const SizedBox(height: 18),
-                  _buildStatsSection(primaryBlue, surfaceColor, isDark, screenWidth),
-                  const SizedBox(height: 100),
-                ],
+            child: RefreshIndicator(
+              onRefresh: () => _fetchDashboardData(force: true),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 24),
+                    ValueListenableBuilder(
+                      valueListenable: useFacultyStore.profileData,
+                      builder: (context, data, _) {
+                        return FutureBuilder<String?>(
+                          future: UserStore.getName(),
+                          builder: (context, snapshot) {
+                            final String displayName =
+                                data?['name'] ?? snapshot.data ?? "Security";
+                            return _buildHeader(
+                              displayName,
+                              titleColor,
+                              subColor,
+                              screenWidth,
+                              primaryBlue,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 36),
+                    _buildSectionTitle('Campus Vehicle Stats', titleColor),
+                    const SizedBox(height: 18),
+                    _buildStatsSection(primaryBlue, surfaceColor, isDark, screenWidth),
+                    const SizedBox(height: 24),
+                    _buildSelectedList(titleColor, subColor, isDark, surfaceColor),
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
             ),
           ),
@@ -113,7 +180,7 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.1),
+                  color: primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: FutureBuilder<String?>(
@@ -152,7 +219,7 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [primary, primary.withValues(alpha: 0.4)],
+              colors: [primary, primary.withOpacity(0.4)],
             ),
           ),
           child: CircleAvatar(
@@ -188,36 +255,43 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
     bool isDark,
     double width,
   ) {
-    final vehicleStore = context.watch<VehicleStore>();
-    
-    if (vehicleStore.isLoading && vehicleStore.filteredVehicles.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final int inCampus = vehicleStore.vehiclesInCampus;
-    final int outCampus = vehicleStore.vehiclesOutCampus;
-
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard(
-            title: 'Inside Campus',
-            value: inCampus.toString(),
-            icon: Icons.local_parking_rounded,
-            color: const Color(0xFF10B981), // Green
-            surface: surface,
-            isDark: isDark,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCategory = 'OUT_CAMPUS';
+              });
+            },
+            child: _buildStatCard(
+              title: 'Outside Campus',
+              value: _outCampusCount,
+              icon: Icons.directions_car_rounded,
+              color: primaryBlue,
+              surface: surface,
+              isDark: isDark,
+              isSelected: _selectedCategory == 'OUT_CAMPUS',
+            ),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: _buildStatCard(
-            title: 'Outside Campus',
-            value: outCampus.toString(),
-            icon: Icons.directions_car_rounded,
-            color: const Color(0xFFF59E0B), // Orange
-            surface: surface,
-            isDark: isDark,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCategory = 'IN_CAMPUS';
+              });
+            },
+            child: _buildStatCard(
+              title: 'Inside Campus',
+              value: _inCampusCount,
+              icon: Icons.local_parking_rounded,
+              color: primaryBlue,
+              surface: surface,
+              isDark: isDark,
+              isSelected: _selectedCategory == 'IN_CAMPUS',
+            ),
           ),
         ),
       ],
@@ -226,26 +300,42 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
 
   Widget _buildStatCard({
     required String title,
-    required String value,
+    required int value,
     required IconData icon,
     required Color color,
     required Color surface,
     required bool isDark,
+    required bool isSelected,
   }) {
-    return Container(
+    final Color bgColor = isSelected ? color : surface;
+    final Color textColor = isSelected ? Colors.white : (isDark ? Colors.white : Colors.black);
+    final Color iconBgColor = isSelected ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1);
+    final Color iconColor = isSelected ? Colors.white : color;
+    final Color subTextColor = isSelected ? Colors.white70 : Colors.grey;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: surface,
+        color: bgColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
+          color: isSelected ? color : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+          width: 1,
         ),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
+          if (isSelected)
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Column(
@@ -254,33 +344,144 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: iconBgColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: iconColor, size: 28),
           ),
           const SizedBox(height: 20),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 32,
-              letterSpacing: -1.0,
-              color: isDark ? Colors.white : Colors.black,
-              height: 1,
-            ),
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: value),
+            duration: const Duration(seconds: 1),
+            builder: (context, val, child) {
+              return Text(
+                val.toString(),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 32,
+                  letterSpacing: -1.0,
+                  color: textColor,
+                  height: 1,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 8),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.grey,
+            style: TextStyle(
+              color: subTextColor,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSelectedList(Color titleColor, Color subColor, bool isDark, Color surfaceColor) {
+    final String title = _selectedCategory == 'OUT_CAMPUS' ? 'Outside Campus Vehicles' : 'Inside Campus Vehicles';
+
+    if (_isLoadingData && _outCampusList.isEmpty && _inCampusList.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(title, titleColor),
+          const SizedBox(height: 16),
+          const StructuralLoading(itemCount: 3),
+        ],
+      );
+    }
+
+    final List<dynamic> list = _selectedCategory == 'OUT_CAMPUS' ? _outCampusList : _inCampusList;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(title, titleColor),
+        const SizedBox(height: 16),
+        if (list.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Text(
+                "No vehicles found.",
+                style: TextStyle(color: subColor, fontSize: 16),
+              ),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: list.length,
+            itemBuilder: (context, index) {
+              final item = list[index];
+              final vehicles = item['vehicles'] as List<dynamic>? ?? [];
+              final drivers = item['drivers'] as List<dynamic>? ?? [];
+              
+              final vehicleNumber = vehicles.isNotEmpty ? (vehicles.first['vehicle_number'] ?? 'Unknown Vehicle') : 'Unknown Vehicle';
+              final driverName = drivers.isNotEmpty ? (drivers.first['name'] ?? drivers.first['driver_name'] ?? 'Unknown Driver') : 'Unknown Driver';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.grey.withOpacity(0.1)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.directions_car_rounded, color: Color(0xFF6366F1), size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vehicleNumber,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: titleColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(Icons.person, size: 14, color: subColor),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  driverName,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: subColor,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
     );
   }
 }
