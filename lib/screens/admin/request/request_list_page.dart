@@ -685,6 +685,9 @@ class _RequestListPageState extends State<RequestListPage> {
   }
   void _showReportGenerationSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
     DateTime selectedDate = DateTime.now();
+    DateTime fromDate = DateTime.now().subtract(const Duration(days: 7));
+    DateTime toDate = DateTime.now();
+    bool isRangeReport = true;
     String selectedFormat = 'pdf';
     bool downloading = false;
 
@@ -739,91 +742,297 @@ class _RequestListPageState extends State<RequestListPage> {
                         child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
                       ),
                       const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Download Report",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: titleColor,
-                              letterSpacing: -0.5,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Download Report",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: titleColor,
+                                letterSpacing: -0.5,
+                              ),
                             ),
-                          ),
-                          Text(
-                            "Select date and format to generate report",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: subColor.withOpacity(0.8),
+                            Text(
+                              "Select date range and format to generate report",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: subColor.withOpacity(0.8),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 32),
-                  Text(
-                    "REPORT DATE",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: subColor.withOpacity(0.6),
-                      letterSpacing: 1.2,
+                  const SizedBox(height: 24),
+                  // Segmented Toggle control
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () async {
-                      final DateTime? picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.fromSeed(
-                                seedColor: primaryBlue,
-                                primary: primaryBlue,
-                                onPrimary: Colors.white,
-                                surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "From - To Date",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
                               ),
                             ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        setModalState(() => selectedDate = picked);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.grey.withOpacity(0.1)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 22),
-                          const SizedBox(width: 16),
-                          Text(
-                            DateFormat('MMMM dd, yyyy').format(selectedDate),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: titleColor,
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: !isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Date-wise",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: !isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
                             ),
                           ),
-                          const Spacer(),
-                          Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 24),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (!isRangeReport) ...[
+                    Text(
+                      "REPORT DATE",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: subColor.withOpacity(0.6),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.fromSeed(
+                                  seedColor: primaryBlue,
+                                  primary: primaryBlue,
+                                  onPrimary: Colors.white,
+                                  surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setModalState(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 22),
+                            const SizedBox(width: 16),
+                            Text(
+                              DateFormat('MMMM dd, yyyy').format(selectedDate),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: titleColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "FROM DATE",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor.withOpacity(0.6),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: fromDate,
+                                    firstDate: DateTime(2020),
+                                    lastDate: toDate,
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: ColorScheme.fromSeed(
+                                            seedColor: primaryBlue,
+                                            primary: primaryBlue,
+                                            onPrimary: Colors.white,
+                                            surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                          ),
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() => fromDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_available_rounded, color: primaryBlue, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(fromDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "TO DATE",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor.withOpacity(0.6),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: toDate,
+                                    firstDate: fromDate,
+                                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: ColorScheme.fromSeed(
+                                            seedColor: primaryBlue,
+                                            primary: primaryBlue,
+                                            onPrimary: Colors.white,
+                                            surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                          ),
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() => toDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_busy_rounded, color: primaryBlue, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(toDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   Text(
                     "REPORT FORMAT",
@@ -885,40 +1094,16 @@ class _RequestListPageState extends State<RequestListPage> {
                               : () async {
                                   setModalState(() => downloading = true);
                                   try {
-                                    final String? token = await UserStore.getToken();
-                                    final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-                                    final String url =
-                                        "${ApiConstants.baseUrl}/request/reports/date-wise?date=$dateStr&template=summary&format=$selectedFormat";
-
-                                    // ── DEBUG LOGS ──────────────────────────────────────────────────
-                                    debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
-                                    debugPrint("URL: $url");
-                                    debugPrint(
-                                      "curl --location '$url' \\\n"
-                                      "  --header 'Authorization: TMS $token' \\\n"
-                                      "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
-                                    );
-                                    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-                                    final response = await http.get(
-                                      Uri.parse(url),
-                                      headers: ApiConstants.getHeaders(token),
-                                    );
-
-                                    if (response.statusCode == 200) {
-                                      final bytes = response.bodyBytes;
-                                      final tempDir = await getTemporaryDirectory();
-                                      final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
-                                      final fileName = "Transport_Report_$dateStr.$ext";
-                                      final file = File("${tempDir.path}/$fileName");
-                                      await file.writeAsBytes(bytes);
-
-                                      await OpenFilex.open(file.path);
+                                    if (isRangeReport) {
+                                      // Simulated UI-only response for From-To range as requested
+                                      await Future.delayed(const Duration(milliseconds: 1200));
                                       if (context.mounted) {
                                         Navigator.pop(context);
+                                        final fromStr = DateFormat('dd MMM yyyy').format(fromDate);
+                                        final toStr = DateFormat('dd MMM yyyy').format(toDate);
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
+                                            content: Text("Range report from $fromStr to $toStr generated successfully (${selectedFormat.toUpperCase()})"),
                                             backgroundColor: const Color(0xFF10B981),
                                             behavior: SnackBarBehavior.floating,
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -926,14 +1111,57 @@ class _RequestListPageState extends State<RequestListPage> {
                                         );
                                       }
                                     } else {
-                                      debugPrint("Report Download Error: ${response.statusCode}");
-                                      debugPrint("Body: ${response.body}");
-                                      String message = "Failed to generate report";
-                                      try {
-                                        final data = json.decode(response.body);
-                                        message = data['message'] ?? message;
-                                      } catch (_) {}
-                                      throw Exception(message);
+                                      // Actual date-wise download code (old report style)
+                                      final String? token = await UserStore.getToken();
+                                      final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                      final String url =
+                                          "${ApiConstants.baseUrl}/request/reports/date-wise?date=$dateStr&template=summary&format=$selectedFormat";
+
+                                      // ── DEBUG LOGS ──────────────────────────────────────────────────
+                                      debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
+                                      debugPrint("URL: $url");
+                                      debugPrint(
+                                        "curl --location '$url' \\\n"
+                                        "  --header 'Authorization: TMS $token' \\\n"
+                                        "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
+                                      );
+                                      debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                                      final response = await http.get(
+                                        Uri.parse(url),
+                                        headers: ApiConstants.getHeaders(token),
+                                      );
+
+                                      if (response.statusCode == 200) {
+                                        final bytes = response.bodyBytes;
+                                        final tempDir = await getTemporaryDirectory();
+                                        final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
+                                        final fileName = "Transport_Report_$dateStr.$ext";
+                                        final file = File("${tempDir.path}/$fileName");
+                                        await file.writeAsBytes(bytes);
+
+                                        await OpenFilex.open(file.path);
+                                        if (context.mounted) {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
+                                              backgroundColor: const Color(0xFF10B981),
+                                              behavior: SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                          );
+                                        }
+                                      } else {
+                                        debugPrint("Report Download Error: ${response.statusCode}");
+                                        debugPrint("Body: ${response.body}");
+                                        String message = "Failed to generate report";
+                                        try {
+                                          final data = json.decode(response.body);
+                                          message = data['message'] ?? message;
+                                        } catch (_) {}
+                                        throw Exception(message);
+                                      }
                                     }
                                   } catch (e) {
                                     if (context.mounted) {

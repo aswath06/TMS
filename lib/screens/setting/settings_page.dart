@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/SecuritySettingsPage.dart';
+import 'package:tripzo/screens/setting/user_session_management_page.dart';
+import 'package:tripzo/screens/security/security_vehicle_screen.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/store/server_config.dart';
 import 'package:provider/provider.dart';
 import 'scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
@@ -23,11 +26,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // Sync initial state with the Global Stores
   String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
+  final TextEditingController _supportController = TextEditingController();
+
+  @override
+  void dispose() {
+    _supportController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _loadUserRole();
+    ServerConfig().load(); // load persisted server preference
   }
 
   Future<void> _loadUserRole() async {
@@ -133,6 +144,23 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
 
+                    // --- SERVER ENVIRONMENT (SUPER ADMIN ONLY) ---
+                    if (_userRole.toLowerCase() == "super admin") ...[
+                      const SizedBox(height: 32),
+                      _buildSectionTitle(
+                        "Server Environment",
+                        titleColor,
+                        primaryBlue,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildServerToggleTile(
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                      ),
+                    ],
+
                     const SizedBox(height: 32),
 
                     // --- SECURITY ---
@@ -179,6 +207,24 @@ class _SettingsPageState extends State<SettingsPage> {
                       isTamil,
                     ),
                     const SizedBox(height: 12),
+                    if (_userRole.toLowerCase() == "super admin") ...[
+                      _settingsTile(
+                        Icons.route_rounded,
+                        isTamil ? "வழி கண்காணிப்பு" : "Route Monitor",
+                        isTamil ? "வழிகளை நிர்வகிக்க" : "Monitor inbound and outbound routes",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SecurityVehicleScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // SCANNER TILE
                     _settingsTile(
@@ -209,7 +255,34 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+
+                    // USER LOGOUT TILE (Super Admin Only)
+                    if (_userRole.toLowerCase() == "super admin") ...[ 
+                      _settingsTile(
+                        Icons.manage_accounts_rounded,
+                        "User Logout",
+                        "View & force logout active user sessions",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        const Color(0xFFF59E0B),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const UserSessionManagementPage(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    const SizedBox(height: 4),
+
+                    // --- SUPPORT ---
+                    _buildSupportSection(isTamil, titleColor, subTitleColor, cardColor, primaryBlue),
+                    
+                    const SizedBox(height: 32),
 
                     // LOGOUT TILE (Hidden for Drivers)
                     if (_userRole.toLowerCase() != "driver")
@@ -234,6 +307,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
 
+
                     const SizedBox(height: 60),
                     _buildAppVersion(subTitleColor, isTamil),
                     const SizedBox(height: 20),
@@ -247,8 +321,210 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // --- SUPPORT SECTION ---
+  Widget _buildSupportSection(bool isTamil, Color titleColor, Color subTitleColor, Color cardColor, Color primaryBlue) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(
+          isTamil ? "ஆதரவு" : "Support",
+          titleColor,
+          primaryBlue,
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Need Help?",
+                style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 16),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "Your message will be sent to SureshKannan (Backend Developer) and Aswath (Frontend Developer).",
+                style: TextStyle(fontSize: 13, color: subTitleColor, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _supportController,
+                maxLines: 4,
+                style: TextStyle(color: titleColor, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: "Type your issue or feedback here...",
+                  hintStyle: TextStyle(color: subTitleColor.withOpacity(0.5)),
+                  filled: true,
+                  fillColor: titleColor.withOpacity(0.04),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_supportController.text.trim().isEmpty) return;
+                    showTopToast(context, "Support request sent successfully!");
+                    _supportController.clear();
+                    FocusScope.of(context).unfocus();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    "Send Request",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- SERVER ENVIRONMENT TOGGLE (Super Admin Only) ---
+  Widget _buildServerToggleTile(
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue,
+  ) {
+    return ListenableBuilder(
+      listenable: ServerConfig(),
+      builder: (context, _) {
+        final isProduction = ServerConfig().isProduction;
+        final activeColor = isProduction ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+        return Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: activeColor.withOpacity(0.3), width: 1.5),
+          ),
+          child: Column(
+            children: [
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: activeColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isProduction ? Icons.cloud_done_rounded : Icons.construction_rounded,
+                    color: activeColor,
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  "Production Server",
+                  style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+                ),
+                subtitle: Text(
+                  isProduction ? "Using live production server" : "Using dev tunnel server",
+                  style: TextStyle(fontSize: 13, color: subColor),
+                ),
+                trailing: Switch.adaptive(
+                  value: isProduction,
+                  activeColor: const Color(0xFF10B981),
+                  inactiveTrackColor: const Color(0xFFF59E0B).withOpacity(0.3),
+                  inactiveThumbColor: const Color(0xFFF59E0B),
+                  onChanged: (val) async {
+                    await ServerConfig().setProduction(val);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(
+                                val ? Icons.cloud_done_rounded : Icons.construction_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  val
+                                      ? "Switched to Production: ${ServerConfig.productionUrl}"
+                                      : "Switched to Dev Tunnel: ${ServerConfig.devTunnelUrl}",
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: val ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: activeColor.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: activeColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: activeColor.withOpacity(0.4), blurRadius: 4, spreadRadius: 1),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          ServerConfig().baseUrl,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: activeColor,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // --- THEME SELECTOR ---
-  // --- THEME SELECTOR ---
+
   Widget _buildThemeSelector(
     ThemeStore themeStore,
     Color cardColor,

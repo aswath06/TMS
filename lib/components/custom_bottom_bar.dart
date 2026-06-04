@@ -21,12 +21,15 @@ class CustomBottomBar extends StatelessWidget {
     const Color grayText = Color(0xFF94A3B8);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final double systemBottom = MediaQuery.of(context).padding.bottom;
+    final double finalBottom = systemBottom > 0 ? systemBottom + 8 : 24;
+
     return Container(
       padding: EdgeInsets.fromLTRB(
         items.length > 4 ? 12 : 20,
         0,
         items.length > 4 ? 12 : 20,
-        24,
+        finalBottom,
       ),
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Container(

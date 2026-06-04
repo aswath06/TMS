@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:tripzo/screens/admin/vechiles/add_vehicle_page.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/components/fleet/vehicle_card.dart';
 import 'package:tripzo/components/fleet/stat_card.dart';
@@ -116,7 +115,6 @@ class _VehiclePageState extends State<VehiclePage> {
                 ),
               ],
             ),
-            _buildAddButton(),
           ],
         ),
       ),
@@ -173,25 +171,6 @@ class _VehiclePageState extends State<VehiclePage> {
           ),
           childCount: list.length,
         ),
-      ),
-    );
-  }
-
-  Widget _buildAddButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: IconButton(
-        onPressed: () {
-          // Navigate to the AddVehiclePage
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddVehiclePage()),
-          );
-        },
-        icon: const Icon(Icons.add_box, size: 28, color: Color(0xFF6366F1)),
       ),
     );
   }

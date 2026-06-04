@@ -1,11 +1,17 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:tripzo/store/admin_allowance_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:shimmer/shimmer.dart';
-
+import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 
 class AdminAllowanceScreen extends StatefulWidget {
@@ -254,6 +260,562 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
     );
   }
 
+  void _showAllowanceReportSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    DateTime selectedDate = DateTime.now();
+    DateTime fromDate = DateTime.now().subtract(const Duration(days: 7));
+    DateTime toDate = DateTime.now();
+    bool isRangeReport = true;
+    String selectedFormat = 'pdf';
+    bool downloading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Download Allowance Report",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
+                            ),
+                            Text(
+                              "Select date range and format to generate",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: subColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Segmented Toggle
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "From - To Date",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: !isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Date-wise",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: !isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Date pickers
+                  if (!isRangeReport) ...[
+                    Text(
+                      "REPORT DATE",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: subColor.withOpacity(0.6),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          builder: (context, child) => Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.fromSeed(
+                                seedColor: primaryBlue,
+                                primary: primaryBlue,
+                                onPrimary: Colors.white,
+                                surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          ),
+                        );
+                        if (picked != null) setModalState(() => selectedDate = picked);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 18, color: primaryBlue),
+                            const SizedBox(width: 12),
+                            Text(
+                              DateFormat('MMMM dd, yyyy').format(selectedDate),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: titleColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 22),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "FROM DATE",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: subColor.withOpacity(0.6),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: fromDate,
+                                    firstDate: DateTime(2020),
+                                    lastDate: toDate,
+                                    builder: (context, child) => Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.fromSeed(
+                                          seedColor: primaryBlue,
+                                          primary: primaryBlue,
+                                          onPrimary: Colors.white,
+                                          surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    ),
+                                  );
+                                  if (picked != null) setModalState(() => fromDate = picked);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_available_rounded, size: 18, color: primaryBlue),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(fromDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "TO DATE",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: subColor.withOpacity(0.6),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: toDate,
+                                    firstDate: fromDate,
+                                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                                    builder: (context, child) => Theme(
+                                      data: Theme.of(context).copyWith(
+                                        colorScheme: ColorScheme.fromSeed(
+                                          seedColor: primaryBlue,
+                                          primary: primaryBlue,
+                                          onPrimary: Colors.white,
+                                          surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                        ),
+                                      ),
+                                      child: child!,
+                                    ),
+                                  );
+                                  if (picked != null) setModalState(() => toDate = picked);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_busy_rounded, size: 18, color: primaryBlue),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(toDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  // Format selector
+                  Text(
+                    "FILE FORMAT",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: subColor.withOpacity(0.6),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setModalState(() => selectedFormat = 'pdf'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: selectedFormat == 'pdf' ? primaryBlue : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02)),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: selectedFormat == 'pdf' ? primaryBlue : titleColor.withOpacity(0.05)),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.picture_as_pdf_rounded, color: selectedFormat == 'pdf' ? Colors.white : primaryBlue, size: 24),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "PDF Document",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: selectedFormat == 'pdf' ? Colors.white : titleColor.withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setModalState(() => selectedFormat = 'excel'),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              color: selectedFormat == 'excel' ? primaryBlue : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02)),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: selectedFormat == 'excel' ? primaryBlue : titleColor.withOpacity(0.05)),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.table_chart_rounded, color: selectedFormat == 'excel' ? Colors.white : primaryBlue, size: 24),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Excel Sheet",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: selectedFormat == 'excel' ? Colors.white : titleColor.withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: subColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: downloading
+                              ? null
+                              : () async {
+                                  setModalState(() => downloading = true);
+                                  try {
+                                    final token = await UserStore.getToken();
+
+                                    // Build URL based on mode
+                                    final String startDate;
+                                    final String endDate;
+                                    if (isRangeReport) {
+                                      startDate = DateFormat('yyyy-MM-dd').format(fromDate);
+                                      endDate = DateFormat('yyyy-MM-dd').format(toDate);
+                                    } else {
+                                      startDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                      endDate = startDate;
+                                    }
+
+                                    final uri = Uri.parse(
+                                      '${ApiConstants.baseUrl}/request/allowances-report'
+                                      '?start_date=$startDate&end_date=$endDate&format=$selectedFormat',
+                                    );
+
+                                    final response = await http.get(
+                                      uri,
+                                      headers: ApiConstants.getHeaders(token),
+                                    );
+
+                                    if (!context.mounted) return;
+
+                                    if (response.statusCode == 200) {
+                                      // Determine file extension
+                                      final ext = selectedFormat == 'excel' ? 'xlsx' : 'pdf';
+                                      final fileName = 'allowance_report_${startDate}_to_$endDate.$ext';
+
+                                      // Save to temp directory
+                                      final dir = await getTemporaryDirectory();
+                                      final file = File('${dir.path}/$fileName');
+                                      await file.writeAsBytes(response.bodyBytes);
+
+                                      if (!context.mounted) return;
+                                      Navigator.pop(context);
+
+                                      // Open the file
+                                      final result = await OpenFilex.open(file.path);
+                                      if (result.type != ResultType.done && context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Could not open file: ${result.message}'),
+                                            backgroundColor: Colors.orange,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      // Try to parse error message
+                                      String errorMsg = 'Failed to download report';
+                                      try {
+                                        final body = json.decode(response.body);
+                                        errorMsg = body['message'] ?? errorMsg;
+                                      } catch (_) {}
+
+                                      if (!context.mounted) return;
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(errorMsg),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    setModalState(() => downloading = false);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Error: $e'),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                    );
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryBlue,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            elevation: 0,
+                          ),
+                          child: downloading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                                )
+                              : Text(
+                                  "Generate ${selectedFormat.toUpperCase()}",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -284,6 +846,20 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
             ),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 18),
+            ),
+            onPressed: () => _showAllowanceReportSheet(primaryBlue, titleColor, isDark ? Colors.white70 : Colors.black54, isDark),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [

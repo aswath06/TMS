@@ -573,27 +573,8 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
                 ),
               ],
             ),
-            _buildAddButton(primaryBlue),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAddButton(Color primaryBlue) {
-    return Container(
-      decoration: BoxDecoration(
-        color: primaryBlue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: IconButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddDriverPage()),
-          );
-        },
-        icon: Icon(Icons.add_box, size: 28, color: primaryBlue),
       ),
     );
   }

@@ -61,6 +61,7 @@ class _FuelPageState extends State<FuelPage> {
 
   Future<void> _fetchFuelLogs({bool isRefresh = false}) async {
     if (isRefresh) {
+      if (!mounted) return;
       setState(() {
         _currentPage = 1;
         _hasMore = true;
@@ -82,6 +83,8 @@ class _FuelPageState extends State<FuelPage> {
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -114,6 +117,7 @@ class _FuelPageState extends State<FuelPage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _isLoadingMore = false;
@@ -124,6 +128,7 @@ class _FuelPageState extends State<FuelPage> {
 
   Future<void> _fetchMoreFuelLogs() async {
     if (_isLoadingMore || !_hasMore) return;
+    if (!mounted) return;
     setState(() => _isLoadingMore = true);
     await _fetchFuelLogs();
   }
@@ -141,6 +146,8 @@ class _FuelPageState extends State<FuelPage> {
       );
 
       debugPrint("\n--- DELETE RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -169,6 +176,7 @@ class _FuelPageState extends State<FuelPage> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Network error"),
@@ -361,7 +369,11 @@ class _FuelPageState extends State<FuelPage> {
 
   void _showReportGenerationSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
     DateTime selectedDate = DateTime.now();
+    DateTime fromDate = DateTime.now().subtract(const Duration(days: 7));
+    DateTime toDate = DateTime.now();
+    bool isRangeReport = true;
     String selectedFormat = 'pdf';
+    bool downloading = false;
 
     showModalBottomSheet(
       context: context,
@@ -380,6 +392,13 @@ class _FuelPageState extends State<FuelPage> {
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF0F172A) : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -407,66 +426,232 @@ class _FuelPageState extends State<FuelPage> {
                         child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
                       ),
                       const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Download Fuel Report",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: titleColor,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Download Fuel Report",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
                             ),
-                          ),
-                          Text(
-                            "Select date and format",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: subColor,
+                            Text(
+                              "Select date range and format to generate",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: subColor,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 32),
-                  _buildOptionLabel("REPORT DATE", subColor),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () async {
-                      final picked = await CustomDateTimePicker.show(
-                        context,
-                        initialDate: selectedDate,
-                        showTime: false,
-                        accent: primaryBlue,
-                      );
-                      if (picked != null) {
-                        setModalState(() => selectedDate = picked);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: titleColor.withValues(alpha: 0.05)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today_rounded, size: 18, color: primaryBlue),
-                          const SizedBox(width: 12),
-                          Text(
-                            DateFormat('MMMM dd, yyyy').format(selectedDate),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: titleColor,
+                  const SizedBox(height: 24),
+                  // Segmented Toggle
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "From - To Date",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: !isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Date-wise",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: !isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (!isRangeReport) ...[
+                    _buildOptionLabel("REPORT DATE", subColor),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await CustomDateTimePicker.show(
+                          context,
+                          initialDate: selectedDate,
+                          showTime: false,
+                          accent: primaryBlue,
+                        );
+                        if (picked != null) {
+                          setModalState(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: titleColor.withValues(alpha: 0.05)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 18, color: primaryBlue),
+                            const SizedBox(width: 12),
+                            Text(
+                              DateFormat('MMMM dd, yyyy').format(selectedDate),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: titleColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 22),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildOptionLabel("FROM DATE", subColor),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
+                                    initialDate: fromDate,
+                                    showTime: false,
+                                    accent: primaryBlue,
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() => fromDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: titleColor.withValues(alpha: 0.05)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_available_rounded, size: 18, color: primaryBlue),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(fromDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildOptionLabel("TO DATE", subColor),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
+                                    initialDate: toDate,
+                                    showTime: false,
+                                    accent: primaryBlue,
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() => toDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: titleColor.withValues(alpha: 0.05)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_busy_rounded, size: 18, color: primaryBlue),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(toDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   _buildOptionLabel("FILE FORMAT", subColor),
                   const SizedBox(height: 12),
@@ -481,31 +666,78 @@ class _FuelPageState extends State<FuelPage> {
                       }),
                     ],
                   ),
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Downloading fuel report for ${DateFormat('MMM dd').format(selectedDate)}...")),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryBlue,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        "Generate Report",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Colors.white,
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: subColor,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: downloading
+                              ? null
+                              : () async {
+                                  setModalState(() => downloading = true);
+                                  await Future.delayed(const Duration(milliseconds: 1200));
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    String msg;
+                                    if (isRangeReport) {
+                                      final fromStr = DateFormat('dd MMM yyyy').format(fromDate);
+                                      final toStr = DateFormat('dd MMM yyyy').format(toDate);
+                                      msg = "Fuel report from $fromStr to $toStr generated (${selectedFormat.toUpperCase()})";
+                                    } else {
+                                      msg = "Fuel report for ${DateFormat('dd MMM yyyy').format(selectedDate)} generated (${selectedFormat.toUpperCase()})";
+                                    }
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(msg),
+                                        backgroundColor: const Color(0xFF10B981),
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                    );
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryBlue,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            elevation: 0,
+                          ),
+                          child: downloading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                                )
+                              : Text(
+                                  "Generate ${selectedFormat.toUpperCase()}",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
