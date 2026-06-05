@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
-class DriverAllowanceScreen extends StatefulWidget {
+class DriverAllowanceScreen extends ConsumerStatefulWidget {
   const DriverAllowanceScreen({super.key});
 
   @override
-  State<DriverAllowanceScreen> createState() => _DriverAllowanceScreenState();
+  ConsumerState<DriverAllowanceScreen> createState() => _DriverAllowanceScreenState();
 }
 
-class _DriverAllowanceScreenState extends State<DriverAllowanceScreen> {
+class _DriverAllowanceScreenState extends ConsumerState<DriverAllowanceScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -199,8 +200,9 @@ class _DriverAllowanceScreenState extends State<DriverAllowanceScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Consumer<DriverStore>(
-        builder: (context, store, _) {
+      body: Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(driverStoreProvider);
           if (store.isLoadingAllowances && store.allowances.isEmpty) {
             return _buildSkeletonLoading(isDark);
           }

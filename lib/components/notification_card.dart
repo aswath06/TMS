@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:intl/intl.dart';
 import '../models/notification_model.dart';
 import '../providers/notification_provider.dart';
 
-class NotificationCard extends StatefulWidget {
+class NotificationCard extends ConsumerStatefulWidget {
   final NotificationModel notification;
   final bool isDashboard;
 
@@ -15,10 +16,10 @@ class NotificationCard extends StatefulWidget {
   });
 
   @override
-  State<NotificationCard> createState() => _NotificationCardState();
+  ConsumerState<NotificationCard> createState() => _NotificationCardState();
 }
 
-class _NotificationCardState extends State<NotificationCard> {
+class _NotificationCardState extends ConsumerState<NotificationCard> {
   bool _isExpanded = false;
 
   @override
@@ -182,7 +183,7 @@ class _NotificationCardState extends State<NotificationCard> {
                       children: [
                         TextButton.icon(
                           onPressed: () {
-                            context.read<NotificationProvider>().markAsRead(widget.notification.id);
+                            ref.read(notificationProviderFamily).markAsRead(widget.notification.id);
                           },
                           icon: Icon(Icons.done_all_rounded, size: 14, color: alertColor),
                           label: Text(

@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
 
-class DriverLeaveScreen extends StatefulWidget {
+class DriverLeaveScreen extends ConsumerStatefulWidget {
   const DriverLeaveScreen({super.key});
 
   @override
-  State<DriverLeaveScreen> createState() => _DriverLeaveScreenState();
+  ConsumerState<DriverLeaveScreen> createState() => _DriverLeaveScreenState();
 }
 
-class _DriverLeaveScreenState extends State<DriverLeaveScreen> {
+class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
   @override
   void initState() {
     super.initState();
@@ -52,8 +53,9 @@ class _DriverLeaveScreenState extends State<DriverLeaveScreen> {
         children: [
           _buildBackgroundGlow(primaryBlue, isDark),
           SafeArea(
-            child: Consumer<DriverStore>(
-              builder: (context, store, _) {
+            child: Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(driverStoreProvider);
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchLeaves();

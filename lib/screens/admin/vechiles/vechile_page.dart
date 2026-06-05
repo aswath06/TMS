@@ -68,6 +68,7 @@ class _VehiclePageState extends State<VehiclePage> {
         final Map<String, dynamic> responseData = json.decode(response.body);
         final vehicleSummary = responseData['data']?['vehicle_summary'] ?? {};
 
+        if (!mounted) return;
         setState(() {
           _insideCount = vehicleSummary['inside_count'] ?? 0;
           _outsideCount = vehicleSummary['outside_count'] ?? 0;
@@ -80,12 +81,14 @@ class _VehiclePageState extends State<VehiclePage> {
       } else if (response.statusCode == 401) {
         await UserStore.forceLogout();
       } else {
+        if (!mounted) return;
         setState(() {
           _error = 'Failed to load fleet data';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Error connecting to server';
         _isLoading = false;
@@ -247,7 +250,7 @@ class _VehiclePageState extends State<VehiclePage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  "$total Units",
+                  "$total Vehicles",
                   style: const TextStyle(
                     color: Color(0xFF6366F1),
                     fontWeight: FontWeight.w900,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/VehicleStore.dart';
@@ -7,14 +8,14 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
-class ServicePage extends StatefulWidget {
+class ServicePage extends ConsumerStatefulWidget {
   const ServicePage({super.key});
 
   @override
-  State<ServicePage> createState() => _ServicePageState();
+  ConsumerState<ServicePage> createState() => _ServicePageState();
 }
 
-class _ServicePageState extends State<ServicePage> with SingleTickerProviderStateMixin {
+class _ServicePageState extends ConsumerState<ServicePage> with SingleTickerProviderStateMixin {
   final TextEditingController _topicController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _costController = TextEditingController();
@@ -35,8 +36,8 @@ class _ServicePageState extends State<ServicePage> with SingleTickerProviderStat
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DriverStore>().fetchServiceShops();
-      context.read<VehicleStore>().fetchVehicles(forceRefresh: true);
+      ref.read(driverStoreProvider).fetchServiceShops();
+      ref.read(vehicleStoreProvider).fetchVehicles(forceRefresh: true);
     });
   }
 
@@ -52,8 +53,8 @@ class _ServicePageState extends State<ServicePage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final driverStore = context.watch<DriverStore>();
-    final vehicleStore = context.watch<VehicleStore>();
+    final driverStore = ref.watch(driverStoreProvider);
+    final vehicleStore = ref.watch(vehicleStoreProvider);
     final isTamil = LanguageStore.isTamil;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -608,7 +609,7 @@ class _ServicePageState extends State<ServicePage> with SingleTickerProviderStat
       "date": _date.toIso8601String(),
     };
 
-    final result = await context.read<DriverStore>().submitServiceEntry(data, _proofPath);
+    final result = await ref.read(driverStoreProvider).submitServiceEntry(data, _proofPath);
     setState(() => _isSubmitting = false);
 
     if (result['success']) {

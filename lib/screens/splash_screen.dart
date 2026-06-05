@@ -10,17 +10,18 @@ import '../store/istamil.dart'; // Import Language Store
 import '../utils/api_constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import '../providers/notification_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
@@ -152,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen>
     } else {
       // 4.5 Initialize Notifications
       if (mounted) {
-        final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+        final notificationProvider = ref.read(notificationProviderFamily);
         UserStore.getToken().then((token) {
           if (token != null) {
             notificationProvider.initialize(token: token);

@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -15,14 +16,14 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
-class AdminAllowanceScreen extends StatefulWidget {
+class AdminAllowanceScreen extends ConsumerStatefulWidget {
   const AdminAllowanceScreen({super.key});
 
   @override
-  State<AdminAllowanceScreen> createState() => _AdminAllowanceScreenState();
+  ConsumerState<AdminAllowanceScreen> createState() => _AdminAllowanceScreenState();
 }
 
-class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
+class _AdminAllowanceScreenState extends ConsumerState<AdminAllowanceScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -122,8 +123,9 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: titleColor.withOpacity(0.8)),
                     ),
                     const SizedBox(height: 8),
-                    Consumer<AdminAllowanceStore>(
-                      builder: (context, store, child) {
+                    Consumer(
+builder: (context, ref, child) {
+final store = ref.watch(adminAllowanceStoreProvider);
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
@@ -943,8 +945,9 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
                                     : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                               ),
                             ),
-                            Consumer<AdminAllowanceStore>(
-                              builder: (context, store, _) {
+                            Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(adminAllowanceStoreProvider);
                                 if (store.pendingCreations.isEmpty) return const SizedBox.shrink();
                                 return Container(
                                   margin: const EdgeInsets.only(left: 6),
@@ -974,8 +977,9 @@ class _AdminAllowanceScreenState extends State<AdminAllowanceScreen> {
             ),
           ),
           Expanded(
-            child: Consumer<AdminAllowanceStore>(
-              builder: (context, store, _) {
+            child: Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(adminAllowanceStoreProvider);
                 if (_showPendingTab) {
                   if (store.isLoadingPendingCreations && store.pendingCreations.isEmpty) {
                     return _buildSkeletonLoading(isDark);

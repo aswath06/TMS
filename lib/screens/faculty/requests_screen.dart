@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/components/request_card.dart';
 
-class RequestsScreen extends StatefulWidget {
+class RequestsScreen extends ConsumerStatefulWidget {
   const RequestsScreen({super.key});
 
   @override
-  State<RequestsScreen> createState() => _RequestsScreenState();
+  ConsumerState<RequestsScreen> createState() => _RequestsScreenState();
 }
 
-class _RequestsScreenState extends State<RequestsScreen> {
+class _RequestsScreenState extends ConsumerState<RequestsScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -19,7 +20,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests(isRefresh: true);
+      ref.read(requestStoreProvider).fetchRequests(isRefresh: true);
     });
   }
 
@@ -32,7 +33,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >= 
         _scrollController.position.maxScrollExtent - 200) {
-      context.read<RequestStore>().fetchNextPage();
+      ref.read(requestStoreProvider).fetchNextPage();
     }
   }
 
@@ -41,7 +42,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     final Size size = MediaQuery.of(context).size;
     final double horizontalPadding = size.width * 0.06;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final store = context.watch<RequestStore>();
+    final store = ref.watch(requestStoreProvider);
 
     // Theme Colors
     final Color bgColor = isDark
@@ -161,7 +162,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             
             if (result == true) {
               if (!mounted) return;
-              context.read<RequestStore>().fetchRequests();
+              ref.read(requestStoreProvider).fetchRequests();
             }
           },
           elevation: 6,

@@ -8,21 +8,22 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/server_config.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
   String _userRole = "";
 
@@ -57,8 +58,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     // Determine current states from global stores
     // Listen to theme and language changes
-    final themeStore = Provider.of<ThemeStore>(context);
-    final lStore = Provider.of<LanguageStore>(context);
+    final themeStore = ref.watch(themeStoreProvider);
+    final lStore = ref.watch(languageStoreProvider);
     final bool isTamil = LanguageStore.isTamil;
     
     // Update local state if it differs (e.g. after language was changed elsewhere or on load)
@@ -704,7 +705,7 @@ class _SettingsPageState extends State<SettingsPage> {
   ) {
     return GestureDetector(
       onTap: () async {
-        await Provider.of<LanguageStore>(context, listen: false).setLanguage(label);
+        await ref.read(languageStoreProvider).setLanguage(label);
         if (mounted) setState(() {
           _selectedLanguage = label;
         });

@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 
-class DriverCompletedRoutesScreen extends StatefulWidget {
+class DriverCompletedRoutesScreen extends ConsumerStatefulWidget {
   const DriverCompletedRoutesScreen({super.key});
 
   @override
-  State<DriverCompletedRoutesScreen> createState() => _DriverCompletedRoutesScreenState();
+  ConsumerState<DriverCompletedRoutesScreen> createState() => _DriverCompletedRoutesScreenState();
 }
 
-class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScreen> {
+class _DriverCompletedRoutesScreenState extends ConsumerState<DriverCompletedRoutesScreen> {
   @override
   void initState() {
     super.initState();
@@ -37,8 +38,9 @@ class _DriverCompletedRoutesScreenState extends State<DriverCompletedRoutesScree
         children: [
           _buildBackgroundDecor(isDark, primaryBlue),
           SafeArea(
-            child: Consumer<DriverStore>(
-              builder: (context, store, _) {
+            child: Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(driverStoreProvider);
                 final allMissions = List<Map<String, dynamic>>.from(store.missions);
                 allMissions.sort((a, b) {
                   final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);

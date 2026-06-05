@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
-class AddVehiclePage extends StatefulWidget {
+class AddVehiclePage extends ConsumerStatefulWidget {
   const AddVehiclePage({super.key});
 
   @override
-  State<AddVehiclePage> createState() => _AddVehiclePageState();
+  ConsumerState<AddVehiclePage> createState() => _AddVehiclePageState();
 }
 
-class _AddVehiclePageState extends State<AddVehiclePage> {
+class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
   final _formKey = GlobalKey<FormState>();
 
   // Text Controllers
@@ -68,7 +69,7 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     };
 
     try {
-      final vehicleStore = Provider.of<VehicleStore>(context, listen: false);
+      final vehicleStore = ref.read(vehicleStoreProvider);
       final success = await vehicleStore.addVehicle(vehicleData);
 
       Navigator.pop(context); // Close loading dialog

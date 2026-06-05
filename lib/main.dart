@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
 // Stores
@@ -20,6 +20,7 @@ import 'package:tripzo/services/notification_local_service.dart';
 import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/services/notification_socket_service.dart';
 import 'package:tripzo/providers/notification_provider.dart';
+import 'package:tripzo/store/providers.dart';
 
 void main() async {
   // Ensure Flutter framework is initialized before running code
@@ -54,33 +55,18 @@ void main() async {
   ]);
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => VehicleStore()),
-        ChangeNotifierProvider.value(value: useRequestStore),
-        ChangeNotifierProvider.value(value: useDriverStore),
-        ChangeNotifierProvider.value(value: dashboardStore),
-        ChangeNotifierProvider.value(value: themeStore),
-        ChangeNotifierProvider.value(value: languageStore),
-        ChangeNotifierProvider.value(value: adminAllowanceStore),
-        ChangeNotifierProvider(
-          create: (_) => NotificationProvider(
-            apiService: NotificationApiService(baseUrl: "", token: ""),
-            socketService: NotificationSocketService(),
-          ),
-        ),
-      ],
-      child: const MyApp(),
+    const ProviderScope(
+      child: MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    context.watch<ThemeStore>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(themeStoreProvider);
     final bool isDark = ThemeStore.isDark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

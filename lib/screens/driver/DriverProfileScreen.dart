@@ -3,18 +3,19 @@ import 'package:tripzo/components/profile/info_card.dart';
 import 'package:tripzo/components/profile/profile_hero.dart';
 import 'package:tripzo/components/profile/typing_text.dart';
 import 'package:tripzo/screens/setting/settings_page.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 
-class DriverProfileScreen extends StatefulWidget {
+class DriverProfileScreen extends ConsumerStatefulWidget {
   const DriverProfileScreen({super.key});
 
   @override
-  State<DriverProfileScreen> createState() => _DriverProfileScreenState();
+  ConsumerState<DriverProfileScreen> createState() => _DriverProfileScreenState();
 }
 
-class _DriverProfileScreenState extends State<DriverProfileScreen> {
+class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
   @override
   void initState() {
     super.initState();
@@ -61,8 +62,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                       delegate: SliverChildListDelegate([
                         _buildHeader(context, titleColor, isTamil),
                         const SizedBox(height: 30),
-                        Consumer<DriverStore>(
-                          builder: (context, store, _) {
+                        Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(driverStoreProvider);
                             if (store.profileError != null) {
                               return _buildErrorState(
                                 store.profileError!,

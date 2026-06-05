@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/request_store.dart';
@@ -12,19 +13,19 @@ import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests();
+      ref.read(requestStoreProvider).fetchRequests();
       dashboardStore.fetchStats();
       if (useFacultyStore.profileData.value == null) {
         useFacultyStore.fetchProfile();
@@ -54,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final store = context.watch<RequestStore>();
+    final store = ref.watch(requestStoreProvider);
 
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark
@@ -131,7 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     
                     // Stats section with Zustand listener
                     _buildStatusCards(
-                      context.watch<DashboardStore>().state,
+                      ref.watch(dashboardStoreProvider).state,
                       primaryBlue,
                       surfaceColor,
                       isDark,
@@ -440,7 +441,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
             if (refresh == true) {
               if (mounted) {
-                context.read<RequestStore>().fetchRequests();
+                ref.read(requestStoreProvider).fetchRequests();
                 dashboardStore.fetchStats();
               }
             }
@@ -514,7 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildNotificationList(Color primaryBlue, Color surface, bool isDark) {
-    final notificationProvider = context.watch<NotificationProvider>();
+    final notificationProvider = ref.watch(notificationProviderFamily);
     final notifications = notificationProvider.notifications;
 
     if (notificationProvider.isLoading && notifications.isEmpty) {
@@ -580,7 +581,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildActiveMissions(BuildContext context, Color primaryBlue, bool isDark) {
-    final store = context.watch<RequestStore>();
+    final store = ref.watch(requestStoreProvider);
     
     if (store.isLoading && store.requests.isEmpty) {
       return const Center(child: CircularProgressIndicator());

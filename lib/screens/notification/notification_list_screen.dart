@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import '../../providers/notification_provider.dart';
 import '../../components/notification_card.dart';
 
-class NotificationListScreen extends StatefulWidget {
+class NotificationListScreen extends ConsumerStatefulWidget {
   const NotificationListScreen({super.key});
 
   @override
-  State<NotificationListScreen> createState() => _NotificationListScreenState();
+  ConsumerState<NotificationListScreen> createState() => _NotificationListScreenState();
 }
 
-class _NotificationListScreenState extends State<NotificationListScreen> {
+class _NotificationListScreenState extends ConsumerState<NotificationListScreen> {
   String _activeFilter = 'All'; // 'All', 'Unread', 'Alerts'
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NotificationProvider>().fetchNotifications();
+      ref.read(notificationProviderFamily).fetchNotifications();
     });
   }
 
@@ -44,8 +45,9 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                 _buildFilterChips(primaryBlue, cardBgColor, titleColor, subColor),
                 const SizedBox(height: 12),
                 Expanded(
-                  child: Consumer<NotificationProvider>(
-                    builder: (context, provider, _) {
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final provider = ref.watch(notificationProviderFamily);
                       if (provider.isLoading && provider.notifications.isEmpty) {
                         return Center(
                           child: CircularProgressIndicator(
@@ -145,8 +147,9 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
               ),
             ],
           ),
-          Consumer<NotificationProvider>(
-            builder: (context, provider, _) {
+          Consumer(
+            builder: (context, ref, _) {
+              final provider = ref.watch(notificationProviderFamily);
               if (provider.unreadCount == 0) return const SizedBox.shrink();
               return InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -187,8 +190,9 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       child: Row(
         children: ['All', 'Unread', 'Alerts'].map((filter) {
           bool isActive = _activeFilter == filter;
-          return Consumer<NotificationProvider>(
-            builder: (context, provider, _) {
+          return Consumer(
+            builder: (context, ref, _) {
+              final provider = ref.watch(notificationProviderFamily);
               int count = 0;
               if (filter == 'All') {
                 count = provider.notifications.length;
@@ -263,7 +267,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   }
 
   void _showMarkAllConfirmation(BuildContext context, Color primaryBlue) {
-    final provider = context.read<NotificationProvider>();
+    final provider = ref.read(notificationProviderFamily);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

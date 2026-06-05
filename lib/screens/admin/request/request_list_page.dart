@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
@@ -15,14 +16,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:tripzo/store/user_store.dart';
 
-class RequestListPage extends StatefulWidget {
+class RequestListPage extends ConsumerStatefulWidget {
   const RequestListPage({super.key});
 
   @override
-  State<RequestListPage> createState() => _RequestListPageState();
+  ConsumerState<RequestListPage> createState() => _RequestListPageState();
 }
 
-class _RequestListPageState extends State<RequestListPage> {
+class _RequestListPageState extends ConsumerState<RequestListPage> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
@@ -33,7 +34,7 @@ class _RequestListPageState extends State<RequestListPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests(isRefresh: true);
+      ref.read(requestStoreProvider).fetchRequests(isRefresh: true);
     });
   }
 
@@ -48,7 +49,7 @@ class _RequestListPageState extends State<RequestListPage> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      context.read<RequestStore>().fetchNextPage();
+      ref.read(requestStoreProvider).fetchNextPage();
     }
   }
 
@@ -56,7 +57,7 @@ class _RequestListPageState extends State<RequestListPage> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
-        context.read<RequestStore>().fetchRequests(isRefresh: true, search: query);
+        ref.read(requestStoreProvider).fetchRequests(isRefresh: true, search: query);
       }
     });
   }
@@ -74,7 +75,7 @@ class _RequestListPageState extends State<RequestListPage> {
         ? const Color(0xFF0F172A)
         : const Color(0xFFF8FAFC);
 
-    final store = context.watch<RequestStore>();
+    final store = ref.watch(requestStoreProvider);
     
     final missions = store.requests.where((req) {
       final String s = (req['status'] ?? "").toString().toUpperCase();
@@ -136,7 +137,7 @@ class _RequestListPageState extends State<RequestListPage> {
                               );
                               if (refresh == true) {
                                 if (context.mounted) {
-                                  context.read<RequestStore>().fetchRequests();
+                                  ref.read(requestStoreProvider).fetchRequests();
                                 }
                               }
                             },
@@ -659,7 +660,7 @@ class _RequestListPageState extends State<RequestListPage> {
         else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
         else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
         
-        context.read<RequestStore>().fetchRequests(isRefresh: true, statuses: mappedStatus);
+        ref.read(requestStoreProvider).fetchRequests(isRefresh: true, statuses: mappedStatus);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -1264,7 +1265,7 @@ class _RequestListPageState extends State<RequestListPage> {
     }
 
     final List<String> sortedDates = grouped.keys.toList();
-    final store = context.read<RequestStore>();
+    final store = ref.read(requestStoreProvider);
 
     return ListView.builder(
       controller: _scrollController,

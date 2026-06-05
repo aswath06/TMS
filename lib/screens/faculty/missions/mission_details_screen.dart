@@ -22,12 +22,13 @@ import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:tripzo/services/location_service.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/models/notification_model.dart';
 
 
-class MissionDetailsScreen extends StatefulWidget {
+class MissionDetailsScreen extends ConsumerStatefulWidget {
   final String missionTitle,
       time,
       driverName,
@@ -63,10 +64,10 @@ class MissionDetailsScreen extends StatefulWidget {
 
 
   @override
-  State<MissionDetailsScreen> createState() => _MissionDetailsScreenState();
+  ConsumerState<MissionDetailsScreen> createState() => _MissionDetailsScreenState();
 }
 
-class _MissionDetailsScreenState extends State<MissionDetailsScreen>
+class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   final MapController _mapController = MapController();
@@ -113,7 +114,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
 
   void _setupNotificationListener() {
     try {
-      _notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+      _notificationProvider = ref.read(notificationProviderFamily);
       _notificationProvider?.addListener(_handleNotificationUpdate);
       debugPrint("[NOTIFICATION LISTENER] Successfully registered notification listener in MissionDetailsScreen.");
     } catch (e) {
@@ -4977,7 +4978,7 @@ class _MissionDetailsScreenState extends State<MissionDetailsScreen>
   }
 }
 
-class _OtpFullScreenOverlay extends StatefulWidget {
+class _OtpFullScreenOverlay extends ConsumerStatefulWidget {
   final String otp;
   final String title;
   final VoidCallback onClose;
@@ -4989,10 +4990,10 @@ class _OtpFullScreenOverlay extends StatefulWidget {
   });
 
   @override
-  State<_OtpFullScreenOverlay> createState() => _OtpFullScreenOverlayState();
+  ConsumerState<_OtpFullScreenOverlay> createState() => _OtpFullScreenOverlayState();
 }
 
-class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
+class _OtpFullScreenOverlayState extends ConsumerState<_OtpFullScreenOverlay> {
   int _secondsLeft = 30;
   late final Stream<int> _timerStream;
   bool _isClosed = false;
@@ -5166,17 +5167,17 @@ class _OtpFullScreenOverlayState extends State<_OtpFullScreenOverlay> {
   }
 }
 
-class _SwipeToConfirm extends StatefulWidget {
+class _SwipeToConfirm extends ConsumerStatefulWidget {
   final String label;
   final VoidCallback onConfirm;
 
   const _SwipeToConfirm({required this.label, required this.onConfirm});
 
   @override
-  State<_SwipeToConfirm> createState() => _SwipeToConfirmState();
+  ConsumerState<_SwipeToConfirm> createState() => _SwipeToConfirmState();
 }
 
-class _SwipeToConfirmState extends State<_SwipeToConfirm> with SingleTickerProviderStateMixin {
+class _SwipeToConfirmState extends ConsumerState<_SwipeToConfirm> with SingleTickerProviderStateMixin {
   double _dragValue = 0;
   bool _isConfirmed = false;
   late AnimationController _vibeController;
@@ -5370,7 +5371,7 @@ class _SmokeParticle {
   }
 }
 
-class _OtpBottomSheet extends StatefulWidget {
+class _OtpBottomSheet extends ConsumerStatefulWidget {
   final String requestId;
   final bool isStart;
   final Color bgColor;
@@ -5386,10 +5387,10 @@ class _OtpBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<_OtpBottomSheet> createState() => _OtpBottomSheetState();
+  ConsumerState<_OtpBottomSheet> createState() => _OtpBottomSheetState();
 }
 
-class _OtpBottomSheetState extends State<_OtpBottomSheet> {
+class _OtpBottomSheetState extends ConsumerState<_OtpBottomSheet> {
   final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   bool _isVerifying = false;
@@ -5670,7 +5671,7 @@ class _OtpBottomSheetState extends State<_OtpBottomSheet> {
   }
 }
 
-class _TopToastWidget extends StatefulWidget {
+class _TopToastWidget extends ConsumerStatefulWidget {
   final String message;
   final Color color;
   final VoidCallback onDismiss;
@@ -5682,10 +5683,10 @@ class _TopToastWidget extends StatefulWidget {
   });
 
   @override
-  State<_TopToastWidget> createState() => _TopToastWidgetState();
+  ConsumerState<_TopToastWidget> createState() => _TopToastWidgetState();
 }
 
-class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProviderStateMixin {
+class _TopToastWidgetState extends ConsumerState<_TopToastWidget> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _fadeAnimation;
@@ -5780,7 +5781,7 @@ class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProvi
   }
 }
 
-class _EndButtonWithTimer extends StatefulWidget {
+class _EndButtonWithTimer extends ConsumerStatefulWidget {
   final String endedAtStr;
   final VoidCallback onPressed;
   final bool isAdmin;
@@ -5792,10 +5793,10 @@ class _EndButtonWithTimer extends StatefulWidget {
   });
 
   @override
-  State<_EndButtonWithTimer> createState() => _EndButtonWithTimerState();
+  ConsumerState<_EndButtonWithTimer> createState() => _EndButtonWithTimerState();
 }
 
-class _EndButtonWithTimerState extends State<_EndButtonWithTimer> {
+class _EndButtonWithTimerState extends ConsumerState<_EndButtonWithTimer> {
   late Timer _timer;
   int _remainingSeconds = 0;
 

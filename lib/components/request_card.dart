@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 
-class RequestCard extends StatelessWidget {
+class RequestCard extends ConsumerWidget {
   final Map<String, dynamic> req;
   final bool isDark;
   final Color accentColor;
@@ -14,14 +16,30 @@ class RequestCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch for real-time updates from Riverpod
+    final requestStore = ref.watch(requestStoreProvider);
+    
+    final reqId = req['dbId'] ?? req['id'];
+    Map<String, dynamic> latestReq = req;
+    
+    if (reqId != null) {
+      try {
+        latestReq = requestStore.requests.firstWhere(
+          (r) => (r['dbId'] ?? r['id']).toString() == reqId.toString(),
+        );
+      } catch (e) {
+        // Keep original req if not found in the store
+      }
+    }
+
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark
         ? const Color(0xFF94A3B8)
         : const Color(0xFF64748B);
 
-    final String s = (req['status'] ?? req['route_request_status'] ?? 'Pending').toString().toUpperCase();
+    final String s = (latestReq['status'] ?? latestReq['route_request_status'] ?? 'Pending').toString().toUpperCase();
     Color bColor;
     if (s == 'STARTED' || s == 'ONGOING') {
       bColor = Colors.orange;
@@ -39,36 +57,36 @@ class RequestCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        final driversList = req['drivers'] as List? ?? [];
+        final driversList = latestReq['drivers'] as List? ?? [];
         final String drName = driversList.isNotEmpty
             ? driversList.map((d) => d['name'] ?? 'Driver').join(', ')
             : 'No driver assigned';
         final String drPhone = driversList.isNotEmpty
             ? driversList.map((d) => d['phone'] ?? '').where((p) => p.isNotEmpty).join(', ')
             : 'No phone available';
-        final String vInfo = req['vehicleInfo'] ?? req['vehicle'] ?? 'No vehicle assigned';
+        final String vInfo = latestReq['vehicleInfo'] ?? latestReq['vehicle'] ?? 'No vehicle assigned';
         
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => MissionDetailsScreen(
-              missionTitle: req['routeName'] ?? 'Unknown Route',
-              time: req['date'] ?? '',
+              missionTitle: latestReq['routeName'] ?? 'Unknown Route',
+              time: latestReq['date'] ?? '',
               driverName: drName,
               driverPhone: drPhone,
               vehicleInfo: vInfo,
-              capacity: req['passengers'] != null ? "${req['passengers']} Guests" : "N/A",
+              capacity: latestReq['passengers'] != null ? "${latestReq['passengers']} Guests" : "N/A",
               pathType: 'ONE WAY',
-              status: req['status'] ?? 'Pending',
+              status: latestReq['status'] ?? 'Pending',
               statusColor: bColor,
-              requestId: req['dbId']?.toString() ?? req['id']?.toString() ?? '',
-              rawStatus: req['rawStatus'] ?? 1,
-              creatorName: req['faculty'] ?? 'Staff Member',
+              requestId: latestReq['dbId']?.toString() ?? latestReq['id']?.toString() ?? '',
+              rawStatus: latestReq['rawStatus'] ?? 1,
+              creatorName: latestReq['faculty'] ?? 'Staff Member',
               stops: [
-                {'location': req['pickup'] ?? 'Unknown', 'eta': 'Start'},
-                if (req['intermediateStops'] is List)
-                  ...(req['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': 'Transit'}),
-                {'location': req['drop'] ?? 'Unknown', 'eta': 'End'},
+                {'location': latestReq['pickup'] ?? 'Unknown', 'eta': 'Start'},
+                if (latestReq['intermediateStops'] is List)
+                  ...(latestReq['intermediateStops'] as List).map((s) => {'location': s.toString(), 'eta': 'Transit'}),
+                {'location': latestReq['drop'] ?? 'Unknown', 'eta': 'End'},
               ],
             ),
           ),
@@ -112,7 +130,7 @@ class RequestCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              req['routeName'] ?? 'Unknown Route',
+                              latestReq['routeName'] ?? 'Unknown Route',
                               style: TextStyle(
                                 color: titleColor,
                                 fontWeight: FontWeight.bold,
@@ -123,7 +141,7 @@ class RequestCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            req['date'] ?? '',
+                            latestReq['date'] ?? '',
                             style: TextStyle(
                               color: subColor,
                               fontWeight: FontWeight.bold,
@@ -143,8 +161,8 @@ class RequestCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                req['drivers'] != null && (req['drivers'] as List).isNotEmpty
-                                    ? (req['drivers'] as List)
+                                latestReq['drivers'] != null && (latestReq['drivers'] as List).isNotEmpty
+                                    ? (latestReq['drivers'] as List)
                                         .map((d) => d['name'] ?? 'Driver')
                                         .join(', ')
                                     : 'No Driver Assigned',
@@ -160,7 +178,7 @@ class RequestCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        req['id'] ?? 'N/A',
+                        latestReq['id'] ?? 'N/A',
                         style: TextStyle(
                           color: subColor,
                           fontSize: 11,
@@ -171,7 +189,7 @@ class RequestCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                _buildStatusBadge(req['status'] ?? 'Pending'),
+                _buildStatusBadge(latestReq['status'] ?? 'Pending'),
               ],
             ),
           ),
@@ -207,7 +225,7 @@ class RequestCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        req['pickup'] ?? 'Unknown',
+                        latestReq['pickup'] ?? 'Unknown',
                         style: TextStyle(
                           color: titleColor,
                           fontWeight: FontWeight.w600,
@@ -216,7 +234,7 @@ class RequestCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 30),
                       Text(
-                        req['drop'] ?? 'Unknown',
+                        latestReq['drop'] ?? 'Unknown',
                         style: TextStyle(
                           color: titleColor,
                           fontWeight: FontWeight.w600,
@@ -244,12 +262,12 @@ class RequestCard extends StatelessWidget {
               children: [
                 _buildFooterItem(
                   Icons.person_pin_rounded,
-                  req['faculty'] ?? 'Staff Member',
+                  latestReq['faculty'] ?? 'Staff Member',
                   subColor,
                 ),
                 _buildFooterItem(
                   Icons.group_outlined,
-                  "${req['passengers'] ?? 0} Guests",
+                  "${latestReq['passengers'] ?? 0} Guests",
                   subColor,
                 ),
               ],

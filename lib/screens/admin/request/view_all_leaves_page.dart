@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/leave_card.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
@@ -8,16 +9,16 @@ import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
 
-class ViewAllLeavesPage extends StatefulWidget {
+class ViewAllLeavesPage extends ConsumerStatefulWidget {
   final List<Map<String, dynamic>> leaves;
 
   const ViewAllLeavesPage({super.key, required this.leaves});
 
   @override
-  State<ViewAllLeavesPage> createState() => _ViewAllLeavesPageState();
+  ConsumerState<ViewAllLeavesPage> createState() => _ViewAllLeavesPageState();
 }
 
-class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
+class _ViewAllLeavesPageState extends ConsumerState<ViewAllLeavesPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All'; // All, Pending, Approved, Rejected
 
@@ -73,8 +74,9 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Consumer<RequestStore>(
-        builder: (context, store, child) {
+      body: Consumer(
+builder: (context, ref, child) {
+final store = ref.watch(requestStoreProvider);
           // Use leaves from store instead of widget.leaves if we want reactivity
           final currentLeaves = store.leaves;
 
@@ -447,7 +449,7 @@ class _ViewAllLeavesPageState extends State<ViewAllLeavesPage> {
   }
 }
 
-class _ApplyLeaveBottomSheet extends StatefulWidget {
+class _ApplyLeaveBottomSheet extends ConsumerStatefulWidget {
   final bool isDark;
   final Color primaryBlue;
   final Color cardColor;
@@ -459,10 +461,10 @@ class _ApplyLeaveBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<_ApplyLeaveBottomSheet> createState() => _ApplyLeaveBottomSheetState();
+  ConsumerState<_ApplyLeaveBottomSheet> createState() => _ApplyLeaveBottomSheetState();
 }
 
-class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
+class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> {
   final _reasonController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
@@ -476,12 +478,12 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
   @override
   void initState() {
     super.initState();
-    final driverStore = Provider.of<DriverStore>(context, listen: false);
+    final driverStore = ref.read(driverStoreProvider);
     _filteredDrivers = driverStore.drivers;
 
     // Fetch dynamic leave types
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final requestStore = Provider.of<RequestStore>(context, listen: false);
+      final requestStore = ref.read(requestStoreProvider);
       requestStore.fetchLeaveTypes().then((_) {
         if (mounted && requestStore.leaveTypes.isNotEmpty) {
           setState(() {
@@ -663,8 +665,9 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
             const SizedBox(height: 24),
             _buildSectionTitle("Leave Type"),
             const SizedBox(height: 12),
-            Consumer<RequestStore>(
-              builder: (context, requestStore, child) {
+            Consumer(
+builder: (context, ref, child) {
+final requestStore = ref.watch(requestStoreProvider);
                 final types = requestStore.leaveTypes;
                 if (requestStore.isLoadingLeaveTypes && _selectedLeaveType == null) {
                   return Container(
@@ -899,10 +902,7 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
                   TextField(
                     onChanged: (val) {
                       setModalState(() {
-                        final driverStore = Provider.of<DriverStore>(
-                          context,
-                          listen: false,
-                        );
+                        final driverStore = ref.read(driverStoreProvider);
                         if (val.isEmpty) {
                           _filteredDrivers = driverStore.drivers;
                         } else {
@@ -978,7 +978,7 @@ class _ApplyLeaveBottomSheetState extends State<_ApplyLeaveBottomSheet> {
     setState(() => _isSubmitting = true);
 
     final navigator = Navigator.of(context);
-    final requestStore = Provider.of<RequestStore>(context, listen: false);
+    final requestStore = ref.read(requestStoreProvider);
 
     // Build ISO datetime strings: "2026-04-16T10:00:00"
     String pad(int n) => n.toString().padLeft(2, '0');

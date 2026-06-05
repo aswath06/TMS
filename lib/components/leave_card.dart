@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
 
-class LeaveCard extends StatelessWidget {
+class LeaveCard extends ConsumerWidget {
   final Map<String, dynamic> leaf;
   final bool isDark;
   final Color primaryColor;
@@ -18,7 +19,7 @@ class LeaveCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
     final Color subColor = isDark
@@ -128,7 +129,7 @@ class LeaveCard extends StatelessWidget {
   }
 }
 
-class _LeaveDetailBottomSheet extends StatefulWidget {
+class _LeaveDetailBottomSheet extends ConsumerStatefulWidget {
   final Map<String, dynamic> leaf;
   final bool isDark;
   final Color primaryColor;
@@ -140,10 +141,10 @@ class _LeaveDetailBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<_LeaveDetailBottomSheet> createState() => _LeaveDetailBottomSheetState();
+  ConsumerState<_LeaveDetailBottomSheet> createState() => _LeaveDetailBottomSheetState();
 }
 
-class _LeaveDetailBottomSheetState extends State<_LeaveDetailBottomSheet> {
+class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet> {
   bool _isUpdating = false;
 
   @override
@@ -353,7 +354,7 @@ class _LeaveDetailBottomSheetState extends State<_LeaveDetailBottomSheet> {
     // Capture the messenger before the async call to avoid context issues
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final store = Provider.of<RequestStore>(context, listen: false);
+    final store = ref.read(requestStoreProvider);
 
     final success = await store.updateLeaveStatus(widget.leaf['id'], status);
 

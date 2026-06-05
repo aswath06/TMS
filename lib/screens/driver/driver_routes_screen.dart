@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart'; 
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 
-class DriverRoutesScreen extends StatefulWidget {
+class DriverRoutesScreen extends ConsumerStatefulWidget {
   const DriverRoutesScreen({super.key});
 
   @override
-  State<DriverRoutesScreen> createState() => _DriverRoutesScreenState();
+  ConsumerState<DriverRoutesScreen> createState() => _DriverRoutesScreenState();
 }
 
-class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTickerProviderStateMixin {
+class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
@@ -60,7 +61,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
                   border: InputBorder.none,
                 ),
                 onChanged: (val) {
-                  context.read<DriverStore>().updateSearch(val);
+                  ref.read(driverStoreProvider).updateSearch(val);
                 },
               )
             : Text(
@@ -76,7 +77,7 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
                       setState(() => _isSearching = false);
                     } else {
                       _searchController.clear();
-                      context.read<DriverStore>().updateSearch("");
+                      ref.read(driverStoreProvider).updateSearch("");
                     }
                   },
                 )
@@ -111,95 +112,83 @@ class _DriverRoutesScreenState extends State<DriverRoutesScreen> with SingleTick
   }
 
   Widget _buildRouteList(String type) {
-    return Consumer<DriverStore>(
-      builder: (context, store, _) {
-        final isTamil = LanguageStore.isTamil;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final Color primaryBlue = const Color(0xFF6366F1);
-        final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-        final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-        final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final store = ref.watch(driverStoreProvider);
+    final isTamil = LanguageStore.isTamil;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
-        List<Map<String, dynamic>> list = [];
-        final allMissions = List<Map<String, dynamic>>.from(store.missions);
-        allMissions.sort((a, b) {
-          final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
-          final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
-          return aTime.compareTo(bTime);
-        });
+    List<Map<String, dynamic>> list = [];
+    final allMissions = List<Map<String, dynamic>>.from(store.missions);
+    allMissions.sort((a, b) {
+      final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
+      final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
+      return aTime.compareTo(bTime);
+    });
 
-        // Helper to normalize status for filtering
-        bool isCompleted(dynamic s) {
-          if (s is int) return s >= 8;
-          if (s is String) return s.toUpperCase() == 'COMPLETED';
-          return false;
-        }
+    // Helper to normalize status for filtering
+    bool isCompleted(dynamic s) {
+      if (s is int) return s >= 8;
+      if (s is String) return s.toUpperCase() == 'COMPLETED';
+      return false;
+    }
 
+    // identify search query
+    final query = store.searchQuery.toLowerCase().trim();
 
+    if (type == 'upcoming') {
+      list = allMissions.where((m) => !isCompleted(m['status'])).toList();
+    } else if (type == 'completed') {
+      list = allMissions.where((m) => isCompleted(m['status'])).toList();
+    }
 
-
-        // identify search query
-        final query = store.searchQuery.toLowerCase().trim();
+    // Apply Search Filtering (Frontend)
+    if (query.isNotEmpty) {
+      list = list.where((m) {
+        final String routeName = (m['routeName'] ?? "").toString().toLowerCase();
+        final String pickup = (m['startLocation'] ?? "").toString().toLowerCase();
+        final String drop = (m['destinationLocation'] ?? "").toString().toLowerCase();
+        final String driveId = (m['id'] ?? "").toString().toLowerCase();
         
-        // Helper to normalize status for filtering
+        return routeName.contains(query) || 
+               pickup.contains(query) || 
+               drop.contains(query) ||
+               driveId.contains(query);
+      }).toList();
+    }
 
+    if (store.isLoadingMissions && list.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
+    if (list.isEmpty) {
+      return _buildEmptyState(type, isSearch: query.isNotEmpty);
+    }
 
-        if (type == 'upcoming') {
-          list = allMissions.where((m) => !isCompleted(m['status'])).toList();
-        } else if (type == 'completed') {
-          list = allMissions.where((m) => isCompleted(m['status'])).toList();
-        }
-
-        // Apply Search Filtering (Frontend)
-        if (query.isNotEmpty) {
-          list = list.where((m) {
-            final String routeName = (m['routeName'] ?? "").toString().toLowerCase();
-            final String pickup = (m['startLocation'] ?? "").toString().toLowerCase();
-            final String drop = (m['destinationLocation'] ?? "").toString().toLowerCase();
-            final String driveId = (m['id'] ?? "").toString().toLowerCase();
-            
-            return routeName.contains(query) || 
-                   pickup.contains(query) || 
-                   drop.contains(query) ||
-                   driveId.contains(query);
-          }).toList();
-        }
-
-
-        if (store.isLoadingMissions && list.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (list.isEmpty) {
-          return _buildEmptyState(type, isSearch: query.isNotEmpty);
-        }
-
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            await store.fetchMissions();
-            await store.fetchProfile();
-          },
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            physics: const BouncingScrollPhysics(),
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              return _buildMissionCard(
-                context: context,
-                mission: list[index],
-                surface: surfaceColor,
-                primary: primaryBlue,
-                titleColor: titleColor,
-                subColor: subColor,
-                isDark: isDark,
-                isTamil: isTamil,
-              );
-            },
-          ),
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        await store.fetchMissions();
+        await store.fetchProfile();
       },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        physics: const BouncingScrollPhysics(),
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          return _buildMissionCard(
+            context: context,
+            mission: list[index],
+            surface: surfaceColor,
+            primary: primaryBlue,
+            titleColor: titleColor,
+            subColor: subColor,
+            isDark: isDark,
+            isTamil: isTamil,
+          );
+        },
+      ),
     );
   }
 

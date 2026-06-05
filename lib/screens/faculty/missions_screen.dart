@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 
-class MissionsScreen extends StatefulWidget {
+class MissionsScreen extends ConsumerStatefulWidget {
   const MissionsScreen({super.key});
 
   @override
-  State<MissionsScreen> createState() => _MissionsScreenState();
+  ConsumerState<MissionsScreen> createState() => _MissionsScreenState();
 }
 
-class _MissionsScreenState extends State<MissionsScreen> {
+class _MissionsScreenState extends ConsumerState<MissionsScreen> {
   final ScrollController _scrollController = ScrollController();
   String _selectedFilter = 'ALL';
 
@@ -21,7 +22,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RequestStore>().fetchRequests(isRefresh: true);
+      ref.read(requestStoreProvider).fetchRequests(isRefresh: true);
     });
   }
 
@@ -34,7 +35,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >= 
         _scrollController.position.maxScrollExtent - 200) {
-      context.read<RequestStore>().fetchNextPage();
+      ref.read(requestStoreProvider).fetchNextPage();
     }
   }
 
@@ -51,7 +52,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
         ? const Color(0xFF0F172A)
         : const Color(0xFFF8FAFC);
 
-    final store = context.watch<RequestStore>();
+    final store = ref.watch(requestStoreProvider);
     final missions = store.requests.where((req) {
       final String s = (req['status'] ?? "").toString().toUpperCase();
       
@@ -409,7 +410,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
     }
 
     final List<String> sortedDates = grouped.keys.toList();
-    final store = context.read<RequestStore>();
+    final store = ref.read(requestStoreProvider);
 
     return ListView.builder(
       controller: _scrollController,

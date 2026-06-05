@@ -4,16 +4,17 @@ import 'package:tripzo/store/user_store.dart';
 import 'mission_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 
-class MissionHistoryScreen extends StatefulWidget {
+class MissionHistoryScreen extends ConsumerStatefulWidget {
   const MissionHistoryScreen({super.key});
 
   @override
-  State<MissionHistoryScreen> createState() => _MissionHistoryScreenState();
+  ConsumerState<MissionHistoryScreen> createState() => _MissionHistoryScreenState();
 }
 
-class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
+class _MissionHistoryScreenState extends ConsumerState<MissionHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = "";
@@ -87,7 +88,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
         : const Color(0xFFF1F5F9);
 
     final bool isAdmin = _role.toLowerCase().contains('admin');
-    final bool isFacultyLoading = context.watch<DashboardStore>().state.isLoading;
+    final bool isFacultyLoading = ref.watch(dashboardStoreProvider).state.isLoading;
 
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: useAdminDashboardStore.history,
@@ -97,7 +98,7 @@ class _MissionHistoryScreenState extends State<MissionHistoryScreen> {
           builder: (context, isAdminLoading, _) {
             final List<Map<String, dynamic>> historyItems = isAdmin 
                 ? adminHistory 
-                : context.watch<DashboardStore>().state.history;
+                : ref.watch(dashboardStoreProvider).state.history;
             
             final bool isLoading = isAdmin ? isAdminLoading : isFacultyLoading;
 

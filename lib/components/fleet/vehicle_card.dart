@@ -16,27 +16,14 @@ class VehicleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String type = vehicle['vehicle_type_name'] ?? vehicle['vehicle_type'] ?? "Vehicle";
+    final String type =
+        vehicle['vehicle_type_name'] ?? vehicle['vehicle_type'] ?? "Vehicle";
     final String plate = vehicle['vehicle_number'] ?? "N/A";
-    final String status = (vehicle['status'] ?? "IDLE").toString().toUpperCase();
-    
-    // Status Color Map
-    Color statusColor;
-    switch (status) {
-      case 'ACTIVE':
-      case 'AVAILABLE':
-        statusColor = Colors.green;
-        break;
-      case 'MAINTENANCE':
-      case 'REPAIR':
-        statusColor = Colors.orange;
-        break;
-      case 'ON_TRIP':
-        statusColor = Colors.blue;
-        break;
-      default:
-        statusColor = Colors.red;
-    }
+    final String status = (vehicle['status'] ?? "IDLE")
+        .toString()
+        .toUpperCase();
+    final String fuelType = vehicle['fuel_type'] ?? "N/A";
+    final String odometer = vehicle['current_odometer']?.toString() ?? "0";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -108,7 +95,11 @@ class VehicleCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         "${vehicle['capacity'] ?? 0} Seats",
-                        style: TextStyle(color: subColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: subColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -119,7 +110,11 @@ class VehicleCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.person_rounded, size: 12, color: subColor.withValues(alpha: 0.5)),
+                      Icon(
+                        Icons.person_rounded,
+                        size: 12,
+                        color: subColor.withValues(alpha: 0.5),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -136,6 +131,22 @@ class VehicleCard extends StatelessWidget {
                     ],
                   ),
                 ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildInfoBadge(
+                      Icons.local_gas_station_rounded,
+                      fuelType,
+                      subColor,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildInfoBadge(
+                      Icons.speed_rounded,
+                      "$odometer km",
+                      subColor,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -143,23 +154,7 @@ class VehicleCard extends StatelessWidget {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: statusColor),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                status,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: statusColor,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+            children: [_buildStatusBadge(status)],
           ),
         ],
       ),
@@ -180,5 +175,79 @@ class VehicleCard extends StatelessWidget {
     if (type.contains('truck')) return Colors.orange;
     if (type.contains('van')) return Colors.blue;
     return Colors.indigo;
+  }
+
+  Widget _buildInfoBadge(IconData icon, String text, Color subColor) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: subColor.withValues(alpha: 0.6)),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            color: subColor.withValues(alpha: 0.8),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    final Map<String, Map<String, Color>> statusStyles = {
+      'ACTIVE': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
+      'AVAILABLE': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
+      'ON_TRIP': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'MAINTENANCE': {
+        'bg': const Color(0xFFFFFBEB),
+        'text': const Color(0xFFF59E0B),
+        'border': const Color(0xFFFDE68A),
+      },
+      'REPAIR': {
+        'bg': const Color(0xFFFEF2F2),
+        'text': Colors.red,
+        'border': const Color(0xFFFECACA),
+      },
+    };
+
+    final style =
+        statusStyles[status] ??
+        {
+          'bg': Colors.grey.withValues(alpha: 0.1),
+          'text': Colors.grey,
+          'border': Colors.grey.withValues(alpha: 0.2),
+        };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: style['bg'],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: style['border']!, width: 1),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: style['text'],
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 }

@@ -2,18 +2,19 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/store/driver_store.dart';
 
-class AddDriverPage extends StatefulWidget {
+class AddDriverPage extends ConsumerStatefulWidget {
   const AddDriverPage({super.key});
 
   @override
-  State<AddDriverPage> createState() => _AddDriverPageState();
+  ConsumerState<AddDriverPage> createState() => _AddDriverPageState();
 }
 
-class _AddDriverPageState extends State<AddDriverPage> {
+class _AddDriverPageState extends ConsumerState<AddDriverPage> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _nameCtrl = TextEditingController();
@@ -93,7 +94,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
   void _performLicenseCheck() async {
     setState(() => _isCheckingLicense = true);
 
-    final store = Provider.of<DriverStore>(context, listen: false);
+    final store = ref.read(driverStoreProvider);
     final result = await store.checkLicense(
       driverName: _nameCtrl.text.trim(),
       frontPath: _frontPath!,
@@ -257,10 +258,7 @@ class _AddDriverPageState extends State<AddDriverPage> {
         "driver_status": "AVAILABLE"
       };
 
-      final response = await Provider.of<DriverStore>(
-        context,
-        listen: false,
-      ).addDriver(driverData);
+      final response = await ref.read(driverStoreProvider).addDriver(driverData);
 
       if (mounted) {
         setState(() {

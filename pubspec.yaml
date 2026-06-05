@@ -68,6 +68,7 @@ dependencies:
   path_provider: ^2.1.5
   open_filex: ^4.7.0
   flutter_image_compress: ^2.4.0
+  flutter_riverpod: ^2.5.1
 
 flutter_launcher_icons:
   android: true

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
@@ -13,14 +14,14 @@ import '../../utils/routes.dart';
 import '../main_screen.dart';
 import 'dart:async';
 
-class DriverDutiesScreen extends StatefulWidget {
+class DriverDutiesScreen extends ConsumerStatefulWidget {
   const DriverDutiesScreen({super.key});
 
   @override
-  State<DriverDutiesScreen> createState() => _DriverDutiesScreenState();
+  ConsumerState<DriverDutiesScreen> createState() => _DriverDutiesScreenState();
 }
 
-class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
+class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
   Timer? _timer;
 
   @override
@@ -33,7 +34,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
       useDriverStore.fetchPendingFuelEntries();
       useDriverStore.fetchActiveRoutesToComplete();
       useDriverStore.fetchPendingAllowanceCount();
-      context.read<NotificationProvider>().fetchNotifications();
+      ref.read(notificationProviderFamily).fetchNotifications();
     });
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -66,8 +67,9 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
         children: [
           _buildBackgroundDecor(isDark, primaryBlue),
           SafeArea(
-            child: Consumer<DriverStore>(
-              builder: (context, store, _) {
+            child: Consumer(
+builder: (context, ref, _) {
+final store = ref.watch(driverStoreProvider);
                 final profile = store.profileData.value;
                 final allTasksList = List<Map<String, dynamic>>.from(store.missions);
                 // Helper to normalize status for filtering

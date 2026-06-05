@@ -3,7 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
@@ -11,16 +12,16 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
-class AdminFinalizeRequestScreen extends StatefulWidget {
+class AdminFinalizeRequestScreen extends ConsumerStatefulWidget {
   final String requestId;
 
   const AdminFinalizeRequestScreen({super.key, required this.requestId});
 
   @override
-  State<AdminFinalizeRequestScreen> createState() => _AdminFinalizeRequestScreenState();
+  ConsumerState<AdminFinalizeRequestScreen> createState() => _AdminFinalizeRequestScreenState();
 }
 
-class _AdminFinalizeRequestScreenState extends State<AdminFinalizeRequestScreen> {
+class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeRequestScreen> {
   bool _isLoading = true;
   bool _isFinalizing = false;
   Map<String, dynamic>? _requestData;

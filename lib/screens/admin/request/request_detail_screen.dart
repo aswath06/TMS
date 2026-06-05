@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
-class RequestDetailScreen extends StatefulWidget {
+class RequestDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> request;
   const RequestDetailScreen({super.key, required this.request});
 
   @override
-  State<RequestDetailScreen> createState() => _RequestDetailScreenState();
+  ConsumerState<RequestDetailScreen> createState() => _RequestDetailScreenState();
 }
 
-class _RequestDetailScreenState extends State<RequestDetailScreen> {
+class _RequestDetailScreenState extends ConsumerState<RequestDetailScreen> {
   @override
   void initState() {
     super.initState();
@@ -27,7 +28,7 @@ class _RequestDetailScreenState extends State<RequestDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<RequestStore>();
+    final store = ref.watch(requestStoreProvider);
     final data = store.currentRequest ?? widget.request;
     final bool isFetching = store.isFetchingDetails;
 

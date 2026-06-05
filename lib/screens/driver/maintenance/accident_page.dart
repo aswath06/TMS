@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/VehicleStore.dart';
@@ -8,14 +9,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/components/single_location_selector.dart';
 
-class AccidentPage extends StatefulWidget {
+class AccidentPage extends ConsumerStatefulWidget {
   const AccidentPage({super.key});
 
   @override
-  State<AccidentPage> createState() => _AccidentPageState();
+  ConsumerState<AccidentPage> createState() => _AccidentPageState();
 }
 
-class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderStateMixin {
+class _AccidentPageState extends ConsumerState<AccidentPage> with SingleTickerProviderStateMixin {
   final TextEditingController _natureController = TextEditingController();
   final TextEditingController _placeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
@@ -58,7 +59,7 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
     _actionTakenController.text = "Police informed and vehicle moved to roadside";
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<VehicleStore>().fetchVehicles(forceRefresh: true);
+      ref.read(vehicleStoreProvider).fetchVehicles(forceRefresh: true);
     });
   }
 
@@ -74,7 +75,7 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final vehicleStore = context.watch<VehicleStore>();
+    final vehicleStore = ref.watch(vehicleStoreProvider);
     final isTamil = LanguageStore.isTamil;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -862,7 +863,7 @@ class _AccidentPageState extends State<AccidentPage> with SingleTickerProviderSt
       "insurance_claim_required": _insuranceClaim.toString(),
     };
 
-    final result = await context.read<DriverStore>().submitAccidentEntry(data, _proofPath);
+    final result = await ref.read(driverStoreProvider).submitAccidentEntry(data, _proofPath);
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 

@@ -4,7 +4,8 @@ import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/user_store.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/request_card.dart';
 import 'package:tripzo/store/request_store.dart';
 import '../../providers/notification_provider.dart';
@@ -15,14 +16,14 @@ import 'fuel/fuel_page.dart';
 import 'admin_allowance_screen.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
-class AdminDashboardScreen extends StatefulWidget {
+class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
@@ -528,7 +529,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             );
             if (refresh == true) {
               if (mounted) {
-                context.read<RequestStore>().fetchRequests();
+                ref.read(requestStoreProvider).fetchRequests();
                 AdminDashboardStore().fetchStats();
               }
             }
@@ -608,7 +609,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildNotificationList(Color primaryBlue, Color surface, bool isDark) {
-    final notificationProvider = context.watch<NotificationProvider>();
+    final notificationProvider = ref.watch(notificationProviderFamily);
     final notifications = notificationProvider.notifications;
 
     if (notificationProvider.isLoading && notifications.isEmpty) {

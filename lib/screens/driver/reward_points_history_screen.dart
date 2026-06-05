@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
-class RewardPointsHistoryScreen extends StatefulWidget {
+class RewardPointsHistoryScreen extends ConsumerStatefulWidget {
   const RewardPointsHistoryScreen({super.key});
 
   @override
-  State<RewardPointsHistoryScreen> createState() => _RewardPointsHistoryScreenState();
+  ConsumerState<RewardPointsHistoryScreen> createState() => _RewardPointsHistoryScreenState();
 }
 
-class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
+class _RewardPointsHistoryScreenState extends ConsumerState<RewardPointsHistoryScreen> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DriverStore>().fetchRewardPoints();
+      ref.read(driverStoreProvider).fetchRewardPoints();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = ref.watch(driverStoreProvider);
     final bool isTamil = LanguageStore.isTamil;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -45,8 +47,8 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Consumer<DriverStore>(
-        builder: (context, store, _) {
+      body: Builder(
+        builder: (context) {
           if (store.isLoadingRewards && store.rewardHistory.isEmpty) {
             return _buildSkeletonLoading(isDark);
           }
@@ -337,7 +339,7 @@ class _RewardPointsHistoryScreenState extends State<RewardPointsHistoryScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.read<DriverStore>().fetchRewardPoints(),
+              onPressed: () => ref.read(driverStoreProvider).fetchRewardPoints(),
               child: Text(isTamil ? "மீண்டும் முயற்சிக்கவும்" : "Retry"),
             ),
           ],

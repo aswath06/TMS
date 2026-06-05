@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/store/driver_store.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 
-class AdminDriverDetailScreen extends StatelessWidget {
+class AdminDriverDetailScreen extends ConsumerWidget {
   final Map<String, dynamic> driver;
 
   const AdminDriverDetailScreen({super.key, required this.driver});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
@@ -18,7 +19,7 @@ class AdminDriverDetailScreen extends StatelessWidget {
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
 
-    final store = Provider.of<DriverStore>(context, listen: false);
+    final store = ref.read(driverStoreProvider);
     final status = driver['status'] ?? 1;
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);

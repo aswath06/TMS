@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import '../providers/notification_provider.dart';
 import '../utils/routes.dart';
 
-class NotificationBell extends StatefulWidget {
+class NotificationBell extends ConsumerStatefulWidget {
   final Color iconColor;
   final double size;
 
@@ -14,10 +15,10 @@ class NotificationBell extends StatefulWidget {
   });
 
   @override
-  State<NotificationBell> createState() => _NotificationBellState();
+  ConsumerState<NotificationBell> createState() => _NotificationBellState();
 }
 
-class _NotificationBellState extends State<NotificationBell> with SingleTickerProviderStateMixin {
+class _NotificationBellState extends ConsumerState<NotificationBell> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   int _lastCount = 0;
@@ -42,8 +43,9 @@ class _NotificationBellState extends State<NotificationBell> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<NotificationProvider>(
-      builder: (context, provider, _) {
+    return Consumer(
+builder: (context, ref, _) {
+final provider = ref.watch(notificationProviderFamily);
         final count = provider.unreadCount;
         
         if (count > 0 && _lastCount == 0) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
@@ -9,14 +10,14 @@ import 'package:tripzo/screens/admin/request/view_all_leaves_page.dart';
 import 'package:tripzo/screens/admin/admin_driver_detail_screen.dart';
 import 'package:tripzo/components/leave_card.dart';
 
-class AdminDriverScreen extends StatefulWidget {
+class AdminDriverScreen extends ConsumerStatefulWidget {
   const AdminDriverScreen({super.key});
 
   @override
-  State<AdminDriverScreen> createState() => _AdminDriverScreenState();
+  ConsumerState<AdminDriverScreen> createState() => _AdminDriverScreenState();
 }
 
-class _AdminDriverScreenState extends State<AdminDriverScreen> {
+class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   String _sortType = 'A to Z'; // Default sorting
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
@@ -161,10 +162,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
         setModalState(() {
           _sortType = title;
         });
-        Provider.of<DriverStore>(
-          context,
-          listen: false,
-        ).setSortType(title); // Update store's sort type
+        ref.read(driverStoreProvider).setSortType(title); // Update store's sort type
         Navigator.pop(context); // Close after selection
       },
       child: Container(
@@ -446,8 +444,8 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     AdminDashboardStore().fetchStats();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final driverStore = Provider.of<DriverStore>(context, listen: false);
-      final requestStore = Provider.of<RequestStore>(context, listen: false);
+      final driverStore = ref.read(driverStoreProvider);
+      final requestStore = ref.read(requestStoreProvider);
 
       // Only fetch if data is missing or empty to avoid redundant loading on navigation
       if (driverStore.drivers.isEmpty) {
@@ -462,7 +460,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 200) {
-        Provider.of<DriverStore>(context, listen: false).fetchNextPage();
+        ref.read(driverStoreProvider).fetchNextPage();
       }
     });
   }
@@ -498,14 +496,8 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
         child: RefreshIndicator(
           onRefresh: () async {
             await AdminDashboardStore().fetchStats();
-            await Provider.of<DriverStore>(
-              context,
-              listen: false,
-            ).fetchDrivers(forceRefresh: true);
-            await Provider.of<RequestStore>(
-              context,
-              listen: false,
-            ).fetchLeaves(page: 1, limit: 10);
+            await ref.read(driverStoreProvider).fetchDrivers(forceRefresh: true);
+            await ref.read(requestStoreProvider).fetchLeaves(page: 1, limit: 10);
           },
           color: primaryBlue,
           child: CustomScrollView(
@@ -681,8 +673,9 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     Color primaryBlue,
     bool isDark,
   ) {
-    return Consumer<RequestStore>(
-      builder: (context, store, child) {
+    return Consumer(
+builder: (context, ref, child) {
+final store = ref.watch(requestStoreProvider);
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
@@ -737,8 +730,9 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
   }
 
   Widget _buildLeaveList(bool isDark, Color primaryBlue) {
-    return Consumer<RequestStore>(
-      builder: (context, store, child) {
+    return Consumer(
+builder: (context, ref, child) {
+final store = ref.watch(requestStoreProvider);
         if (store.isLoadingLeaves && store.leaves.isEmpty) {
           return const Center(
             child: Padding(
@@ -1018,8 +1012,9 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
   }
 
   Widget _buildDriverList(bool isDark, Color surfaceColor) {
-    return Consumer<DriverStore>(
-      builder: (context, store, child) {
+    return Consumer(
+builder: (context, ref, child) {
+final store = ref.watch(driverStoreProvider);
         if (store.isLoading && store.drivers.isEmpty) {
           return const Center(
             child: Padding(
@@ -1084,7 +1079,7 @@ class _AdminDriverScreenState extends State<AdminDriverScreen> {
     bool isDark,
     Color surfaceColor,
   ) {
-    final store = Provider.of<DriverStore>(context, listen: false);
+    final store = ref.read(driverStoreProvider);
     final status = driver['status'] ?? 'AVAILABLE';
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);

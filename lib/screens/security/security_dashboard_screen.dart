@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/faculty_store.dart';
@@ -9,14 +10,14 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
 import '../../components/notification_bell.dart';
 
-class SecurityDashboardScreen extends StatefulWidget {
+class SecurityDashboardScreen extends ConsumerStatefulWidget {
   const SecurityDashboardScreen({super.key});
 
   @override
-  State<SecurityDashboardScreen> createState() => _SecurityDashboardScreenState();
+  ConsumerState<SecurityDashboardScreen> createState() => _SecurityDashboardScreenState();
 }
 
-class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
+class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScreen> {
   static int _cachedOutCampusCount = 0;
   static int _cachedInCampusCount = 0;
   static List<dynamic> _cachedOutCampusList = [];

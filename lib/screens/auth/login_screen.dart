@@ -12,19 +12,20 @@ import 'package:tripzo/components/auth/login_error_dialog.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/validators.dart';
 import 'package:tripzo/utils/api_constants.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 import '../../providers/notification_provider.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import '../main_screen.dart' show MainScreen;
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -108,10 +109,7 @@ curl -X POST "$url" \
         );
 
         if (mounted) {
-          Provider.of<NotificationProvider>(
-            context,
-            listen: false,
-          ).initialize(token: token);
+          ref.read(notificationProviderFamily).initialize(token: token);
 
           Navigator.pushAndRemoveUntil(
             context,
@@ -185,10 +183,7 @@ curl -X POST "$url" \
 
         if (mounted) {
           // Initialize Notifications
-          Provider.of<NotificationProvider>(
-            context,
-            listen: false,
-          ).initialize(token: jwtToken);
+          ref.read(notificationProviderFamily).initialize(token: jwtToken);
 
           Navigator.pushAndRemoveUntil(
             context,
@@ -435,11 +430,11 @@ curl -X POST "$url" \
   }
 }
 
-class TermsAndConditionsScreen extends StatelessWidget {
+class TermsAndConditionsScreen extends ConsumerWidget {
   const TermsAndConditionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
     final Color textCol = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -640,11 +635,11 @@ class TermsAndConditionsScreen extends StatelessWidget {
   }
 }
 
-class BackgroundDecorator extends StatelessWidget {
+class BackgroundDecorator extends ConsumerWidget {
   const BackgroundDecorator({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Stack(
       children: [
         Positioned(
