@@ -189,6 +189,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                           surfaceColor,
                           isDark,
                         ),
+                        const SizedBox(height: 32),
+                        _buildSectionTitle("Summary Statistics", titleColor),
+                        const SizedBox(height: 16),
+                        _buildSummaryStatistics(surfaceColor, isDark),
                         if (_vehicleData!['defaultDriver'] != null) ...[
                           const SizedBox(height: 32),
                           _buildSectionTitle("Default Driver", titleColor),
@@ -537,6 +541,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           "Fuel History",
           Icons.local_gas_station,
           _buildFuelList(surface, isDark),
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildExpandingSection(
+          "Assigned Routes",
+          Icons.route,
+          _buildRoutesList(surface, isDark),
           titleColor,
         ),
       ],
@@ -1118,6 +1129,390 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     } catch (_) {
       return timestamp;
     }
+  }
+
+  Widget _buildSummaryStatistics(Color surface, bool isDark) {
+    final summary = _vehicleData!['summary'] ?? {};
+
+    final int completedTrips = summary['completed_trip_count'] ?? 0;
+    final int fuelCount = summary['fuel_history_count'] ?? 0;
+    final double fuelAmount = (summary['total_fuel_amount'] ?? 0.0).toDouble();
+    final double mileage = (summary['average_mileage'] ?? 0.0).toDouble();
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryStatCard(
+                surface,
+                isDark,
+                Icons.route,
+                "Completed Trips",
+                completedTrips.toString(),
+                Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSummaryStatCard(
+                surface,
+                isDark,
+                Icons.local_gas_station,
+                "Fuel Logs",
+                fuelCount.toString(),
+                Colors.orange,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryStatCard(
+                surface,
+                isDark,
+                Icons.currency_rupee,
+                "Total Fuel Cost",
+                "₹${fuelAmount.toStringAsFixed(2)}",
+                Colors.green,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSummaryStatCard(
+                surface,
+                isDark,
+                Icons.speed,
+                "Avg Mileage",
+                "${mileage.toStringAsFixed(2)} km/l",
+                Colors.purple,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryStatCard(
+    Color surface,
+    bool isDark,
+    IconData icon,
+    String title,
+    String value,
+    Color iconColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoutesList(Color surface, bool isDark) {
+    final List<dynamic> routes = _vehicleData!['travelHistory'] ?? [];
+    if (routes.isEmpty) {
+      return const Center(
+        child: Text("No assigned routes", style: TextStyle(color: Colors.grey)),
+      );
+    }
+
+    return Column(
+      children: routes.map((r) {
+        final tripLeg = r['tripLeg'] ?? {};
+        final tripInstance = tripLeg['tripInstance'] ?? {};
+        final routeReq = tripInstance['routeRequest'] ?? {};
+
+        final String routeName = routeReq['route_name'] ?? 'Unknown Route';
+
+        final String startTimeStr = tripLeg['planned_start_at'] ?? '';
+        final String endTimeStr = tripLeg['planned_end_at'] ?? '';
+
+        DateTime? startDt;
+        DateTime? endDt;
+        try {
+          if (startTimeStr.isNotEmpty) startDt = DateTime.parse(startTimeStr);
+          if (endTimeStr.isNotEmpty) endDt = DateTime.parse(endTimeStr);
+        } catch (_) {}
+
+        final String startMonthDay = startDt != null
+            ? DateFormat('d MMM').format(startDt)
+            : '';
+        final String startTimeFormatted = startDt != null
+            ? DateFormat('HH:mm').format(startDt)
+            : '';
+        final String endMonthDay = endDt != null
+            ? DateFormat('d MMM').format(endDt)
+            : '';
+
+        final String headerDate = startMonthDay;
+
+        final String tripType =
+            routeReq['trip_type']?.toString().replaceAll('_', ' ') ??
+            'ROUND TRIP';
+        final String distance = "${routeReq['approx_distance_km'] ?? 0} KM";
+        final String status = r['status'] ?? 'COMPLETED';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+            ),
+            boxShadow: isDark
+                ? []
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      routeName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    headerDate,
+                    style: const TextStyle(
+                      color: Color(0xFF6366F1),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildRouteTag(tripType, const Color(0xFF6366F1)),
+                  _buildRouteTag(distance, const Color(0xFF10B981)),
+                  _buildRouteTag(status, const Color(0xFF10B981)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black12 : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "FROM",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            routeName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Icon(
+                        Icons.sync_alt_rounded,
+                        color: Colors.grey.shade400,
+                        size: 20,
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            "TO",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            routeName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return Flex(
+                    direction: Axis.horizontal,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(
+                      (constraints.constrainWidth() / 8).floor(),
+                      (index) => SizedBox(
+                        width: 4,
+                        height: 1,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: Colors.grey.shade500,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    startTimeFormatted,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  Text(
+                    " until ",
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  ),
+                  Text(
+                    endMonthDay,
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildRouteTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 10,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 }
 
