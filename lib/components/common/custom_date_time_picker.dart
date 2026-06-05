@@ -8,6 +8,7 @@ class CustomDateTimePicker {
     BuildContext context, {
     DateTime? initialDate,
     DateTime? minDate,
+    DateTime? maxDate,
     bool showTime = true,
     Color? accent,
     Color? cardColor,
@@ -27,6 +28,7 @@ class CustomDateTimePicker {
       builder: (_) => CustomDateTimePickerSheet(
         initialDate: initialDate,
         minDate: minDate,
+        maxDate: maxDate,
         showTime: showTime,
         accent: primaryBlue,
         cardColor: cColor,
@@ -40,6 +42,7 @@ class CustomDateTimePicker {
 class CustomDateTimePickerSheet extends StatefulWidget {
   final DateTime? initialDate;
   final DateTime? minDate;
+  final DateTime? maxDate;
   final bool showTime;
   final Color accent;
   final Color cardColor;
@@ -50,6 +53,7 @@ class CustomDateTimePickerSheet extends StatefulWidget {
     super.key,
     this.initialDate,
     this.minDate,
+    this.maxDate,
     required this.showTime,
     required this.accent,
     required this.cardColor,
@@ -136,10 +140,18 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
     return day.isBefore(minDay);
   }
 
+  bool _isAfterMax(DateTime day) {
+    if (widget.maxDate == null) return false;
+    final max = widget.maxDate!;
+    final maxDay = DateTime(max.year, max.month, max.day);
+    return day.isAfter(maxDay);
+  }
+
   bool get _isValid {
     final res = _buildResult();
-    if (widget.minDate == null) return true;
-    return !res.isBefore(widget.minDate!);
+    if (widget.minDate != null && res.isBefore(widget.minDate!)) return false;
+    if (widget.maxDate != null && res.isAfter(widget.maxDate!)) return false;
+    return true;
   }
 
   @override
@@ -255,7 +267,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
               final date = DateTime(year, month, day);
               final isToday = date == today;
               final isSelected = date == _selectedDay;
-              final disabled = _isBeforeMin(date);
+              final disabled = _isBeforeMin(date) || _isAfterMax(date);
               
               return GestureDetector(
                 onTap: disabled ? null : () => setState(() => _selectedDay = date),
@@ -394,7 +406,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                 if (!_isValid) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Selected time cannot be in the past"),
+                      content: Text("Selected time is out of allowed range"),
                       behavior: SnackBarBehavior.floating,
                       duration: Duration(seconds: 2),
                     ),

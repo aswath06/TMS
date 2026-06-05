@@ -679,7 +679,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle(isTamil ? "எரிபொருள் பதிவு நிலுவையில் உள்ளது" : "Fuel Entry Pending", titleColor),
+        _buildSectionTitle(isTamil ? "எரிபொருள் பதிவு நிலுவையில் உள்ளது (${store.pendingFuelEntries.length})" : "Fuel Entry Pending (${store.pendingFuelEntries.length})", titleColor),
         const SizedBox(height: 18),
         ...store.pendingFuelEntries.map((entry) => _buildFuelPendingCard(
           entry: entry,
@@ -707,6 +707,7 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
     final driverName = entry['driver']?['user']?['name'] ?? "N/A";
     final instanceId = entry['instance_id'] ?? "N/A";
     final bunkName = entry['bunk']?['name'] ?? "N/A";
+    final fuelType = entry['vehicle']?['fuel_type'] ?? "N/A";
 
     return GestureDetector(
       onTap: () {
@@ -802,12 +803,27 @@ class _DriverDutiesScreenState extends State<DriverDutiesScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildCardDetail(
-              icon: Icons.store_rounded,
-              label: isTamil ? "பங்க் பெயர்" : "Bunk Name",
-              value: bunkName,
-              subColor: subColor,
-              titleColor: titleColor,
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCardDetail(
+                    icon: Icons.store_rounded,
+                    label: isTamil ? "பங்க் பெயர்" : "Bunk Name",
+                    value: bunkName,
+                    subColor: subColor,
+                    titleColor: titleColor,
+                  ),
+                ),
+                Expanded(
+                  child: _buildCardDetail(
+                    icon: Icons.local_gas_station_rounded,
+                    label: isTamil ? "எரிபொருள் வகை" : "Fuel Type",
+                    value: fuelType,
+                    subColor: subColor,
+                    titleColor: titleColor,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

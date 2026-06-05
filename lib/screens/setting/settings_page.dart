@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/SecuritySettingsPage.dart';
 import 'package:tripzo/screens/setting/user_session_management_page.dart';
 import 'package:tripzo/screens/setting/support_tickets_screen.dart';
+import 'package:tripzo/screens/setting/backup/backup_settings_page.dart';
 import 'package:tripzo/screens/security/security_vehicle_screen.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
@@ -289,6 +290,22 @@ class _SettingsPageState extends State<SettingsPage> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const SupportTicketsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _settingsTile(
+                        Icons.storage_rounded,
+                        "Database Backups",
+                        "Manage manual and automated backups",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        const Color(0xFF10B981), // Emerald green color
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const BackupSettingsPage(),
                           ),
                         ),
                       ),

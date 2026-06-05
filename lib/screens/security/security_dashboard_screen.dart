@@ -29,6 +29,11 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
   List<dynamic> _inCampusList = _cachedInCampusList;
   String _selectedCategory = 'OUT_CAMPUS';
   bool _isLoadingData = false;
+  
+  int _page = 1;
+  bool _isFetchingMore = false;
+  bool _hasMore = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -37,48 +42,79 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
       useFacultyStore.fetchProfile();
     }
     _fetchDashboardData();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _fetchDashboardData({bool force = false}) async {
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingData && !_isFetchingMore && _hasMore) {
+        _fetchMoreData();
+      }
+    }
+  }
+
+  Future<void> _fetchMoreData() async {
+    setState(() => _isFetchingMore = true);
+    _page++;
+    await _fetchDashboardData(isLoadMore: true);
+    if (mounted) setState(() => _isFetchingMore = false);
+  }
+
+  Future<void> _fetchDashboardData({bool force = false, bool isLoadMore = false}) async {
     if (!mounted) return;
-    if (!force && _lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inSeconds < 5) {
+    if (!force && !isLoadMore && _lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inSeconds < 5) {
       return;
     }
-    setState(() {
-      _isLoadingData = true;
-    });
+    if (!isLoadMore) {
+      setState(() {
+        _isLoadingData = true;
+        _page = 1;
+        _hasMore = true;
+      });
+    }
     
     try {
       final token = await UserStore.getToken();
       
-      final outRes = await http.get(
-        Uri.parse(ApiConstants.getSecurityRoutes(1, 100, 'OUT_CAMPUS')),
+      final res = await http.get(
+        Uri.parse(ApiConstants.getSecurityRoutes(_page, 20, 'PENDING')),
         headers: ApiConstants.getHeaders(token),
       );
-      if (outRes.statusCode == 200) {
-        final body = jsonDecode(outRes.body);
-        _outCampusCount = body['data']['pagination']['totalItems'] ?? 0;
-        _outCampusList = body['data']['data'] ?? [];
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        
+        // Handle pagination for any paginated lists (if the API supports it here)
+        final pagination = body['data']?['pagination'] ?? {};
+        final totalPages = pagination['totalPages'] ?? 1;
+        if (_page >= totalPages) {
+          _hasMore = false;
+        }
+
+        final summary = body['data']?['vehicle_summary'] ?? {};
+        
+        final newOutList = summary['outside_vehicles'] ?? [];
+        final newInList = summary['inside_vehicles'] ?? [];
+
+        if (isLoadMore) {
+          _outCampusList.addAll(newOutList);
+          _inCampusList.addAll(newInList);
+        } else {
+          _outCampusCount = summary['outside_count'] ?? 0;
+          _inCampusCount = summary['inside_count'] ?? 0;
+          _outCampusList = newOutList;
+          _inCampusList = newInList;
+        }
+
         _cachedOutCampusCount = _outCampusCount;
-        _cachedOutCampusList = _outCampusList;
-      }
-      
-      final inRes = await http.get(
-        Uri.parse(ApiConstants.getSecurityRoutes(1, 100, 'IN_CAMPUS')),
-        headers: ApiConstants.getHeaders(token),
-      );
-      if (inRes.statusCode == 200) {
-        final body = jsonDecode(inRes.body);
-        _inCampusCount = body['data']['pagination']['totalItems'] ?? 0;
-        _inCampusList = body['data']['data'] ?? [];
         _cachedInCampusCount = _inCampusCount;
+        _cachedOutCampusList = _outCampusList;
         _cachedInCampusList = _inCampusList;
       }
-      _lastFetchTime = DateTime.now();
+      if (!isLoadMore) _lastFetchTime = DateTime.now();
     } catch (e) {
       debugPrint("Error fetching dashboard data: $e");
     } finally {
-      if (mounted) {
+      if (mounted && !isLoadMore) {
         setState(() {
           _isLoadingData = false;
         });
@@ -119,6 +155,7 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
             child: RefreshIndicator(
               onRefresh: () => _fetchDashboardData(force: true),
               child: SingleChildScrollView(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
                 child: Column(
@@ -150,6 +187,11 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
                     _buildStatsSection(primaryBlue, surfaceColor, isDark, screenWidth),
                     const SizedBox(height: 24),
                     _buildSelectedList(titleColor, subColor, isDark, surfaceColor),
+                    if (_isFetchingMore)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -418,11 +460,9 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
             itemCount: list.length,
             itemBuilder: (context, index) {
               final item = list[index];
-              final vehicles = item['vehicles'] as List<dynamic>? ?? [];
-              final drivers = item['drivers'] as List<dynamic>? ?? [];
               
-              final vehicleNumber = vehicles.isNotEmpty ? (vehicles.first['vehicle_number'] ?? 'Unknown Vehicle') : 'Unknown Vehicle';
-              final driverName = drivers.isNotEmpty ? (drivers.first['name'] ?? drivers.first['driver_name'] ?? 'Unknown Driver') : 'Unknown Driver';
+              final vehicleNumber = item['vehicle_number'] ?? 'Unknown Vehicle';
+              final make = item['make'] ?? 'Unknown Make';
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -458,11 +498,11 @@ class _SecurityDashboardScreenState extends State<SecurityDashboardScreen> {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              Icon(Icons.person, size: 14, color: subColor),
+                              Icon(Icons.precision_manufacturing_rounded, size: 14, color: subColor),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  driverName,
+                                  make,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: subColor,

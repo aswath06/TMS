@@ -206,78 +206,25 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
 
     return Scaffold(
       backgroundColor: bg,
-      body: FadeTransition(
-        opacity: _fadeAnim,
-        child: SlideTransition(
-          position: _slideAnim,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 180,
-                pinned: true,
-                backgroundColor: bg,
-                elevation: 0,
-                leading: IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
-                    child: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 16),
-                  ),
-                ),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [primary.withValues(alpha: 0.15), bg],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: -40, top: -40,
-                        child: CircleAvatar(radius: 100, backgroundColor: primary.withValues(alpha: 0.05)),
-                      ),
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const SizedBox(height: 40),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: primary.withValues(alpha: 0.2), width: 2),
-                              ),
-                              child: const Icon(Icons.local_gas_station_rounded, color: primary, size: 40),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              isTamil ? "எரிபொருள் பதிவு" : "Fuel Entry",
-                              style: TextStyle(color: titleColor, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -1.0),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+      body: Stack(
+        children: [
+          _buildBackgroundDecor(isDark, primary),
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(context, titleColor, primary, isTamil),
+                          const SizedBox(height: 32),
                         // Premium Info Section
                         _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, isDark),
                         const SizedBox(height: 32),
@@ -298,6 +245,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                         _buildTextField(
                           controller: _odometerController,
                           label: isTamil ? "ஓடோமீட்டர் (KM)" : "Current Odometer (KM)",
+                          hintText: "E.g. 15000",
                           icon: Icons.speed_rounded,
                           keyboardType: TextInputType.number,
                           isDark: isDark,
@@ -308,6 +256,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                         _buildTextField(
                           controller: _volumeController,
                           label: isTamil ? "நிரப்பப்பட்ட அளவு (லிட்டர்)" : "Filled Volume (Ltrs)",
+                          hintText: "E.g. 40.5",
                           icon: Icons.opacity_rounded,
                           keyboardType: TextInputType.number,
                           isDark: isDark,
@@ -360,14 +309,15 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                           ),
                         ),
                         const SizedBox(height: 60),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -464,6 +414,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
               ctx,
               initialDate: date,
               minDate: DateTime(2020),
+              maxDate: DateTime.now(),
               showTime: true,
               accent: accent,
             );
@@ -504,6 +455,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     TextInputType keyboardType = TextInputType.text,
     required bool isDark,
     required Color accent,
+    String? hintText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,6 +476,8 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
             filled: true,
             fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+            hintText: hintText,
+            hintStyle: TextStyle(color: titleColor(isDark).withValues(alpha: 0.3), fontWeight: FontWeight.normal),
             contentPadding: const EdgeInsets.all(20),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
@@ -533,6 +487,92 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
           validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
         ),
       ],
+    );
+  }
+  // --- Helpers ---
+  Widget _buildHeader(BuildContext context, Color titleColor, Color primaryBlue, bool isTamil) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(
+                      Icons.arrow_back_ios,
+                      size: 18,
+                      color: primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isTamil ? "பராமரிப்பு" : "MAINTENANCE",
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w900,
+                        color: primaryBlue,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isTamil ? "எரிபொருள் பதிவு" : "Fuel Entry",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: titleColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: titleColor.withValues(alpha: 0.05),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.local_gas_station_rounded,
+            color: titleColor.withValues(alpha: 0.6),
+            size: 20,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackgroundDecor(bool isDark, Color primaryBlue) {
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          Positioned(
+            top: -50,
+            right: -50,
+            child: CircleAvatar(
+              radius: 150,
+              backgroundColor: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: -50,
+            child: CircleAvatar(
+              radius: 120,
+              backgroundColor: const Color(0xFF06B6D4).withValues(alpha: isDark ? 0.08 : 0.04),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

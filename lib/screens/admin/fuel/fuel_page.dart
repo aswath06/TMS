@@ -83,10 +83,20 @@ class _FuelPageState extends State<FuelPage> {
         url += "&from_date=$dateStr&to_date=$dateStr";
       }
 
+      debugPrint("\n--- FETCH FUEL LOGS REQUEST ---");
+      debugPrint("curl --location --request GET '$url' \\");
+      debugPrint("--header 'Authorization: ${ApiConstants.getHeaders(token)['Authorization']}'");
+      debugPrint("-------------------------------\n");
+
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
+
+      debugPrint("\n--- FETCH FUEL LOGS RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("--------------------------------\n");
 
       if (!mounted) return;
 
@@ -1215,7 +1225,10 @@ class _FuelPageState extends State<FuelPage> {
     final String bunkName = item['bunk']?['name'] ?? "Unknown Bunk";
     final String indentNo = item['instance_id'] ?? "N/A";
     final String filledAt = item['filled_at'] != null 
-        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['filled_at']))
+        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['filled_at']).toLocal())
+        : "N/A";
+    final String driverFilledAt = item['driver_filled_at'] != null 
+        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['driver_filled_at']).toLocal())
         : "N/A";
     final String odometer = "${item['current_odometer'] ?? 0} KM";
 
@@ -1323,8 +1336,17 @@ class _FuelPageState extends State<FuelPage> {
                 children: [
                   Expanded(child: _buildDetailItem("Indent No", indentNo, Icons.tag_rounded, primary, subColor, titleColor)),
                   const SizedBox(width: 16),
-                  if (isHistory)
-                    Expanded(child: _buildDetailItem("Odometer", odometer, Icons.speed_rounded, primary, subColor, titleColor))
+                  Expanded(child: _buildDetailItem("Bunk Name", bunkName, Icons.store_rounded, primary, subColor, titleColor)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: _buildDetailItem("Driver", driverName, Icons.person_rounded, primary, subColor, titleColor)),
+                  const SizedBox(width: 16),
+                  if (item['driver_filled_at'] != null)
+                    Expanded(child: _buildDetailItem("Driver Filled At", driverFilledAt, Icons.access_time_rounded, primary, subColor, titleColor))
                   else
                     const Expanded(child: SizedBox.shrink()),
                 ],
@@ -1334,7 +1356,7 @@ class _FuelPageState extends State<FuelPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(child: _buildDetailItem("Filled At", filledAt, Icons.access_time_rounded, primary, subColor, titleColor)),
+                    Expanded(child: _buildDetailItem("Odometer", odometer, Icons.speed_rounded, primary, subColor, titleColor)),
                     const SizedBox(width: 16),
                     Expanded(child: _buildDetailItem("Price", price, Icons.payments_rounded, primary, subColor, titleColor)),
                   ],
@@ -1344,16 +1366,7 @@ class _FuelPageState extends State<FuelPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(child: _buildDetailItem("Bunk Name", bunkName, Icons.store_rounded, primary, subColor, titleColor)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildDetailItem("Driver", driverName, Icons.person_rounded, primary, subColor, titleColor)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(child: _buildDetailItem("Filled By", filledBy, Icons.admin_panel_settings_rounded, primary, subColor, titleColor)),
+                  Expanded(child: _buildDetailItem("Created By", filledBy, Icons.admin_panel_settings_rounded, primary, subColor, titleColor)),
                   const SizedBox(width: 16),
                   const Expanded(child: SizedBox.shrink()),
                 ],
