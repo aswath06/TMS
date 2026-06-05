@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
 import 'package:tripzo/screens/admin/AdminProfileScreen.dart';
+import 'package:tripzo/screens/admin/request/admin_request_hub_screen.dart';
 import 'package:tripzo/screens/admin/request/request_list_page.dart';
 import 'package:tripzo/screens/admin/vechiles/vechile_page.dart'; // Ensure path is correct
 import 'package:tripzo/screens/admin/admin_driver_screen.dart';
@@ -128,7 +129,7 @@ class MainScreenState extends State<MainScreen> {
       case 'super admin':
         return [
           const AdminDashboardScreen(),
-          const RequestListPage(),
+          const AdminRequestHubScreen(),
           const VehiclePage(),
           const AdminDriverScreen(),
           const AdminProfileScreen(),
