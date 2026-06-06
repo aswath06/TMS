@@ -3,15 +3,17 @@ import 'package:tripzo/screens/admin/request/request_list_page.dart';
 import 'package:tripzo/screens/admin/fuel/fuel_page.dart';
 import 'package:tripzo/screens/admin/admin_allowance_screen.dart';
 import 'dart:math' as math;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
 
-class AdminRequestHubScreen extends StatefulWidget {
+class AdminRequestHubScreen extends ConsumerStatefulWidget {
   const AdminRequestHubScreen({super.key});
 
   @override
-  State<AdminRequestHubScreen> createState() => _AdminRequestHubScreenState();
+  ConsumerState<AdminRequestHubScreen> createState() => _AdminRequestHubScreenState();
 }
 
-class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with TickerProviderStateMixin {
+class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
 
   late List<Map<String, dynamic>> _cardsData;
@@ -26,6 +28,11 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(fleetMonitorStoreProvider).fetchFleetData();
+      ref.read(driverStoreProvider).fetchPendingFuelEntries();
+      ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
+    });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _swipeController.addListener(() {
       if (_swipeAnimation != null) {
@@ -193,8 +200,46 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
     }
   }
 
+  Widget _buildCountBadge(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        "$count $label",
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCardContent(Map<String, dynamic> cardData, bool isDark, double cardHeight) {
     final Color itemColor = cardData['color'];
+    final String id = cardData['id'];
+
+    Widget? extraWidget;
+    if (id == 'mission' || id == 'routines') {
+      final fleetStore = ref.watch(fleetMonitorStoreProvider);
+      extraWidget = Row(
+        children: [
+          _buildCountBadge("Running", fleetStore.outsideCount, const Color(0xFF10B981)),
+          const SizedBox(width: 8),
+          _buildCountBadge("Ready to start", fleetStore.insideCount, const Color(0xFF3B82F6)),
+        ],
+      );
+    } else if (id == 'fuels') {
+      final driverStore = ref.watch(driverStoreProvider);
+      extraWidget = _buildCountBadge("Fuel Pendings", driverStore.pendingFuelEntries.length, const Color(0xFFF59E0B));
+    } else if (id == 'allowance') {
+      final allowanceStore = ref.watch(adminAllowanceStoreProvider);
+      extraWidget = _buildCountBadge("Allowance Count", allowanceStore.pendingCreations.length, const Color(0xFF8B5CF6));
+    }
 
     return GestureDetector(
       onTap: cardData['onTap'],
@@ -263,6 +308,13 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
                     ),
                     maxLines: 2,
                   ),
+                  if (extraWidget != null) ...[
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: extraWidget,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -275,7 +327,7 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
   Widget _buildStackedCards(bool isDark) {
     final double screenHeight = MediaQuery.of(context).size.height;
     // Decrease card size slightly and make it responsive
-    final double cardHeight = (screenHeight * 0.18).clamp(140.0, 180.0);
+    final double cardHeight = (screenHeight * 0.18).clamp(160.0, 190.0);
     final double stackHeight = cardHeight + 110.0;
 
     // Calculate a dynamic swipe progress (0.0 to 1.0) to drive background cards
@@ -442,14 +494,6 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
                           ),
                         ),
                       ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: primaryBlue.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.notifications_outlined, color: primaryBlue, size: 22),
                     ),
                   ],
                 ),
