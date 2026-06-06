@@ -11,13 +11,14 @@ class AdminRequestHubScreen extends StatefulWidget {
   State<AdminRequestHubScreen> createState() => _AdminRequestHubScreenState();
 }
 
-class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with SingleTickerProviderStateMixin {
+class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
 
   late List<Map<String, dynamic>> _cardsData;
   bool _initialized = false;
 
   late AnimationController _swipeController;
+  late AnimationController _reEntryController;
   Animation<Offset>? _swipeAnimation;
   Offset _dragOffset = Offset.zero;
   bool _isDragging = false;
@@ -33,11 +34,39 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
         });
       }
     });
+
+    _reEntryController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _reEntryController.addListener(() {
+      setState(() {});
+    });
+
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase().trim();
+    if (query.isEmpty) return;
+
+    // Find the first card matching the search query
+    int matchIndex = _cardsData.indexWhere((card) {
+      final title = card['title'].toString().toLowerCase();
+      final desc = card['description'].toString().toLowerCase();
+      return title.contains(query) || desc.contains(query);
+    });
+
+    // If we found a match and it's not already at the front, move it to the front
+    if (matchIndex > 0) {
+      setState(() {
+        final item = _cardsData.removeAt(matchIndex);
+        _cardsData.insert(0, item);
+      });
+    }
   }
 
   @override
   void dispose() {
     _swipeController.dispose();
+    _reEntryController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -122,6 +151,14 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
       final targetX = _dragOffset.dx > 0 ? 500.0 : -500.0;
       final targetY = _dragOffset.dy + (velocity > 0 ? 100 : -100);
       
+      // Dynamic duration based on velocity for smoother fast swipes
+      int durationMs = 300;
+      if (velocity.abs() > 100) {
+        final distanceRemaining = 500.0 - _dragOffset.dx.abs();
+        durationMs = (distanceRemaining / velocity.abs() * 1000).toInt().clamp(100, 350);
+      }
+      _swipeController.duration = Duration(milliseconds: durationMs);
+
       _swipeAnimation = Tween<Offset>(begin: _dragOffset, end: Offset(targetX, targetY)).animate(
         CurvedAnimation(parent: _swipeController, curve: Curves.easeOutCubic),
       );
@@ -135,9 +172,14 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
           _swipeAnimation = null;
         });
         _swipeController.reset();
+        
+        // Trigger the smooth re-entry animation for the card added to the back
+        _reEntryController.duration = Duration(milliseconds: durationMs + 100); // Match re-entry speed
+        _reEntryController.forward(from: 0);
       });
     } else {
       // Snap back to center
+      _swipeController.duration = const Duration(milliseconds: 300);
       _swipeAnimation = Tween<Offset>(begin: _dragOffset, end: Offset.zero).animate(
         CurvedAnimation(parent: _swipeController, curve: Curves.easeOutBack),
       );
@@ -151,14 +193,14 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
     }
   }
 
-  Widget _buildCardContent(Map<String, dynamic> cardData, bool isDark) {
+  Widget _buildCardContent(Map<String, dynamic> cardData, bool isDark, double cardHeight) {
     final Color itemColor = cardData['color'];
 
     return GestureDetector(
       onTap: cardData['onTap'],
       child: Container(
-        height: 220,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        height: cardHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(28),
@@ -203,21 +245,23 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
                   Text(
                     cardData['title'],
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
                   Text(
                     cardData['description'],
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                      height: 1.5,
+                      height: 1.4,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    maxLines: 2,
                   ),
                 ],
               ),
@@ -229,6 +273,11 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
   }
 
   Widget _buildStackedCards(bool isDark) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    // Decrease card size slightly and make it responsive
+    final double cardHeight = (screenHeight * 0.18).clamp(140.0, 180.0);
+    final double stackHeight = cardHeight + 110.0;
+
     // Calculate a dynamic swipe progress (0.0 to 1.0) to drive background cards
     final double maxDrag = 150.0;
     double dragProgress = (_dragOffset.dx.abs() / maxDrag).clamp(0.0, 1.0);
@@ -238,7 +287,7 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
     }
 
     return SizedBox(
-      height: 340,
+      height: stackHeight,
       child: Stack(
         alignment: Alignment.topCenter,
         children: _cardsData.reversed.map((card) {
@@ -251,7 +300,7 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
             effectiveIndex -= dragProgress;
           }
 
-          final cardWidget = _buildCardContent(card, isDark);
+          final cardWidget = _buildCardContent(card, isDark, cardHeight);
 
           if (isFront) {
             // Front card follows the drag offset
@@ -274,15 +323,27 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Sing
             );
           } else {
             // Background cards smoothly interpolate their state
+            double topPos = effectiveIndex * 35.0;
+            double effectiveOpacity = (1.0 - (effectiveIndex * 0.15)).clamp(0.0, 1.0);
+            double effectiveScale = 1.0 - (effectiveIndex * 0.06);
+
+            // Animate re-entry if this is the card just added to the back
+            if (reversedIndex == _cardsData.length - 1 && _reEntryController.isAnimating) {
+              final entryProgress = Curves.easeOutCubic.transform(_reEntryController.value);
+              effectiveOpacity *= entryProgress;
+              topPos += 30.0 * (1.0 - entryProgress);
+              effectiveScale *= (0.95 + 0.05 * entryProgress);
+            }
+
             return Positioned(
-              top: effectiveIndex * 35.0,
+              top: topPos,
               left: 20,
               right: 20,
               child: Transform.scale(
-                scale: 1.0 - (effectiveIndex * 0.06),
+                scale: effectiveScale,
                 alignment: Alignment.topCenter,
                 child: Opacity(
-                  opacity: (1.0 - (effectiveIndex * 0.15)).clamp(0.0, 1.0),
+                  opacity: effectiveOpacity,
                   child: cardWidget,
                 ),
               ),
