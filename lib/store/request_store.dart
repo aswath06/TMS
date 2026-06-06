@@ -40,6 +40,7 @@ class RequestStore extends ChangeNotifier {
   int get currentPage => _currentPage;
   String? get errorMessage => _errorMessage;
   String? get leavesErrorMessage => _leavesErrorMessage;
+  String get currentRouteDate => _currentRouteDate;
 
   /// Fetches all requests with optional pagination, search and status filtering
   Future<void> fetchRequests({int page = 1, int limit = 10, bool isRefresh = false, String? search, String? statuses, String? routeDate}) async {

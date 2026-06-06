@@ -45,7 +45,8 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
     _scrollController.addListener(_onScroll);
     
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    _selectedDateFilter = todayStr;
+    final store = ref.read(requestStoreProvider);
+    _selectedDateFilter = store.currentRouteDate.isNotEmpty ? store.currentRouteDate : todayStr;
     
     // Approximate initial offset
     _dateScrollController = ScrollController(initialScrollOffset: (_infiniteScrollMiddle * 68.0) - 100);
@@ -80,10 +81,26 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
-      final double offset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34; // 34 is half item width (60 width + 8 margin)
-      _dateScrollController.jumpTo(offset);
+      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34; // 34 is half item width (60 width + 8 margin)
       
-      ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: todayStr);
+      DateTime selectedDate;
+      try {
+        selectedDate = DateFormat('yyyy-MM-dd').parse(_selectedDateFilter);
+      } catch (e) {
+        selectedDate = DateTime.now();
+      }
+      
+      final DateTime now = DateTime.now();
+      final DateTime todayDate = DateTime(now.year, now.month, now.day);
+      final DateTime selDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final int diffDays = selDate.difference(todayDate).inDays;
+      
+      _dateScrollController.jumpTo(todayOffset + (diffDays * 68.0));
+      
+      final store = ref.read(requestStoreProvider);
+      if (store.requests.isEmpty && !store.isLoading) {
+        store.fetchRequests(isRefresh: true, routeDate: _selectedDateFilter);
+      }
     });
   }
 

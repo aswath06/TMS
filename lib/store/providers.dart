@@ -8,6 +8,7 @@ import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/admin_allowance_store.dart';
+import 'package:tripzo/store/fleet_monitor_store.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/services/notification_socket_service.dart';
@@ -45,6 +46,11 @@ final languageStoreProvider = ChangeNotifierProvider<LanguageStore>((ref) {
 /// AdminAllowanceStore Provider
 final adminAllowanceStoreProvider = ChangeNotifierProvider<AdminAllowanceStore>((ref) {
   return adminAllowanceStore;
+});
+
+/// FleetMonitorStore Provider
+final fleetMonitorStoreProvider = ChangeNotifierProvider<FleetMonitorStore>((ref) {
+  return fleetMonitorStore;
 });
 
 /// NotificationProvider
