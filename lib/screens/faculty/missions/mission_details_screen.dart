@@ -18,7 +18,6 @@ import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/screens/driver/verify_mission_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
-import 'package:tripzo/screens/faculty/missions/create_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:tripzo/services/location_service.dart';
@@ -2523,53 +2522,32 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(
-                child: _buildMetricTile("Start Odometer", startOdometer?.toString() ?? "N/A", Icons.flag, Colors.blue, isDark),
-              ),
+              Expanded(child: _buildMetricTile("START ODOMETER", startOdometer?.toString() ?? "N/A", Icons.flag_circle_rounded, Colors.blue, isDark)),
               const SizedBox(width: 12),
-              Expanded(
-                child: _buildMetricTile("Start Capacity", startCapacity.toString(), Icons.people, Colors.orange, isDark),
-              ),
+              Expanded(child: _buildMetricTile("END ODOMETER", endOdometer?.toString() ?? "N/A", Icons.check_circle_rounded, Colors.green, isDark)),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricTile("End Odometer", endOdometer?.toString() ?? "N/A", Icons.sports_score, Colors.green, isDark),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildMetricTile("End Capacity", endCapacity.toString(), Icons.people_outline, Colors.deepOrange, isDark),
-              ),
-            ],
-          ),
-          if (difference != null) ...[
+          if (startedAt != null || difference != null) ...[
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.route, color: primaryColor),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      "Total Distance: ${difference.toStringAsFixed(1)} KM",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: primaryColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+            Builder(
+              builder: (context) {
+                final startDt = _parseTimestamp(startedAt);
+                final endDt = _parseTimestamp(endedAt);
+                Duration? dur;
+                if (startDt != null && endDt != null) dur = endDt.difference(startDt);
+                else if (startDt != null && endedAt == null) dur = DateTime.now().difference(startDt);
+                
+                final bool isOngoing = startedAt != null && endedAt == null;
+                final String label = dur != null ? _formatDuration(dur) : (isOngoing ? "Calculating..." : "N/A");
+                
+                return Row(
+                  children: [
+                    if (startedAt != null) Expanded(child: _buildMetricTile("TOTAL DURATION", label, Icons.timer_outlined, primaryColor, isDark)),
+                    if (startedAt != null && difference != null) const SizedBox(width: 12),
+                    if (difference != null) Expanded(child: _buildMetricTile("TOTAL DISTANCE", "${difference.toStringAsFixed(1)} KM", Icons.route_outlined, primaryColor, isDark)),
+                  ],
+                );
+              }
             ),
           ]
         ],
@@ -2579,37 +2557,49 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
   Widget _buildMetricTile(String title, String value, IconData icon, Color iconColor, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: iconColor.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: iconColor),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.w900,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
@@ -3547,7 +3537,6 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
             ),
           ],
         ),
-        _buildDurationBadge(duration, primaryColor, isOngoing),
       ],
     );
   }
@@ -3592,53 +3581,61 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     final String label = duration != null ? _formatDuration(duration) : (isOngoing ? "Calculating..." : "N/A");
     
     return Center(
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 0.98, end: 1.02).animate(
-          CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+      child: Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Container(
-          margin: const EdgeInsets.only(top: 16),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                primaryColor.withValues(alpha: 0.15),
-                primaryColor.withValues(alpha: 0.05),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.timer_outlined, color: primaryColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "TOTAL DURATION",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: primaryColor.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: primaryColor.withValues(alpha: 0.1),
-                blurRadius: 15,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.timer_outlined, 
-                color: primaryColor, 
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "Duration: $label",
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: primaryColor,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -3687,7 +3684,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
               color: titleColor,
             ),
           ),
-          if (byName != null && byName.trim().isNotEmpty) ...[
+          if (rawTime != null && rawTime != "In Progress") ...[
             const SizedBox(height: 6),
             Row(
               children: [
@@ -3695,7 +3692,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    "By: $byName",
+                    "By: ${byName != null && byName.trim().isNotEmpty ? byName : 'Not Recorded'}",
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -4059,12 +4056,16 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     final Color phoneColor = isNotAssigned ? Colors.redAccent.withValues(alpha: 0.7) : sub;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Row(
@@ -4460,9 +4461,15 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
        width: double.infinity,
        padding: const EdgeInsets.all(20),
        decoration: BoxDecoration(
-         color: blue.withValues(alpha: 0.05),
+         color: cardColor,
          borderRadius: BorderRadius.circular(24),
-         border: Border.all(color: blue.withValues(alpha: 0.1)),
+         boxShadow: [
+           BoxShadow(
+             color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+             blurRadius: 15,
+             offset: const Offset(0, 5),
+           ),
+         ],
        ),
        child: Column(
          crossAxisAlignment: CrossAxisAlignment.start,
@@ -4515,11 +4522,18 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
            const SizedBox(height: 12),
            Container(
              width: double.infinity,
-             padding: const EdgeInsets.all(16),
+             padding: const EdgeInsets.all(20),
              decoration: BoxDecoration(
                color: cardColor,
-               borderRadius: BorderRadius.circular(16),
+               borderRadius: BorderRadius.circular(24),
                border: Border.all(color: subColor.withValues(alpha: 0.1)),
+               boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+                   blurRadius: 15,
+                   offset: const Offset(0, 5),
+                 ),
+               ],
              ),
              child: Column(
                children: [
@@ -4577,11 +4591,18 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
            const SizedBox(height: 12),
            Container(
              width: double.infinity,
-             padding: const EdgeInsets.all(16),
+             padding: const EdgeInsets.all(20),
              decoration: BoxDecoration(
                color: cardColor,
-               borderRadius: BorderRadius.circular(16),
+               borderRadius: BorderRadius.circular(24),
                border: Border.all(color: subColor.withValues(alpha: 0.1)),
+               boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+                   blurRadius: 15,
+                   offset: const Offset(0, 5),
+                 ),
+               ],
              ),
              child: Column(
                children: [
@@ -4651,11 +4672,18 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
      return Container(
         margin: const EdgeInsets.only(bottom: 12),
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: subColor.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4747,27 +4775,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
               Flexible(
                 child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
               ),
-            if (firstTripId != null && _isTransportOrSuperAdmin)
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CreateAllowanceScreen(
-                        routeRequestId: int.tryParse(widget.requestId) ?? 0,
-                        tripId: firstTripId!,
-                        drivers: allDrivers,
-                      ),
-                    ),
-                  ).then((value) {
-                    if (value == true) _fetchMissionDetails();
-                  });
-                },
-                icon: Icon(Icons.add_circle_outline_rounded, size: 18, color: blue),
-                label: Text("CREATE ALLOWANCE", style: TextStyle(color: blue, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5)),
-              ),
-          ],
-        ),
+            ],
+          ),
         const SizedBox(height: 16),
         if (allAllowances.isEmpty)
           Container(
@@ -4797,12 +4806,19 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
             final aRemarks = allowance['remarks'];
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: cardColor,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: blue.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

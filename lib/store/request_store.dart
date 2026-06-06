@@ -25,6 +25,7 @@ class RequestStore extends ChangeNotifier {
   String? _leavesErrorMessage;
   String _currentSearch = "";
   String _currentStatuses = "";
+  String _currentRouteDate = "";
 
   // Getters
   List<Map<String, dynamic>> get requests => _requests;
@@ -41,13 +42,17 @@ class RequestStore extends ChangeNotifier {
   String? get leavesErrorMessage => _leavesErrorMessage;
 
   /// Fetches all requests with optional pagination, search and status filtering
-  Future<void> fetchRequests({int page = 1, int limit = 10, bool isRefresh = false, String? search, String? statuses}) async {
+  Future<void> fetchRequests({int page = 1, int limit = 10, bool isRefresh = false, String? search, String? statuses, String? routeDate}) async {
     if (search != null) {
       _currentSearch = search;
     }
     
     if (statuses != null) {
       _currentStatuses = statuses;
+    }
+
+    if (routeDate != null) {
+      _currentRouteDate = routeDate;
     }
 
     if (isRefresh) {
@@ -79,6 +84,10 @@ class RequestStore extends ChangeNotifier {
 
       if (_currentStatuses.isNotEmpty) {
         url += "&statuses=${Uri.encodeComponent(_currentStatuses)}";
+      }
+
+      if (_currentRouteDate.isNotEmpty && _currentRouteDate != 'ALL') {
+        url += "&routeDate=${Uri.encodeComponent(_currentRouteDate)}";
       }
 
       // Append user email for faculty requests

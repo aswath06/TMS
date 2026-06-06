@@ -174,6 +174,7 @@ class MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      resizeToAvoidBottomInset: false,
       extendBody: true,
       body: Stack(
         children: [

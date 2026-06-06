@@ -639,14 +639,20 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                 .asMap()
                 .entries
                 .map(
-                  (entry) => _buildSimpleTimelineRow(
-                    entry.key,
-                    entry.value['location']!,
-                    entry.key == detailedStops.length - 1,
-                    primaryBlue,
-                    titleColor,
-                    subColor,
-                  ),
+                  (entry) {
+                    bool isReached = status.toUpperCase() == 'COMPLETED' || entry.key == 0;
+                    bool isNextReached = status.toUpperCase() == 'COMPLETED';
+                    return _buildSimpleTimelineRow(
+                      entry.key,
+                      entry.value['location']!,
+                      entry.key == detailedStops.length - 1,
+                      primaryBlue,
+                      titleColor,
+                      subColor,
+                      isReached,
+                      isNextReached,
+                    );
+                  },
                 ),
           ],
         ),
@@ -702,6 +708,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
     Color blue,
     Color title,
     Color sub,
+    bool isReached,
+    bool isNextReached,
   ) {
     return IntrinsicHeight(
       child: Row(
@@ -713,16 +721,16 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                 height: 14,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: idx == 0 ? blue : Colors.transparent,
+                  color: isReached ? blue : Colors.transparent,
                   border: Border.all(
-                    color: idx == 0 ? blue : Colors.grey.shade400,
+                    color: isReached ? blue : Colors.grey.shade400,
                     width: 2.5,
                   ),
                 ),
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2, color: Colors.grey.shade300),
+                  child: Container(width: 2, color: isNextReached ? blue.withOpacity(0.3) : Colors.grey.shade300),
                 ),
             ],
           ),
@@ -734,8 +742,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                 stop,
                 style: TextStyle(
                   fontSize: 14,
-                  color: idx == 0 ? title : sub,
-                  fontWeight: idx == 0 ? FontWeight.w700 : FontWeight.w500,
+                  color: isReached ? title : sub,
+                  fontWeight: isReached ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
