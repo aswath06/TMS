@@ -5,6 +5,7 @@ import 'package:tripzo/screens/admin/admin_allowance_screen.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/store/ui_config.dart';
 
 class AdminRequestHubScreen extends ConsumerStatefulWidget {
   const AdminRequestHubScreen({super.key});
@@ -32,6 +33,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       ref.read(fleetMonitorStoreProvider).fetchFleetData();
       ref.read(driverStoreProvider).fetchPendingFuelEntries();
       ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
+      UIConfig().load();
     });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _swipeController.addListener(() {
@@ -513,9 +515,110 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               _buildSearchBar(isDark, primaryBlue, subColor, surfaceColor),
               const SizedBox(height: 40),
               
-              _buildStackedCards(isDark),
+              ListenableBuilder(
+                listenable: UIConfig(),
+                builder: (context, _) {
+                  return UIConfig().isUIEnhancementEnabled
+                      ? _buildStackedCards(isDark)
+                      : _buildAlternativeCards(isDark, primaryBlue);
+                },
+              ),
               
               const SizedBox(height: 100),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlternativeCards(bool isDark, Color primaryBlue) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 28),
+              const SizedBox(width: 8),
+              Text(
+                "Bus",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  _buildAlternativeCardItem(_cardsData[0], isDark),
+                  const SizedBox(width: 15),
+                  _buildAlternativeCardItem(_cardsData[1], isDark),
+                  const SizedBox(width: 15),
+                  _buildAlternativeCardItem(_cardsData[2], isDark),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  _buildAlternativeCardItem(_cardsData[3], isDark),
+                  const SizedBox(width: 15),
+                  Expanded(child: const SizedBox()),
+                  const SizedBox(width: 15),
+                  Expanded(child: const SizedBox()),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAlternativeCardItem(Map<String, dynamic> cardData, bool isDark) {
+    final Color itemColor = cardData['color'];
+    final Color surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+    return Expanded(
+      child: InkWell(
+        onTap: cardData['onTap'],
+        borderRadius: BorderRadius.circular(26),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: itemColor.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(cardData['icon'], color: itemColor, size: 28),
+              const SizedBox(height: 10),
+              Text(
+                cardData['title'],
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),

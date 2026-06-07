@@ -8,6 +8,7 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/server_config.dart';
+import 'package:tripzo/store/ui_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'scanner_page.dart';
@@ -43,6 +44,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.initState();
     _loadUserRole();
     ServerConfig().load(); // load persisted server preference
+    UIConfig().load(); // load persisted UI setting
   }
 
   Future<void> _loadUserRole() async {
@@ -195,6 +197,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // --- UI ENHANCEMENT ---
+                    if (_userRole.toLowerCase() == "super admin" || _userRole.toLowerCase() == "transport admin") ...[
+                      _buildSectionTitle(
+                        isTamil ? "பயனர் இடைமுகம்" : "UI Enhancement",
+                        titleColor,
+                        primaryBlue,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildUIEnhancementToggleTile(
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                        isTamil,
+                      ),
+                      const SizedBox(height: 32),
+                    ],
 
                     // --- MAINTENANCE ---
                     _buildSectionTitle(
@@ -780,6 +800,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         _buildTopIcon(Icons.tune_outlined, titleColor),
       ],
+    );
+  }
+
+  Widget _buildUIEnhancementToggleTile(
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue,
+    bool isTamil,
+  ) {
+    return ListenableBuilder(
+      listenable: UIConfig(),
+      builder: (context, _) {
+        final isEnabled = UIConfig().isUIEnhancementEnabled;
+        return Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ListTile(
+            leading: _buildIconContainer(
+              Icons.auto_awesome_rounded,
+              isEnabled ? const Color(0xFF10B981) : Colors.grey,
+            ),
+            title: Text(
+              isTamil ? "மேம்பட்ட வடிவமைப்பு" : "Advanced UI",
+              style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+            ),
+            subtitle: Text(
+              isTamil ? "புதிய வடிவமைப்பை பயன்படுத்தவும்" : "Enable swipeable cards and modern layouts",
+              style: TextStyle(fontSize: 13, color: subColor),
+            ),
+            trailing: Switch.adaptive(
+              value: isEnabled,
+              activeColor: const Color(0xFF10B981),
+              onChanged: (val) {
+                UIConfig().setUIEnhancement(val);
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
