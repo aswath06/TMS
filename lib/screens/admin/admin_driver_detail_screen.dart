@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/screens/admin/edit_driver_screen.dart';
 
 class AdminDriverDetailScreen extends ConsumerWidget {
   final Map<String, dynamic> driver;
@@ -38,6 +39,19 @@ class AdminDriverDetailScreen extends ConsumerWidget {
           style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit, color: primaryBlue),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditDriverScreen(driver: driver),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),

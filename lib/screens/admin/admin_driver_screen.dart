@@ -553,15 +553,14 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                ValueListenableBuilder<int>(
-                  valueListenable: AdminDashboardStore().driversPresent,
-                  builder: (_, present, __) => ValueListenableBuilder<int>(
-                    valueListenable: AdminDashboardStore().driversOnLeave,
-                    builder: (_, onLeave, ___) => Text(
-                      "Managing ${present + onLeave} personnel",
+                Consumer(
+                  builder: (context, ref, child) {
+                    final store = ref.watch(driverStoreProvider);
+                    return Text(
+                      "Managing ${store.totalDrivers} personnel",
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -572,77 +571,80 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   }
 
   Widget _buildSummaryCard(bool isDark) {
-    return ValueListenableBuilder<int>(
-      valueListenable: AdminDashboardStore().driversPresent,
-      builder: (_, present, __) => ValueListenableBuilder<int>(
-        valueListenable: AdminDashboardStore().driversOnLeave,
-        builder: (_, onLeave, ___) {
-          final int total = present + onLeave;
-          return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                    : [Colors.white, const Color(0xFFF8FAFC)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: const Color(0xFF6366F1).withOpacity(0.3),
-                width: 1.5,
-              ),
-              boxShadow: isDark
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.15),
-                        blurRadius: 25,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Total Personnel",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        "$total Drivers",
-                        style: const TextStyle(
-                          color: Color(0xFF6366F1),
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
+    return Consumer(
+      builder: (context, ref, child) {
+        final store = ref.watch(driverStoreProvider);
+        return ValueListenableBuilder<int>(
+          valueListenable: AdminDashboardStore().driversPresent,
+          builder: (_, present, __) => ValueListenableBuilder<int>(
+            valueListenable: AdminDashboardStore().driversOnLeave,
+            builder: (_, onLeave, ___) {
+              final int total = store.totalDrivers;
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                        : [Colors.white, const Color(0xFFF8FAFC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: isDark
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.15),
+                            blurRadius: 25,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
                 ),
-                const SizedBox(height: 24),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Total Personnel",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "$total Drivers",
+                            style: const TextStyle(
+                              color: Color(0xFF6366F1),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
@@ -673,6 +675,8 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
           );
         },
       ),
+    );
+      },
     );
   }
 

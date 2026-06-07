@@ -91,65 +91,77 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24),
-                  ValueListenableBuilder(
-                    valueListenable: useFacultyStore.profileData,
-                    builder: (context, data, _) {
-                      return FutureBuilder<String?>(
-                        future: UserStore.getName(),
-                        builder: (context, snapshot) {
-                          final String displayName =
-                              data?['name'] ?? snapshot.data ?? "Admin";
-                          return _buildHeader(
-                            displayName,
-                            titleColor,
-                            subColor,
-                            screenWidth,
-                            primaryBlue,
-                          );
-                        },
-                      );
-                    },
+                  FadeInUp(
+                    index: 0,
+                    child: ValueListenableBuilder(
+                      valueListenable: useFacultyStore.profileData,
+                      builder: (context, data, _) {
+                        return FutureBuilder<String?>(
+                          future: UserStore.getName(),
+                          builder: (context, snapshot) {
+                            final String displayName =
+                                data?['name'] ?? snapshot.data ?? "Admin";
+                            return _buildHeader(
+                              displayName,
+                              titleColor,
+                              subColor,
+                              screenWidth,
+                              primaryBlue,
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 32),
-                  _buildSearchBar(isDark, subColor, surfaceColor, primaryBlue),
+                  FadeInUp(index: 1, child: _buildSearchBar(isDark, subColor, surfaceColor, primaryBlue)),
                   const SizedBox(height: 36),
                   // ==== Graphical Overview ==== //
-                  _buildSectionTitle('Live Fleet Status', titleColor),
+                  FadeInUp(index: 2, child: _buildSectionTitle('Live Fleet Status', titleColor)),
                   const SizedBox(height: 18),
-                  _buildGraphicalOverview(
-                    primaryBlue,
-                    surfaceColor,
-                    isDark,
-                    screenWidth,
+                  FadeInUp(
+                    index: 3,
+                    child: _buildGraphicalOverview(
+                      primaryBlue,
+                      surfaceColor,
+                      isDark,
+                      screenWidth,
+                    ),
                   ),
                   const SizedBox(height: 36),
-                  _buildSectionTitle('Quick Actions', titleColor),
+                  FadeInUp(index: 4, child: _buildSectionTitle('Quick Actions', titleColor)),
                   const SizedBox(height: 18),
-                  _buildQuickActions(
-                    context,
-                    primaryBlue,
-                    surfaceColor,
-                    isDark,
+                  FadeInUp(
+                    index: 5,
+                    child: _buildQuickActions(
+                      context,
+                      primaryBlue,
+                      surfaceColor,
+                      isDark,
+                    ),
                   ),
                   const SizedBox(height: 36),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildSectionTitle('Recent Notifications', titleColor),
-                      TextButton(
-                        onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
-                        child: Text(
-                          'See All',
-                          style: TextStyle(
-                            color: primaryBlue,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                  FadeInUp(
+                    index: 6,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSectionTitle('Recent Notifications', titleColor),
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
+                          child: Text(
+                            'See All',
+                            style: TextStyle(
+                              color: primaryBlue,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  _buildNotificationList(primaryBlue, surfaceColor, isDark),
+                  FadeInUp(index: 7, child: _buildNotificationList(primaryBlue, surfaceColor, isDark)),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -405,18 +417,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     required double width,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -427,34 +439,48 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 24),
               ),
               Stack(
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 46,
-                    height: 46,
-                    child: CircularProgressIndicator(
-                      value: percent,
-                      strokeWidth: 5,
-                      backgroundColor: color.withValues(alpha: 0.15),
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                      strokeCap: StrokeCap.round,
+                    width: 50,
+                    height: 50,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: percent),
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return CircularProgressIndicator(
+                          value: value,
+                          strokeWidth: 5,
+                          backgroundColor: color.withValues(alpha: 0.1),
+                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                          strokeCap: StrokeCap.round,
+                        );
+                      },
                     ),
                   ),
-                  Text(
-                    '${(percent * 100).toInt()}%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.0, end: percent * 100),
+                    duration: const Duration(milliseconds: 1500),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      return Text(
+                        '${value.toInt()}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -572,33 +598,44 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     Color surface, {
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 24),
           decoration: BoxDecoration(
             color: surface,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: color.withValues(alpha: 0.12)),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 32),
+              ),
+              const SizedBox(height: 14),
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 12,
+                style: TextStyle(
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
             ],
@@ -662,4 +699,30 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     return "${dt.day}/${dt.month}";
   }
 
+}
+
+class FadeInUp extends StatelessWidget {
+  final Widget child;
+  final int index;
+
+  const FadeInUp({super.key, required this.child, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 600 + (index * 150)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, childWidget) {
+        return Transform.translate(
+          offset: Offset(0, 40 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: childWidget,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
 }

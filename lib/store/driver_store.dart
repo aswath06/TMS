@@ -250,6 +250,8 @@ class DriverStore extends ChangeNotifier {
 
   int _currentPage = 1;
   bool _hasMore = true;
+  int _totalDrivers = 0;
+  int get totalDrivers => _totalDrivers;
 
   Future<void> fetchDrivers({bool forceRefresh = false}) async {
     if (forceRefresh) {
@@ -281,6 +283,7 @@ class DriverStore extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
+        _totalDrivers = decoded['total_records'] ?? 0;
         final List<dynamic> data = decoded['data'] ?? [];
 
         if (data.length < 10) {
@@ -404,6 +407,48 @@ class DriverStore extends ChangeNotifier {
       };
     } catch (e) {
       debugPrint("Network error in addDriver: $e");
+      return {"success": false, "message": "Network error: Connection failed."};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDriver(Map<String, dynamic> driverData) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        return {"success": false, "message": "Session expired"};
+      }
+
+      final url = "${ApiConstants.baseUrl}/auth/user";
+      
+      final response = await http.put(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(driverData),
+      );
+
+      Map<String, dynamic> decoded = {};
+      if (response.body.isNotEmpty) {
+        try {
+          decoded = json.decode(response.body);
+        } catch (e) {
+          debugPrint("Failed to decode update response: $e");
+        }
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchDrivers(forceRefresh: true);
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Driver Updated Successfully!"
+        };
+      }
+
+      return {
+        "success": false,
+        "message": decoded['message'] ?? "Failed to update driver",
+        "statusCode": response.statusCode
+      };
+    } catch (e) {
       return {"success": false, "message": "Network error: Connection failed."};
     }
   }
