@@ -48,7 +48,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1000),
     );
 
     // Zoom happens from 0.4 (0.8s) to 0.75 (1.5s)
@@ -134,7 +134,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (!hasSeenOnboarding) {
       // Delay for full animation
-      await Future.delayed(const Duration(milliseconds: 2000));
+      await Future.delayed(const Duration(milliseconds: 1000));
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.getStarted);
       return;
@@ -142,7 +142,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     // 2. Start the minimum display timer AND the API call in parallel
     final Future<bool> authCheck = _checkSession(prefs);
-    await Future.delayed(const Duration(milliseconds: 2000));
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     // 3. Wait for the API check to settle (it might already be done)
     final bool sessionValid = await authCheck;

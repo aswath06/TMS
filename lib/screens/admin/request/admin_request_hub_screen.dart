@@ -533,93 +533,103 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   }
 
   Widget _buildAlternativeCards(bool isDark, Color primaryBlue) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        children: [
+          Row(
             children: [
-              Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 28),
-              const SizedBox(width: 8),
-              Text(
-                "Bus",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black,
-                ),
-              ),
+              _buildAlternativeCardItem(_cardsData[0], isDark, 0),
+              const SizedBox(width: 15),
+              _buildAlternativeCardItem(_cardsData[1], isDark, 1),
+              const SizedBox(width: 15),
+              _buildAlternativeCardItem(_cardsData[2], isDark, 2),
             ],
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Column(
+          const SizedBox(height: 15),
+          Row(
             children: [
-              Row(
-                children: [
-                  _buildAlternativeCardItem(_cardsData[0], isDark),
-                  const SizedBox(width: 15),
-                  _buildAlternativeCardItem(_cardsData[1], isDark),
-                  const SizedBox(width: 15),
-                  _buildAlternativeCardItem(_cardsData[2], isDark),
-                ],
-              ),
-              const SizedBox(height: 15),
-              Row(
-                children: [
-                  _buildAlternativeCardItem(_cardsData[3], isDark),
-                  const SizedBox(width: 15),
-                  Expanded(child: const SizedBox()),
-                  const SizedBox(width: 15),
-                  Expanded(child: const SizedBox()),
-                ],
-              ),
+              _buildAlternativeCardItem(_cardsData[3], isDark, 3),
+              const SizedBox(width: 15),
+              Expanded(child: const SizedBox()),
+              const SizedBox(width: 15),
+              Expanded(child: const SizedBox()),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildAlternativeCardItem(Map<String, dynamic> cardData, bool isDark) {
+  Widget _buildAlternativeCardItem(Map<String, dynamic> cardData, bool isDark, int index) {
     final Color itemColor = cardData['color'];
     final Color surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+
     return Expanded(
-      child: InkWell(
-        onTap: cardData['onTap'],
-        borderRadius: BorderRadius.circular(26),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: itemColor.withValues(alpha: 0.12)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: Duration(milliseconds: 400 + (index * 150)),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: Opacity(
+              opacity: value,
+              child: child,
+            ),
+          );
+        },
+        child: InkWell(
+          onTap: cardData['onTap'],
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                width: 1,
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(cardData['icon'], color: itemColor, size: 28),
-              const SizedBox(height: 10),
-              Text(
-                cardData['title'],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: itemColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(cardData['icon'], color: itemColor, size: 32),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  cardData['title'],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black87,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),

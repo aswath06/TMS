@@ -177,6 +177,17 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                     children: [
                       Row(
                         children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: titleColor,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                           Icon(
                             Icons.explore_rounded,
                             color: primaryBlue,
