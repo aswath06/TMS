@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../utils/routes.dart';
 import '../../store/user_store.dart';
 import '../../store/isdark.dart';
@@ -12,48 +13,61 @@ class GetStartedScreen extends StatefulWidget {
 }
 
 class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerProviderStateMixin {
-  late PageController _pageController;
-  int _currentPage = 0;
   late AnimationController _animationController;
-
-  final List<Map<String, String>> _onboardingData = [
-    {
-      "title": "Smart Fleet Management",
-      "subtitle": "Streamline vehicle requests and management for your entire organization.",
-      "title_tn": "புத்திசாலித்தனமான போக்குவரத்து",
-      "subtitle_tn": "உங்கள் நிறுவனத்திற்கான வாகன கோரிக்கைகளை எளிதாக நிர்வகிக்கவும்.",
-      "icon": "🚚",
-    },
-    {
-      "title": "Live Driver Tracking",
-      "subtitle": "Real-time visibility into driver locations and active mission status.",
-      "title_tn": "நேரடி கண்காணிப்பு",
-      "subtitle_tn": "ஓட்டுநர்களின் இருப்பிடத்தை நேரலையில் கவனித்து பயண நிலையை அறியவும்.",
-      "icon": "📍",
-    },
-    {
-      "title": "Mission Coordination",
-      "subtitle": "Secure mission starts and ends with encrypted OTP and QR code handshakes.",
-      "title_tn": "பயண ஒருங்கிணைப்பு",
-      "subtitle_tn": "OTP மற்றும் QR குறியீடுகள் மூலம் பாதுகாப்பான பயணத் தொடக்கம் மற்றும் முடிவு.",
-      "icon": "🛡️",
-    },
-  ];
+  late Animation<double> _lottieScale;
+  late Animation<Offset> _titleSlide;
+  late Animation<double> _titleFade;
+  late Animation<Offset> _subtitleSlide;
+  late Animation<double> _subtitleFade;
+  late Animation<double> _buttonFade;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1500),
     );
+
+    _lottieScale = CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+    );
+
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.3, 0.7, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _titleFade = CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.3, 0.7, curve: Curves.easeIn),
+    );
+
+    _subtitleSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.5, 0.9, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _subtitleFade = CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.5, 0.9, curve: Curves.easeIn),
+    );
+
+    _buttonFade = CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.7, 1.0, curve: Curves.easeIn),
+    );
+
     _animationController.forward();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -65,19 +79,19 @@ class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerPr
     final Size size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // Background accents
           Positioned(
             top: -100,
             right: -100,
-            child: _buildBlurCircle(300, const Color(0xFF6366F1).withOpacity(0.1)),
+            child: _buildBlurCircle(300, const Color(0xFF6366F1).withOpacity(0.05)),
           ),
           Positioned(
             bottom: -50,
             left: -50,
-            child: _buildBlurCircle(250, const Color(0xFF4F46E5).withOpacity(0.12)),
+            child: _buildBlurCircle(250, const Color(0xFF4F46E5).withOpacity(0.05)),
           ),
 
           SafeArea(
@@ -93,11 +107,11 @@ class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerPr
                       const SizedBox(width: 12),
                       Text(
                         "TripZo",
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.2,
-                          color: isDark ? Colors.white : Colors.black,
+                          color: Colors.black,
                         ),
                       ),
                     ],
@@ -105,134 +119,120 @@ class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerPr
                 ),
 
                 Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: (value) => setState(() => _currentPage = value),
-                    itemCount: _onboardingData.length,
-                    itemBuilder: (context, index) {
-                      return SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.all(40.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Icon/Illustration placeholder
-                              Container(
-                                width: size.width * 0.7,
-                                height: size.width * 0.7,
-                                constraints: const BoxConstraints(maxWidth: 300, maxHeight: 300),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6366F1).withOpacity(0.05),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.1), width: 2),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _onboardingData[index]["icon"]!,
-                                    style: const TextStyle(fontSize: 100),
-                                  ),
-                                ),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ScaleTransition(
+                            scale: _lottieScale,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 350, maxHeight: 350),
+                              child: Lottie.asset(
+                                'assets/bus.json',
+                                width: size.width * 0.8,
+                                height: size.width * 0.8,
+                                fit: BoxFit.contain,
                               ),
-                              const SizedBox(height: 48),
-                              FadeTransition(
-                                opacity: _animationController,
-                                child: Text(
-                                  isTamil ? _onboardingData[index]["title_tn"]! : _onboardingData[index]["title"]!,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w900,
-                                    color: isDark ? Colors.white : Colors.black,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                isTamil ? _onboardingData[index]["subtitle_tn"]! : _onboardingData[index]["subtitle"]!,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          SlideTransition(
+                            position: _titleSlide,
+                            child: FadeTransition(
+                              opacity: _titleFade,
+                              child: Text(
+                                isTamil ? "அடுத்த தலைமுறை போக்குவரத்து மேலாண்மை" : "Next-Generation Fleet Control",
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black,
+                                  letterSpacing: -0.5,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          SlideTransition(
+                            position: _subtitleSlide,
+                            child: FadeTransition(
+                              opacity: _subtitleFade,
+                              child: Text(
+                                isTamil 
+                                  ? "வாகன கோரிக்கைகள், நேரடி கண்காணிப்பு மற்றும் தடையற்ற ஒருங்கிணைப்பு ஆகியவற்றை ஒரே தளத்தில் பெறுங்கள்." 
+                                  : "Experience seamless vehicle requisition, real-time tracking, and automated coordination—all in one unified platform.",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
                                   fontSize: 16,
-                                  color: isDark ? Colors.white60 : Colors.black54,
-                                  height: 1.5,
+                                  color: Colors.black54,
+                                  height: 1.6,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 
                 // Controls
-                Padding(
-                  padding: const EdgeInsets.all(40.0),
-                  child: Column(
-                    children: [
-                      // Dots Indicator
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          _onboardingData.length,
-                          (index) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.only(right: 8),
-                            height: 8,
-                            width: _currentPage == index ? 24 : 8,
-                            decoration: BoxDecoration(
-                              color: _currentPage == index ? const Color(0xFF6366F1) : const Color(0xFF6366F1).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4),
+                FadeTransition(
+                  opacity: _buttonFade,
+                  child: Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Container(
+                      width: double.infinity,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF4F46E5).withOpacity(0.4),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            Navigator.pushReplacementNamed(context, AppRoutes.setupPermissions);
+                          },
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  isTamil ? "தொடங்கவும்" : "GET STARTED",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900, 
+                                    fontSize: 18, 
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 48),
-                      // Buttons
-                      SizedBox(
-                        width: double.infinity,
-                        height: 64,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (_currentPage == _onboardingData.length - 1) {
-                              Navigator.pushReplacementNamed(context, AppRoutes.setupPermissions);
-                            } else {
-                              _pageController.nextPage(
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeInOut,
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            elevation: 8,
-                            shadowColor: const Color(0xFF6366F1).withOpacity(0.5),
-                          ),
-                          child: Text(
-                            _currentPage == _onboardingData.length - 1
-                                ? (isTamil ? "தொடங்கவும்" : "GET STARTED")
-                                : (isTamil ? "அடுத்து" : "NEXT"),
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.5),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.setupPermissions),
-                        child: Text(
-                          isTamil ? "தவிர்க்க" : "SKIP",
-                          style: TextStyle(
-                            color: isDark ? Colors.white60 : Colors.black45,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],

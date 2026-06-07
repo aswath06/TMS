@@ -15,7 +15,7 @@ class SetupPermissionsScreen extends StatefulWidget {
   State<SetupPermissionsScreen> createState() => _SetupPermissionsScreenState();
 }
 
-class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with WidgetsBindingObserver {
+class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isInternetOk = false;
   bool _isLocationOk = false;
   bool _isNotificationOk = false;
@@ -25,6 +25,13 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Wi
 
   late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
+  late AnimationController _animationController;
+  late Animation<Offset> _headerSlide;
+  late Animation<double> _headerFade;
+  late Animation<Offset> _card1Slide;
+  late Animation<Offset> _card2Slide;
+  late Animation<double> _buttonFade;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +40,28 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Wi
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
        _checkInternet(results.first);
     });
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _headerSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic)),
+    );
+    _headerFade = CurvedAnimation(parent: _animationController, curve: const Interval(0.0, 0.5, curve: Curves.easeIn));
+
+    _card1Slide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: const Interval(0.2, 0.7, curve: Curves.easeOutCubic)),
+    );
+
+    _card2Slide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: const Interval(0.4, 0.9, curve: Curves.easeOutCubic)),
+    );
+
+    _buttonFade = CurvedAnimation(parent: _animationController, curve: const Interval(0.6, 1.0, curve: Curves.easeIn));
+
+    _animationController.forward();
   }
 
   @override
@@ -44,6 +73,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Wi
 
   @override
   void dispose() {
+    _animationController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
     super.dispose();
@@ -128,59 +158,120 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Wi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isTamil ? "தேவையான அனுமதிகள்" : "Required Access",
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      isTamil 
-                        ? "தடையற்ற சேவையைப் பெற பின்வரும் அனுமதிகளை வழங்கவும்."
-                        : "Please ensure all requirements below are met for a seamless experience.",
-                      style: TextStyle(fontSize: 16, color: isDark ? Colors.white60 : Colors.black54),
+                    SlideTransition(
+                      position: _headerSlide,
+                      child: FadeTransition(
+                        opacity: _headerFade,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isTamil ? "தேவையான அனுமதிகள்" : "System Preparation",
+                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black, letterSpacing: -0.5),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              isTamil 
+                                ? "தடையற்ற சேவையைப் பெற பின்வரும் அனுமதிகளை வழங்கவும்."
+                                : "Please grant the following access to ensure real-time tracking and seamless communication.",
+                              style: TextStyle(fontSize: 16, color: isDark ? Colors.white60 : Colors.black54, height: 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 40),
                     
-                    _buildRequirementCard(
-                      title: isTamil ? "இணைய இணைப்பு" : "Internet Connection",
-                      subtitle: isTamil ? "சேவையகத்துடன் இணைக்கத் தேவை" : "Required to sync with TripZo servers",
-                      icon: Icons.wifi_rounded,
-                      isOk: _isInternetOk,
-                      onTap: () => _checkAll(),
-                      isDark: isDark,
+                    SlideTransition(
+                      position: _card1Slide,
+                      child: FadeTransition(
+                        opacity: _headerFade,
+                        child: _buildRequirementCard(
+                          title: isTamil ? "இணைய இணைப்பு" : "Internet Connection",
+                          subtitle: isTamil ? "சேவையகத்துடன் இணைக்கத் தேவை" : "Required to sync with TripZo servers",
+                          icon: Icons.wifi_rounded,
+                          isOk: _isInternetOk,
+                          onTap: () => _checkAll(),
+                          isDark: isDark,
+                        ),
+                      ),
                     ),
                     
-                    _buildRequirementCard(
-                      title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
-                      subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
-                      icon: Icons.notifications_active_rounded,
-                      isOk: _isNotificationOk,
-                      onTap: _requestNotification,
-                      isDark: isDark,
+                    SlideTransition(
+                      position: _card2Slide,
+                      child: FadeTransition(
+                        opacity: _headerFade,
+                        child: _buildRequirementCard(
+                          title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
+                          subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
+                          icon: Icons.notifications_active_rounded,
+                          isOk: _isNotificationOk,
+                          onTap: _requestNotification,
+                          isDark: isDark,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
             
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: (_isInternetOk && _isNotificationOk) ? _completeOnboarding : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
-                  child: _isProcessing 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2, color: Colors.white),
+            FadeTransition(
+              opacity: _buttonFade,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Container(
+                  width: double.infinity,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: (_isInternetOk && _isNotificationOk) 
+                      ? const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                    color: (_isInternetOk && _isNotificationOk) ? null : (isDark ? Colors.grey[800] : Colors.grey[300]),
+                    boxShadow: (_isInternetOk && _isNotificationOk) ? [
+                      BoxShadow(
+                        color: const Color(0xFF4F46E5).withOpacity(0.4),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 8),
                       ),
+                    ] : null,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: (_isInternetOk && _isNotificationOk && !_isProcessing) ? _completeOnboarding : null,
+                      child: Center(
+                        child: _isProcessing 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  isTamil ? "தொடரவும்" : "PROCEED TO LOGIN",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900, 
+                                    fontSize: 16, 
+                                    letterSpacing: 1.5, 
+                                    color: (_isInternetOk && _isNotificationOk) ? Colors.white : (isDark ? Colors.white54 : Colors.black38),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.arrow_forward_rounded, 
+                                  color: (_isInternetOk && _isNotificationOk) ? Colors.white : (isDark ? Colors.white54 : Colors.black38),
+                                ),
+                              ],
+                            ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
