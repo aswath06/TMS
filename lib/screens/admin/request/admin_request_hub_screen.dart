@@ -524,6 +524,10 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                 },
               ),
               
+              // Dynamic card details section
+              const SizedBox(height: 24),
+              _buildDynamicCardDetails(isDark, primaryBlue),
+
               const SizedBox(height: 100),
             ],
           ),
@@ -633,6 +637,364 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDynamicCardDetails(bool isDark, Color primaryBlue) {
+    if (_cardsData.isEmpty) return const SizedBox.shrink();
+    
+    final String activeId = _cardsData.first['id'];
+    
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(activeId),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 15 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Consumer(
+        builder: (context, ref, _) {
+          switch (activeId) {
+            case 'mission':
+              return _buildMissionStats(isDark, primaryBlue);
+            case 'routines':
+              return _buildRoutineStats(isDark, primaryBlue);
+            case 'fuels':
+              return _buildFuelStats(isDark, primaryBlue);
+            case 'allowance':
+              return _buildAllowanceStats(isDark, primaryBlue);
+            default:
+              return const SizedBox.shrink();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildPaginatedStats(List<Widget> tiles, bool isDark) {
+    List<Widget> pages = [];
+    for (int i = 0; i < tiles.length; i += 2) {
+      pages.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(child: tiles[i]),
+            if (i + 1 < tiles.length) const SizedBox(width: 16),
+            if (i + 1 < tiles.length) Expanded(child: tiles[i + 1])
+            else Expanded(child: const SizedBox()),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 140,
+      child: PageView(
+        physics: const BouncingScrollPhysics(),
+        children: pages.map((page) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: page,
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStatTile(String label, String value, IconData icon, Color color, bool isDark) {
+    final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, bool isDark, {bool hasPagination = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          if (hasPagination)
+            Row(
+              children: [
+                Icon(Icons.swipe_left_rounded, size: 16, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+                const SizedBox(width: 4),
+                Text("Swipe", style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[400], fontWeight: FontWeight.bold)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Completed", "142", Icons.check_circle_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Pending", "12", Icons.pending_actions_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Ready to Start", "5", Icons.play_circle_fill_rounded, primaryBlue, isDark),
+      _buildStatTile("Outcampus", "3", Icons.exit_to_app_rounded, const Color(0xFFEF4444), isDark),
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Mission Statistics", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
+    );
+  }
+
+  Widget _buildRoutineStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Bus TRW", "45", Icons.directions_bus_rounded, primaryBlue, isDark),
+      _buildStatTile("In Service", "42", Icons.build_circle_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Running", "38", Icons.speed_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Outcampus", "4", Icons.outbox_rounded, const Color(0xFFEF4444), isDark),
+    ];
+
+    // Dummy Vehicles Data
+    final List<Map<String, String>> vehicles = List.generate(5, (index) => {
+      "veh": "TN36Z123${index}",
+      "fn": "${50 + index * 5}",
+      "an": "${45 + index * 5}"
+    });
+
+    int totalFn = 0;
+    int totalAn = 0;
+    for (var v in vehicles) {
+      totalFn += int.parse(v['fn']!);
+      totalAn += int.parse(v['an']!);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Daily Bus Routines", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+        const SizedBox(height: 16),
+        _buildSectionHeader("Student Sessions", isDark),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Column(
+            children: [
+              // Summary Cards Row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSessionSummaryCard(
+                      "Total", "${totalFn + totalAn}", Icons.groups_rounded, primaryBlue, isDark
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSessionSummaryCard(
+                      "FN", "$totalFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSessionSummaryCard(
+                      "AN", "$totalAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // Vehicle List Header
+              Row(
+                children: [
+                  Text("Vehicle Assignment", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
+                  const Spacer(),
+                  Icon(Icons.directions_bus, size: 16, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Vehicle List Cards
+              ...vehicles.map((v) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.directions_bus_filled_rounded, size: 20, color: isDark ? Colors.grey[300] : Colors.grey[700]),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(v['veh']!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
+                          const SizedBox(height: 4),
+                          Text("Active Route", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[500] : Colors.grey[500])),
+                        ],
+                      ),
+                    ),
+                    
+                    // Badges for FN and AN
+                    _buildSessionBadge("FN", v['fn']!, const Color(0xFF10B981)),
+                    const SizedBox(width: 8),
+                    _buildSessionBadge("AN", v['an']!, const Color(0xFFF59E0B)),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionSummaryCard(String title, String value, IconData icon, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
+          const SizedBox(height: 2),
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionBadge(String label, String count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text("$label ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+          Text(count, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFuelStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Fuel Count", "128", Icons.local_gas_station_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Total Liters", "4,520 L", Icons.water_drop_rounded, primaryBlue, isDark),
+      _buildStatTile("Total Amount", "₹4,25,000", Icons.currency_rupee_rounded, const Color(0xFF10B981), isDark),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Fuel Overview", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
+    );
+  }
+
+  Widget _buildAllowanceStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Allowances", "85", Icons.payments_rounded, primaryBlue, isDark),
+      _buildStatTile("Total Amount", "₹12,400", Icons.account_balance_wallet_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Pending", "12", Icons.pending_rounded, const Color(0xFFF59E0B), isDark),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Allowance Overview", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
     );
   }
 }
