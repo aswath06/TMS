@@ -670,7 +670,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       if (_routeType == 'One Way') {
         final addedMinutes = _travelDurationMinutes + (1 * 60);
         _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
-      } else { // Round Trip
+      } else { // Two Way
         final addedMinutes = (_travelDurationMinutes * 2) + (2 * 60);
         _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
       }
@@ -719,7 +719,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         if (_routeType == 'One Way') {
           leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
           rootEndDatetime = leg1End;
-        } else if (_routeType == 'Round Trip') {
+        } else if (_routeType == 'Two Way') {
           leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
           leg2Start = leg1End;
           leg2End = leg2Start.add(Duration(minutes: oneLegMinutes.toInt()));

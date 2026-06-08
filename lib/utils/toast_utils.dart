@@ -104,8 +104,18 @@ class _CustomScaffoldMessengerState extends ScaffoldMessengerState {
   }) {
     final String message = _extractTextFromWidget(snackBar.content);
 
-    // Determine if the SnackBar was intended as an error/warning by checking colors
-    final isError = snackBar.backgroundColor == Colors.red ||
+    final lowerMsg = message.toLowerCase();
+    final isErrorText = lowerMsg.contains('fail') || 
+                        lowerMsg.contains('error') || 
+                        lowerMsg.contains('not defined') ||
+                        lowerMsg.contains('invalid') ||
+                        lowerMsg.contains('unauthorized') ||
+                        lowerMsg.contains('exception') ||
+                        lowerMsg.contains('warning');
+
+    // Determine if the SnackBar was intended as an error/warning by checking colors or text
+    final isError = isErrorText ||
+        snackBar.backgroundColor == Colors.red ||
         snackBar.backgroundColor == Colors.redAccent ||
         snackBar.backgroundColor == Colors.orange ||
         snackBar.backgroundColor == Colors.orangeAccent ||
