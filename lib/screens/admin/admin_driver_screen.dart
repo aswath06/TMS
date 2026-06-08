@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
@@ -28,6 +29,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   String _driverFilter = 'All'; // All, Available, Assigned, On Trip, On Leave
   DateTime? _selectedDriverDate;
   bool _isDriverSearchVisible = false; // Visibility state for search bar
+  Timer? _searchDebounce;
 
   // Helper to parse 'kilometers' string to double for sorting
   double _parseKm(String kmString) {
@@ -468,6 +470,9 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _driverSearchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -878,7 +883,11 @@ final store = ref.watch(requestStoreProvider);
       child: TextField(
         controller: _driverSearchController,
         onChanged: (val) {
-          setState(() {});
+          if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+          _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+            ref.read(driverStoreProvider).setDriverSearchQuery(val);
+            ref.read(driverStoreProvider).fetchDrivers(forceRefresh: true);
+          });
         },
         style: TextStyle(color: isDark ? Colors.white : Colors.black),
         decoration: InputDecoration(
@@ -928,20 +937,13 @@ final store = ref.watch(driverStoreProvider);
           );
         }
 
-        // Apply local searching and sorting
-        final query = _driverSearchController.text.toLowerCase();
-        final filteredDrivers = store.drivers.where((driver) {
-          final name = (driver['name'] ?? '').toString().toLowerCase();
-          final code = (driver['employee_code'] ?? '').toString().toLowerCase();
-          final phone = (driver['phone_number'] ?? '').toString().toLowerCase();
-
-          return name.contains(query) ||
-              code.contains(query) ||
-              phone.contains(query);
-        }).toList();
+        // No local searching, handled by backend
+        final filteredDrivers = store.drivers;
 
         final sortedDrivers = List<Map<String, dynamic>>.from(filteredDrivers);
-        _sortLocalDrivers(sortedDrivers, store.sortType);
+        if (store.sortType != 'Default') {
+          _sortLocalDrivers(sortedDrivers, store.sortType);
+        }
 
         return Column(
           children: [
@@ -978,11 +980,12 @@ final store = ref.watch(driverStoreProvider);
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);
 
-    final String kmDisplay = "${driver['driverProfile']?['total_kilometer_drived'] ?? 0} km";
-    final String employeeCode = driver['driverProfile']?['employee_code'] ?? 'N/A';
-    final int experience = driver['driverProfile']?['experience_years'] ?? 0;
-    final int routes = driver['driverProfile']?['total_routes'] ?? 0;
-    final String bloodGroup = driver['driverProfile']?['blood_group'] ?? 'N/A';
+    final dp = driver['driverProfile'] ?? driver;
+    final String kmDisplay = "${dp['total_kilometer_drive'] ?? dp['total_kilometer_drived'] ?? 0} km";
+    final String employeeCode = dp['employee_code'] ?? 'N/A';
+    final int experience = int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
+    final int routes = int.tryParse(dp['total_routes']?.toString() ?? '0') ?? 0;
+    final String bloodGroup = dp['blood_group'] ?? 'N/A';
 
     return GestureDetector(
       onTap: () {

@@ -24,6 +24,7 @@ class AdminDriverDetailScreen extends ConsumerWidget {
     final status = driver['status'] ?? 1;
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);
+    final dp = driver['driverProfile'] ?? driver;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -86,12 +87,12 @@ class AdminDriverDetailScreen extends ConsumerWidget {
                       _InfoItem(
                         Icons.bloodtype,
                         "Blood Group",
-                        driver['driverProfile']?['blood_group'] ?? 'N/A',
+                        dp['blood_group'] ?? 'N/A',
                       ),
                       _InfoItem(
                         Icons.location_on,
                         "Address",
-                        driver['driverProfile']?['address'] ?? 'N/A',
+                        dp['address'] ?? 'N/A',
                       ),
                     ],
                     surfaceColor,
@@ -105,27 +106,27 @@ class AdminDriverDetailScreen extends ConsumerWidget {
                       _InfoItem(
                         Icons.badge,
                         "Employee Code",
-                        driver['driverProfile']?['employee_code'] ?? 'N/A',
+                        dp['employee_code'] ?? 'N/A',
                       ),
                       _InfoItem(
                         Icons.description,
                         "License No",
-                        driver['driverProfile']?['license_number'] ?? 'N/A',
+                        dp['license_number'] ?? 'N/A',
                       ),
                       _InfoItem(
                         Icons.event,
                         "License Expiry",
-                        _formatDate(driver['driverProfile']?['license_expiry_date']),
+                        _formatDate(dp['license_expiry_date'] ?? dp['license_expiry']),
                       ),
                       _InfoItem(
                         Icons.calendar_today,
                         "Joining Date",
-                        _formatDate(driver['driverProfile']?['joining_date']),
+                        _formatDate(dp['joining_date'] ?? dp['created_at']),
                       ),
                       _InfoItem(
                         Icons.history,
                         "Experience",
-                        "${driver['driverProfile']?['experience_years'] ?? 0} Years",
+                        "${dp['experience_years'] ?? 0} Years",
                       ),
                     ],
                     surfaceColor,
@@ -139,12 +140,12 @@ class AdminDriverDetailScreen extends ConsumerWidget {
                       _InfoItem(
                         Icons.contact_emergency,
                         "Name",
-                        driver['driverProfile']?['emergency_contact_name'] ?? 'N/A',
+                        dp['emergency_contact_name'] ?? 'N/A',
                       ),
                       _InfoItem(
                         Icons.phone_callback,
                         "Phone",
-                        driver['driverProfile']?['emergency_contact_phone'] ?? 'N/A',
+                        dp['emergency_contact_phone'] ?? 'N/A',
                       ),
                     ],
                     surfaceColor,
@@ -373,12 +374,13 @@ class AdminDriverDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildStatsRow(Color primaryBlue, Color surfaceColor, bool isDark) {
+    final dp = driver['driverProfile'] ?? driver;
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
             "Total KM",
-            "${driver['driverProfile']?['total_kilometer_drived'] ?? 0}",
+            "${dp['total_kilometer_drive'] ?? dp['total_kilometer_drived'] ?? 0}",
             Icons.speed,
             primaryBlue,
             surfaceColor,
@@ -389,7 +391,7 @@ class AdminDriverDetailScreen extends ConsumerWidget {
         Expanded(
           child: _buildStatCard(
             "Total Routes",
-            "${driver['driverProfile']?['total_routes'] ?? 0}",
+            "${dp['total_routes'] ?? 0}",
             Icons.route,
             const Color(0xFF10B981),
             surfaceColor,

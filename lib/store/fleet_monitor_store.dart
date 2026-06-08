@@ -32,14 +32,26 @@ class FleetMonitorStore extends ChangeNotifier {
 
     try {
       final String? token = await UserStore.getToken();
+      if (token == null) {
+        _error = "Unauthorized";
+        return;
+      }
+
       final Uri uri = Uri.parse(
-        ApiConstants.getSecurityRoutes(1, 100, 'PENDING'),
+        ApiConstants.getSecurityRoutes(1, 100, 'OUT_CAMPUS'),
       );
 
       final response = await http.get(
         uri,
         headers: ApiConstants.getHeaders(token),
       );
+
+      debugPrint("--- [DEBUG] FLEET MONITOR CURL ---");
+      debugPrint("curl --location '$uri' \\");
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("----------------------------------");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

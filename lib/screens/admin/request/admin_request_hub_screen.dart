@@ -518,16 +518,22 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               ListenableBuilder(
                 listenable: UIConfig(),
                 builder: (context, _) {
-                  return UIConfig().isUIEnhancementEnabled
-                      ? _buildStackedCards(isDark)
-                      : _buildAlternativeCards(isDark, primaryBlue);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      UIConfig().isUIEnhancementEnabled
+                          ? _buildStackedCards(isDark)
+                          : _buildAlternativeCards(isDark, primaryBlue),
+                      
+                      if (UIConfig().isUIEnhancementEnabled) ...[
+                        const SizedBox(height: 24),
+                        _buildDynamicCardDetails(isDark, primaryBlue),
+                      ],
+                    ],
+                  );
                 },
               ),
               
-              // Dynamic card details section
-              const SizedBox(height: 24),
-              _buildDynamicCardDetails(isDark, primaryBlue),
-
               const SizedBox(height: 100),
             ],
           ),

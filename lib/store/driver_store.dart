@@ -274,8 +274,11 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
-      final url =
+      String url =
           "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10";
+      if (_driverSearchQuery.isNotEmpty) {
+        url += "&search=${Uri.encodeComponent(_driverSearchQuery)}";
+      }
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -454,11 +457,19 @@ class DriverStore extends ChangeNotifier {
   }
 
   // Sort state
-  String _sortType = 'A to Z';
+  String _sortType = 'Default';
   String get sortType => _sortType;
 
   void setSortType(String newSort) {
     _sortType = newSort;
+    notifyListeners();
+  }
+
+  String _driverSearchQuery = '';
+  String get driverSearchQuery => _driverSearchQuery;
+
+  void setDriverSearchQuery(String query) {
+    _driverSearchQuery = query;
     notifyListeners();
   }
 

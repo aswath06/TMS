@@ -12,6 +12,12 @@ import '../../providers/notification_provider.dart';
 import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'fuel/fuel_price_update_page.dart';
 import 'fuel/fuel_page.dart';
 import 'admin_allowance_screen.dart';
 
@@ -36,6 +42,149 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
     // Listen for remote logouts
     useFacultyStore.errorMessage.addListener(_handleAuthError);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndShowFuelPopup();
+    });
+  }
+
+  Future<void> _checkAndShowFuelPopup() async {
+    final role = await UserStore.getRole();
+    if (role != 'Transport Admin') return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final String today = DateTime.now().toIso8601String().split('T')[0];
+    final String? dismissedDate = prefs.getString('fuel_price_dismiss_date');
+
+    if (dismissedDate == today) return;
+
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(
+        Uri.parse(ApiConstants.fuelBunks),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          final bunks = data['data'] as List;
+          if (bunks.isNotEmpty && mounted) {
+            _showFuelPopup(bunks);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching bunks for popup: $e");
+    }
+  }
+
+  void _showFuelPopup(List<dynamic> bunks) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color primaryBlue = const Color(0xFF6366F1);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          contentPadding: const EdgeInsets.all(24),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Update Fuel Price",
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: titleColor,
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(Icons.close_rounded, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Current Bunk Prices",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...bunks.map((bunk) {
+                    final p = double.tryParse(bunk['petrol_price']?.toString() ?? '0') ?? 0;
+                    final d = double.tryParse(bunk['diesel_price']?.toString() ?? '0') ?? 0;
+                    final c = double.tryParse(bunk['cng_price']?.toString() ?? '0') ?? 0;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(bunk['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold, color: titleColor)),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Petrol: ₹$p", style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFFF59E0B))),
+                              Text("Diesel: ₹$d", style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF10B981))),
+                              Text("CNG: ₹$c", style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF06B6D4))),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                final String today = DateTime.now().toIso8601String().split('T')[0];
+                await prefs.setString('fuel_price_dismiss_date', today);
+                if (mounted) Navigator.pop(context);
+              },
+              child: Text("Today Same Price", style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700], fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelPriceUpdatePage()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Update", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _handleAuthError() async {
