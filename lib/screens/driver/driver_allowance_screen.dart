@@ -315,21 +315,28 @@ final store = ref.watch(driverStoreProvider);
     
     final tripInstance = allowance['tripInstance'];
     final routeRequest = tripInstance?['routeRequest'];
-    final routeName = routeRequest?['route_name'] ?? tripInstance?['trip_number'] ?? "Unknown Route";
+    final routeName = allowance['route_name'] ?? routeRequest?['route_name'] ?? tripInstance?['route_name'] ?? "Unknown Route";
     final amount = allowance['amount'] ?? "0.00";
+    final allowanceType = allowance['allowance_type'] ?? "ALLOWANCE";
     final String status = allowance['payment_status'] ?? "UNKNOWN";
     final createdBy = allowance['createdBy']?['name'] ?? "Admin";
-    final allowanceReason = allowance['reason'] ?? "";
     final allowanceId = allowance['id'] as int;
 
-    final String dateStr = allowance['createdAt'] ?? "";
-    String formattedDate = "";
-    if (dateStr.isNotEmpty) {
-      final date = DateTime.tryParse(dateStr)?.toLocal();
+    // Started and Ended times
+    final startedAtStr = allowance['manual_trip_started_at'] ?? tripInstance?['manual_trip_started_at'] ?? "";
+    final endedAtStr = allowance['manual_trip_ended_at'] ?? tripInstance?['manual_trip_ended_at'] ?? "";
+
+    String formatTime(String timeStr) {
+      if (timeStr.isEmpty) return "";
+      final date = DateTime.tryParse(timeStr)?.toLocal();
       if (date != null) {
-        formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(date);
+        return DateFormat('MMM dd, hh:mm a').format(date);
       }
+      return "";
     }
+
+    final formattedStartedAt = formatTime(startedAtStr);
+    final formattedEndedAt = formatTime(endedAtStr);
 
     Color statusColor = Colors.grey;
     String statusStr = status;
@@ -358,172 +365,199 @@ final store = ref.watch(driverStoreProvider);
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  statusStr,
-                  style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                ),
-              ),
-              Text(
-                "₹$amount",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: primaryBlue),
-              ),
-            ],
-          ),
-          if (formattedDate.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.calendar_today_rounded, size: 14, color: subColor),
-                const SizedBox(width: 6),
-                Text(
-                  formattedDate,
-                  style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          Text(
-            routeName,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor),
-          ),
-          if (allowanceReason.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.notes_rounded, size: 16, color: subColor),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    allowanceReason,
-                    style: TextStyle(fontSize: 13, color: titleColor.withOpacity(0.8), height: 1.4),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.person_pin_circle_rounded, size: 16, color: subColor),
-              const SizedBox(width: 6),
-              Expanded(
-                child: RichText(
-                  text: TextSpan(
-                    style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w600, fontFamily: 'Inter'), // Assuming default font, else standard
-                    children: [
-                      TextSpan(text: "${isTamil ? 'உருவாக்கியவர்' : 'Created by'}: "),
-                      TextSpan(
-                        text: createdBy,
-                        style: TextStyle(color: titleColor, fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (routeRequest != null && routeRequest['id'] != null)
-                GestureDetector(
-                  onTap: () {
-                    // Navigate to Mission Details
-                    String timeStr = "TBD";
-                    if (routeRequest['legs'] != null && routeRequest['legs'].isNotEmpty) {
-                      final firstLeg = routeRequest['legs'][0];
-                      timeStr = firstLeg['planned_start_at'] ?? "TBD";
-                      if (timeStr != "TBD") {
-                        timeStr = DateFormat('hh:mm a').format(DateTime.parse(timeStr).toLocal());
-                      }
-                    }
-                    
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MissionDetailsScreen(
-                          missionTitle: routeName,
-                          time: timeStr,
-                          driverName: "Driver",
-                          driverPhone: "",
-                          vehicleInfo: "Assigned Vehicle",
-                          capacity: "0",
-                          pathType: routeRequest['trip_type'] ?? "ONE_WAY",
-                          status: routeRequest['status'] ?? "UNKNOWN",
-                          statusColor: primaryBlue,
-                          requestId: routeRequest['id'].toString(),
-                          rawStatus: 8,
-                          stops: const [],
-                        ),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        isTamil ? "விவரங்களைக் காண்" : "View Details",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          color: primaryBlue,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: primaryBlue),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+      child: GestureDetector(
+        onTap: () {
+          String timeStr = formattedStartedAt.isNotEmpty ? formattedStartedAt : "TBD";
+          if (timeStr == "TBD" && routeRequest?['legs'] != null && routeRequest!['legs'].isNotEmpty) {
+            final firstLeg = routeRequest['legs'][0];
+            timeStr = firstLeg['planned_start_at'] ?? "TBD";
+            if (timeStr != "TBD") {
+              timeStr = DateFormat('hh:mm a').format(DateTime.parse(timeStr).toLocal());
+            }
+          }
           
-          if (status == 'ASSIGNED') ...[
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.withOpacity(0.1),
-                      foregroundColor: Colors.red,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MissionDetailsScreen(
+                missionTitle: routeName,
+                time: timeStr,
+                driverName: allowance['driver']?['user']?['name'] ?? "Driver",
+                driverPhone: allowance['driver']?['phone'] ?? "",
+                vehicleInfo: allowance['vehicle']?['vehicle_number'] ?? "Assigned Vehicle",
+                capacity: allowance['vehicle']?['capacity']?.toString() ?? "0",
+                pathType: routeRequest?['trip_type'] ?? allowance['tripInstance']?['trip_type'] ?? "ONE_WAY",
+                status: routeRequest?['status'] ?? "UNKNOWN",
+                statusColor: primaryBlue,
+                requestId: routeRequest?['id']?.toString() ?? allowance['tripInstance']?['id']?.toString() ?? allowance['id'].toString(),
+                rawStatus: 8,
+                stops: const [],
+              ),
+            ),
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    onPressed: () => _showRecheckModal(context, allowanceId),
                     child: Text(
-                      isTamil ? "மறுபரிசீலனை" : "Recheck",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      statusStr,
+                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                     ),
                   ),
+                  Text(
+                    "₹$amount",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: primaryBlue),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Allowance Type & Route Name
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      allowanceType,
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: primaryBlue, letterSpacing: 0.5),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      routeName,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Times Section
+              if (formattedStartedAt.isNotEmpty || formattedEndedAt.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      if (formattedStartedAt.isNotEmpty)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isTamil ? "தொடங்கிய நேரம்" : "Started At",
+                                style: TextStyle(fontSize: 10, color: subColor, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formattedStartedAt,
+                                style: TextStyle(fontSize: 12, color: titleColor, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (formattedStartedAt.isNotEmpty && formattedEndedAt.isNotEmpty)
+                        Container(
+                          height: 24,
+                          width: 1,
+                          color: subColor.withOpacity(0.2),
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      if (formattedEndedAt.isNotEmpty)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isTamil ? "முடிந்த நேரம்" : "Ended At",
+                                style: TextStyle(fontSize: 10, color: subColor, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formattedEndedAt,
+                                style: TextStyle(fontSize: 12, color: titleColor, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 16),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.person_pin_circle_rounded, size: 16, color: subColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w600, fontFamily: 'Inter'), // Assuming default font, else standard
+                        children: [
+                          TextSpan(text: "${isTamil ? 'உருவாக்கியவர்' : 'Created by'}: "),
+                          TextSpan(
+                            text: createdBy,
+                            style: TextStyle(color: titleColor, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              
+              if (status == 'ASSIGNED') ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          foregroundColor: Colors.red,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => _showRecheckModal(context, allowanceId),
+                        child: Text(
+                          isTamil ? "மறுபரிசீலனை" : "Recheck",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -545,6 +579,8 @@ final store = ref.watch(driverStoreProvider);
           ]
         ],
       ),
-    ));
+    ),
+  ),
+);
   }
 }

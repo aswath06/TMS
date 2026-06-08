@@ -94,8 +94,21 @@ class DriverStore extends ChangeNotifier {
       if (token == null || driverId == null) return;
       
       final url = "${ApiConstants.getDriverAllowances}?page=1&limit=1&driver_id=$driverId&payment_status=Assigned";
+      
+      debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT CURL ---");
+      debugPrint("curl --location --request GET '$url' \\");
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("------------------------------------------");
+
       final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
       
+      debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("----------------------------------------------");
+
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
@@ -141,7 +154,20 @@ class DriverStore extends ChangeNotifier {
       if (token == null || driverId == null) return;
 
       final url = "${ApiConstants.getDriverAllowances}?page=$_allowancePage&limit=10&driver_id=$driverId";
+      
+      debugPrint("--- [DEBUG] FETCH ALLOWANCES CURL ---");
+      debugPrint("curl --location --request GET '$url' \\");
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("-------------------------------------");
+
       final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      
+      debugPrint("--- [DEBUG] FETCH ALLOWANCES RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("-----------------------------------------");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
