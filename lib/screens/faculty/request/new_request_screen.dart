@@ -1100,12 +1100,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           _premiumInput(
             "Journey Name*",
             _routeNameController,
-            "e.g. From to To (by Placement)",
+            "e.g. TSC Visit, Campus Tour",
             Icons.route_rounded,
             c,
             t,
             p,
             isReq: true,
+            helperText: "Give your trip a short, recognizable title (Do not enter the purpose here).",
           ),
           _premiumSelect(
             "Journey Purpose*",
@@ -1622,6 +1623,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     Color p, {
     bool isReq = false,
     bool isNum = false,
+    String? helperText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1673,6 +1675,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 : null,
           ),
         ),
+        if (helperText != null) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              helperText,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: t.withValues(alpha: 0.4),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
       ],
     );

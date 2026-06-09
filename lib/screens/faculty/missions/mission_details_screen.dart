@@ -2804,8 +2804,11 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
   Widget _buildHeader(BuildContext context, Color titleColor) {
     final String statusString = (_missionData?['status'] ?? _missionData?['travel_info']?['status'] ?? widget.status ?? "").toString().toUpperCase();
     final bool isApproved = statusString == 'APPROVED';
+    final bool isDraft = statusString == 'DRAFT' || statusString == 'PENDING' || statusString == 'SUBMITTED';
     final bool isAdmin = _isTransportOrSuperAdmin;
-    final bool showDeleteIcon = isApproved && isAdmin;
+    final bool isFaculty = _userRole?.toLowerCase() == 'faculty';
+    
+    final bool showDeleteIcon = (isApproved && isAdmin) || (isFaculty && (isApproved || isDraft));
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

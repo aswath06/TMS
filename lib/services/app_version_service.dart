@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 class AppVersionService {
   static const String _checkUrl = 'https://tripzo.bitsathy.ac.in/api/app-version/check';
 
-  static Future<void> checkAppVersion(BuildContext context) async {
+  static Future<void> checkAppVersion(BuildContext context, {bool showNoUpdateFound = false}) async {
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final int currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
@@ -21,36 +21,128 @@ class AppVersionService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['success'] == true && data['updateRequired'] == true) {
-          final bool forceUpdate = data['forceUpdate'] == true;
-          final String playStoreUrl = data['playStoreUrl'] ?? "";
-          final String releaseNotes = data['releaseNotes'] ?? "A new version of the app is available.";
+        if (data['success'] == true) {
+          if (data['updateRequired'] == true) {
+            final bool forceUpdate = data['forceUpdate'] == true;
+            final String playStoreUrl = data['playStoreUrl'] ?? "";
+            final String releaseNotes = data['releaseNotes'] ?? "A new version of the app is available.";
 
-          if (!forceUpdate) {
-            final prefs = await SharedPreferences.getInstance();
-            final lastDismissedStr = prefs.getString('update_dismissed_date');
-            if (lastDismissedStr != null) {
-              final lastDismissedDate = DateTime.tryParse(lastDismissedStr);
-              if (lastDismissedDate != null) {
-                final now = DateTime.now();
-                if (now.year == lastDismissedDate.year &&
-                    now.month == lastDismissedDate.month &&
-                    now.day == lastDismissedDate.day) {
-                  // Already dismissed today
-                  return;
+            if (!forceUpdate && !showNoUpdateFound) { // if checking manually, ignore dismissed
+              final prefs = await SharedPreferences.getInstance();
+              final lastDismissedStr = prefs.getString('update_dismissed_date');
+              if (lastDismissedStr != null) {
+                final lastDismissedDate = DateTime.tryParse(lastDismissedStr);
+                if (lastDismissedDate != null) {
+                  final now = DateTime.now();
+                  if (now.year == lastDismissedDate.year &&
+                      now.month == lastDismissedDate.month &&
+                      now.day == lastDismissedDate.day) {
+                    // Already dismissed today
+                    return;
+                  }
                 }
               }
             }
-          }
 
-          if (context.mounted) {
-            _showUpdateDialog(context, forceUpdate, playStoreUrl, releaseNotes);
+            if (context.mounted) {
+              _showUpdateDialog(context, forceUpdate, playStoreUrl, releaseNotes);
+            }
+          } else if (showNoUpdateFound && context.mounted) {
+            _showNoUpdateDialog(context);
           }
         }
       }
     } catch (e) {
       debugPrint("Error checking app version: \$e");
     }
+  }
+
+  static void _showNoUpdateDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.green,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Up to Date!",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "You are already using the latest version of Tripzo.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade100,
+                      foregroundColor: const Color(0xFF0F172A),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      "Awesome",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   static void _showUpdateDialog(BuildContext context, bool forceUpdate, String playStoreUrl, String releaseNotes) {

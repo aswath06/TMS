@@ -10,6 +10,7 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/server_config.dart';
 import 'package:tripzo/store/ui_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/services/app_version_service.dart';
 import 'package:tripzo/store/providers.dart';
 import 'scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
@@ -883,7 +884,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           style: TextStyle(fontSize: 13, color: subColor),
         ),
         trailing: TextButton(
-          onPressed: () {},
+          onPressed: () => AppVersionService.checkAppVersion(context, showNoUpdateFound: true),
           child: Text(
             isTamil ? "சரிபார்" : "Check",
             style: TextStyle(fontWeight: FontWeight.bold, color: primaryBlue),
