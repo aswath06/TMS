@@ -70,6 +70,7 @@ dependencies:
   flutter_image_compress: ^2.4.0
   flutter_riverpod: ^2.5.1
   lottie: ^3.3.3
+  package_info_plus: ^9.0.1
 
 flutter_launcher_icons:
   android: true

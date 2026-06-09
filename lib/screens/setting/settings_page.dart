@@ -16,6 +16,7 @@ import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -27,6 +28,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
   String _userRole = "";
+  String _appVersion = "Loading...";
 
   // Sync initial state with the Global Stores
   String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
@@ -43,8 +45,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void initState() {
     super.initState();
     _loadUserRole();
+    _loadAppVersion();
     ServerConfig().load(); // load persisted server preference
     UIConfig().load(); // load persisted UI setting
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = packageInfo.version;
+      });
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -403,7 +415,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Your message will be sent to SureshKannan (Backend Developer) and Aswath (Frontend Developer).",
+                "Your message will be sent to SureshKannan and Aswath.",
                 style: TextStyle(fontSize: 13, color: subTitleColor, height: 1.4),
               ),
               const SizedBox(height: 16),
@@ -867,7 +879,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
         ),
         subtitle: Text(
-          "${isTamil ? 'தற்போதைய பதிப்பு' : 'Current'}: v2.4.0",
+          "${isTamil ? 'தற்போதைய பதிப்பு' : 'Current'}: v$_appVersion",
           style: TextStyle(fontSize: 13, color: subColor),
         ),
         trailing: TextButton(
@@ -885,7 +897,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     child: Column(
       children: [
         Text(
-          isTamil ? "பதிப்பு 2.4.0 (சரியானது)" : "App Version 2.4.0 (Stable)",
+          isTamil ? "பதிப்பு $_appVersion (சரியானது)" : "App Version $_appVersion (Stable)",
           style: TextStyle(
             color: subColor,
             fontWeight: FontWeight.w600,

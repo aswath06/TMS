@@ -2023,7 +2023,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       showAutoEnd = false;
     }
 
-    final bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING' || (statusString == 'COMPLETED' && !hasEndOdometer);
+    bool showAction = isApprovedState || currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING' || (statusString == 'COMPLETED' && !hasEndOdometer);
+    final bool isFaculty = _userRole?.toLowerCase() == 'faculty';
+    if (isFaculty) showAction = false;
     
     String actionLabel = (currentStatus == 7 || statusString == 'STARTED' || statusString == 'ONGOING') 
         ? "GENERATE END OTP" 
@@ -2038,7 +2040,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
        actionLabel = "SWIPE TO START (GET OTP/QR)";
     }
 
-    final showApproveDecline = currentStatus == 2 || currentStatus == 3 || statusString == 'PENDING' || statusString == 'SUBMITTED';
+    bool showApproveDecline = currentStatus == 2 || currentStatus == 3 || statusString == 'PENDING' || statusString == 'SUBMITTED';
+    if (isFaculty) showApproveDecline = false;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -2088,7 +2091,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                           const SizedBox(height: 20),
                           _buildCheckpointList(primaryBlue, titleColor),
                           const SizedBox(height: 32),
-                          if (isDraft) ...[
+                          if (isDraft && _userRole?.toLowerCase() != 'faculty') ...[
                             const SizedBox(height: 8),
                             SizedBox(
                               width: double.infinity,

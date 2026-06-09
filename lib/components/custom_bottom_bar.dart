@@ -126,9 +126,9 @@ class CustomBottomBar extends StatelessWidget {
           _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
           _NavItem(Icons.explore_outlined, Icons.explore_rounded, 'Missions'),
           _NavItem(
-            Icons.assignment_outlined,
-            Icons.assignment_rounded,
-            'Requests',
+            Icons.directions_bus_outlined,
+            Icons.directions_bus_rounded,
+            'Bus',
           ),
           _NavItem(
             Icons.person_outline_rounded,
