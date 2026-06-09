@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tripzo/services/app_version_service.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -47,6 +48,8 @@ class MainScreenState extends State<MainScreen> {
     );
   }
 
+
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +59,10 @@ class MainScreenState extends State<MainScreen> {
     if (widget.userRole.toLowerCase() == 'driver') {
       _startLocationMonitor();
     }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppVersionService.checkAppVersion(context);
+    });
   }
 
   void _startLocationMonitor() {
