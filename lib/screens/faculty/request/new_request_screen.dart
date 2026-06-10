@@ -1533,7 +1533,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: t.withValues(alpha: 0.3),
+            color: t.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 8),
@@ -1633,7 +1633,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: t.withValues(alpha: 0.3),
+            color: t.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 8),

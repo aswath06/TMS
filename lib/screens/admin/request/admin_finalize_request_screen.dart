@@ -439,7 +439,11 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
     setState(() => _isFinalizing = true);
     try {
       final token = await UserStore.getToken();
-      final legCode = (_requestData?['route_details']?['legs'] as List?)?.first?['leg_code'] ?? "LEG-1";
+      final legsList = (_requestData?['route_details']?['legs'] as List?) ?? [];
+      final legCodes = legsList.isNotEmpty 
+          ? legsList.map((l) => l['leg_code']?.toString() ?? "LEG-1").toList() 
+          : ["LEG-1"];
+      final firstLegCode = legCodes.first;
 
       final body = {
         "route_name": _requestData?['travel_info']?['route_name'] ?? "Finalized Route",
@@ -450,28 +454,36 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
         "admin_remark": "Finalized via Mobile APP",
         "groupings": _groups.where((g) => g['passengers'].isNotEmpty).map((g) => {
           "group_label": g['label'],
-          "leg_code": legCode,
+          "leg_code": firstLegCode,
           "passenger_ids": (g['passengers'] as List).map((p) => p['passenger_id'] ?? p['id']).toList(),
         }).toList(),
-        "admin_assignments": [
-          {
-            "leg_code": legCode,
+        "admin_assignments": legCodes.map((lCode) => {
+            "leg_code": lCode,
             "vehicles": _groups.where((g) => g['passengers'].isNotEmpty).map((g) => {
               "vehicle_id": g['vehicle_id'],
               "driver_id": g['driver_id'],
               "passenger_ids": (g['passengers'] as List).map((p) => p['passenger_id'] ?? p['id']).toList(),
               "remarks": g['remark'].isEmpty ? "Allocated" : g['remark'],
             }).toList(),
-          }
-        ],
+        }).toList(),
       };
 
       final url = ApiConstants.adminFinalize(widget.requestId);
+      
+      const encoder = JsonEncoder.withIndent('  ');
+      String prettyJson = encoder.convert(body);
+      debugPrint(
+        "\\n🚀 [ADMIN FINALIZE CURL SENDING]:\\ncurl --location '$url' \\\\\\n"
+        "--header 'Authorization: TMS $token' \\\\\\n--header 'Content-Type: application/json' \\\\\\n--data '$prettyJson'\\n",
+      );
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
         body: json.encode(body),
       );
+
+      debugPrint("📥 [SERVER RESPONSE] (${response.statusCode}): ${response.body}");
 
       final respData = json.decode(response.body);
       if (response.statusCode == 200 && respData['success'] == true) {
