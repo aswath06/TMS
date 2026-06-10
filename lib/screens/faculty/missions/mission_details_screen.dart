@@ -2142,7 +2142,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                             _buildDynamicResources(cardColor, primaryBlue, subColor),
                             const SizedBox(height: 8),
                             _buildAdditionalInfo(cardColor, primaryBlue, subColor),
-                            _buildAllowances(cardColor, primaryBlue, subColor, statusString),
+                            if (!isFaculty) _buildAllowances(cardColor, primaryBlue, subColor, statusString),
                           ],
                           const SizedBox(height: 24),
                           _buildRemarks(cardColor, titleColor, subColor, primaryBlue),

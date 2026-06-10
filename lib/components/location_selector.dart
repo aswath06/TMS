@@ -32,7 +32,7 @@ class LocationSelector extends StatefulWidget {
   final Color accentColor;
   final Function(List<Map<String, dynamic>> stops, double totalDistance, double totalDuration) onChanged;
 
-  final List<String>? initialAddresses;
+  final List<Map<String, dynamic>>? initialStops;
 
   const LocationSelector({
     super.key,
@@ -40,7 +40,7 @@ class LocationSelector extends StatefulWidget {
     required this.titleColor,
     required this.accentColor,
     required this.onChanged,
-    this.initialAddresses,
+    this.initialStops,
   });
 
   @override
@@ -62,14 +62,20 @@ class _LocationSelectorState extends State<LocationSelector> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialAddresses != null && widget.initialAddresses!.isNotEmpty) {
+    if (widget.initialStops != null && widget.initialStops!.isNotEmpty) {
       _stops.clear();
-      for (int i = 0; i < widget.initialAddresses!.length; i++) {
+      for (int i = 0; i < widget.initialStops!.length; i++) {
+        final stop = widget.initialStops![i];
         _stops.add(LocationStopData(
           id: i,
-          controller: TextEditingController(text: widget.initialAddresses![i]),
+          controller: TextEditingController(text: stop['address'] ?? stop['stop_name'] ?? ''),
+          lat: stop['lat'],
+          lon: stop['lon'],
         ));
       }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _calculateRoute();
+      });
     }
   }
 

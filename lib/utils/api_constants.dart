@@ -84,6 +84,8 @@ class ApiConstants {
   static String rewardPoints(dynamic userId) => "$baseUrl/api/drivers/reward-points?user_id=$userId";
   static String get verifyFuelBill => "$baseUrl/api/vehicles/verify-fuel-bill";
   static String get pendingFuelEntries => "$baseUrl/api/vehicles/fuel-log/pending-driver";
+  static String get pendingAdminApprovalFuelLogs => "$baseUrl/api/vehicles/fuel-log?fuel_entry_status=PENDING_DRIVER_FILL&page=1&limit=50&sortBy=filled_at&sortOrder=DESC&status=PENDING_ADMIN_APPROVAL";
+  static String approveFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id/approve";
   static String get pendingRoutesToComplete => "$baseUrl/request/driver/pending-routes-to-complete";
   static String getFuelReport(String start, String end, String format) => "$baseUrl/api/vehicles/fuel-reports/date-wise?start_date=$start&end_date=$end&format=$format";
 

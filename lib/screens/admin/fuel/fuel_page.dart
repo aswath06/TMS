@@ -23,11 +23,13 @@ class FuelPage extends StatefulWidget {
 }
 
 class _FuelPageState extends State<FuelPage> {
-  bool _isRequestGeneration = true;
+  int _tabIndex = 0;
   DateTime? _selectedDate; // Null means "Show All"
   int? _expandedIndex;
   List<dynamic> _fuelLogs = [];
+  List<dynamic> _approvalLogs = [];
   bool _isLoading = true;
+  bool _isLoadingApprovals = true;
 
   int _currentPage = 1;
   bool _hasMore = true;
@@ -42,6 +44,7 @@ class _FuelPageState extends State<FuelPage> {
     _requestScrollController = ScrollController()..addListener(_onRequestScroll);
     _historyScrollController = ScrollController()..addListener(_onHistoryScroll);
     _fetchFuelLogs(isRefresh: true);
+    _fetchApprovalLogs();
   }
 
   @override
@@ -60,6 +63,31 @@ class _FuelPageState extends State<FuelPage> {
   void _onHistoryScroll() {
     if (_historyScrollController.position.pixels >= _historyScrollController.position.maxScrollExtent - 200) {
       _fetchMoreFuelLogs();
+    }
+  }
+
+  Future<void> _fetchApprovalLogs() async {
+    if (!mounted) return;
+    setState(() => _isLoadingApprovals = true);
+    try {
+      final token = await UserStore.getToken();
+      String url = ApiConstants.pendingAdminApprovalFuelLogs;
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _approvalLogs = data['data'] ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching approvals: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingApprovals = false);
     }
   }
 
@@ -354,9 +382,11 @@ class _FuelPageState extends State<FuelPage> {
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _isRequestGeneration
+              child: _tabIndex == 0
                   ? _buildRequestGenerationView(titleColor, subColor, primaryBlue, isDark)
-                  : _buildHistoryView(titleColor, subColor, primaryBlue, isDark),
+                  : _tabIndex == 1 
+                      ? _buildAdminApprovalsView(titleColor, subColor, primaryBlue, isDark)
+                      : _buildHistoryView(titleColor, subColor, primaryBlue, isDark),
             ),
           ),
         ],
@@ -369,7 +399,7 @@ class _FuelPageState extends State<FuelPage> {
           ).then((value) {
             if (value == true) {
               _fetchFuelLogs(isRefresh: true);
-              setState(() => _isRequestGeneration = true);
+              setState(() => _tabIndex = 0);
             }
           });
         },
@@ -870,9 +900,13 @@ class _FuelPageState extends State<FuelPage> {
           AnimatedAlign(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
-            alignment: _isRequestGeneration ? Alignment.centerLeft : Alignment.centerRight,
+            alignment: _tabIndex == 0 
+                ? Alignment.centerLeft 
+                : _tabIndex == 1 
+                    ? Alignment.center 
+                    : Alignment.centerRight,
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.44,
+              width: MediaQuery.of(context).size.width * 0.30,
               margin: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: primary,
@@ -892,17 +926,17 @@ class _FuelPageState extends State<FuelPage> {
               Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() {
-                    _isRequestGeneration = true;
+                    _tabIndex = 0;
                     _expandedIndex = null;
                   }),
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: Text(
-                      "Request Generation",
+                      "Requests",
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: _isRequestGeneration ? Colors.white : Colors.grey,
+                        color: _tabIndex == 0 ? Colors.white : Colors.grey,
                       ),
                     ),
                   ),
@@ -911,7 +945,27 @@ class _FuelPageState extends State<FuelPage> {
               Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() {
-                    _isRequestGeneration = false;
+                    _tabIndex = 1;
+                    _expandedIndex = null;
+                    if (_approvalLogs.isEmpty) _fetchApprovalLogs();
+                  }),
+                  behavior: HitTestBehavior.opaque,
+                  child: Center(
+                    child: Text(
+                      "Approvals",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: _tabIndex == 1 ? Colors.white : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _tabIndex = 2;
                     _expandedIndex = null;
                   }),
                   behavior: HitTestBehavior.opaque,
@@ -919,9 +973,9 @@ class _FuelPageState extends State<FuelPage> {
                     child: Text(
                       "History",
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: !_isRequestGeneration ? Colors.white : Colors.grey,
+                        color: _tabIndex == 2 ? Colors.white : Colors.grey,
                       ),
                     ),
                   ),
@@ -1018,15 +1072,24 @@ class _FuelPageState extends State<FuelPage> {
     });
 
     if (filteredLogs.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      return RefreshIndicator(
+        onRefresh: () => _fetchFuelLogs(isRefresh: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Icon(Icons.assignment_turned_in_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
-            const SizedBox(height: 16),
-            Text(
-              _selectedDate == null ? "No pending requests found" : "No requests for ${DateFormat('MMM dd').format(_selectedDate!)}", 
-              style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.assignment_turned_in_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _selectedDate == null ? "No pending requests found" : "No requests for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1036,6 +1099,7 @@ class _FuelPageState extends State<FuelPage> {
     return RefreshIndicator(
       onRefresh: () => _fetchFuelLogs(isRefresh: true),
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         controller: _requestScrollController,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
         itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
@@ -1075,6 +1139,378 @@ class _FuelPageState extends State<FuelPage> {
     );
   }
 
+  Widget _buildAdminApprovalsView(Color titleColor, Color subColor, Color primary, bool isDark) {
+    if (_isLoadingApprovals) return _buildShimmerLoading(isDark);
+    
+    final List<dynamic> filteredLogs = _approvalLogs.where((log) {
+      if (_selectedDate == null) return true;
+      final DateTime logDate = DateTime.parse(log['filled_at'] ?? log['created_at']);
+      return logDate.year == _selectedDate!.year &&
+             logDate.month == _selectedDate!.month &&
+             logDate.day == _selectedDate!.day;
+    }).toList();
+
+    if (filteredLogs.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchApprovalLogs,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_user_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _selectedDate == null ? "No pending approvals" : "No approvals for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchApprovalLogs,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+        itemCount: filteredLogs.length,
+        itemBuilder: (context, index) {
+          final req = filteredLogs[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildApprovalCard(req, titleColor, subColor, primary, isDark),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _approveFuelLog(int id, [Map<String, dynamic>? body]) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()),
+      );
+      final token = await UserStore.getToken();
+      final url = ApiConstants.approveFuelLog(id);
+      
+      debugPrint("\n🚀 [APPROVE FUEL LOG REQUEST]:");
+      if (body != null) {
+        debugPrint("curl --location --request PATCH '$url' \\");
+        debugPrint("--header 'Authorization: ${ApiConstants.getHeaders(token)['Authorization']}' \\");
+        debugPrint("--header 'Content-Type: application/json' \\");
+        debugPrint("--data '${json.encode(body)}'");
+      } else {
+        debugPrint("curl --location --request PATCH '$url' \\");
+        debugPrint("--header 'Authorization: ${ApiConstants.getHeaders(token)['Authorization']}'");
+      }
+
+      http.Response response;
+      if (body != null) {
+        response = await http.patch(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token),
+          body: json.encode(body),
+        );
+      } else {
+        response = await http.patch(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token),
+        );
+      }
+      
+      debugPrint("\n📥 [APPROVE FUEL LOG RESPONSE] (${response.statusCode}): ${response.body}\n");
+
+      if (mounted) Navigator.pop(context); // close loader
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) showTopToast(context, "Fuel log approved successfully");
+        _fetchApprovalLogs();
+      } else {
+        final err = json.decode(response.body);
+        if (mounted) showTopToast(context, err['message'] ?? "Failed to approve", isError: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // close loader
+        showTopToast(context, e.toString(), isError: true);
+      }
+    }
+  }
+
+  void _showEditFuelLogSheet(Map<String, dynamic> log) {
+    final odoCtrl = TextEditingController(text: log['current_odometer']?.toString() ?? '');
+    final reqVolCtrl = TextEditingController(text: log['required_volume']?.toString() ?? '');
+    final fillVolCtrl = TextEditingController(text: log['filled_volume']?.toString() ?? '');
+    final billCtrl = TextEditingController(text: log['bill_amount']?.toString() ?? '');
+    final remarksCtrl = TextEditingController(text: log['remarks']?.toString() ?? '');
+    DateTime filledAt = log['filled_at'] != null ? DateTime.parse(log['filled_at']).toLocal() : DateTime.now();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final text = isDark ? Colors.white : Colors.black87;
+            
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 24, left: 24, right: 24,
+              ),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Edit & Approve Fuel Log", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: odoCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(labelText: "Current Odometer", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: reqVolCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(labelText: "Required Volume (L)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: fillVolCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(labelText: "Filled Volume (L)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: billCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(labelText: "Bill Amount (₹)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        final dt = await CustomDateTimePicker.show(context, initialDate: filledAt, accent: const Color(0xFF6366F1));
+                        if (dt != null) setModalState(() => filledAt = dt);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Filled At: ${DateFormat('MMM dd, hh:mm a').format(filledAt)}", style: TextStyle(color: text)),
+                            const Icon(Icons.calendar_today, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: remarksCtrl,
+                      decoration: InputDecoration(labelText: "Remarks", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          backgroundColor: const Color(0xFF6366F1),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _approveFuelLog(log['id'], {
+                            "current_odometer": num.tryParse(odoCtrl.text),
+                            "required_volume": num.tryParse(reqVolCtrl.text),
+                            "filled_volume": num.tryParse(fillVolCtrl.text),
+                            "bill_amount": num.tryParse(billCtrl.text),
+                            "filled_at": filledAt.toUtc().toIso8601String(),
+                            "remarks": remarksCtrl.text,
+                          });
+                        },
+                        child: const Text("Save & Approve", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildApprovalCard(dynamic item, Color titleColor, Color subColor, Color primary, bool isDark) {
+    final String vNumber = item['vehicle']?['vehicle_number'] ?? "Unknown";
+    final String driverName = item['filledByUser']?['name'] ?? 
+                              item['driver']?['user']?['name'] ?? 
+                              "Unknown";
+    final String bunkName = item['bunk']?['name'] ?? "Unknown Bunk";
+    final String indentNo = item['id']?.toString() ?? "N/A";
+    final String volume = "${item['filled_volume'] ?? 0}L";
+    final String odometer = "${item['current_odometer'] ?? 0} KM";
+    final String billAmount = item['bill_amount'] != null ? "₹${item['bill_amount']}" : "₹0.00";
+    final String billImage = item['bill_file_url'] ?? "";
+    final String driverFilledAt = item['driver_filled_at'] != null 
+        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['driver_filled_at']).toLocal())
+        : "N/A";
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 15, offset: const Offset(0, 8)),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text("PENDING APPROVAL", style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
+              ),
+              Text("#$indentNo", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: subColor)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.directions_car_rounded, color: primary, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(vNumber, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: titleColor)),
+                    const SizedBox(height: 4),
+                    Text(driverName, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: subColor)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(volume, style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w900, color: primary)),
+                  Text(odometer, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: subColor)),
+                  Text(billAmount, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.green)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.ev_station_rounded, size: 16, color: subColor),
+              const SizedBox(width: 8),
+              Expanded(child: Text(bunkName, style: GoogleFonts.plusJakartaSans(fontSize: 13, color: titleColor))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.access_time_rounded, size: 16, color: subColor),
+              const SizedBox(width: 8),
+              Text(driverFilledAt, style: GoogleFonts.plusJakartaSans(fontSize: 13, color: subColor)),
+            ],
+          ),
+          if (billImage.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => _showFullScreenImage("${ApiConstants.baseUrl}$billImage", titleColor, isDark),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.image_rounded, size: 16, color: primary),
+                    const SizedBox(width: 8),
+                    Text("View Bill Proof", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: primary)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  label: const Text("Edit"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primary,
+                    side: BorderSide(color: primary),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _showEditFuelLogSheet(item),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                  label: const Text("Approve"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _approveFuelLog(item['id']),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHistoryView(Color titleColor, Color subColor, Color primary, bool isDark) {
     if (_isLoading) return _buildShimmerLoading(isDark);
 
@@ -1096,15 +1532,24 @@ class _FuelPageState extends State<FuelPage> {
     });
 
     if (historyItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      return RefreshIndicator(
+        onRefresh: () => _fetchFuelLogs(isRefresh: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Icon(Icons.history_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
-            const SizedBox(height: 16),
-            Text(
-              _selectedDate == null ? "No history found" : "No history for ${DateFormat('MMM dd').format(_selectedDate!)}", 
-              style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _selectedDate == null ? "No history found" : "No history for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1114,6 +1559,7 @@ class _FuelPageState extends State<FuelPage> {
     return RefreshIndicator(
       onRefresh: () => _fetchFuelLogs(isRefresh: true),
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         controller: _historyScrollController,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
         itemCount: historyItems.length + (_hasMore ? 1 : 0),

@@ -609,6 +609,7 @@ final store = ref.watch(driverStoreProvider);
                 icon: Icons.local_gas_station_rounded,
                 color: const Color(0xFFF59E0B),
                 isDark: isDark,
+                surface: surface,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateFuelRequestPage())),
               ),
             ),
@@ -621,6 +622,7 @@ final store = ref.watch(driverStoreProvider);
                 icon: Icons.report_problem_rounded,
                 color: const Color(0xFFEF4444),
                 isDark: isDark,
+                surface: surface,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AccidentPage())),
               ),
             ),
@@ -637,68 +639,54 @@ final store = ref.watch(driverStoreProvider);
     required IconData icon,
     required Color color,
     required bool isDark,
+    required Color surface,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withValues(alpha: 0.95), color.withValues(alpha: 0.75)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
+          color: surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.4),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+              color: color.withValues(alpha: isDark ? 0.05 : 0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned(
-              right: -24,
-              bottom: -24,
-              child: Icon(icon, size: 110, color: Colors.white.withValues(alpha: 0.15)),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-            Positioned(
-              top: -15,
-              right: -15,
-              child: CircleAvatar(
-                radius: 45,
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    title,
-                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ],
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

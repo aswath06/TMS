@@ -49,6 +49,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   DateTime? _startDate, _endDate;
   final TextEditingController _routeNameController = TextEditingController();
   final TextEditingController _purposeController = TextEditingController();
+
+  bool _enableReturnJourney = false;
+  DateTime? _returnStartDate;
+  final TextEditingController _returnRouteNameController = TextEditingController();
+
   final TextEditingController _passengerCountController = TextEditingController(
     text: "1",
   );
@@ -75,10 +80,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   final Map<int, Map<String, dynamic>?> _selectedVehicles = {};
   bool _isLoadingVehicles = false;
 
+  bool _sameVehicleForBoth = true;
+  List<Map<String, dynamic>> _availableVehiclesReturn = [];
+  final Map<int, Map<String, dynamic>?> _selectedVehiclesReturn = {};
+  bool _isLoadingVehiclesReturn = false;
+
   // --- Step 4: Drivers ---
   List<Map<String, dynamic>> _availableDrivers = [];
   final Map<int, Map<String, dynamic>?> _selectedDrivers = {};
   bool _isLoadingDrivers = false;
+
+  bool _sameDriverForBoth = true;
+  List<Map<String, dynamic>> _availableDriversReturn = [];
+  final Map<int, Map<String, dynamic>?> _selectedDriversReturn = {};
+  bool _isLoadingDriversReturn = false;
+
   double _travelDurationMinutes = 0;
   double _approxDistanceKm = 0;
   bool _isSubmitting = false;
@@ -114,7 +130,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     if (mounted) {
       setState(() {
         _userRole = role?.toLowerCase() ?? 'faculty';
-        _totalSteps = _userRole.contains('admin') ? 5 : 2;
+        _totalSteps = _userRole.contains('admin') ? 5 : 3;
       });
     }
   }
@@ -134,64 +150,105 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Future<void> _fetchAvailableVehicles() async {
     if (_startDate == null) return;
-    setState(() => _isLoadingVehicles = true);
+    setState(() {
+      _isLoadingVehicles = true;
+      if (_enableReturnJourney) _isLoadingVehiclesReturn = true;
+    });
     try {
       final token = await UserStore.getToken();
       final start = Uri.encodeComponent(_toIso(_startDate!));
       final end = _endDate != null ? Uri.encodeComponent(_toIso(_endDate!)) : start;
-      final url =
-          "${ApiConstants.getAvailableVehicles}?start_datetime=$start&end_datetime=$end";
-      debugPrint("Fetching vehicles: $url");
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
-      debugPrint(
-        "Vehicles Response [${response.statusCode}]: ${response.body}",
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(
-          () => _availableVehicles = List<Map<String, dynamic>>.from(
-            data['data']['vehicles'] ?? [],
-          ),
-        );
+      final url = "${ApiConstants.getAvailableVehicles}?start_datetime=$start&end_datetime=$end";
+      
+      debugPrint("\n🚀 [FETCH VEHICLES CURL SENDING (Main Journey)]:\ncurl --location '$url' \\\n--header 'Authorization: TMS $token'\n");
+      final req1 = http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      Future<http.Response>? req2;
+
+      if (_enableReturnJourney && _returnStartDate != null) {
+        final returnOneLegMinutes = _travelDurationMinutes + 60;
+        final returnEndDatetime = _returnStartDate!.add(Duration(minutes: returnOneLegMinutes.toInt()));
+        final rStart = Uri.encodeComponent(_toIso(_returnStartDate!));
+        final rEnd = Uri.encodeComponent(_toIso(returnEndDatetime));
+        final rUrl = "${ApiConstants.getAvailableVehicles}?start_datetime=$rStart&end_datetime=$rEnd";
+        debugPrint("\n🚀 [FETCH VEHICLES CURL SENDING (Return Journey)]:\ncurl --location '$rUrl' \\\n--header 'Authorization: TMS $token'\n");
+        req2 = http.get(Uri.parse(rUrl), headers: ApiConstants.getHeaders(token));
+      }
+
+      final response1 = await req1;
+      debugPrint("📥 [SERVER RESPONSE (Fetch Vehicles Main)] (${response1.statusCode}): ${response1.body}");
+      if (response1.statusCode == 200) {
+        final data = json.decode(response1.body);
+        setState(() => _availableVehicles = List<Map<String, dynamic>>.from(data['data']['vehicles'] ?? []));
+      }
+
+      if (req2 != null) {
+        final response2 = await req2;
+        debugPrint("📥 [SERVER RESPONSE (Fetch Vehicles Return)] (${response2.statusCode}): ${response2.body}");
+        if (response2.statusCode == 200) {
+          final data = json.decode(response2.body);
+          setState(() => _availableVehiclesReturn = List<Map<String, dynamic>>.from(data['data']['vehicles'] ?? []));
+        }
       }
     } catch (e) {
       debugPrint("Err: $e");
     } finally {
-      setState(() => _isLoadingVehicles = false);
+      setState(() {
+        _isLoadingVehicles = false;
+        _isLoadingVehiclesReturn = false;
+      });
     }
   }
 
   Future<void> _fetchAvailableDrivers() async {
     if (_startDate == null) return;
-    setState(() => _isLoadingDrivers = true);
+    setState(() {
+      _isLoadingDrivers = true;
+      if (_enableReturnJourney) _isLoadingDriversReturn = true;
+    });
     try {
       final token = await UserStore.getToken();
       final start = Uri.encodeComponent(_toIso(_startDate!));
       final end = _endDate != null ? Uri.encodeComponent(_toIso(_endDate!)) : start;
-      final url =
-          "${ApiConstants.getAvailableDrivers}?start_datetime=$start&end_datetime=$end";
-      debugPrint("Fetching drivers: $url");
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
-      debugPrint("Drivers Response [${response.statusCode}]: ${response.body}");
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(
-          () => _availableDrivers = List<Map<String, dynamic>>.from(
-            data['data']['drivers'] ?? [],
-          ),
-        );
+      final url = "${ApiConstants.getAvailableDrivers}?start_datetime=$start&end_datetime=$end";
+      
+      debugPrint("\n🚀 [FETCH DRIVERS CURL SENDING (Main Journey)]:\ncurl --location '$url' \\\n--header 'Authorization: TMS $token'\n");
+      final req1 = http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      Future<http.Response>? req2;
+
+      if (_enableReturnJourney && _returnStartDate != null) {
+        final returnOneLegMinutes = _travelDurationMinutes + 60;
+        final returnEndDatetime = _returnStartDate!.add(Duration(minutes: returnOneLegMinutes.toInt()));
+        final rStart = Uri.encodeComponent(_toIso(_returnStartDate!));
+        final rEnd = Uri.encodeComponent(_toIso(returnEndDatetime));
+        final rUrl = "${ApiConstants.getAvailableDrivers}?start_datetime=$rStart&end_datetime=$rEnd";
+        debugPrint("\n🚀 [FETCH DRIVERS CURL SENDING (Return Journey)]:\ncurl --location '$rUrl' \\\n--header 'Authorization: TMS $token'\n");
+        req2 = http.get(Uri.parse(rUrl), headers: ApiConstants.getHeaders(token));
+      }
+
+      final response1 = await req1;
+      debugPrint("📥 [SERVER RESPONSE (Fetch Drivers Main)] (${response1.statusCode}): ${response1.body}");
+      if (response1.statusCode == 200) {
+        final data = json.decode(response1.body);
+        setState(() => _availableDrivers = List<Map<String, dynamic>>.from(data['data']['drivers'] ?? []));
         _autoProposeDrivers();
+      }
+
+      if (req2 != null) {
+        final response2 = await req2;
+        debugPrint("📥 [SERVER RESPONSE (Fetch Drivers Return)] (${response2.statusCode}): ${response2.body}");
+        if (response2.statusCode == 200) {
+          final data = json.decode(response2.body);
+          setState(() => _availableDriversReturn = List<Map<String, dynamic>>.from(data['data']['drivers'] ?? []));
+          // Propose first matching driver for return logic? Not strictly required unless UI needs it.
+        }
       }
     } catch (e) {
       debugPrint("Err: $e");
     } finally {
-      setState(() => _isLoadingDrivers = false);
+      setState(() {
+        _isLoadingDrivers = false;
+        _isLoadingDriversReturn = false;
+      });
     }
   }
 
@@ -854,35 +911,123 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           : ApiConstants.facultyCreate;
       final String tokenLabel = isAdmin ? "ADMIN" : "FACULTY";
 
-      // Logging as a CURL for verification
-      const encoder = JsonEncoder.withIndent('  ');
-      String prettyJson = encoder.convert(body);
-      debugPrint(
-        "\n🚀 [$tokenLabel CURL SENDING]:\ncurl --location '$apiUrl' \\\n"
-        "--header 'Authorization: TMS $token' \\\n--header 'Content-Type: application/json' \\\n--data '$prettyJson'\n",
-      );
+      Future<http.Response> submitSingle(Map<String, dynamic> requestBody, String label) async {
+        const encoder = JsonEncoder.withIndent('  ');
+        String prettyJson = encoder.convert(requestBody);
+        debugPrint(
+          "\n🚀 [$tokenLabel CURL SENDING ($label)]:\ncurl --location '$apiUrl' \\\n"
+          "--header 'Authorization: TMS $token' \\\n--header 'Content-Type: application/json' \\\n--data '$prettyJson'\n",
+        );
 
-      final resp = await http.post(
-        Uri.parse(apiUrl),
-        headers: ApiConstants.getHeaders(token),
-        body: json.encode(body),
-      );
+        final r = await http.post(
+          Uri.parse(apiUrl),
+          headers: ApiConstants.getHeaders(token),
+          body: json.encode(requestBody),
+        );
 
-      debugPrint("📥 [SERVER RESPONSE] (${resp.statusCode}): ${resp.body}");
+        debugPrint("📥 [SERVER RESPONSE ($label)] (${r.statusCode}): ${r.body}");
+        return r;
+      }
+
+      final resp1 = await submitSingle(body, "Main Journey");
+      http.Response? resp2;
+
+      if (_enableReturnJourney && _returnStartDate != null) {
+        final Map<String, dynamic> body2 = json.decode(json.encode(body)); // Deep copy
+        
+        final returnOneLegMinutes = _travelDurationMinutes + 60;
+        final returnEndDatetime = _returnStartDate!.add(Duration(minutes: returnOneLegMinutes.toInt()));
+
+        body2["route_name"] = _returnRouteNameController.text.trim();
+        body2["requested_for_date"] = DateFormat('yyyy-MM-dd').format(_returnStartDate!);
+        body2["start_datetime"] = _toIso(_returnStartDate!);
+        body2["end_datetime"] = _toIso(returnEndDatetime);
+        
+        body2.remove("return_start_datetime");
+        body2.remove("return_end_datetime");
+        
+        if (isAdmin && body2["legs"] != null) {
+           final legs = List<Map<String, dynamic>>.from(body2["legs"] as List);
+           if (legs.isNotEmpty) {
+             final leg1 = Map<String, dynamic>.from(legs[0]);
+             leg1["planned_start_at"] = _toIso(_returnStartDate!);
+             leg1["planned_end_at"] = _toIso(returnEndDatetime);
+             legs[0] = leg1;
+           }
+           if (legs.length > 1) {
+             legs.removeAt(1);
+           }
+           body2["legs"] = legs;
+
+           List<Map<String, dynamic>> leg2Vehicles = [];
+           _guestGroups.forEach((idx, guests) {
+             final v = _sameVehicleForBoth ? _selectedVehicles[idx] : _selectedVehiclesReturn[idx];
+             final d = _sameDriverForBoth ? _selectedDrivers[idx] : _selectedDriversReturn[idx];
+             leg2Vehicles.add({
+               "vehicle_id": v?['id'],
+               "driver_id": d?['id'],
+               "passenger_ids": guests.map((g) => _guests.indexOf(g) + 1).toList(),
+             });
+           });
+           
+           if (body2["admin_assignments"] != null) {
+             final assignments = List<Map<String, dynamic>>.from(body2["admin_assignments"] as List);
+             if (assignments.isNotEmpty) {
+               final a1 = Map<String, dynamic>.from(assignments[0]);
+               a1["vehicles"] = leg2Vehicles;
+               assignments[0] = a1;
+             }
+             if (assignments.length > 1) {
+               assignments.removeAt(1);
+             }
+             body2["admin_assignments"] = assignments;
+           }
+        }
+
+        resp2 = await submitSingle(body2, "Return Journey");
+      }
 
       if (!mounted) return;
-      if (resp.statusCode == 200 || resp.statusCode == 201) {
+      
+      bool success1 = (resp1.statusCode == 200 || resp1.statusCode == 201);
+      bool success2 = resp2 == null || (resp2.statusCode == 200 || resp2.statusCode == 201);
+
+      if (success1 && success2) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ Request Submitted Successfully!")),
         );
         Navigator.pop(context, true);
       } else {
-        final err = json.decode(resp.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Failed: ${err['message'] ?? 'Unknown error'}"),
-          ),
-        );
+        if (!success1) {
+          final err = json.decode(resp1.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("❌ Main Failed: ${err['message'] ?? 'Unknown'}")),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("✅ Main Journey Created!")),
+          );
+        }
+
+        if (resp2 != null) {
+          await Future.delayed(const Duration(seconds: 4));
+          if (!mounted) return;
+          if (!success2) {
+            final err = json.decode(resp2.body);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("❌ Return Failed: ${err['message'] ?? 'Unknown'}")),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("✅ Return Journey Created!")),
+            );
+          }
+        }
+
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted && (success1 || success2)) {
+           Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       debugPrint("Err: $e");
@@ -1029,19 +1174,23 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   );
 
   Widget _buildCurrentStage(Color p, bool d) {
-    switch (_currentStep) {
-      case 0:
-        return _stageRouteDetails(p, d);
-      case 1:
-        return _stageGrouping(p, d);
-      case 2:
-        return _stageVehicles(p, d);
-      case 3:
-        return _stageDrivers(p, d);
-      case 4:
-        return _stageReview(p, d);
-      default:
-        return Container();
+    bool isAdmin = _userRole.toLowerCase().contains('admin');
+    if (isAdmin) {
+      switch (_currentStep) {
+        case 0: return _stageRouteDetails(p, d);
+        case 1: return _stageGrouping(p, d);
+        case 2: return _stageVehicles(p, d);
+        case 3: return _stageDrivers(p, d);
+        case 4: return _stageReview(p, d);
+        default: return Container();
+      }
+    } else {
+      switch (_currentStep) {
+        case 0: return _stageRouteDetails(p, d);
+        case 1: return _stageGrouping(p, d);
+        case 2: return _stageReview(p, d);
+        default: return Container();
+      }
     }
   }
 
@@ -1134,6 +1283,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           const SizedBox(height: 16),
           _buildEnhancedScheduleCards(p, c, t, d),
           const SizedBox(height: 32),
+          if (_routeType != 'Multi Day') ...[
+            _buildGlassLabel("Return Journey (Optional)", p),
+            const SizedBox(height: 12),
+            _buildReturnToggleSection(p, c, t, d),
+            const SizedBox(height: 32),
+          ],
           Row(
             children: [
               Expanded(
@@ -1187,9 +1342,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             cardColor: c,
             titleColor: t,
             accentColor: p,
-            initialAddresses: _stops
-                .map((s) => s['address'] as String)
-                .toList(),
+            initialStops: _stops,
             onChanged: (stops, dist, dur) {
               setState(() {
                 _stops.clear();
@@ -1201,6 +1354,86 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             },
           ),
           const SizedBox(height: 50),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReturnToggleSection(Color p, Color c, Color t, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: t.withValues(alpha: 0.04), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SwitchListTile(
+            title: Text(
+              "Return date and time",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: t,
+              ),
+            ),
+            subtitle: Text(
+              "Creates a separate return request automatically",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: t.withValues(alpha: 0.5),
+              ),
+            ),
+            value: _enableReturnJourney,
+            activeColor: p,
+            inactiveTrackColor: t.withValues(alpha: 0.05),
+            onChanged: (val) {
+              setState(() {
+                _enableReturnJourney = val;
+                if (!val) {
+                  _returnStartDate = null;
+                  _returnRouteNameController.clear();
+                }
+              });
+            },
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_enableReturnJourney) ...[
+            const SizedBox(height: 16),
+            _premiumInputInline(
+              "Return Journey Name*",
+              _returnRouteNameController.text,
+              (v) => _returnRouteNameController.text = v,
+              Icons.route_rounded,
+              c,
+              t,
+              p,
+              isReq: true,
+            ),
+            const SizedBox(height: 12),
+            _niceScheduleTile(
+              "Return Date & Time*",
+              _returnStartDate,
+              (v) {
+                setState(() {
+                  _returnStartDate = v;
+                });
+              },
+              p,
+              c,
+              t,
+              minDate: _endDate,
+            ),
+          ]
         ],
       ),
     );
@@ -1292,14 +1525,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     Function(DateTime) onPick,
     Color p,
     Color c,
-    Color t,
-  ) {
+    Color t, {
+    DateTime? minDate,
+  }) {
     return GestureDetector(
       onTap: () async {
         final picked = await CustomDateTimePicker.show(
           context,
-          initialDate: val ?? DateTime.now(),
-          minDate: DateTime.now(),
+          initialDate: val ?? (minDate != null && minDate.isAfter(DateTime.now()) ? minDate : DateTime.now()),
+          minDate: minDate ?? DateTime.now(),
           accent: p,
           cardColor: c,
           titleColor: t,
@@ -2133,16 +2367,52 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         else
           ..._guestGroups.keys.map((idx) {
             int gCount = _guestGroups[idx]?.length ?? 0;
-            return _resSelector(
-              "VEHICLE FOR SLOT ${idx + 1}",
-              _availableVehicles,
-              _selectedVehicles[idx],
-              (v) => setState(() => _selectedVehicles[idx] = v),
-              c,
-              t,
-              p,
-              isV: true,
-              guestCount: gCount,
+            return Column(
+              children: [
+                _resSelector(
+                  _enableReturnJourney ? "OUTBOUND VEHICLE (SLOT ${idx + 1})" : "VEHICLE FOR SLOT ${idx + 1}",
+                  _availableVehicles,
+                  _selectedVehicles[idx],
+                  (v) => setState(() => _selectedVehicles[idx] = v),
+                  c,
+                  t,
+                  p,
+                  isV: true,
+                  guestCount: gCount,
+                ),
+                if (_enableReturnJourney) ...[
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: Text("Use same vehicle for return journey", style: TextStyle(color: t, fontWeight: FontWeight.w600, fontSize: 14)),
+                    activeColor: p,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    value: _sameVehicleForBoth,
+                    onChanged: (val) {
+                      setState(() {
+                        _sameVehicleForBoth = val;
+                        if (val) _selectedVehiclesReturn[idx] = null;
+                      });
+                    },
+                  ),
+                  if (!_sameVehicleForBoth) ...[
+                    const SizedBox(height: 16),
+                    if (_isLoadingVehiclesReturn)
+                      const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+                    else
+                      _resSelector(
+                        "RETURN VEHICLE (SLOT ${idx + 1})",
+                        _availableVehiclesReturn,
+                        _selectedVehiclesReturn[idx],
+                        (v) => setState(() => _selectedVehiclesReturn[idx] = v),
+                        c,
+                        t,
+                        p,
+                        isV: true,
+                        guestCount: gCount,
+                      ),
+                  ]
+                ]
+              ],
             );
           }),
         const SizedBox(height: 40),
@@ -2172,18 +2442,53 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             ),
           )
         else
-          ..._guestGroups.keys.map(
-            (idx) => _resSelector(
-              "DRIVER FOR ${_selectedVehicles[idx]?['vehicle_number'] ?? 'SLOT ${idx + 1}'}",
-              _availableDrivers,
-              _selectedDrivers[idx],
-              (v) => setState(() => _selectedDrivers[idx] = v),
-              c,
-              t,
-              p,
-              isV: false,
-            ),
-          ),
+          ..._guestGroups.keys.map((idx) {
+            return Column(
+              children: [
+                _resSelector(
+                  _enableReturnJourney ? "OUTBOUND DRIVER (${_selectedVehicles[idx]?['vehicle_number'] ?? 'SLOT ${idx + 1}'})" : "DRIVER FOR ${_selectedVehicles[idx]?['vehicle_number'] ?? 'SLOT ${idx + 1}'}",
+                  _availableDrivers,
+                  _selectedDrivers[idx],
+                  (v) => setState(() => _selectedDrivers[idx] = v),
+                  c,
+                  t,
+                  p,
+                  isV: false,
+                ),
+                if (_enableReturnJourney) ...[
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: Text("Use same driver for return journey", style: TextStyle(color: t, fontWeight: FontWeight.w600, fontSize: 14)),
+                    activeColor: p,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    value: _sameDriverForBoth,
+                    onChanged: (val) {
+                      setState(() {
+                        _sameDriverForBoth = val;
+                        if (val) _selectedDriversReturn[idx] = null;
+                      });
+                    },
+                  ),
+                  if (!_sameDriverForBoth) ...[
+                    const SizedBox(height: 16),
+                    if (_isLoadingDriversReturn)
+                      const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+                    else
+                      _resSelector(
+                        "RETURN DRIVER (${_selectedVehiclesReturn[idx]?['vehicle_number'] ?? 'SLOT ${idx + 1}'})",
+                        _availableDriversReturn,
+                        _selectedDriversReturn[idx],
+                        (v) => setState(() => _selectedDriversReturn[idx] = v),
+                        c,
+                        t,
+                        p,
+                        isV: false,
+                      ),
+                  ]
+                ]
+              ],
+            );
+          }),
         const SizedBox(height: 40),
       ],
     );
@@ -2931,6 +3236,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   Widget _stageReview(Color p, bool d) {
     Color c = d ? const Color(0xFF1E293B) : Colors.white;
     Color t = d ? Colors.white : const Color(0xFF0F172A);
+    bool isAdmin = _userRole.toLowerCase().contains('admin');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2942,9 +3248,12 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           "Final review before creating the full route request.",
           style: TextStyle(fontSize: 13, color: t.withValues(alpha: 0.5)),
         ),
-        const SizedBox(height: 32),
+        if (_enableReturnJourney && _returnStartDate != null) ...[
+          _buildGlassLabel("Route 1 Details (Outbound)", p),
+          const SizedBox(height: 16),
+        ],
         _sumCard(
-          "MISSION DETAILS",
+          _enableReturnJourney ? "OUTBOUND MISSION" : "MISSION DETAILS",
           Icons.map_outlined,
           [
             {"label": "Route Name", "value": _routeNameController.text},
@@ -2962,7 +3271,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           t,
         ),
         _sumCard(
-          "SCHEDULE",
+          _enableReturnJourney ? "OUTBOUND SCHEDULE" : "SCHEDULE",
           Icons.calendar_today_rounded,
           [
             {
@@ -2972,9 +3281,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   : 'N/A',
             },
             {
-              "label": "Return",
-              "value": _endDate != null
-                  ? DateFormat('EEE, MMM dd • hh:mm a').format(_endDate!)
+              "label": "End",
+              "value": _startDate != null
+                  ? DateFormat('EEE, MMM dd • hh:mm a').format(_startDate!.add(Duration(minutes: (_travelDurationMinutes + 60).toInt())))
                   : 'N/A',
             },
             {
@@ -2996,70 +3305,139 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           c,
           t,
         ),
-        _buildGlassLabel("Vehicle & Driver Assignments", p),
-        const SizedBox(height: 16),
-        ..._guestGroups.entries.map((ent) {
-          final veh = _selectedVehicles[ent.key];
-          final dri = _selectedDrivers[ent.key];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: c,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: t.withValues(alpha: 0.04)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: p.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+        if (_enableReturnJourney && _returnStartDate != null) ...[
+          const SizedBox(height: 16),
+          _buildGlassLabel("Route 2 Details (Return)", p),
+          const SizedBox(height: 16),
+          _sumCard(
+            "RETURN MISSION",
+            Icons.map_outlined,
+            [
+              {"label": "Route Name", "value": _returnRouteNameController.text},
+              {"label": "Purpose", "value": _purposeController.text},
+              {"label": "Department", "value": _selectedDepartmentName ?? "Not Selected"},
+              {
+                "label": "Guests",
+                "value":
+                    "${int.tryParse(_passengerCountController.text) ?? 1} People",
+              },
+              {"label": "Journey", "value": _routeType},
+            ],
+            p,
+            c,
+            t,
+          ),
+          _sumCard(
+            "RETURN SCHEDULE",
+            Icons.calendar_today_rounded,
+            [
+              {
+                "label": "Start",
+                "value": DateFormat('EEE, MMM dd • hh:mm a').format(_returnStartDate!),
+              },
+              {
+                "label": "End",
+                "value": DateFormat('EEE, MMM dd • hh:mm a').format(_returnStartDate!.add(Duration(minutes: (_travelDurationMinutes + 60).toInt()))),
+              },
+              {
+                "label": "Est. Time",
+                "value": _travelDurationMinutes > 0
+                    ? (_travelDurationMinutes >= 60
+                        ? '${_travelDurationMinutes ~/ 60}h ${(_travelDurationMinutes % 60).toInt()}m'
+                        : '${_travelDurationMinutes.toInt()} mins')
+                    : 'N/A',
+              },
+              {
+                "label": "Approx Distance",
+                "value": _approxDistanceKm > 0
+                    ? '${_approxDistanceKm.toStringAsFixed(1)} km'
+                    : 'N/A',
+              },
+            ],
+            p,
+            c,
+            t,
+          ),
+        ],
+        if (isAdmin) ...[
+          _buildGlassLabel("Vehicle & Driver Assignments", p),
+          const SizedBox(height: 16),
+          ..._guestGroups.entries.map((ent) {
+            final veh = _selectedVehicles[ent.key];
+            final dri = _selectedDrivers[ent.key];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: c,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: t.withValues(alpha: 0.04)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: p.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.directions_bus_filled_rounded,
+                          size: 16,
+                          color: p,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.directions_bus_filled_rounded,
-                        size: 16,
-                        color: p,
+                      const SizedBox(width: 12),
+                      Text(
+                        "GROUP ${ent.key + 1}",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: t,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _revRow(
+                    Icons.local_shipping_rounded,
+                    "Outbound Vehicle: ${veh?['vehicle_number'] ?? "No Vehicle Selected"}",
+                    t,
+                  ),
+                  _revRow(
+                    Icons.person_rounded,
+                    "Outbound Driver: ${dri?['user']?['name'] ?? dri?['name'] ?? "No Driver Assigned"}",
+                    t,
+                  ),
+                  if (_enableReturnJourney) ...[
+                    const SizedBox(height: 8),
+                    _revRow(
+                      Icons.local_shipping_rounded,
+                      "Return Vehicle: ${_sameVehicleForBoth ? (veh?['vehicle_number'] ?? 'Same as Outbound') : (_selectedVehiclesReturn[ent.key]?['vehicle_number'] ?? 'No Vehicle Selected')}",
+                      t,
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      "GROUP ${ent.key + 1}",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: t,
-                      ),
+                    _revRow(
+                      Icons.person_rounded,
+                      "Return Driver: ${_sameDriverForBoth ? (dri?['user']?['name'] ?? dri?['name'] ?? 'Same as Outbound') : (_selectedDriversReturn[ent.key]?['user']?['name'] ?? _selectedDriversReturn[ent.key]?['name'] ?? 'No Driver Assigned')}",
+                      t,
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                _revRow(
-                  Icons.local_shipping_rounded,
-                  veh?['vehicle_number'] ?? "No Vehicle Selected",
-                  t,
-                ),
-                _revRow(
-                  Icons.person_rounded,
-                  dri?['user']?['name'] ?? dri?['name'] ?? "No Driver Assigned",
-                  t,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  "GUESTS: ${ent.value.map((g) => g.name.isEmpty ? 'Guest' : g.name).join(', ')}",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: t.withValues(alpha: 0.5),
+                  const SizedBox(height: 12),
+                  Text(
+                    "GUESTS: ${ent.value.map((g) => g.name.isEmpty ? 'Guest' : g.name).join(', ')}",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: t.withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }),
+                ],
+              ),
+            );
+          }),
+        ],
         const SizedBox(height: 50),
       ],
     );
@@ -3269,6 +3647,16 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                             );
                             return;
                           }
+                          if (_enableReturnJourney && _returnStartDate == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please select return journey date and time",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
                           // Location Validation
                           if (_stops.length < 2 || 
@@ -3287,7 +3675,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           if (vCount == 1) {
                             _autoAllocateGuests();
                             if (!isAdmin) {
-                              _submitForm();
+                              setState(() => _currentStep = 2); // Jump to Verify
                             } else {
                               _fetchAvailableVehicles();
                               setState(() => _currentStep = 2);
@@ -3309,14 +3697,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         }
 
                         if (!isAdmin) {
-                          // For Faculty, Step 1 is the final step
-                          _submitForm();
+                          setState(() => _currentStep++);
                         } else {
                           // For Admin, proceed to Fleet Selection
                           _fetchAvailableVehicles();
                           setState(() => _currentStep++);
                         }
-                      } else if (_currentStep == 2) {
+                      } else if (_currentStep == 2 && isAdmin) {
                         int vCount =
                             int.tryParse(_vehicleCountController.text) ?? 1;
                         if (_selectedVehicles.length < vCount ||
@@ -3332,24 +3719,18 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         }
                         _fetchAvailableDrivers();
                         setState(() => _currentStep++);
-                      } else if (_currentStep == 3) {
-                        int vCount =
-                            int.tryParse(_vehicleCountController.text) ?? 1;
-                        if (_selectedDrivers.length < vCount ||
-                            _selectedDrivers.values.any((d) => d == null)) {
+                      } else if (_currentStep == 3 && isAdmin) {
+                        int vCount = int.tryParse(_vehicleCountController.text) ?? 1;
+                        if (_selectedDrivers.length < vCount || _selectedDrivers.values.any((d) => d == null)) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text(
-                                "Please select a driver for each segment",
-                              ),
+                              content: Text("Please select a driver for each segment"),
                             ),
                           );
                           return;
                         }
                         setState(() => _currentStep++);
-                      } else if (_currentStep == 4) {
-                        _submitForm();
-                      } else {
+                      } else if (_currentStep == 4 || (!isAdmin && _currentStep == 2)) {
                         _submitForm();
                       }
                     },
