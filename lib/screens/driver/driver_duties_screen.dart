@@ -5,9 +5,11 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
+import 'package:tripzo/screens/admin/fuel/create_fuel_request_page.dart';
 import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
 import 'package:tripzo/screens/driver/driver_allowance_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart';
+
 import '../../providers/notification_provider.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
@@ -602,6 +604,18 @@ final store = ref.watch(driverStoreProvider);
             Expanded(
               child: _buildNavigationCard(
                 context: context,
+                title: isTamil ? "எரிபொருள்" : "Fuel Entry",
+                subtitle: isTamil ? "எரிபொருள் பதிவு" : "Log Refuel",
+                icon: Icons.local_gas_station_rounded,
+                color: const Color(0xFFF59E0B),
+                isDark: isDark,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateFuelRequestPage())),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildNavigationCard(
+                context: context,
                 title: isTamil ? "விபத்து" : "Accident Entry",
                 subtitle: isTamil ? "சம்பவத்தை பதிவு செய்யவும்" : "Report Incident",
                 icon: Icons.report_problem_rounded,
@@ -610,8 +624,6 @@ final store = ref.watch(driverStoreProvider);
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AccidentPage())),
               ),
             ),
-            const SizedBox(width: 16),
-            const Spacer(),
           ],
         ),
       ],
@@ -631,42 +643,63 @@ final store = ref.watch(driverStoreProvider);
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color, color.withValues(alpha: 0.8)],
+            colors: [color.withValues(alpha: 0.95), color.withValues(alpha: 0.75)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+              color: color.withValues(alpha: 0.4),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+            Positioned(
+              right: -24,
+              bottom: -24,
+              child: Icon(icon, size: 110, color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            Positioned(
+              top: -15,
+              right: -15,
+              child: CircleAvatar(
+                radius: 45,
+                backgroundColor: Colors.white.withValues(alpha: 0.08),
               ),
-              child: Icon(icon, color: Colors.white, size: 28),
             ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

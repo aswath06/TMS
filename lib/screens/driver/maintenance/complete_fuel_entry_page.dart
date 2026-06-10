@@ -226,7 +226,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                           _buildHeader(context, titleColor, primary, isTamil),
                           const SizedBox(height: 32),
                         // Premium Info Section
-                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, isDark),
+                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase() == 'BIT'),
                         const SizedBox(height: 32),
                         
                         // Input Section Title
@@ -322,7 +322,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     );
   }
 
-  Widget _buildInfoSection(bool isTamil, Color surface, Color titleColor, Color subColor, String vehicle, String driver, String bunk, String instance, bool isDark) {
+  Widget _buildInfoSection(bool isTamil, Color surface, Color titleColor, Color subColor, String vehicle, String driver, String bunk, String instance, bool isDark, bool isBitOwner) {
     return Container(
       decoration: BoxDecoration(
         color: surface,
@@ -358,7 +358,8 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
               children: [
                 _buildInfoRow(isTamil ? "வாகன எண்" : "Vehicle Number", vehicle, titleColor, subColor, Icons.directions_bus_rounded),
                 _buildInfoRow(isTamil ? "ஓட்டுநர்" : "Driver Name", driver, titleColor, subColor, Icons.person_rounded),
-                _buildInfoRow(isTamil ? "பங்க் பெயர்" : "Bunk Name", bunk, titleColor, subColor, Icons.local_gas_station_rounded),
+                if (!isBitOwner)
+                  _buildInfoRow(isTamil ? "பங்க் பெயர்" : "Bunk Name", bunk, titleColor, subColor, Icons.local_gas_station_rounded),
                 _buildInfoRow(isTamil ? "நிகழ்வு ஐடி" : "Instance ID", instance, titleColor, subColor, Icons.tag_rounded, isLast: true),
               ],
             ),

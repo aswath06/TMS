@@ -53,6 +53,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   Future<void> _fetchBunks() async {
     try {
       final token = await UserStore.getToken();
+      final role = await UserStore.getRole();
       final response = await http.get(
         Uri.parse(ApiConstants.fuelBunks),
         headers: ApiConstants.getHeaders(token),
@@ -61,8 +62,16 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
+          List<Map<String, dynamic>> fetchedBunks = List<Map<String, dynamic>>.from(responseData['data']);
+          
+          if (role?.toLowerCase() == 'driver') {
+            fetchedBunks = fetchedBunks.where((b) {
+              return b['owner_name']?.toString().toUpperCase() != 'BIT';
+            }).toList();
+          }
+
           setState(() {
-            _bunks = List<Map<String, dynamic>>.from(responseData['data']);
+            _bunks = fetchedBunks;
             _isLoadingBunks = false;
           });
         }
@@ -344,7 +353,11 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                               final item = currentFilteredList[i];
                               bool isSelected = selected != null && (item['id'] == selected['id']);
                               
-                              String mainText = isVehicle ? item['vehicle_number'] : (isDriver ? item['name'] : item['name']);
+                              String mainText = isVehicle 
+                                  ? item['vehicle_number'] 
+                                  : (isDriver 
+                                      ? item['name'] 
+                                      : (item['owner_name']?.toString().toUpperCase() == 'BIT' ? item['owner_name'] : item['name']));
                               String subText = isVehicle 
                                   ? "${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
                                   : (isDriver 
@@ -605,7 +618,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
             const SizedBox(height: 12),
             _buildSelectTile(
               "Fuel Bunk Name",
-              _selectedBunk?['name'] ?? "Choose Fuel Bunk",
+              _selectedBunk != null 
+                  ? (_isBITBunk ? _selectedBunk!['owner_name'] : _selectedBunk!['name']) 
+                  : "Choose Fuel Bunk",
               _selectedBunk != null ? "Owner: ${_selectedBunk?['owner_name']}" : null,
               Icons.store_rounded,
               _selectedBunk != null,
