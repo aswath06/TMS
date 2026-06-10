@@ -8,13 +8,16 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/server_config.dart';
+import 'package:tripzo/store/ui_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/services/app_version_service.dart';
 import 'package:tripzo/store/providers.dart';
 import 'scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -26,6 +29,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
   String _userRole = "";
+  String _appVersion = "Loading...";
 
   // Sync initial state with the Global Stores
   String _selectedLanguage = LanguageStore.isTamil ? "தமிழ்" : "English";
@@ -42,7 +46,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void initState() {
     super.initState();
     _loadUserRole();
+    _loadAppVersion();
     ServerConfig().load(); // load persisted server preference
+    UIConfig().load(); // load persisted UI setting
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = packageInfo.version;
+      });
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -195,6 +210,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
 
                     const SizedBox(height: 32),
+
+                    // --- UI ENHANCEMENT ---
+                    if (_userRole.toLowerCase() == "super admin" || _userRole.toLowerCase() == "transport admin") ...[
+                      _buildSectionTitle(
+                        isTamil ? "பயனர் இடைமுகம்" : "UI Enhancement",
+                        titleColor,
+                        primaryBlue,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildUIEnhancementToggleTile(
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                        isTamil,
+                      ),
+                      const SizedBox(height: 32),
+                    ],
 
                     // --- MAINTENANCE ---
                     _buildSectionTitle(
@@ -383,7 +416,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Your message will be sent to SureshKannan (Backend Developer) and Aswath (Frontend Developer).",
+                "Your message will be sent to SureshKannan and Aswath.",
                 style: TextStyle(fontSize: 13, color: subTitleColor, height: 1.4),
               ),
               const SizedBox(height: 16),
@@ -783,6 +816,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Widget _buildUIEnhancementToggleTile(
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue,
+    bool isTamil,
+  ) {
+    return ListenableBuilder(
+      listenable: UIConfig(),
+      builder: (context, _) {
+        final isEnabled = UIConfig().isUIEnhancementEnabled;
+        return Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ListTile(
+            leading: _buildIconContainer(
+              Icons.auto_awesome_rounded,
+              isEnabled ? const Color(0xFF10B981) : Colors.grey,
+            ),
+            title: Text(
+              isTamil ? "மேம்பட்ட வடிவமைப்பு" : "Advanced UI",
+              style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+            ),
+            subtitle: Text(
+              isTamil ? "புதிய வடிவமைப்பை பயன்படுத்தவும்" : "Enable swipeable cards and modern layouts",
+              style: TextStyle(fontSize: 13, color: subColor),
+            ),
+            trailing: Switch.adaptive(
+              value: isEnabled,
+              activeColor: const Color(0xFF10B981),
+              onChanged: (val) {
+                UIConfig().setUIEnhancement(val);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildUpdateTile(
     Color cardColor,
     Color titleColor,
@@ -805,11 +880,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
         ),
         subtitle: Text(
-          "${isTamil ? 'தற்போதைய பதிப்பு' : 'Current'}: v2.4.0",
+          "${isTamil ? 'தற்போதைய பதிப்பு' : 'Current'}: v$_appVersion",
           style: TextStyle(fontSize: 13, color: subColor),
         ),
         trailing: TextButton(
-          onPressed: () {},
+          onPressed: () => AppVersionService.checkAppVersion(context, showNoUpdateFound: true),
           child: Text(
             isTamil ? "சரிபார்" : "Check",
             style: TextStyle(fontWeight: FontWeight.bold, color: primaryBlue),
@@ -823,7 +898,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     child: Column(
       children: [
         Text(
-          isTamil ? "பதிப்பு 2.4.0 (சரியானது)" : "App Version 2.4.0 (Stable)",
+          isTamil ? "பதிப்பு $_appVersion (சரியானது)" : "App Version $_appVersion (Stable)",
           style: TextStyle(
             color: subColor,
             fontWeight: FontWeight.w600,

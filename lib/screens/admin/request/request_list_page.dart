@@ -23,24 +23,93 @@ class RequestListPage extends ConsumerStatefulWidget {
   ConsumerState<RequestListPage> createState() => _RequestListPageState();
 }
 
-class _RequestListPageState extends ConsumerState<RequestListPage> {
+class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
   String _selectedFilter = 'ALL';
+  String _selectedDateFilter = 'ALL';
+  List<DateTime> _scrollDates = [];
+
+  final int _infiniteScrollMiddle = 100000;
+  late ScrollController _dateScrollController;
+
+  late AnimationController _jumpController;
+  late Animation<double> _jumpAnimation;
+  Timer? _jumpTimer;
+  bool _isScrolledFarFromToday = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final store = ref.read(requestStoreProvider);
+    _selectedDateFilter = store.currentRouteDate.isNotEmpty ? store.currentRouteDate : todayStr;
+    
+    // Approximate initial offset
+    _dateScrollController = ScrollController(initialScrollOffset: (_infiniteScrollMiddle * 68.0) - 100);
+    _dateScrollController.addListener(() {
+      if (!mounted) return;
+      final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
+      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
+      final bool isFar = (_dateScrollController.offset - todayOffset).abs() > (15 * 68.0);
+      
+      if (_isScrolledFarFromToday != isFar) {
+        setState(() {
+          _isScrolledFarFromToday = isFar;
+        });
+      }
+    });
+
+    _jumpController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    
+    _jumpAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -8.0).chain(CurveTween(curve: Curves.easeOut)), weight: 50.0),
+      TweenSequenceItem(tween: Tween(begin: -8.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50.0),
+    ]).animate(_jumpController);
+
+    _jumpTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted && _selectedDateFilter != DateFormat('yyyy-MM-dd').format(DateTime.now())) {
+        _jumpController.forward(from: 0.0);
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(requestStoreProvider).fetchRequests(isRefresh: true);
+      final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
+      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34; // 34 is half item width (60 width + 8 margin)
+      
+      DateTime selectedDate;
+      try {
+        selectedDate = DateFormat('yyyy-MM-dd').parse(_selectedDateFilter);
+      } catch (e) {
+        selectedDate = DateTime.now();
+      }
+      
+      final DateTime now = DateTime.now();
+      final DateTime todayDate = DateTime(now.year, now.month, now.day);
+      final DateTime selDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final int diffDays = selDate.difference(todayDate).inDays;
+      
+      _dateScrollController.jumpTo(todayOffset + (diffDays * 68.0));
+      
+      final store = ref.read(requestStoreProvider);
+      if (store.requests.isEmpty && !store.isLoading) {
+        store.fetchRequests(isRefresh: true, routeDate: _selectedDateFilter);
+      }
     });
   }
 
   @override
   void dispose() {
+    _jumpTimer?.cancel();
+    _jumpController.dispose();
     _scrollController.dispose();
+    _dateScrollController.dispose();
     _searchController.dispose();
     _debounce?.cancel();
     super.dispose();
@@ -108,6 +177,17 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
                     children: [
                       Row(
                         children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: titleColor,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                           Icon(
                             Icons.explore_rounded,
                             color: primaryBlue,
@@ -169,9 +249,104 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildSearchBar(isDark, primaryBlue, subColor),
-                  const SizedBox(height: 18),
-                  _buildFilterChips(primaryBlue, titleColor, isDark),
+                  Row(
+                    children: [
+                      Expanded(child: _buildSearchBar(isDark, primaryBlue, subColor)),
+                      const SizedBox(width: 12),
+                      _buildFilterButton(primaryBlue, titleColor, isDark),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "Mission Dates",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: titleColor,
+                            ),
+                          ),
+                          if (_selectedFilter != 'ALL') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: primaryBlue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _selectedFilter,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: primaryBlue,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final bool shouldShowJump = (_selectedDateFilter != DateFormat('yyyy-MM-dd').format(DateTime.now())) || _isScrolledFarFromToday;
+                          return AnimatedOpacity(
+                            duration: const Duration(milliseconds: 300),
+                            opacity: shouldShowJump ? 1.0 : 0.0,
+                            child: AnimatedBuilder(
+                              animation: _jumpAnimation,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, _jumpAnimation.value),
+                                  child: child,
+                                );
+                              },
+                              child: IgnorePointer(
+                                ignoring: !shouldShowJump,
+                                child: GestureDetector(
+                              onTap: () {
+                                final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                                if (_selectedDateFilter != todayStr) {
+                                  setState(() => _selectedDateFilter = todayStr);
+                                  ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: todayStr);
+                                }
+                                
+                                final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
+                                final double offset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
+                                _dateScrollController.animateTo(offset, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.fast_rewind_rounded, size: 14, color: primaryBlue),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "Jump to Today",
+                                      style: TextStyle(
+                                        color: primaryBlue,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: primaryBlue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDateScroller(primaryBlue, titleColor, subColor, isDark),
                 ],
               ),
             ),
@@ -480,14 +655,20 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
                 .asMap()
                 .entries
                 .map(
-                  (entry) => _buildSimpleTimelineRow(
-                    entry.key,
-                    entry.value['location']!,
-                    entry.key == detailedStops.length - 1,
-                    primaryBlue,
-                    titleColor,
-                    subColor,
-                  ),
+                  (entry) {
+                    bool isReached = status.toUpperCase() == 'COMPLETED' || entry.key == 0;
+                    bool isNextReached = status.toUpperCase() == 'COMPLETED';
+                    return _buildSimpleTimelineRow(
+                      entry.key,
+                      entry.value['location']!,
+                      entry.key == detailedStops.length - 1,
+                      primaryBlue,
+                      titleColor,
+                      subColor,
+                      isReached,
+                      isNextReached,
+                    );
+                  },
                 ),
           ],
         ),
@@ -543,6 +724,8 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
     Color blue,
     Color title,
     Color sub,
+    bool isReached,
+    bool isNextReached,
   ) {
     return IntrinsicHeight(
       child: Row(
@@ -554,16 +737,16 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
                 height: 14,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: idx == 0 ? blue : Colors.transparent,
+                  color: isReached ? blue : Colors.transparent,
                   border: Border.all(
-                    color: idx == 0 ? blue : Colors.grey.shade400,
+                    color: isReached ? blue : Colors.grey.shade400,
                     width: 2.5,
                   ),
                 ),
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2, color: Colors.grey.shade300),
+                  child: Container(width: 2, color: isNextReached ? blue.withValues(alpha: 0.3) : Colors.grey.shade300),
                 ),
             ],
           ),
@@ -575,8 +758,8 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
                 stop,
                 style: TextStyle(
                   fontSize: 14,
-                  color: idx == 0 ? title : sub,
-                  fontWeight: idx == 0 ? FontWeight.w700 : FontWeight.w500,
+                  color: isReached ? title : sub,
+                  fontWeight: isReached ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -636,52 +819,215 @@ class _RequestListPageState extends ConsumerState<RequestListPage> {
     );
   }
 
-  Widget _buildFilterChips(Color p, Color t, bool d) {
-    final List<String> filters = ['ALL', 'APPROVED', 'DRAFT', 'STARTED', 'COMPLETED'];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: filters.map((f) => _buildChipItem(f, p, t, d)).toList(),
+  Widget _buildFilterButton(Color p, Color t, bool d) {
+    return GestureDetector(
+      onTap: () => _showFilterBottomSheet(p, t, d),
+      child: Container(
+        height: 54,
+        width: 54,
+        decoration: BoxDecoration(
+          color: d ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(
+            color: d ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Icon(Icons.tune_rounded, color: p, size: 24),
       ),
     );
   }
 
-  Widget _buildChipItem(String label, Color p, Color t, bool d) {
-    bool isS = _selectedFilter == label;
-    return GestureDetector(
-      onTap: () {
-        if (_selectedFilter == label) return;
-        setState(() => _selectedFilter = label);
-        
-        String mappedStatus = "";
-        if (label == 'APPROVED') mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
-        else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
-        else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
-        else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
-        
-        ref.read(requestStoreProvider).fetchRequests(isRefresh: true, statuses: mappedStatus);
+  void _showFilterBottomSheet(Color p, Color t, bool d) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: d ? const Color(0xFF0F172A) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Filter Missions",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: t,
+                ),
+              ),
+              const SizedBox(height: 24),
+              StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 12,
+                    children: ['ALL', 'APPROVED', 'DRAFT', 'STARTED', 'COMPLETED'].map((label) {
+                      bool isS = _selectedFilter == label;
+                      return GestureDetector(
+                        onTap: () {
+                          if (_selectedFilter == label) return;
+                          setState(() => _selectedFilter = label);
+                          setModalState(() {});
+                          
+                          String mappedStatus = "";
+                          if (label == 'APPROVED') mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
+                          else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
+                          else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
+                          else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
+                          
+                          ref.read(requestStoreProvider).fetchRequests(isRefresh: true, statuses: mappedStatus);
+                          Navigator.pop(context);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isS ? p : (d ? const Color(0xFF1E293B) : Colors.white),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: isS ? p : t.withValues(alpha: 0.1), width: 1.5),
+                            boxShadow: isS ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: isS ? Colors.white : t.withValues(alpha: 0.6),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        );
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isS ? p : (d ? const Color(0xFF1E293B) : Colors.white),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isS ? p : t.withValues(alpha: 0.1), width: 1.5),
-          boxShadow: isS ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isS ? Colors.white : t.withValues(alpha: 0.6),
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
+    );
+  }
+
+  Widget _buildDateScroller(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    return Row(
+      children: [
+        // Fixed ALL option
+        GestureDetector(
+          onTap: () {
+            if (_selectedDateFilter == 'ALL') return;
+            setState(() => _selectedDateFilter = 'ALL');
+            ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: 'ALL');
+          },
+          child: Container(
+            width: 65,
+            height: 70,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: _selectedDateFilter == 'ALL' ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _selectedDateFilter == 'ALL' ? primaryBlue : titleColor.withValues(alpha: 0.1),
+              ),
+              boxShadow: _selectedDateFilter == 'ALL' ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 20, color: _selectedDateFilter == 'ALL' ? Colors.white : subColor),
+                const SizedBox(height: 4),
+                Text(
+                  "ALL",
+                  style: TextStyle(
+                    color: _selectedDateFilter == 'ALL' ? Colors.white : titleColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+        // Scrolling dates
+        Expanded(
+          child: SizedBox(
+            height: 70,
+            child: ListView.builder(
+              itemExtent: 68.0,
+              controller: _dateScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemBuilder: (context, index) {
+                final date = DateTime.now().add(Duration(days: index - _infiniteScrollMiddle));
+                final formattedDateStr = DateFormat('yyyy-MM-dd').format(date);
+                final isSelected = _selectedDateFilter == formattedDateStr;
+                return GestureDetector(
+                  onTap: () {
+                    if (_selectedDateFilter == formattedDateStr) return;
+                    setState(() => _selectedDateFilter = formattedDateStr);
+                    ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: formattedDateStr);
+                  },
+                  child: Container(
+                    width: 60,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? primaryBlue : titleColor.withValues(alpha: 0.1),
+                      ),
+                      boxShadow: isSelected ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('E').format(date).toUpperCase(), // e.g., SAT
+                          style: TextStyle(
+                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          DateFormat('dd').format(date), // e.g., 06
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : titleColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('MMM').format(date).toUpperCase(), // e.g., JUN
+                          style: TextStyle(
+                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
   void _showReportGenerationSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {

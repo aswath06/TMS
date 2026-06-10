@@ -3,15 +3,18 @@ import 'package:tripzo/screens/admin/request/request_list_page.dart';
 import 'package:tripzo/screens/admin/fuel/fuel_page.dart';
 import 'package:tripzo/screens/admin/admin_allowance_screen.dart';
 import 'dart:math' as math;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/store/ui_config.dart';
 
-class AdminRequestHubScreen extends StatefulWidget {
+class AdminRequestHubScreen extends ConsumerStatefulWidget {
   const AdminRequestHubScreen({super.key});
 
   @override
-  State<AdminRequestHubScreen> createState() => _AdminRequestHubScreenState();
+  ConsumerState<AdminRequestHubScreen> createState() => _AdminRequestHubScreenState();
 }
 
-class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with TickerProviderStateMixin {
+class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
 
   late List<Map<String, dynamic>> _cardsData;
@@ -26,6 +29,12 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(fleetMonitorStoreProvider).fetchFleetData();
+      ref.read(driverStoreProvider).fetchPendingFuelEntries();
+      ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
+      UIConfig().load();
+    });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _swipeController.addListener(() {
       if (_swipeAnimation != null) {
@@ -193,8 +202,46 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
     }
   }
 
+  Widget _buildCountBadge(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        "$count $label",
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCardContent(Map<String, dynamic> cardData, bool isDark, double cardHeight) {
     final Color itemColor = cardData['color'];
+    final String id = cardData['id'];
+
+    Widget? extraWidget;
+    if (id == 'mission' || id == 'routines') {
+      final fleetStore = ref.watch(fleetMonitorStoreProvider);
+      extraWidget = Row(
+        children: [
+          _buildCountBadge("Running", fleetStore.outsideCount, const Color(0xFF10B981)),
+          const SizedBox(width: 8),
+          _buildCountBadge("Ready to start", fleetStore.insideCount, const Color(0xFF3B82F6)),
+        ],
+      );
+    } else if (id == 'fuels') {
+      final driverStore = ref.watch(driverStoreProvider);
+      extraWidget = _buildCountBadge("Fuel Pendings", driverStore.pendingFuelEntries.length, const Color(0xFFF59E0B));
+    } else if (id == 'allowance') {
+      final allowanceStore = ref.watch(adminAllowanceStoreProvider);
+      extraWidget = _buildCountBadge("Allowance Count", allowanceStore.pendingCreations.length, const Color(0xFF8B5CF6));
+    }
 
     return GestureDetector(
       onTap: cardData['onTap'],
@@ -263,6 +310,13 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
                     ),
                     maxLines: 2,
                   ),
+                  if (extraWidget != null) ...[
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: extraWidget,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -275,7 +329,7 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
   Widget _buildStackedCards(bool isDark) {
     final double screenHeight = MediaQuery.of(context).size.height;
     // Decrease card size slightly and make it responsive
-    final double cardHeight = (screenHeight * 0.18).clamp(140.0, 180.0);
+    final double cardHeight = (screenHeight * 0.18).clamp(160.0, 190.0);
     final double stackHeight = cardHeight + 110.0;
 
     // Calculate a dynamic swipe progress (0.0 to 1.0) to drive background cards
@@ -443,14 +497,6 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: primaryBlue.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.notifications_outlined, color: primaryBlue, size: 22),
-                    ),
                   ],
                 ),
               ),
@@ -469,13 +515,492 @@ class _AdminRequestHubScreenState extends State<AdminRequestHubScreen> with Tick
               _buildSearchBar(isDark, primaryBlue, subColor, surfaceColor),
               const SizedBox(height: 40),
               
-              _buildStackedCards(isDark),
+              ListenableBuilder(
+                listenable: UIConfig(),
+                builder: (context, _) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      UIConfig().isUIEnhancementEnabled
+                          ? _buildStackedCards(isDark)
+                          : _buildAlternativeCards(isDark, primaryBlue),
+                      
+                      if (UIConfig().isUIEnhancementEnabled) ...[
+                        const SizedBox(height: 24),
+                        _buildDynamicCardDetails(isDark, primaryBlue),
+                      ],
+                    ],
+                  );
+                },
+              ),
               
               const SizedBox(height: 100),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAlternativeCards(bool isDark, Color primaryBlue) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _buildAlternativeCardItem(_cardsData[0], isDark, 0),
+              const SizedBox(width: 15),
+              _buildAlternativeCardItem(_cardsData[1], isDark, 1),
+              const SizedBox(width: 15),
+              _buildAlternativeCardItem(_cardsData[2], isDark, 2),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              _buildAlternativeCardItem(_cardsData[3], isDark, 3),
+              const SizedBox(width: 15),
+              Expanded(child: const SizedBox()),
+              const SizedBox(width: 15),
+              Expanded(child: const SizedBox()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlternativeCardItem(Map<String, dynamic> cardData, bool isDark, int index) {
+    final Color itemColor = cardData['color'];
+    final Color surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    return Expanded(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: Duration(milliseconds: 400 + (index * 150)),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: Opacity(
+              opacity: value,
+              child: child,
+            ),
+          );
+        },
+        child: InkWell(
+          onTap: cardData['onTap'],
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: itemColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(cardData['icon'], color: itemColor, size: 32),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  cardData['title'],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black87,
+                    letterSpacing: 0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDynamicCardDetails(bool isDark, Color primaryBlue) {
+    if (_cardsData.isEmpty) return const SizedBox.shrink();
+    
+    final String activeId = _cardsData.first['id'];
+    
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(activeId),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 15 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
+        );
+      },
+      child: Consumer(
+        builder: (context, ref, _) {
+          switch (activeId) {
+            case 'mission':
+              return _buildMissionStats(isDark, primaryBlue);
+            case 'routines':
+              return _buildRoutineStats(isDark, primaryBlue);
+            case 'fuels':
+              return _buildFuelStats(isDark, primaryBlue);
+            case 'allowance':
+              return _buildAllowanceStats(isDark, primaryBlue);
+            default:
+              return const SizedBox.shrink();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildPaginatedStats(List<Widget> tiles, bool isDark) {
+    List<Widget> pages = [];
+    for (int i = 0; i < tiles.length; i += 2) {
+      pages.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(child: tiles[i]),
+            if (i + 1 < tiles.length) const SizedBox(width: 16),
+            if (i + 1 < tiles.length) Expanded(child: tiles[i + 1])
+            else Expanded(child: const SizedBox()),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 140,
+      child: PageView(
+        physics: const BouncingScrollPhysics(),
+        children: pages.map((page) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: page,
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildStatTile(String label, String value, IconData icon, Color color, bool isDark) {
+    final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, bool isDark, {bool hasPagination = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          if (hasPagination)
+            Row(
+              children: [
+                Icon(Icons.swipe_left_rounded, size: 16, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+                const SizedBox(width: 4),
+                Text("Swipe", style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[400], fontWeight: FontWeight.bold)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Completed", "142", Icons.check_circle_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Pending", "12", Icons.pending_actions_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Ready to Start", "5", Icons.play_circle_fill_rounded, primaryBlue, isDark),
+      _buildStatTile("Outcampus", "3", Icons.exit_to_app_rounded, const Color(0xFFEF4444), isDark),
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Mission Statistics", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
+    );
+  }
+
+  Widget _buildRoutineStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Bus TRW", "45", Icons.directions_bus_rounded, primaryBlue, isDark),
+      _buildStatTile("In Service", "42", Icons.build_circle_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Running", "38", Icons.speed_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Outcampus", "4", Icons.outbox_rounded, const Color(0xFFEF4444), isDark),
+    ];
+
+    // Dummy Vehicles Data
+    final List<Map<String, String>> vehicles = List.generate(5, (index) => {
+      "veh": "TN36Z123${index}",
+      "fn": "${50 + index * 5}",
+      "an": "${45 + index * 5}"
+    });
+
+    int totalFn = 0;
+    int totalAn = 0;
+    for (var v in vehicles) {
+      totalFn += int.parse(v['fn']!);
+      totalAn += int.parse(v['an']!);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Daily Bus Routines", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+        const SizedBox(height: 16),
+        _buildSectionHeader("Student Sessions", isDark),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Column(
+            children: [
+              // Summary Cards Row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSessionSummaryCard(
+                      "Total", "${totalFn + totalAn}", Icons.groups_rounded, primaryBlue, isDark
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSessionSummaryCard(
+                      "FN", "$totalFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSessionSummaryCard(
+                      "AN", "$totalAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // Vehicle List Header
+              Row(
+                children: [
+                  Text("Vehicle Assignment", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
+                  const Spacer(),
+                  Icon(Icons.directions_bus, size: 16, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Vehicle List Cards
+              ...vehicles.map((v) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.directions_bus_filled_rounded, size: 20, color: isDark ? Colors.grey[300] : Colors.grey[700]),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(v['veh']!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
+                          const SizedBox(height: 4),
+                          Text("Active Route", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[500] : Colors.grey[500])),
+                        ],
+                      ),
+                    ),
+                    
+                    // Badges for FN and AN
+                    _buildSessionBadge("FN", v['fn']!, const Color(0xFF10B981)),
+                    const SizedBox(width: 8),
+                    _buildSessionBadge("AN", v['an']!, const Color(0xFFF59E0B)),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionSummaryCard(String title, String value, IconData icon, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
+          const SizedBox(height: 2),
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionBadge(String label, String count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text("$label ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+          Text(count, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFuelStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Fuel Count", "128", Icons.local_gas_station_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Total Liters", "4,520 L", Icons.water_drop_rounded, primaryBlue, isDark),
+      _buildStatTile("Total Amount", "₹4,25,000", Icons.currency_rupee_rounded, const Color(0xFF10B981), isDark),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Fuel Overview", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
+    );
+  }
+
+  Widget _buildAllowanceStats(bool isDark, Color primaryBlue) {
+    final tiles = [
+      _buildStatTile("Allowances", "85", Icons.payments_rounded, primaryBlue, isDark),
+      _buildStatTile("Total Amount", "₹12,400", Icons.account_balance_wallet_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Pending", "12", Icons.pending_rounded, const Color(0xFFF59E0B), isDark),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Allowance Overview", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
     );
   }
 }

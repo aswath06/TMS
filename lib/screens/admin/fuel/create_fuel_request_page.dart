@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -39,15 +40,39 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   bool _isLoadingDrivers = true;
   bool _isLoadingBunks = true;
   bool _isSubmitting = false;
+  String? _userRole;
 
   @override
   void initState() {
     super.initState();
     _volumeController.addListener(() => setState(() {}));
     _amountController.addListener(() => setState(() {}));
+    _initializeRole();
     _fetchVehicles();
     _fetchDrivers();
     _fetchBunks();
+  }
+
+  Future<void> _initializeRole() async {
+    final role = await UserStore.getRole();
+    setState(() => _userRole = role?.toLowerCase());
+  }
+
+  String _amountToWords(int number) {
+    if (number == 0) return "Zero";
+    if (number < 0) return "Negative ${_amountToWords(-number)}";
+    final ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    final tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    
+    String convert(int n) {
+      if (n < 20) return ones[n];
+      if (n < 100) return tens[n ~/ 10] + (n % 10 != 0 ? " ${ones[n % 10]}" : "");
+      if (n < 1000) return "${ones[n ~/ 100]} Hundred" + (n % 100 != 0 ? " ${convert(n % 100)}" : "");
+      if (n < 100000) return "${convert(n ~/ 1000)} Thousand" + (n % 1000 != 0 ? " ${convert(n % 1000)}" : "");
+      if (n < 10000000) return "${convert(n ~/ 100000)} Lakh" + (n % 100000 != 0 ? " ${convert(n % 100000)}" : "");
+      return "${convert(n ~/ 10000000)} Crore" + (n % 10000000 != 0 ? " ${convert(n % 10000000)}" : "");
+    }
+    return "${convert(number)} Rupees Only";
   }
 
   Future<void> _fetchBunks() async {
@@ -96,8 +121,23 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
+          final fetchedDrivers = List<Map<String, dynamic>>.from(responseData['data']);
+          Map<String, dynamic>? autoSelectedDriver;
+          
+          final role = await UserStore.getRole();
+          if (role?.toLowerCase() == 'driver') {
+            final dId = await UserStore.getDriverId();
+            if (dId != null) {
+              final idx = fetchedDrivers.indexWhere((d) => d['id'] == dId);
+              if (idx != -1) {
+                autoSelectedDriver = fetchedDrivers[idx];
+              }
+            }
+          }
+
           setState(() {
-            _drivers = List<Map<String, dynamic>>.from(responseData['data']);
+            _drivers = fetchedDrivers;
+            _selectedDriver = autoSelectedDriver ?? _selectedDriver;
             _isLoadingDrivers = false;
           });
         }
@@ -575,7 +615,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   onSelect: (v) {
                     setState(() {
                       _selectedVehicle = v;
-                      _selectedDriver = v['default_driver'];
+                      if (_userRole != 'driver') {
+                        _selectedDriver = v['default_driver'];
+                      }
                     });
                   },
                   isVehicle: true,
@@ -586,35 +628,37 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               defaultDriver: _selectedVehicle?['default_driver']?['name'],
               isRequired: true,
             ),
-            const SizedBox(height: 12),
-            _buildSelectTile(
-              "Driver Assignment",
-              _selectedDriver?['name'] ?? "Choose Driver",
-              _selectedDriver != null ? "📞 ${_selectedDriver?['phone'] ?? 'No Contact'}" : null,
-              Icons.person_rounded,
-              _selectedDriver != null,
-              () {
-                if (_isLoadingDrivers) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Loading drivers, please wait...")),
+            if (_userRole != 'driver') ...[
+              const SizedBox(height: 12),
+              _buildSelectTile(
+                "Driver Assignment",
+                _selectedDriver?['name'] ?? "Choose Driver",
+                _selectedDriver != null ? "📞 ${_selectedDriver?['phone'] ?? 'No Contact'}" : null,
+                Icons.person_rounded,
+                _selectedDriver != null,
+                () {
+                  if (_isLoadingDrivers) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Loading drivers, please wait...")),
+                    );
+                    return;
+                  }
+                  _showSelectionSheet(
+                    title: "Select Driver",
+                    items: _drivers,
+                    selected: _selectedDriver,
+                    onSelect: (d) => setState(() => _selectedDriver = d),
+                    isVehicle: false,
+                    isDriver: true,
                   );
-                  return;
-                }
-                _showSelectionSheet(
-                  title: "Select Driver",
-                  items: _drivers,
-                  selected: _selectedDriver,
-                  onSelect: (d) => setState(() => _selectedDriver = d),
-                  isVehicle: false,
-                  isDriver: true,
-                );
-              },
-              surfaceColor, titleColor, isDark, primaryBlue,
-              isDefault: _selectedVehicle != null && 
-                        _selectedVehicle?['default_driver'] != null && 
-                        _selectedVehicle?['default_driver']?['name'] == _selectedDriver?['name'],
-              isRequired: true,
-            ),
+                },
+                surfaceColor, titleColor, isDark, primaryBlue,
+                isDefault: _selectedVehicle != null && 
+                          _selectedVehicle?['default_driver'] != null && 
+                          _selectedVehicle?['default_driver']?['name'] == _selectedDriver?['name'],
+                isRequired: true,
+              ),
+            ],
             const SizedBox(height: 12),
             _buildSelectTile(
               "Fuel Bunk Name",
@@ -716,48 +760,68 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          _isBITBunk ? "AUTO CALCULATION" : "MANUAL ENTRY",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            color: subColor,
-                            letterSpacing: 1.0,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isBITBunk ? "AUTO CALCULATION" : "MANUAL ENTRY",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: subColor,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _isBITBunk 
+                                  ? "₹${_pricePerLiter.toStringAsFixed(2)} / liter (${_selectedVehicle?['fuel_type'] ?? 'N/A'})" 
+                                  : "Enter total amount",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: primaryBlue,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _isBITBunk 
-                              ? "₹${_pricePerLiter.toStringAsFixed(2)} / liter (${_selectedVehicle?['fuel_type'] ?? 'N/A'})" 
-                              : "Enter total amount",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: primaryBlue,
+                        if (_isBITBunk)
+                          Text(
+                            "₹${_totalAmount.toStringAsFixed(2)}",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                    if (_isBITBunk)
-                      Text(
-                        "₹${_totalAmount.toStringAsFixed(2)}",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
-                        ),
-                      )
-                    else
+                    if (!_isBITBunk) ...[
+                      const SizedBox(height: 16),
                       SizedBox(
-                        width: 120,
+                        width: double.infinity,
                         child: _buildTextField(_amountController, "Amount", Icons.payments_rounded, Colors.transparent, titleColor, isDark, isNumber: true),
                       ),
+                      if (_totalAmount > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                          child: Text(
+                            _amountToWords(_totalAmount.toInt()),
+                            style: TextStyle(
+                              color: primaryBlue,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -1129,7 +1193,10 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
 
   Future<void> _generateFuelRequest() async {
     // Validation
-    bool hasBasicFields = _selectedVehicle != null && _selectedDriver != null && _selectedBunk != null && _volumeController.text.isEmpty == false;
+    bool hasBasicFields = _selectedVehicle != null && 
+                          (_userRole == 'driver' || _selectedDriver != null) && 
+                          _selectedBunk != null && 
+                          _volumeController.text.isNotEmpty;
     
     if (!hasBasicFields) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all required fields")));
@@ -1151,7 +1218,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       request.headers.addAll(ApiConstants.getHeaders(token));
       
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
-      request.fields['driver_id'] = _selectedDriver!['id'].toString();
+      if (_selectedDriver != null) {
+        request.fields['driver_id'] = _selectedDriver!['id'].toString();
+      }
       request.fields['bunk_id'] = _selectedBunk!['id'].toString();
       request.fields['required_volume'] = _volumeController.text;
       request.fields['filled_at'] = _selectedDate.toIso8601String();
@@ -1172,12 +1241,12 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       ApiConstants.getHeaders(token).forEach((k, v) => curl.write("--header '$k: $v' \\\n"));
       request.fields.forEach((k, v) => curl.write("--form '$k=\"$v\"' \\\n"));
       if (_billImage != null) curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
-      debugPrint("\n--- REQUEST CURL ---\n${curl.toString()}\n-------------------\n");
+      log("\n--- REQUEST CURL ---\n${curl.toString()}\n-------------------\n");
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint("\n--- RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
+      log("\n--- RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

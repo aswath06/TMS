@@ -94,8 +94,21 @@ class DriverStore extends ChangeNotifier {
       if (token == null || driverId == null) return;
       
       final url = "${ApiConstants.getDriverAllowances}?page=1&limit=1&driver_id=$driverId&payment_status=Assigned";
+      
+      debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT CURL ---");
+      debugPrint("curl --location --request GET '$url' \\");
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("------------------------------------------");
+
       final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
       
+      debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("----------------------------------------------");
+
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
@@ -141,7 +154,20 @@ class DriverStore extends ChangeNotifier {
       if (token == null || driverId == null) return;
 
       final url = "${ApiConstants.getDriverAllowances}?page=$_allowancePage&limit=10&driver_id=$driverId";
+      
+      debugPrint("--- [DEBUG] FETCH ALLOWANCES CURL ---");
+      debugPrint("curl --location --request GET '$url' \\");
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("-------------------------------------");
+
       final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      
+      debugPrint("--- [DEBUG] FETCH ALLOWANCES RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("-----------------------------------------");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -183,18 +209,38 @@ class DriverStore extends ChangeNotifier {
       final token = await UserStore.getToken();
       if (token == null) return {"success": false, "message": "Session expired"};
 
+      final uri = Uri.parse(ApiConstants.allowanceSeen(allowanceId));
+      final headers = ApiConstants.getHeaders(token);
+      
+      debugPrint("--- [DEBUG] ALLOWANCE CONFIRM CURL ---");
+      debugPrint("curl --location --request PATCH '$uri' \\");
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("--------------------------------------");
+
       final response = await http.patch(
-        Uri.parse(ApiConstants.allowanceSeen(allowanceId)),
-        headers: ApiConstants.getHeaders(token),
+        uri,
+        headers: headers,
       );
 
-      final decoded = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        await fetchAllowances();
-        await fetchPendingAllowanceCount();
-        return {"success": true, "message": decoded['message'] ?? "Allowance marked as seen"};
-      } else {
-        return {"success": false, "message": decoded['message'] ?? "Failed to mark as seen"};
+      debugPrint("--- [DEBUG] ALLOWANCE CONFIRM RESPONSE ---");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+      debugPrint("------------------------------------------");
+
+      try {
+        final decoded = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          await fetchAllowances();
+          await fetchPendingAllowanceCount();
+          return {"success": true, "message": decoded['message'] ?? "Allowance marked as seen"};
+        } else {
+          return {"success": false, "message": decoded['message'] ?? "Failed to mark as seen"};
+        }
+      } catch (e) {
+        debugPrint("JSON Decode Error: $e");
+        return {"success": false, "message": "Invalid response format: $e"};
       }
     } catch (e) {
       return {"success": false, "message": "Network error: $e"};
@@ -250,6 +296,8 @@ class DriverStore extends ChangeNotifier {
 
   int _currentPage = 1;
   bool _hasMore = true;
+  int _totalDrivers = 0;
+  int get totalDrivers => _totalDrivers;
 
   Future<void> fetchDrivers({bool forceRefresh = false}) async {
     if (forceRefresh) {
@@ -272,8 +320,11 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
-      final url =
+      String url =
           "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10";
+      if (_driverSearchQuery.isNotEmpty) {
+        url += "&search=${Uri.encodeComponent(_driverSearchQuery)}";
+      }
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -281,6 +332,7 @@ class DriverStore extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
+        _totalDrivers = decoded['total_records'] ?? 0;
         final List<dynamic> data = decoded['data'] ?? [];
 
         if (data.length < 10) {
@@ -408,12 +460,62 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> updateDriver(Map<String, dynamic> driverData) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        return {"success": false, "message": "Session expired"};
+      }
+
+      final url = "${ApiConstants.baseUrl}/auth/user";
+      
+      final response = await http.put(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(driverData),
+      );
+
+      Map<String, dynamic> decoded = {};
+      if (response.body.isNotEmpty) {
+        try {
+          decoded = json.decode(response.body);
+        } catch (e) {
+          debugPrint("Failed to decode update response: $e");
+        }
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchDrivers(forceRefresh: true);
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Driver Updated Successfully!"
+        };
+      }
+
+      return {
+        "success": false,
+        "message": decoded['message'] ?? "Failed to update driver",
+        "statusCode": response.statusCode
+      };
+    } catch (e) {
+      return {"success": false, "message": "Network error: Connection failed."};
+    }
+  }
+
   // Sort state
-  String _sortType = 'A to Z';
+  String _sortType = 'Default';
   String get sortType => _sortType;
 
   void setSortType(String newSort) {
     _sortType = newSort;
+    notifyListeners();
+  }
+
+  String _driverSearchQuery = '';
+  String get driverSearchQuery => _driverSearchQuery;
+
+  void setDriverSearchQuery(String query) {
+    _driverSearchQuery = query;
     notifyListeners();
   }
 
@@ -1163,22 +1265,28 @@ class DriverStore extends ChangeNotifier {
       debugPrint("Body: ${response.body}");
       debugPrint("-------------------------------------------");
 
-      final decoded = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        fetchPendingFuelEntries(); // Refresh pending list
-        return {
-          "success": true,
-          "message": decoded['message'] ?? "Fuel log completed successfully"
-        };
-      } else {
-        return {
-          "success": false,
-          "message": decoded['message'] ?? "Failed to complete fuel log"
-        };
+      try {
+        final decoded = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          fetchPendingFuelEntries(); // Refresh pending list
+          return {
+            "success": true,
+            "message": decoded['message'] ?? "Fuel log completed successfully",
+            "mileage_data": decoded['mileage_data']
+          };
+        } else {
+          return {
+            "success": false,
+            "message": decoded['message'] ?? "Failed to complete fuel log"
+          };
+        }
+      } catch (e) {
+        debugPrint("JSON Decode Error in completeFuelEntry: $e");
+        return {"success": false, "message": "Invalid response format: $e"};
       }
     } catch (e) {
       debugPrint("Error completing fuel entry: $e");
-      return {"success": false, "message": "Error: $e"};
+      return {"success": false, "message": "Network error: $e"};
     }
   }
 

@@ -35,7 +35,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _agreeToTerms = false;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '1044594848603-d8jula4v28ackbnro25un3cl3vr9bv64.apps.googleusercontent.com',
+    clientId: Platform.isAndroid 
+        ? null 
+        : '1044594848603-d8jula4v28ackbnro25un3cl3vr9bv64.apps.googleusercontent.com',
     serverClientId:
         '1044594848603-3l3hi7sf390vgru417runabvpuimfpn2.apps.googleusercontent.com',
     scopes: <String>['email', 'profile', 'openid'],

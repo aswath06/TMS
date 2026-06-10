@@ -9,6 +9,7 @@ import 'package:tripzo/utils/toast_utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:io';
+import 'package:tripzo/utils/download_helper.dart';
 
 class BackupSettingsPage extends StatefulWidget {
   const BackupSettingsPage({super.key});
@@ -593,10 +594,8 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
-        final tempDir = await getTemporaryDirectory();
-        final file = File("${tempDir.path}/backup_$id.sql");
-        await file.writeAsBytes(bytes);
-        showTopToast(context, "Backup downloaded to \${file.path}");
+        await downloadFile(bytes, "backup_$id.sql");
+        showTopToast(context, "Backup downloaded successfully");
       } else {
         showTopToast(context, "Failed to download", isError: true);
       }
@@ -707,12 +706,22 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildStatCard(
-                            "Size",
-                            "${_dashboardData['latest_backup_size_mb'] ?? 0} MB",
-                            Icons.data_usage,
-                            cardColor,
-                            Colors.orange,
+                          child: Builder(
+                            builder: (context) {
+                              double totalSize = 0.0;
+                              for (var backup in _backups) {
+                                if (backup['file_size_mb'] != null) {
+                                  totalSize += double.tryParse(backup['file_size_mb'].toString()) ?? 0.0;
+                                }
+                              }
+                              return _buildStatCard(
+                                "Total Size",
+                                "${totalSize.toStringAsFixed(2)} MB",
+                                Icons.data_usage,
+                                cardColor,
+                                Colors.orange,
+                              );
+                            }
                           ),
                         ),
                       ],

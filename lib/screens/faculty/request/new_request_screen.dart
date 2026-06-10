@@ -670,7 +670,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       if (_routeType == 'One Way') {
         final addedMinutes = _travelDurationMinutes + (1 * 60);
         _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
-      } else { // Round Trip
+      } else { // Two Way
         final addedMinutes = (_travelDurationMinutes * 2) + (2 * 60);
         _endDate = _startDate!.add(Duration(minutes: addedMinutes.toInt()));
       }
@@ -719,7 +719,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         if (_routeType == 'One Way') {
           leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
           rootEndDatetime = leg1End;
-        } else if (_routeType == 'Round Trip') {
+        } else if (_routeType == 'Two Way') {
           leg1End = goingStart.add(Duration(minutes: oneLegMinutes.toInt()));
           leg2Start = leg1End;
           leg2End = leg2Start.add(Duration(minutes: oneLegMinutes.toInt()));
@@ -1100,12 +1100,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           _premiumInput(
             "Journey Name*",
             _routeNameController,
-            "e.g. From to To (by Placement)",
+            "e.g. TSC Visit, Campus Tour",
             Icons.route_rounded,
             c,
             t,
             p,
             isReq: true,
+            helperText: "Give your trip a short, recognizable title (Do not enter the purpose here).",
           ),
           _premiumSelect(
             "Journey Purpose*",
@@ -1532,7 +1533,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: t.withValues(alpha: 0.3),
+            color: t.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 8),
@@ -1622,6 +1623,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     Color p, {
     bool isReq = false,
     bool isNum = false,
+    String? helperText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1631,7 +1633,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: t.withValues(alpha: 0.3),
+            color: t.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 8),
@@ -1673,6 +1675,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 : null,
           ),
         ),
+        if (helperText != null) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              helperText,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: t.withValues(alpha: 0.4),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
       ],
     );

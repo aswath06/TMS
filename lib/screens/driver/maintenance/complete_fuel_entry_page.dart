@@ -183,9 +183,190 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
       setState(() => _isSubmitting = false);
       showTopToast(context, result['message'], isError: !result['success']);
       if (result['success']) {
-        Navigator.pop(context, true);
+        if (result['mileage_data'] != null) {
+          _showMileagePopup(result['mileage_data']);
+        } else {
+          Navigator.pop(context, true);
+        }
       }
     }
+  }
+
+  void _showMileagePopup(Map<String, dynamic> mileageData) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final isTamil = LanguageStore.isTamil;
+
+    final double nowMileage = (mileageData['now_mileage'] ?? 0).toDouble();
+    final double lastMileage = (mileageData['last_mileage'] ?? 0).toDouble();
+    final String status = mileageData['status'] ?? "N/A";
+    final String message = mileageData['message'] ?? "";
+
+    IconData statusIcon = Icons.info_outline_rounded;
+    Color statusColor = Colors.grey;
+    if (status == 'INCREASED') {
+      statusIcon = Icons.trending_up_rounded;
+      statusColor = Colors.green;
+    } else if (status == 'DECREASED') {
+      statusIcon = Icons.trending_down_rounded;
+      statusColor = Colors.red;
+    } else if (status == 'SAME') {
+      statusIcon = Icons.trending_flat_rounded;
+      statusColor = Colors.blue;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(statusIcon, color: statusColor, size: 40),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  isTamil ? "மைலேஜ் தரவு" : "Mileage Report",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildMileageStat(
+                      label: isTamil ? "முந்தைய" : "Last",
+                      value: lastMileage.toStringAsFixed(1),
+                      isDark: isDark,
+                      color: Colors.grey,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.grey.withOpacity(0.3),
+                    ),
+                    _buildMileageStat(
+                      label: isTamil ? "தற்போதைய" : "Current",
+                      value: nowMileage.toStringAsFixed(1),
+                      isDark: isDark,
+                      color: statusColor,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (message.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.pop(context, true); // Pop the complete_fuel_entry_page
+                    },
+                    child: Text(
+                      isTamil ? "மூடு" : "Close",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMileageStat({required String label, required String value, required bool isDark, required Color color}) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white54 : Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              "km/l",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   @override

@@ -3,12 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/store/faculty_store.dart';
-import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
-import 'package:tripzo/components/request_card.dart';
-import '../../providers/notification_provider.dart';
 import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
@@ -169,10 +166,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ],
                     ),
                     _buildNotificationList(primaryBlue, surfaceColor, isDark),
-                    const SizedBox(height: 36),
-                    _buildSectionTitle("Active Missions", titleColor),
-                    const SizedBox(height: 18),
-                    _buildActiveMissions(context, primaryBlue, isDark),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -324,16 +317,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Row(
         children: [
           _buildSummaryCard(
-            "Active Now",
-            "${stats.activeRoutes.toString().padLeft(2, '0')} Routes",
-            "In Progress",
-            Icons.map_rounded,
-            primaryBlue,
-            surface,
-            isDark,
-            width,
-          ),
-          _buildSummaryCard(
             "Pending",
             "${stats.pendingRoutes.toString().padLeft(2, '0')} Req",
             "Awaiting Approval",
@@ -449,13 +432,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         const SizedBox(width: 15),
         _buildActionBtn(
-          "Track",
-          Icons.gps_fixed_rounded,
-          Colors.cyan.shade600,
-          surface,
-        ),
-        const SizedBox(width: 15),
-        _buildActionBtn(
           "History",
           Icons.history_rounded,
           Colors.blueGrey,
@@ -558,15 +534,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  String _formatDateTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
 
-    if (diff.inMinutes < 1) return "Just Now";
-    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
-    if (diff.inHours < 24) return "${diff.inHours}h ago";
-    return "${dt.day}/${dt.month}";
-  }
 
   Widget _buildSectionTitle(String title, Color color) {
     return Text(
@@ -580,34 +548,5 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildActiveMissions(BuildContext context, Color primaryBlue, bool isDark) {
-    final store = ref.watch(requestStoreProvider);
-    
-    if (store.isLoading && store.requests.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
 
-    if (store.requests.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Text(
-            "No active missions",
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
-        ),
-      );
-    }
-
-    // Show top 2 active missions (same as requested earlier "for the fcauly 2")
-    final activeReqs = store.requests.take(2).toList();
-
-    return Column(
-      children: activeReqs.map((req) => RequestCard(
-        req: req,
-        isDark: isDark,
-        accentColor: primaryBlue,
-      )).toList(),
-    );
-  }
 }

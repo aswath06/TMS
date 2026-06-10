@@ -172,103 +172,189 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
        });
     }
 
+    String searchQuery = "";
+
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.95),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: t)),
-                    const Spacer(),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded))
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                  itemCount: filteredItems.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) {
-                    final item = filteredItems[i];
-                    final bool isSelected = selected != null && (item['id'] == selected['id']);
-                    
-                    String main = isVehicle ? item['vehicle_number'] : (item['name'] ?? item['user']?['name'] ?? "Unknown");
-                    String sub = isVehicle ? item['vehicle_type_name'] : "Driver";
-                    int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
-                    
-                    String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
-                    bool isDisabled = (item['available'] == false);
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-                    return GestureDetector(
-                      onTap: isDisabled ? null : () {
-                        onSelect(item);
-                        Navigator.pop(ctx);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected ? p.withValues(alpha: 0.1) : (isDisabled ? t.withValues(alpha: 0.02) : t.withValues(alpha: 0.05)),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isSelected ? p : (isDisabled ? Colors.red.withValues(alpha: 0.1) : Colors.transparent), width: 1.5),
-                        ),
-                        child: Opacity(
-                          opacity: isDisabled ? 0.5 : 1.0,
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(color: (isSelected ? p : t).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-                                child: Icon(isVehicle ? Icons.directions_bus_rounded : Icons.person_rounded, size: 20, color: isSelected ? p : t.withValues(alpha: 0.5)),
+            final List<dynamic> currentFilteredList = filteredItems.where((item) {
+              if (searchQuery.isEmpty) return true;
+              if (isVehicle) {
+                final vNumber = (item['vehicle_number'] ?? "").toString().toLowerCase();
+                final vType = (item['vehicle_type_name'] ?? "").toString().toLowerCase();
+                return vNumber.contains(searchQuery.toLowerCase()) || 
+                       vType.contains(searchQuery.toLowerCase());
+              } else {
+                final dName = (item['name'] ?? item['user']?['name'] ?? "").toString().toLowerCase();
+                final dPhone = (item['phone'] ?? item['user']?['phone'] ?? "").toString().toLowerCase();
+                return dName.contains(searchQuery.toLowerCase()) || 
+                       dPhone.contains(searchQuery.toLowerCase());
+              }
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.95),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: t)),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.close_rounded, size: 20, color: t.withValues(alpha: 0.5)),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(main, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: t)),
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 8,
+                            )
+                          ],
+                        ),
+                        if (isVehicle && currentGuestCount != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                            child: Text(
+                              "REQUIRED CAPACITY: $currentGuestCount SEATS",
+                              style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: p, letterSpacing: 0.5),
+                            ),
+                          ),
+                        ]
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200, width: 1.5),
+                      ),
+                      child: TextField(
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                        decoration: InputDecoration(
+                          hintText: isVehicle ? "Search vehicle number or type..." : "Search driver name or phone...",
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w600, fontSize: 14),
+                          prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade400),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
+                        onChanged: (val) {
+                          setModalState(() {
+                            searchQuery = val;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: currentFilteredList.isEmpty 
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off_rounded, size: 48, color: t.withValues(alpha: 0.2)),
+                            const SizedBox(height: 16),
+                            Text("No matching ${isVehicle ? 'vehicles' : 'drivers'} found", style: TextStyle(color: t.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                      itemCount: currentFilteredList.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) {
+                        final item = currentFilteredList[i];
+                        final bool isSelected = selected != null && (item['id'] == selected['id']);
+                        
+                        String main = isVehicle ? item['vehicle_number'] : (item['name'] ?? item['user']?['name'] ?? "Unknown");
+                        String sub = isVehicle ? item['vehicle_type_name'] : "Driver";
+                        int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
+                        
+                        String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
+                        bool isDisabled = (item['available'] == false);
+
+                        return GestureDetector(
+                          onTap: isDisabled ? null : () {
+                            onSelect(item);
+                            Navigator.pop(ctx);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isSelected ? p.withValues(alpha: 0.1) : (isDisabled ? t.withValues(alpha: 0.02) : t.withValues(alpha: 0.05)),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: isSelected ? p : (isDisabled ? Colors.red.withValues(alpha: 0.1) : Colors.transparent), width: 1.5),
+                            ),
+                            child: Opacity(
+                              opacity: isDisabled ? 0.5 : 1.0,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(color: (isSelected ? p : t).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
+                                    child: Icon(isVehicle ? Icons.directions_bus_rounded : Icons.person_rounded, size: 20, color: isSelected ? p : t.withValues(alpha: 0.5)),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(sub, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w600)),
-                                        if (isVehicle) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)), child: Text("Cap: $cap", style: TextStyle(fontSize: 9, color: p, fontWeight: FontWeight.w900))),
-                                        if (isVehicle && item['default_driver'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)), child: Text("👤 ${item['default_driver']['name']}", style: const TextStyle(fontSize: 9, color: Colors.green, fontWeight: FontWeight.w900))),
+                                        Text(main, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: t)),
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 8,
+                                          children: [
+                                            Text(sub, style: TextStyle(fontSize: 12, color: t.withValues(alpha: 0.4), fontWeight: FontWeight.w600)),
+                                            if (isVehicle) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: p.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)), child: Text("Cap: $cap", style: TextStyle(fontSize: 9, color: p, fontWeight: FontWeight.w900))),
+                                            if (isVehicle && item['default_driver'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)), child: Text("👤 ${item['default_driver']['name']}", style: const TextStyle(fontSize: 9, color: Colors.green, fontWeight: FontWeight.w900))),
+                                          ],
+                                        ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  if (isDisabled) Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("UNAVAILABLE", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w900)))
+                                  else if (!isVehicle && status == "AVAILABLE") Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("AVAILABLE", style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.w900))),
+                                  if (isSelected) Icon(Icons.check_circle_rounded, color: p, size: 20),
+                                ],
                               ),
-                              if (isDisabled) Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("UNAVAILABLE", style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.w900)))
-                              else if (!isVehicle && status == "AVAILABLE") Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: const Text("AVAILABLE", style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.w900))),
-                              if (isSelected) Icon(Icons.check_circle_rounded, color: p, size: 20),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -353,7 +439,11 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
     setState(() => _isFinalizing = true);
     try {
       final token = await UserStore.getToken();
-      final legCode = (_requestData?['route_details']?['legs'] as List?)?.first?['leg_code'] ?? "LEG-1";
+      final legsList = (_requestData?['route_details']?['legs'] as List?) ?? [];
+      final legCodes = legsList.isNotEmpty 
+          ? legsList.map((l) => l['leg_code']?.toString() ?? "LEG-1").toList() 
+          : ["LEG-1"];
+      final firstLegCode = legCodes.first;
 
       final body = {
         "route_name": _requestData?['travel_info']?['route_name'] ?? "Finalized Route",
@@ -364,28 +454,36 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
         "admin_remark": "Finalized via Mobile APP",
         "groupings": _groups.where((g) => g['passengers'].isNotEmpty).map((g) => {
           "group_label": g['label'],
-          "leg_code": legCode,
+          "leg_code": firstLegCode,
           "passenger_ids": (g['passengers'] as List).map((p) => p['passenger_id'] ?? p['id']).toList(),
         }).toList(),
-        "admin_assignments": [
-          {
-            "leg_code": legCode,
+        "admin_assignments": legCodes.map((lCode) => {
+            "leg_code": lCode,
             "vehicles": _groups.where((g) => g['passengers'].isNotEmpty).map((g) => {
               "vehicle_id": g['vehicle_id'],
               "driver_id": g['driver_id'],
               "passenger_ids": (g['passengers'] as List).map((p) => p['passenger_id'] ?? p['id']).toList(),
               "remarks": g['remark'].isEmpty ? "Allocated" : g['remark'],
             }).toList(),
-          }
-        ],
+        }).toList(),
       };
 
       final url = ApiConstants.adminFinalize(widget.requestId);
+      
+      const encoder = JsonEncoder.withIndent('  ');
+      String prettyJson = encoder.convert(body);
+      debugPrint(
+        "\\n🚀 [ADMIN FINALIZE CURL SENDING]:\\ncurl --location '$url' \\\\\\n"
+        "--header 'Authorization: TMS $token' \\\\\\n--header 'Content-Type: application/json' \\\\\\n--data '$prettyJson'\\n",
+      );
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
         body: json.encode(body),
       );
+
+      debugPrint("📥 [SERVER RESPONSE] (${response.statusCode}): ${response.body}");
 
       final respData = json.decode(response.body);
       if (response.statusCode == 200 && respData['success'] == true) {

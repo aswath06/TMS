@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:tripzo/services/app_version_service.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
 import 'package:tripzo/screens/admin/AdminProfileScreen.dart';
 import 'package:tripzo/screens/admin/request/admin_request_hub_screen.dart';
-import 'package:tripzo/screens/admin/request/request_list_page.dart';
+import 'package:tripzo/screens/admin/request/admin_request_hub_screen.dart';
 import 'package:tripzo/screens/admin/vechiles/vechile_page.dart'; // Ensure path is correct
 import 'package:tripzo/screens/admin/admin_driver_screen.dart';
 // Driver Screens
@@ -17,7 +18,8 @@ import 'package:tripzo/screens/driver/driver_routes_screen.dart';
 import 'faculty/profile_screen.dart';
 import 'faculty/missions_screen.dart';
 import 'faculty/dashboard_screen.dart';
-import 'faculty/requests_screen.dart';
+import 'faculty/faculty_bus_screen.dart';
+import 'faculty/dashboard_screen.dart';
 
 import '../components/custom_bottom_bar.dart';
 import 'package:tripzo/screens/security/security_dashboard_screen.dart';
@@ -46,6 +48,8 @@ class MainScreenState extends State<MainScreen> {
     );
   }
 
+
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +59,10 @@ class MainScreenState extends State<MainScreen> {
     if (widget.userRole.toLowerCase() == 'driver') {
       _startLocationMonitor();
     }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppVersionService.checkAppVersion(context);
+    });
   }
 
   void _startLocationMonitor() {
@@ -138,7 +146,7 @@ class MainScreenState extends State<MainScreen> {
         return [
           const DashboardScreen(),
           const MissionsScreen(),
-          const RequestsScreen(),
+          const FacultyBusScreen(),
           const ProfileScreen(),
         ];
       case 'security':
@@ -174,6 +182,7 @@ class MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      resizeToAvoidBottomInset: false,
       extendBody: true,
       body: Stack(
         children: [

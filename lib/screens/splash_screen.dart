@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'dart:math' as math;
+import 'package:lottie/lottie.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../utils/routes.dart';
 import '../store/user_store.dart';
 import '../store/isdark.dart'; // Import Theme Store
@@ -24,9 +27,9 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _slideAnimation;
+  late Animation<double> _zoomAnimation;
+  late Animation<Color?> _bgColorAnimation;
+  
   bool _isConnected = true;
   StreamSubscription? _connectivitySubscription;
   bool _hasCheckedConnectivity = false;
@@ -35,37 +38,40 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   bool _isLocationPermissionGranted = true;
   bool _isLocationServiceEnabled = true;
 
+  final math.Random _random = math.Random();
+  Offset? _randomLogoPos;
+  late Animation<double> _textFadeAnimation;
+
   @override
   void initState() {
     super.initState();
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1000),
     );
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+    // Zoom happens from 0.4 (0.8s) to 0.75 (1.5s)
+    _zoomAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.8, curve: Curves.easeOutBack),
+        curve: const Interval(0.4, 0.75, curve: Curves.easeInOutCubic),
       ),
     );
 
-    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+        curve: const Interval(0.45, 0.75, curve: Curves.easeIn),
       ),
     );
 
     _controller.forward();
 
-    // Load preferences first (Theme/Language) - no internet required
+    // The single logo blip location
+    final double angle = _random.nextDouble() * 2 * math.pi;
+    final double distance = 60.0 + _random.nextDouble() * 100.0;
+    _randomLogoPos = Offset(math.cos(angle) * distance, math.sin(angle) * distance);    // Load preferences first (Theme/Language) - no internet required
     _loadPreferences();
 
     // Listen for connectivity changes
@@ -84,6 +90,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Initial check
     _checkInitialConnectivity();
   }
+
+
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
@@ -125,8 +133,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final bool hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
 
     if (!hasSeenOnboarding) {
-      // Small delay for branding
-      await Future.delayed(const Duration(milliseconds: 1200));
+      // Delay for full animation
+      await Future.delayed(const Duration(milliseconds: 1000));
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.getStarted);
       return;
@@ -134,7 +142,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     // 2. Start the minimum display timer AND the API call in parallel
     final Future<bool> authCheck = _checkSession(prefs);
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     // 3. Wait for the API check to settle (it might already be done)
     final bool sessionValid = await authCheck;
@@ -246,125 +254,141 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Local theme variables
     final bool isDark = ThemeStore.isDark;
     final Size size = MediaQuery.of(context).size;
-    final bool isSmallScreen = size.width < 360;
-
-    // Dynamic Colors
-    final Color bgColorStart = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFFFFFFF);
-    final Color bgColorEnd = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF1F5F9);
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subTitleColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF64748B);
+    final Color subTitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [bgColorStart, bgColorEnd],
-          ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Decorative circles change opacity based on theme
-            Positioned(
-              top: -size.height * 0.05,
-              right: -size.width * 0.1,
-              child: _buildDecorativeCircle(
-                size.width * 0.6,
-                const Color(0xFF6366F1).withOpacity(isDark ? 0.08 : 0.04),
-              ),
-            ),
-            Positioned(
-              bottom: -size.height * 0.05,
-              left: -size.width * 0.1,
-              child: _buildDecorativeCircle(
-                size.width * 0.4,
-                const Color(0xFF4F46E5).withOpacity(isDark ? 0.06 : 0.03),
-              ),
-            ),
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Transform.translate(
-                  offset: Offset(0, _slideAnimation.value),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: ScaleTransition(
-                      scale: _scaleAnimation,
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final double val = _controller.value;
+          
+          final bool showLogo = val >= 0.2; // 0.4s onwards
+          final bool isZooming = val >= 0.4; // 0.8s onwards
+          
+          double zoomProgress = 0.0;
+          if (isZooming) {
+             zoomProgress = _zoomAnimation.value; 
+          }
+          
+          final double currentScale = showLogo ? (isZooming ? (0.444 + (1.0 - 0.444) * zoomProgress) : 0.444) : 0.0;
+          final Offset currentOffset = showLogo ? (isZooming ? Offset.lerp(_randomLogoPos!, Offset.zero, zoomProgress)! : _randomLogoPos!) : Offset.zero;
+
+          final double textOpacity = isZooming ? _textFadeAnimation.value : 0.0;
+
+          final Color bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+
+          return Container(
+            color: bgColor,
+            width: double.infinity,
+            height: double.infinity,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Radar Lottie
+                if (!isZooming)
+                  Lottie.asset(
+                    'assets/a519d1ac-1171-11ee-b9e8-33c8e3fd28ec.json',
+                    width: 400,
+                    height: 400,
+                    fit: BoxFit.contain,
+                  ),
+                  
+                // The Logo (Blip -> Zooming)
+                if (showLogo)
+                  Transform.translate(
+                    offset: currentOffset,
+                    child: Transform.scale(
+                      scale: currentScale,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildLogoIcon(isSmallScreen, isDark),
-                          SizedBox(height: size.height * 0.04),
-                          RichText(
-                            text: TextSpan(
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 48 : 60,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 12,
+                          Container(
+                            width: 180,
+                            height: 180,
+                            padding: const EdgeInsets.all(24), // Padding to make it look like a card
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF4F46E5).withOpacity(0.3),
+                                width: 2,
                               ),
-                              children: [
-                                const TextSpan(
-                                  text: "Trip",
-                                  style: TextStyle(color: Color(0xFF4F46E5)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF4F46E5).withOpacity(0.25),
+                                  blurRadius: 30,
+                                  spreadRadius: 10,
+                                  offset: const Offset(0, 10),
                                 ),
-                                TextSpan(
-                                  text: "Zo",
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
+                            child: Image.asset(
+                              'assets/TripZo.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            LanguageStore.isTamil
-                                ? "போக்குவரத்து மேலாண்மை அமைப்பு"
-                                : "TRANSPORT MANAGEMENT SYSTEM",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 10 : 12,
-                              fontWeight: FontWeight.w700,
-                              color: subTitleColor,
-                              letterSpacing: LanguageStore.isTamil ? 1 : 4,
+                          SizedBox(height: size.height * 0.04),
+                          Opacity(
+                            opacity: textOpacity,
+                            child: RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.montserrat(
+                                  fontSize: 72,
+                                  fontWeight: FontWeight.w900,
+                                  fontStyle: FontStyle.italic,
+                                  letterSpacing: -1.5,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: "Trip",
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: "Zo",
+                                    style: TextStyle(color: Color(0xFF4F46E5)),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-            Positioned(
-              bottom: 40,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Text(
-                  "V 1.0.0",
-                  style: TextStyle(
-                    color: subTitleColor.withOpacity(0.5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+
+                // Transport Management System text Always visible at the bottom
+                Positioned(
+                  bottom: 40,
+                  child: Text(
+                    LanguageStore.isTamil
+                        ? "போக்குவரத்து மேலாண்மை அமைப்பு"
+                        : "TRANSPORT MANAGEMENT SYSTEM",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: subTitleColor,
+                      letterSpacing: LanguageStore.isTamil ? 1 : 4,
+                    ),
                   ),
                 ),
-              ),
+
+                // Error Overlays
+                if (!_isConnected) _buildNoInternetUI(size, isDark, subTitleColor),
+                if (_isConnected && (!_isLocationServiceEnabled || !_isLocationPermissionGranted))
+                  _buildLocationPermissionUI(size, isDark, subTitleColor),
+              ],
             ),
-            if (!_isConnected) _buildNoInternetUI(size, isDark, subTitleColor),
-            if (_isConnected && (!_isLocationServiceEnabled || !_isLocationPermissionGranted))
-              _buildLocationPermissionUI(size, isDark, subTitleColor),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -554,5 +578,59 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       height: size,
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
+  }
+}
+
+class ParticleData {
+  final Offset target;
+  final Color color;
+  ParticleData(this.target, this.color);
+}
+
+class ParticleTextPainter extends CustomPainter {
+  final double progress;
+  final List<ParticleData> particles;
+
+  ParticleTextPainter({
+    required this.progress,
+    required this.particles,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (particles.isEmpty) return;
+
+    final paint = Paint()..style = PaintingStyle.fill;
+    final random = math.Random(42);
+
+    for (int i = 0; i < particles.length; i++) {
+      final p = particles[i];
+      
+      final startX = (random.nextDouble() - 0.5) * size.width * 2.0 + size.width / 2;
+      final startY = -size.height * 5.0 - random.nextDouble() * 500.0; 
+      
+      final delay = random.nextDouble() * 0.4; 
+      final duration = 0.6; 
+      
+      double particleProgress = 0.0;
+      if (progress > delay) {
+         particleProgress = (progress - delay) / duration;
+      }
+      particleProgress = math.min(1.0, particleProgress);
+      
+      final curvedProgress = Curves.bounceOut.transform(particleProgress);
+      
+      final currentX = startX + (p.target.dx - startX) * curvedProgress;
+      final currentY = startY + (p.target.dy - startY) * curvedProgress;
+      
+      paint.color = p.color.withOpacity(particleProgress); 
+      
+      canvas.drawCircle(Offset(currentX, currentY), 1.5, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ParticleTextPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.particles != particles;
   }
 }

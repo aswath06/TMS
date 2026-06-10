@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
@@ -28,6 +29,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   String _driverFilter = 'All'; // All, Available, Assigned, On Trip, On Leave
   DateTime? _selectedDriverDate;
   bool _isDriverSearchVisible = false; // Visibility state for search bar
+  Timer? _searchDebounce;
 
   // Helper to parse 'kilometers' string to double for sorting
   double _parseKm(String kmString) {
@@ -468,6 +470,9 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
+    _driverSearchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -509,7 +514,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    _buildStatsGrid(titleColor, surfaceColor, isDark),
+                    _buildSummaryCard(isDark),
                     const SizedBox(height: 24),
                     _buildLeaveSectionHeader(titleColor, primaryBlue, isDark),
                     _buildLeaveList(isDark, primaryBlue),
@@ -520,8 +525,8 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                       primaryBlue,
                       isDark,
                     ),
-                    if (_isDriverSearchVisible)
-                      _buildDriverSearchBar(isDark, surfaceColor),
+                    _buildControls(isDark),
+                    const SizedBox(height: 16),
                     _buildDriverList(isDark, surfaceColor),
                     const SizedBox(height: 120),
                   ]),
@@ -553,15 +558,14 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                ValueListenableBuilder<int>(
-                  valueListenable: AdminDashboardStore().driversPresent,
-                  builder: (_, present, __) => ValueListenableBuilder<int>(
-                    valueListenable: AdminDashboardStore().driversOnLeave,
-                    builder: (_, onLeave, ___) => Text(
-                      "Managing ${present + onLeave} personnel",
+                Consumer(
+                  builder: (context, ref, child) {
+                    final store = ref.watch(driverStoreProvider);
+                    return Text(
+                      "Managing ${store.totalDrivers} personnel",
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -571,100 +575,140 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
     );
   }
 
-  Widget _buildStatsGrid(Color titleColor, Color surfaceColor, bool isDark) {
-    return Row(
-      children: [
-        Expanded(
-          child: ValueListenableBuilder<int>(
-            valueListenable: AdminDashboardStore().driversPresent,
-            builder: (_, present, __) => _buildStatCard(
-              "Present Today",
-              present.toString(),
-              Icons.check_circle_rounded,
-              const Color(0xFF10B981),
-              surfaceColor,
-              isDark,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ValueListenableBuilder<int>(
+  Widget _buildSummaryCard(bool isDark) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final store = ref.watch(driverStoreProvider);
+        return ValueListenableBuilder<int>(
+          valueListenable: AdminDashboardStore().driversPresent,
+          builder: (_, present, __) => ValueListenableBuilder<int>(
             valueListenable: AdminDashboardStore().driversOnLeave,
-            builder: (_, onLeave, ___) => _buildStatCard(
-              "On Leave",
-              onLeave.toString(),
-              Icons.cancel_rounded,
-              const Color(0xFFEF4444),
-              surfaceColor,
-              isDark,
+            builder: (_, onLeave, ___) {
+              final int total = store.totalDrivers;
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                        : [Colors.white, const Color(0xFFF8FAFC)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: isDark
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.15),
+                            blurRadius: 25,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Total Personnel",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "$total Drivers",
+                            style: const TextStyle(
+                              color: Color(0xFF6366F1),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryItem(
+                        Icons.check_circle_rounded,
+                        "Present Today",
+                        present.toString(),
+                        const Color(0xFF10B981),
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.grey.withOpacity(0.2),
+                    ),
+                    Expanded(
+                      child: _buildSummaryItem(
+                        Icons.cancel_rounded,
+                        "On Leave",
+                        onLeave.toString(),
+                        const Color(0xFFEF4444),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-        ),
-      ],
+          );
+        },
+      ),
+    );
+      },
     );
   }
 
-  Widget _buildStatCard(
+  Widget _buildSummaryItem(
+    IconData icon,
     String title,
     String value,
-    IconData icon,
     Color color,
-    Color surfaceColor,
-    bool isDark,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : Colors.black,
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -812,201 +856,58 @@ final store = ref.watch(requestStoreProvider);
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: titleColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-            ),
-          ),
-          Row(
-            children: [
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _isDriverSearchVisible = !_isDriverSearchVisible;
-                    if (!_isDriverSearchVisible) {
-                      _driverSearchController.clear();
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _isDriverSearchVisible
-                        ? primaryBlue.withOpacity(0.2)
-                        : primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _isDriverSearchVisible ? Icons.search_off : Icons.search,
-                    color: primaryBlue,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () => _showFilterModal(context, isDark),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.tune, color: primaryBlue, size: 20),
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: Text(
+        title,
+        style: TextStyle(
+          color: titleColor,
+          fontWeight: FontWeight.w800,
+          fontSize: 20,
+        ),
       ),
     );
   }
 
-  Widget _buildDriverSearchBar(bool isDark, Color surfaceColor) {
-    final primaryBlue = const Color(0xFF6366F1);
-
+  Widget _buildControls(bool isDark) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _driverSearchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search drivers by name or phone...',
-                      hintStyle: TextStyle(color: Colors.grey.shade500),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Colors.grey.shade500,
-                      ),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_selectedDriverDate != null)
-                            Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: primaryBlue.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                "${_selectedDriverDate!.day}/${_selectedDriverDate!.month}/${_selectedDriverDate!.year}",
-                                style: TextStyle(
-                                  color: primaryBlue,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.calendar_today,
-                              color: _selectedDriverDate != null
-                                  ? primaryBlue
-                                  : Colors.grey.shade500,
-                              size: 20,
-                            ),
-                            onPressed: () => _selectDriverDate(context),
-                          ),
-                        ],
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () => _showDriverFilterModal(context, isDark),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: primaryBlue.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(Icons.tune, color: primaryBlue, size: 20),
-                ),
-              ),
-            ],
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.2)
+                : const Color(0xFF6366F1).withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
-          if (_driverFilter != 'All') ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: primaryBlue.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Filter: $_driverFilter",
-                    style: TextStyle(
-                      color: primaryBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _driverFilter = 'All';
-                      });
-                    },
-                    child: Icon(Icons.close, color: primaryBlue, size: 16),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
+      ),
+      child: TextField(
+        controller: _driverSearchController,
+        onChanged: (val) {
+          if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+          _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+            ref.read(driverStoreProvider).setDriverSearchQuery(val);
+            ref.read(driverStoreProvider).fetchDrivers(forceRefresh: true);
+          });
+        },
+        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+        decoration: InputDecoration(
+          hintText: "Search drivers by name or phone...",
+          hintStyle: TextStyle(
+            color: isDark ? Colors.grey[500] : Colors.grey[400],
+          ),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF6366F1)),
+          suffixIcon: InkWell(
+            onTap: () => _showFilterModal(context, isDark),
+            child: const Icon(Icons.tune, color: Color(0xFF6366F1)),
+          ),
+          filled: true,
+          fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+        ),
       ),
     );
   }
@@ -1036,20 +937,13 @@ final store = ref.watch(driverStoreProvider);
           );
         }
 
-        // Apply local searching and sorting
-        final query = _driverSearchController.text.toLowerCase();
-        final filteredDrivers = store.drivers.where((driver) {
-          final name = (driver['name'] ?? '').toString().toLowerCase();
-          final code = (driver['employee_code'] ?? '').toString().toLowerCase();
-          final phone = (driver['phone_number'] ?? '').toString().toLowerCase();
-
-          return name.contains(query) ||
-              code.contains(query) ||
-              phone.contains(query);
-        }).toList();
+        // No local searching, handled by backend
+        final filteredDrivers = store.drivers;
 
         final sortedDrivers = List<Map<String, dynamic>>.from(filteredDrivers);
-        _sortLocalDrivers(sortedDrivers, store.sortType);
+        if (store.sortType != 'Default') {
+          _sortLocalDrivers(sortedDrivers, store.sortType);
+        }
 
         return Column(
           children: [
@@ -1060,7 +954,9 @@ final store = ref.watch(driverStoreProvider);
               itemCount: sortedDrivers.length,
               itemBuilder: (context, index) {
                 final driver = sortedDrivers[index];
-                return _buildDriverCard(driver, isDark, surfaceColor);
+                return FadeInWidget(
+                  child: _buildDriverCard(driver, isDark, surfaceColor),
+                );
               },
             ),
             if (store.isFetchingNextPage)
@@ -1084,11 +980,12 @@ final store = ref.watch(driverStoreProvider);
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);
 
-    final String kmDisplay = "${driver['driverProfile']?['total_kilometer_drived'] ?? 0} km";
-    final String employeeCode = driver['driverProfile']?['employee_code'] ?? 'N/A';
-    final int experience = driver['driverProfile']?['experience_years'] ?? 0;
-    final int routes = driver['driverProfile']?['total_routes'] ?? 0;
-    final String bloodGroup = driver['driverProfile']?['blood_group'] ?? 'N/A';
+    final dp = driver['driverProfile'] ?? driver;
+    final String kmDisplay = "${dp['total_kilometer_drive'] ?? dp['total_kilometer_drived'] ?? 0} km";
+    final String employeeCode = dp['employee_code'] ?? 'N/A';
+    final int experience = int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
+    final int routes = int.tryParse(dp['total_routes']?.toString() ?? '0') ?? 0;
+    final String bloodGroup = dp['blood_group'] ?? 'N/A';
 
     return GestureDetector(
       onTap: () {
@@ -1330,6 +1227,29 @@ final store = ref.watch(driverStoreProvider);
           fontSize: 18,
         ),
       ),
+    );
+  }
+}
+
+class FadeInWidget extends StatelessWidget {
+  final Widget child;
+  const FadeInWidget({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 500),
+      builder: (context, double value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

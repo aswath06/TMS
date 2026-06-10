@@ -1,28 +1,19 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:tripzo/store/user_store.dart';
-import 'package:tripzo/utils/api_constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/store/fleet_monitor_store.dart';
 import 'package:tripzo/components/fleet/vehicle_card.dart';
 import 'package:tripzo/screens/admin/vechiles/vehicle_detail_page.dart';
 
-class VehiclePage extends StatefulWidget {
+class VehiclePage extends ConsumerStatefulWidget {
   const VehiclePage({super.key});
 
   @override
-  State<VehiclePage> createState() => _VehiclePageState();
+  ConsumerState<VehiclePage> createState() => _VehiclePageState();
 }
 
-class _VehiclePageState extends State<VehiclePage> {
+class _VehiclePageState extends ConsumerState<VehiclePage> {
   final TextEditingController _searchController = TextEditingController();
-
-  bool _isLoading = true;
-  String _error = '';
-
-  int _insideCount = 0;
-  int _outsideCount = 0;
-  List<dynamic> _insideVehicles = [];
-  List<dynamic> _outsideVehicles = [];
 
   String _searchQuery = '';
   String _selectedFilter = 'All'; // 'All', 'Inside', 'Outside'
@@ -30,7 +21,9 @@ class _VehiclePageState extends State<VehiclePage> {
   @override
   void initState() {
     super.initState();
-    _fetchFleetData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(fleetMonitorStoreProvider).fetchFleetData();
+    });
   }
 
   @override
@@ -39,71 +32,14 @@ class _VehiclePageState extends State<VehiclePage> {
     super.dispose();
   }
 
-  Future<void> _fetchFleetData() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
-
-    try {
-      final String? token = await UserStore.getToken();
-      final Uri uri = Uri.parse(
-        ApiConstants.getSecurityRoutes(1, 100, 'PENDING'),
-      );
-
-      final response = await http.get(
-        uri,
-        headers: ApiConstants.getHeaders(token),
-      );
-
-      debugPrint("---- API CALL ----");
-      debugPrint("curl --location '${uri.toString()}' \\");
-      debugPrint("--header 'Authorization: TMS $token'");
-      debugPrint("---- API RESPONSE ----");
-      debugPrint("Status Code: ${response.statusCode}");
-      debugPrint("Response Body: ${response.body}");
-      debugPrint("----------------------");
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final vehicleSummary = responseData['data']?['vehicle_summary'] ?? {};
-
-        if (!mounted) return;
-        setState(() {
-          _insideCount = vehicleSummary['inside_count'] ?? 0;
-          _outsideCount = vehicleSummary['outside_count'] ?? 0;
-          _insideVehicles = List.from(vehicleSummary['inside_vehicles'] ?? []);
-          _outsideVehicles = List.from(
-            vehicleSummary['outside_vehicles'] ?? [],
-          );
-          _isLoading = false;
-        });
-      } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _error = 'Failed to load fleet data';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Error connecting to server';
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<dynamic> get _filteredList {
+  List<dynamic> _getFilteredList(FleetMonitorStore store) {
     List<dynamic> combined = [];
     if (_selectedFilter == 'All') {
-      combined = [..._insideVehicles, ..._outsideVehicles];
+      combined = [...store.insideVehicles, ...store.outsideVehicles];
     } else if (_selectedFilter == 'Inside') {
-      combined = [..._insideVehicles];
+      combined = [...store.insideVehicles];
     } else {
-      combined = [..._outsideVehicles];
+      combined = [...store.outsideVehicles];
     }
 
     if (_searchQuery.trim().isNotEmpty) {
@@ -127,12 +63,14 @@ class _VehiclePageState extends State<VehiclePage> {
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
 
+    final store = ref.watch(fleetMonitorStoreProvider);
+
     return Scaffold(
       backgroundColor: scaffoldBg,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: _fetchFleetData,
+          onRefresh: () => ref.read(fleetMonitorStoreProvider).fetchFleetData(forceRefresh: true),
           color: const Color(0xFF6366F1),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -142,14 +80,14 @@ class _VehiclePageState extends State<VehiclePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    _buildSummaryCard(isDark),
+                    _buildSummaryCard(isDark, store),
                     const SizedBox(height: 24),
                     _buildControls(isDark),
                     const SizedBox(height: 16),
                   ]),
                 ),
               ),
-              _buildVehicleListSection(isDark, titleColor, subColor),
+              _buildVehicleListSection(isDark, titleColor, subColor, store),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           ),
@@ -184,8 +122,8 @@ class _VehiclePageState extends State<VehiclePage> {
     );
   }
 
-  Widget _buildSummaryCard(bool isDark) {
-    if (_isLoading) {
+  Widget _buildSummaryCard(bool isDark, FleetMonitorStore store) {
+    if (store.isLoading) {
       return const SizedBox(
         height: 120,
         child: Center(
@@ -194,7 +132,7 @@ class _VehiclePageState extends State<VehiclePage> {
       );
     }
 
-    final int total = _insideCount + _outsideCount;
+    final int total = store.insideCount + store.outsideCount;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -267,7 +205,7 @@ class _VehiclePageState extends State<VehiclePage> {
                 child: _buildSummaryItem(
                   Icons.business,
                   "Inside Campus",
-                  _insideCount.toString(),
+                  store.insideCount.toString(),
                   Colors.green,
                 ),
               ),
@@ -280,7 +218,7 @@ class _VehiclePageState extends State<VehiclePage> {
                 child: _buildSummaryItem(
                   Icons.directions_car,
                   "Outside Campus",
-                  _outsideCount.toString(),
+                  store.outsideCount.toString(),
                   Colors.orange,
                 ),
               ),
@@ -425,8 +363,9 @@ class _VehiclePageState extends State<VehiclePage> {
     bool isDark,
     Color titleColor,
     Color subColor,
+    FleetMonitorStore store,
   ) {
-    if (_isLoading) {
+    if (store.isLoading) {
       return const SliverFillRemaining(
         child: Center(
           child: CircularProgressIndicator(color: Color(0xFF6366F1)),
@@ -434,15 +373,15 @@ class _VehiclePageState extends State<VehiclePage> {
       );
     }
 
-    if (_error.isNotEmpty) {
+    if (store.error.isNotEmpty) {
       return SliverFillRemaining(
         child: Center(
-          child: Text(_error, style: const TextStyle(color: Colors.red)),
+          child: Text(store.error, style: const TextStyle(color: Colors.red)),
         ),
       );
     }
 
-    final list = _filteredList;
+    final list = _getFilteredList(store);
     if (list.isEmpty) {
       return const SliverFillRemaining(
         child: Center(child: Text("No units found")),
