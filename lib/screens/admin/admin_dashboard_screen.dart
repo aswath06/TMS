@@ -30,9 +30,17 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  // --- Expiration Section State ---
+  int _expirationTabIndex = 0; // 0 for expired, 1 for expiring soon
+  String _filterType = "all"; // all, rc, insurance, pollution, fitness
+  String _searchQuery = "";
+  String _userRole = "";
+  // --------------------------------
+
   @override
   void initState() {
     super.initState();
+    _initData();
     // Trigger stats fetch
     AdminDashboardStore().fetchStats();
     // Trigger profile fetch for name
@@ -42,6 +50,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
     // Listen for remote logouts
     useFacultyStore.errorMessage.addListener(_handleAuthError);
+
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndShowFuelPopup();
@@ -196,6 +205,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
   }
 
+  Future<void> _initData() async {
+    final role = await UserStore.getRole();
+    if (mounted) {
+      setState(() {
+        _userRole = role ?? "";
+      });
+      if (_userRole.toLowerCase() == 'transport admin' || _userRole.toLowerCase() == 'super admin') {
+        ref.read(expirationStoreProvider).fetchExpirations();
+      }
+    }
+  }
+
   @override
   void dispose() {
     useFacultyStore.errorMessage.removeListener(_handleAuthError);
@@ -290,8 +311,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 36),
+                  if (_userRole.toLowerCase() == 'transport admin' || _userRole.toLowerCase() == 'super admin') ...[
+                    FadeInUp(
+                      index: 6,
+                      child: _buildExpirationSection(primaryBlue, surfaceColor, isDark, titleColor, subColor),
+                    ),
+                    const SizedBox(height: 36),
+                  ],
                   FadeInUp(
-                    index: 6,
+                    index: 7,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -310,7 +338,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       ],
                     ),
                   ),
-                  FadeInUp(index: 7, child: _buildNotificationList(primaryBlue, surfaceColor, isDark)),
+                  FadeInUp(index: 8, child: _buildNotificationList(primaryBlue, surfaceColor, isDark)),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -848,6 +876,453 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     return "${dt.day}/${dt.month}";
   }
 
+  // ---------------------------------------------------------------------
+  // Expiration Section
+  // ---------------------------------------------------------------------
+
+  Widget _buildExpirationSection(Color primaryBlue, Color surface, bool isDark, Color titleColor, Color subColor) {
+    if (_userRole.toLowerCase() != 'transport admin' && _userRole.toLowerCase() != 'super admin') {
+      return const SizedBox.shrink();
+    }
+
+    final expStore = ref.watch(expirationStoreProvider);
+    if (!expStore.isLoading && expStore.expiredCount == 0 && expStore.expiringSoonCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionTitle('Vehicle Documents', titleColor),
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.filter_list_rounded, color: primaryBlue, size: 18),
+              ),
+              onPressed: () => _showExpirationFilterSheet(primaryBlue, titleColor, subColor, isDark),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildExpirationToggle(primaryBlue, surface, isDark),
+        const SizedBox(height: 16),
+        _buildExpirationSearchBar(isDark, subColor, surface, primaryBlue),
+        const SizedBox(height: 16),
+        _buildExpirationList(primaryBlue, surface, isDark, titleColor, subColor),
+      ],
+    );
+  }
+
+  Widget _buildExpirationToggle(Color primary, Color surface, bool isDark) {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            alignment: _expirationTabIndex == 0 ? Alignment.centerLeft : Alignment.centerRight,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.42,
+              margin: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: primary,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _expirationTabIndex = 0;
+                  }),
+                  behavior: HitTestBehavior.opaque,
+                  child: Center(
+                    child: Consumer(builder: (context, ref, _) {
+                      final expStore = ref.watch(expirationStoreProvider);
+                      return Text(
+                        "Expired (${expStore.expiredCount})",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: _expirationTabIndex == 0 ? Colors.white : Colors.grey,
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _expirationTabIndex = 1;
+                  }),
+                  behavior: HitTestBehavior.opaque,
+                  child: Center(
+                    child: Consumer(builder: (context, ref, _) {
+                      final expStore = ref.watch(expirationStoreProvider);
+                      return Text(
+                        "Expiring Soon (${expStore.expiringSoonCount})",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: _expirationTabIndex == 1 ? Colors.white : Colors.grey,
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExpirationFilterSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.filter_list_rounded, color: primaryBlue, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        "Filter Documents",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: titleColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildFilterChip('all', 'All', Icons.apps_rounded, primaryBlue, titleColor, isDark, setModalState),
+                      _buildFilterChip('rc', 'RC', Icons.description_rounded, primaryBlue, titleColor, isDark, setModalState),
+                      _buildFilterChip('insurance', 'Insurance', Icons.health_and_safety_rounded, primaryBlue, titleColor, isDark, setModalState),
+                      _buildFilterChip('pollution', 'Pollution', Icons.cloud_rounded, primaryBlue, titleColor, isDark, setModalState),
+                      _buildFilterChip('fitness', 'Fitness', Icons.build_circle_rounded, primaryBlue, titleColor, isDark, setModalState),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ref.read(expirationStoreProvider).fetchExpirations(filterType: _filterType, searchQuery: _searchQuery);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
+                      child: Text(
+                        "Apply Filter",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip(String value, String label, IconData icon, Color primary, Color titleColor, bool isDark, StateSetter setModalState) {
+    final isSelected = _filterType == value;
+    return GestureDetector(
+      onTap: () {
+        setModalState(() {
+          _filterType = value;
+        });
+        setState(() {
+          _filterType = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? primary : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? primary : titleColor.withValues(alpha: 0.05)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : primary, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: isSelected ? Colors.white : titleColor.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpirationSearchBar(bool isDark, Color subColor, Color surface, Color primary) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      height: 50,
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            color: subColor.withValues(alpha: 0.8),
+            size: 20,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: TextField(
+              onChanged: (val) {
+                _searchQuery = val;
+                ref.read(expirationStoreProvider).fetchExpirations(filterType: _filterType, searchQuery: _searchQuery);
+              },
+              decoration: InputDecoration(
+                hintText: 'Search Vehicle Number...',
+                hintStyle: TextStyle(
+                  color: subColor.withValues(alpha: 0.5),
+                  fontSize: 14,
+                ),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpirationList(Color primary, Color surface, bool isDark, Color titleColor, Color subColor) {
+    final expStore = ref.watch(expirationStoreProvider);
+
+    if (expStore.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final list = expStore.expirationData.where((v) {
+      if (_expirationTabIndex == 0) {
+        return (v['expired_documents'] as List?)?.isNotEmpty ?? false;
+      } else {
+        return (v['expiring_soon_documents'] as List?)?.isNotEmpty ?? false;
+      }
+    }).toList();
+
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(
+            "No ${_expirationTabIndex == 0 ? 'expired' : 'expiring soon'} documents found.",
+            style: TextStyle(color: subColor),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final vehicle = list[index];
+        final isExpired = _expirationTabIndex == 0;
+        final docs = isExpired ? vehicle['expired_documents'] as List : vehicle['expiring_soon_documents'] as List;
+        final Color statusColor = isExpired ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
+
+        // Helper to get icon data
+        IconData getIconForDoc(String doc) {
+          switch (doc) {
+            case 'rc_expiry_date': return Icons.description_rounded;
+            case 'insurance_expiry_date': return Icons.health_and_safety_rounded;
+            case 'pollution_expiry_date': return Icons.cloud_rounded;
+            case 'fc_expiry_date': return Icons.build_circle_rounded;
+            default: return Icons.warning_rounded;
+          }
+        }
+
+        String getLabelForDoc(String doc) {
+          switch (doc) {
+            case 'rc_expiry_date': return 'RC';
+            case 'insurance_expiry_date': return 'Insurance';
+            case 'pollution_expiry_date': return 'Pollution';
+            case 'fc_expiry_date': return 'Fitness';
+            default: return 'Document';
+          }
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      vehicle['vehicle_number'] ?? 'Unknown',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: titleColor,
+                      ),
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: docs.map<Widget>((doc) {
+                      return Icon(getIconForDoc(doc), size: 18, color: statusColor);
+                    }).toList(),
+                  ),
+                ],
+              ),
+              childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: docs.map<Widget>((doc) {
+                    final icon = getIconForDoc(doc);
+                    final label = getLabelForDoc(doc);
+                    final date = vehicle[doc] ?? 'N/A';
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: 14, color: statusColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            "$label: $date",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class FadeInUp extends StatelessWidget {

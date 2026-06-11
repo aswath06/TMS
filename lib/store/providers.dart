@@ -12,6 +12,12 @@ import 'package:tripzo/store/fleet_monitor_store.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/services/notification_socket_service.dart';
+import 'package:tripzo/store/expiration_store.dart';
+
+/// ExpirationStore Provider
+final expirationStoreProvider = ChangeNotifierProvider<ExpirationStore>((ref) {
+  return ExpirationStore();
+});
 
 /// VehicleStore Provider
 final vehicleStoreProvider = ChangeNotifierProvider<VehicleStore>((ref) {

@@ -21,6 +21,7 @@ class ApiConstants {
   static String get createVehicle => "$baseUrl/api/vehicles/create";
   static String get vehicleDashboard => "$baseUrl/api/vehicles/vehicle-dashboard/";
   static String get getVehicleById => "$baseUrl/api/vehicles/vehicles-by-id/";
+  static String vehicleExpirations(int page, int limit, String type, String search) => "$baseUrl/api/vehicles/expirations?page=$page&limit=$limit&type=$type&search=$search";
   static String get serviceTypes => "$baseUrl/api/vehicles/service-types";
   static String get serviceShops => "$baseUrl/api/vehicles/shops";
   static String get vehicleMaintenance => "$baseUrl/api/vehicles/vehicle-maintenance";
