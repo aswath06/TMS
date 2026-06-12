@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:tripzo/screens/faculty/missions/reassign_guest_screen.dart';
+import 'package:tripzo/screens/faculty/missions/change_driver_vehicle_sheet.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -2132,6 +2133,26 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                             ),
                             const SizedBox(height: 16),
                             _buildGuestContacts(cardColor, primaryBlue, subColor),
+                            if (isApprovedState && !isFaculty) ...[
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _showChangeDriverVehicleModal(cardColor, primaryBlue, titleColor, subColor, isDark),
+                                  icon: const Icon(Icons.swap_horiz_rounded),
+                                  label: const Text(
+                                    "CHANGE DRIVER OR VEHICLE",
+                                    style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: primaryBlue,
+                                    side: BorderSide(color: primaryBlue.withValues(alpha: 0.5), width: 1.5),
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 32),
                             _buildSectionTitle(
                               "Resource & Vehicle",
@@ -4996,6 +5017,44 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showChangeDriverVehicleModal(Color cardColor, Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    if (_missionData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mission data is still loading...")));
+      return;
+    }
+    
+    // Attempt to extract dynamic current driver/vehicle from missionData first, fallback to widget
+    String currentDriverName = widget.driverName;
+    String currentVehicleName = widget.vehicleInfo;
+    
+    final tripInstances = _missionData!['trip_instances'] as List?;
+    if (tripInstances != null && tripInstances.isNotEmpty) {
+      final legs = tripInstances[0]['legs'] as List?;
+      if (legs != null && legs.isNotEmpty) {
+        final assignments = legs[0]['assignments'] as List?;
+        if (assignments != null && assignments.isNotEmpty) {
+          final assignment = assignments[0];
+          if (assignment['driver'] != null) {
+            currentDriverName = assignment['driver']['name'] ?? currentDriverName;
+          }
+          if (assignment['vehicle'] != null) {
+            currentVehicleName = assignment['vehicle']['vehicle_number'] ?? currentVehicleName;
+          }
+        }
+      }
+    }
+
+    ChangeDriverVehicleSheet.show(
+      context,
+      _missionData!,
+      currentDriverName,
+      currentVehicleName,
+      () {
+        _fetchMissionDetails();
+      }
     );
   }
 }

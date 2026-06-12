@@ -53,6 +53,7 @@ class ApiConstants {
   static String get getAvailableVehicles => "$baseUrl/request/route-requests/available-vehicles";
   static String get getAvailableDrivers => "$baseUrl/request/route-requests/available-drivers";
   static String adminFinalize(dynamic id) => "$baseUrl/request/route-requests/$id/admin-finalize";
+  static String updateVehicleDriver(dynamic tripId) => "$baseUrl/request/trip-assignments/$tripId/update-vehicle-driver";
   static String markAllowanceReceived(dynamic id) => "$baseUrl/request/mark-received/$id/receive";
   static String startTrip(dynamic tripId) => "$baseUrl/request/trips/$tripId/start";
   static String startRegister(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-register";

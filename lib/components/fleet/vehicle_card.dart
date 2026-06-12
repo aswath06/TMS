@@ -134,16 +134,20 @@ class VehicleCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildInfoBadge(
-                      Icons.local_gas_station_rounded,
-                      fuelType,
-                      subColor,
+                    Flexible(
+                      child: _buildInfoBadge(
+                        Icons.local_gas_station_rounded,
+                        fuelType,
+                        subColor,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    _buildInfoBadge(
-                      Icons.speed_rounded,
-                      "$odometer km",
-                      subColor,
+                    Flexible(
+                      child: _buildInfoBadge(
+                        Icons.speed_rounded,
+                        "$odometer km",
+                        subColor,
+                      ),
                     ),
                   ],
                 ),
@@ -183,12 +187,16 @@ class VehicleCard extends StatelessWidget {
       children: [
         Icon(icon, size: 12, color: subColor.withValues(alpha: 0.6)),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            color: subColor.withValues(alpha: 0.8),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: subColor.withValues(alpha: 0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
