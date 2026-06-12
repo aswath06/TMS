@@ -15,6 +15,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class AdminAllowanceScreen extends ConsumerStatefulWidget {
   const AdminAllowanceScreen({super.key});
@@ -173,11 +174,11 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     const SizedBox(height: 8),
                     InkWell(
                       onTap: () async {
-                        final DateTime? pickedDate = await showDatePicker(
-                          context: context,
+                        final pickedDate = await CustomDateTimePicker.show(
+                          context,
                           initialDate: _tempSelectedDate ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          showTime: false,
+                          accent: const Color(0xFF6366F1),
                         );
                         if (pickedDate != null) {
                           setModalState(() {
@@ -422,22 +423,11 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: context,
+                        final picked = await CustomDateTimePicker.show(
+                          context,
                           initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
-                          builder: (context, child) => Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: ColorScheme.fromSeed(
-                                seedColor: primaryBlue,
-                                primary: primaryBlue,
-                                onPrimary: Colors.white,
-                                surface: isDark ? const Color(0xFF1E293B) : Colors.white,
-                              ),
-                            ),
-                            child: child!,
-                          ),
+                          showTime: false,
+                          accent: primaryBlue,
                         );
                         if (picked != null) setModalState(() => selectedDate = picked);
                       },
@@ -485,22 +475,11 @@ final store = ref.watch(adminAllowanceStoreProvider);
                               const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
                                     initialDate: fromDate,
-                                    firstDate: DateTime(2020),
-                                    lastDate: toDate,
-                                    builder: (context, child) => Theme(
-                                      data: Theme.of(context).copyWith(
-                                        colorScheme: ColorScheme.fromSeed(
-                                          seedColor: primaryBlue,
-                                          primary: primaryBlue,
-                                          onPrimary: Colors.white,
-                                          surface: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                        ),
-                                      ),
-                                      child: child!,
-                                    ),
+                                    showTime: false,
+                                    accent: primaryBlue,
                                   );
                                   if (picked != null) setModalState(() => fromDate = picked);
                                 },
@@ -550,22 +529,11 @@ final store = ref.watch(adminAllowanceStoreProvider);
                               const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
                                     initialDate: toDate,
-                                    firstDate: fromDate,
-                                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                                    builder: (context, child) => Theme(
-                                      data: Theme.of(context).copyWith(
-                                        colorScheme: ColorScheme.fromSeed(
-                                          seedColor: primaryBlue,
-                                          primary: primaryBlue,
-                                          onPrimary: Colors.white,
-                                          surface: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                        ),
-                                      ),
-                                      child: child!,
-                                    ),
+                                    showTime: false,
+                                    accent: primaryBlue,
                                   );
                                   if (picked != null) setModalState(() => toDate = picked);
                                 },

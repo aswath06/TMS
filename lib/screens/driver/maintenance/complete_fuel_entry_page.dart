@@ -161,6 +161,14 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
 
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Check if the file was deleted by the OS cache manager
+    if (_billImage != null && !_billImage!.existsSync()) {
+      setState(() => _billImage = null);
+      showTopToast(context, LanguageStore.isTamil ? "படம் காணவில்லை. மீண்டும் பதிவேற்றவும்" : "Image file lost. Please re-upload.", isError: true);
+      return;
+    }
+
     if (_billImage == null) {
       showTopToast(context, LanguageStore.isTamil ? "பில் படத்தை பதிவேற்றவும்" : "Please upload bill image", isError: true);
       return;

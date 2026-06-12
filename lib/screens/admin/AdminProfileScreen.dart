@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/settings_page.dart';
 import 'package:tripzo/store/admin_store.dart';
+import 'package:tripzo/screens/setting/scanner_page.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
@@ -61,6 +63,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                   valueListenable: useAdminStore.adminData,
                                   builder: (context, data, child) {
                                     return _buildProfileContent(
+                                      context,
                                       data,
                                       isLoading,
                                       isDark,
@@ -152,6 +155,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   Widget _buildProfileContent(
+    BuildContext context,
     Map<String, dynamic>? profileData,
     bool isLoading,
     bool isDark,
@@ -170,6 +174,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
     final String name = profileData?['name'] ?? "Admin User";
     final String username = profileData?['user_name'] ?? 'admin';
+    final String roleStr = _getRoleName(profileData?['role']).toLowerCase();
+    final bool showScanner = roleStr.contains('super admin') || roleStr.contains('transport admin');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,6 +185,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         _buildSectionTitle("System Access", titleColor, primaryBlue),
         const SizedBox(height: 16),
         _buildInfoGrid(profileData, isDark, surfaceColor, primaryBlue),
+        if (showScanner) ...[
+          const SizedBox(height: 32),
+          _buildSectionTitle("Quick Actions", titleColor, primaryBlue),
+          const SizedBox(height: 16),
+          _buildScannerTile(context, isDark, surfaceColor, titleColor, primaryBlue),
+        ],
       ],
     );
   }
@@ -452,6 +464,54 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildScannerTile(
+    BuildContext context,
+    bool isDark,
+    Color surfaceColor,
+    Color titleColor,
+    Color primaryBlue,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+        ),
+      ),
+      child: ListTile(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ScannerPage(),
+            ),
+          );
+          if (result != null) {
+            showTopToast(context, "Scanned: $result");
+          }
+        },
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: primaryBlue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.qr_code_scanner_rounded, color: primaryBlue, size: 22),
+        ),
+        title: Text(
+          "Scan Code",
+          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+        ),
+        subtitle: Text(
+          "Scan using camera",
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
       ),
     );
   }

@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class MissionsScreen extends ConsumerStatefulWidget {
   const MissionsScreen({super.key});
@@ -1155,24 +1156,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                     const SizedBox(height: 12),
                     GestureDetector(
                       onTap: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: context,
+                        final picked = await CustomDateTimePicker.show(
+                          context,
                           initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: ColorScheme.fromSeed(
-                                  seedColor: primaryBlue,
-                                  primary: primaryBlue,
-                                  onPrimary: Colors.white,
-                                  surface: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
+                          showTime: false,
+                          accent: primaryBlue,
                         );
                         if (picked != null) {
                           setModalState(() => selectedDate = picked);
@@ -1222,24 +1210,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
                                     initialDate: fromDate,
-                                    firstDate: DateTime(2020),
-                                    lastDate: toDate,
-                                    builder: (context, child) {
-                                      return Theme(
-                                        data: Theme.of(context).copyWith(
-                                          colorScheme: ColorScheme.fromSeed(
-                                            seedColor: primaryBlue,
-                                            primary: primaryBlue,
-                                            onPrimary: Colors.white,
-                                            surface: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                          ),
-                                        ),
-                                        child: child!,
-                                      );
-                                    },
+                                    showTime: false,
+                                    accent: primaryBlue,
                                   );
                                   if (picked != null) {
                                     setModalState(() => fromDate = picked);
@@ -1291,24 +1266,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
                                     initialDate: toDate,
-                                    firstDate: fromDate,
-                                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                                    builder: (context, child) {
-                                      return Theme(
-                                        data: Theme.of(context).copyWith(
-                                          colorScheme: ColorScheme.fromSeed(
-                                            seedColor: primaryBlue,
-                                            primary: primaryBlue,
-                                            onPrimary: Colors.white,
-                                            surface: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                          ),
-                                        ),
-                                        child: child!,
-                                      );
-                                    },
+                                    showTime: false,
+                                    accent: primaryBlue,
                                   );
                                   if (picked != null) {
                                     setModalState(() => toDate = picked);
@@ -1407,16 +1369,50 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               : () async {
                                   setModalState(() => downloading = true);
                                   try {
+                                    final String? token = await UserStore.getToken();
+                                    String startStr;
+                                    String endStr;
+
                                     if (isRangeReport) {
-                                      // Simulated UI-only response for From-To range as requested
-                                      await Future.delayed(const Duration(milliseconds: 1200));
+                                      startStr = DateFormat('yyyy-MM-dd').format(fromDate);
+                                      endStr = DateFormat('yyyy-MM-dd').format(toDate);
+                                    } else {
+                                      startStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                      endStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                    }
+
+                                    final String url =
+                                        "${ApiConstants.baseUrl}/request/reports/date-wise?start_date=$startStr&end_date=$endStr&format=$selectedFormat";
+
+                                    // ── DEBUG LOGS ──────────────────────────────────────────────────
+                                    debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
+                                    debugPrint("URL: $url");
+                                    debugPrint(
+                                      "curl --location '$url' \\\n"
+                                      "  --header 'Authorization: TMS $token' \\\n"
+                                      "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
+                                    );
+                                    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                                    final response = await http.get(
+                                      Uri.parse(url),
+                                      headers: ApiConstants.getHeaders(token),
+                                    );
+
+                                    if (response.statusCode == 200) {
+                                      final bytes = response.bodyBytes;
+                                      final tempDir = await getTemporaryDirectory();
+                                      final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
+                                      final fileName = isRangeReport ? "Transport_Report_${startStr}_to_${endStr}.$ext" : "Transport_Report_$startStr.$ext";
+                                      final file = File("${tempDir.path}/$fileName");
+                                      await file.writeAsBytes(bytes);
+
+                                      await OpenFilex.open(file.path);
                                       if (context.mounted) {
                                         Navigator.pop(context);
-                                        final fromStr = DateFormat('dd MMM yyyy').format(fromDate);
-                                        final toStr = DateFormat('dd MMM yyyy').format(toDate);
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text("Range report from $fromStr to $toStr generated successfully (${selectedFormat.toUpperCase()})"),
+                                            content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
                                             backgroundColor: const Color(0xFF10B981),
                                             behavior: SnackBarBehavior.floating,
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1424,57 +1420,14 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                         );
                                       }
                                     } else {
-                                      // Actual date-wise download code (old report style)
-                                      final String? token = await UserStore.getToken();
-                                      final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-                                      final String url =
-                                          "${ApiConstants.baseUrl}/request/reports/date-wise?date=$dateStr&template=summary&format=$selectedFormat";
-
-                                      // ── DEBUG LOGS ──────────────────────────────────────────────────
-                                      debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
-                                      debugPrint("URL: $url");
-                                      debugPrint(
-                                        "curl --location '$url' \\\n"
-                                        "  --header 'Authorization: TMS $token' \\\n"
-                                        "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
-                                      );
-                                      debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-                                      final response = await http.get(
-                                        Uri.parse(url),
-                                        headers: ApiConstants.getHeaders(token),
-                                      );
-
-                                      if (response.statusCode == 200) {
-                                        final bytes = response.bodyBytes;
-                                        final tempDir = await getTemporaryDirectory();
-                                        final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
-                                        final fileName = "Transport_Report_$dateStr.$ext";
-                                        final file = File("${tempDir.path}/$fileName");
-                                        await file.writeAsBytes(bytes);
-
-                                        await OpenFilex.open(file.path);
-                                        if (context.mounted) {
-                                          Navigator.pop(context);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
-                                              backgroundColor: const Color(0xFF10B981),
-                                              behavior: SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                            ),
-                                          );
-                                        }
-                                      } else {
-                                        debugPrint("Report Download Error: ${response.statusCode}");
-                                        debugPrint("Body: ${response.body}");
-                                        String message = "Failed to generate report";
-                                        try {
-                                          final data = json.decode(response.body);
-                                          message = data['message'] ?? message;
-                                        } catch (_) {}
-                                        throw Exception(message);
-                                      }
+                                      debugPrint("Report Download Error: ${response.statusCode}");
+                                      debugPrint("Body: ${response.body}");
+                                      String message = "Failed to generate report";
+                                      try {
+                                        final data = json.decode(response.body);
+                                        message = data['message'] ?? message;
+                                      } catch (_) {}
+                                      throw Exception(message);
                                     }
                                   } catch (e) {
                                     if (context.mounted) {

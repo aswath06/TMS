@@ -156,6 +156,13 @@ class MainScreenState extends State<MainScreen> {
           const SecurityQrScannerScreen(),
           const AdminProfileScreen(),
         ];
+      case 'student':
+        return [
+          const DashboardScreen(),
+          const FacultyBusScreen(),
+          const DriverLeaveScreen(),
+          const ProfileScreen(),
+        ];
       case 'driver':
       default:  
         return [

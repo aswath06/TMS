@@ -107,10 +107,15 @@ curl -X POST "$url" \
         final token = data['token'] ?? '';
 
         final user = data['user'] ?? {};
+        final String? rawRole = user['role']?.toString();
+        
+        if (rawRole == null || rawRole.trim().isEmpty || rawRole.toLowerCase() == 'undefined') {
+          throw "Role is undefined";
+        }
 
         await UserStore.saveUserData(
           token: token,
-          role: user['role']?.toString().toLowerCase() ?? 'faculty',
+          role: rawRole.toLowerCase(),
           email: user['email'] ?? '', // ✅ FIXED
           id: user['id'] ?? 0,
         );
@@ -180,10 +185,15 @@ curl -X POST "$url" \
       if (response.statusCode == 200 || response.statusCode == 201) {
         final String jwtToken = responseData['token'];
         final Map<String, dynamic> userData = responseData['user'];
+        final String? rawRole = userData['role']?.toString();
+
+        if (rawRole == null || rawRole.trim().isEmpty || rawRole.toLowerCase() == 'undefined') {
+          throw "Role is undefined";
+        }
 
         await UserStore.saveUserData(
           token: jwtToken,
-          role: userData['role'] ?? 'faculty',
+          role: rawRole.toLowerCase(),
           email: userData['email'],
           id: userData['id'] ?? 0,
         );

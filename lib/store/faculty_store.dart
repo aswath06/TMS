@@ -34,11 +34,8 @@ class FacultyStore {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         
-        // Remote logout check
-        if (decoded['data'] != null && decoded['data']['isLogin'] == false) {
-           errorMessage.value = "SESSION_EXPIRED";
-           return;
-        }
+        // Remote logout check has been removed because it causes unintended logouts
+        // when the app is restarted (backend sets it to false on disconnect).
 
         profileData.value = decoded['data'];
         

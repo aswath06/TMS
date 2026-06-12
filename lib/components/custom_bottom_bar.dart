@@ -155,6 +155,13 @@ class CustomBottomBar extends StatelessWidget {
             'Profile',
           ),
         ];
+      case 'student':
+        return [
+          _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Dashboard'),
+          _NavItem(Icons.directions_bus_outlined, Icons.directions_bus_rounded, 'Bus'),
+          _NavItem(Icons.event_busy_outlined, Icons.event_busy_rounded, 'Leave'),
+          _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
+        ];
       case 'driver':
       default:
         return [
