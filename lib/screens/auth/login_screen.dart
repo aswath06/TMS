@@ -37,7 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: Platform.isAndroid 
         ? null 
-        : '1044594848603-d8jula4v28ackbnro25un3cl3vr9bv64.apps.googleusercontent.com',
+        : '1044594848603-df94i707o6tqhbo26takb58rip2olp9v.apps.googleusercontent.com',
     serverClientId:
         '1044594848603-3l3hi7sf390vgru417runabvpuimfpn2.apps.googleusercontent.com',
     scopes: <String>['email', 'profile', 'openid'],
@@ -46,9 +46,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ✅ Bypass SSL certificate verification for DevTunnels (dev only)
   IOClient _createHttpClient() {
-    final httpClient = HttpClient()
-      ..badCertificateCallback =
+    final httpClient = HttpClient();
+    
+    // SECURITY FIX: Never bypass SSL in production, otherwise Apple App Store will reject the app!
+    if (const bool.fromEnvironment('dart.vm.product') == false) {
+      httpClient.badCertificateCallback =
           (X509Certificate cert, String host, int port) => true;
+    }
+    
     return IOClient(httpClient);
   }
 

@@ -616,7 +616,17 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                     setState(() {
                       _selectedVehicle = v;
                       if (_userRole != 'driver') {
-                        _selectedDriver = v['default_driver'];
+                        if (v['default_driver'] != null) {
+                          try {
+                            _selectedDriver = _drivers.firstWhere(
+                              (d) => d['id'] == v['default_driver']['id'] || d['name'] == v['default_driver']['name']
+                            );
+                          } catch (e) {
+                            _selectedDriver = v['default_driver'];
+                          }
+                        } else {
+                          _selectedDriver = null;
+                        }
                       }
                     });
                   },

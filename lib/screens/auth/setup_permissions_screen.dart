@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../utils/routes.dart';
 import '../../store/isdark.dart';
 import '../../store/istamil.dart';
@@ -113,7 +114,34 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
 
 
   Future<void> _requestNotification() async {
-    await Permission.notification.request();
+    PermissionStatus status = await Permission.notification.status;
+    
+    if (status.isPermanentlyDenied || status.isDenied) {
+      if (Theme.of(context).platform == TargetPlatform.iOS) {
+        final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
+        await flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(
+              alert: true,
+              badge: true,
+              sound: true,
+            );
+      } else {
+        await Permission.notification.request();
+      }
+      
+      status = await Permission.notification.status;
+      
+      // If it is still denied after requesting, the user might have permanently denied it
+      // so we need to redirect them to settings.
+      if (status.isPermanentlyDenied || (Theme.of(context).platform == TargetPlatform.iOS && status.isDenied)) {
+        await openAppSettings();
+      }
+    }
+    
+    // Check all permissions again to update the UI
     _checkPermissions();
   }
 
@@ -139,6 +167,9 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
     final bool isDark = ThemeStore.isDark;
     final bool isTamil = LanguageStore.isTamil;
     final Color primaryColor = const Color(0xFF6366F1);
+
+    final bool isIOS = Theme.of(context).platform == TargetPlatform.iOS;
+    final bool canProceed = _isInternetOk && (isIOS || _isNotificationOk);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
@@ -197,20 +228,21 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
                       ),
                     ),
                     
-                    SlideTransition(
-                      position: _card2Slide,
-                      child: FadeTransition(
-                        opacity: _headerFade,
-                        child: _buildRequirementCard(
-                          title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
-                          subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
-                          icon: Icons.notifications_active_rounded,
-                          isOk: _isNotificationOk,
-                          onTap: _requestNotification,
-                          isDark: isDark,
+                    if (!isIOS)
+                      SlideTransition(
+                        position: _card2Slide,
+                        child: FadeTransition(
+                          opacity: _headerFade,
+                          child: _buildRequirementCard(
+                            title: isTamil ? "அறிவிப்பு அனுமதி" : "Notification Access",
+                            subtitle: isTamil ? "உடனடி அறிவிப்புகளைப் பெறத் தேவை" : "Required to receive live mission updates",
+                            icon: Icons.notifications_active_rounded,
+                            isOk: _isNotificationOk,
+                            onTap: _requestNotification,
+                            isDark: isDark,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -225,15 +257,15 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
                   height: 64,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    gradient: (_isInternetOk && _isNotificationOk) 
+                    gradient: canProceed 
                       ? const LinearGradient(
                           colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
                       : null,
-                    color: (_isInternetOk && _isNotificationOk) ? null : (isDark ? Colors.grey[800] : Colors.grey[300]),
-                    boxShadow: (_isInternetOk && _isNotificationOk) ? [
+                    color: canProceed ? null : (isDark ? Colors.grey[800] : Colors.grey[300]),
+                    boxShadow: canProceed ? [
                       BoxShadow(
                         color: const Color(0xFF4F46E5).withOpacity(0.4),
                         blurRadius: 20,
@@ -246,7 +278,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(20),
-                      onTap: (_isInternetOk && _isNotificationOk && !_isProcessing) ? _completeOnboarding : null,
+                      onTap: (canProceed && !_isProcessing) ? _completeOnboarding : null,
                       child: Center(
                         child: _isProcessing 
                           ? const CircularProgressIndicator(color: Colors.white)
@@ -259,13 +291,13 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
                                     fontWeight: FontWeight.w900, 
                                     fontSize: 16, 
                                     letterSpacing: 1.5, 
-                                    color: (_isInternetOk && _isNotificationOk) ? Colors.white : (isDark ? Colors.white54 : Colors.black38),
+                                    color: canProceed ? Colors.white : (isDark ? Colors.white54 : Colors.black38),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Icon(
                                   Icons.arrow_forward_rounded, 
-                                  color: (_isInternetOk && _isNotificationOk) ? Colors.white : (isDark ? Colors.white54 : Colors.black38),
+                                  color: canProceed ? Colors.white : (isDark ? Colors.white54 : Colors.black38),
                                 ),
                               ],
                             ),
