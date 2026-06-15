@@ -19,7 +19,10 @@ import 'faculty/profile_screen.dart';
 import 'faculty/missions_screen.dart';
 import 'faculty/dashboard_screen.dart';
 import 'faculty/faculty_bus_screen.dart';
-import 'faculty/dashboard_screen.dart';
+
+// Student Screens
+import 'package:tripzo/screens/student/student_dashboard_screen.dart';
+import 'package:tripzo/screens/student/student_bus_screen.dart';
 
 import '../components/custom_bottom_bar.dart';
 import 'package:tripzo/screens/security/security_dashboard_screen.dart';
@@ -158,9 +161,9 @@ class MainScreenState extends State<MainScreen> {
         ];
       case 'student':
         return [
-          const DashboardScreen(),
-          const FacultyBusScreen(),
-          const DriverLeaveScreen(),
+          const StudentDashboardScreen(),
+          const StudentBusScreen(),
+          const DriverLeaveScreen(userRole: 'student'),
           const ProfileScreen(),
         ];
       case 'driver':

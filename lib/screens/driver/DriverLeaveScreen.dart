@@ -8,7 +8,8 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
 
 class DriverLeaveScreen extends ConsumerStatefulWidget {
-  const DriverLeaveScreen({super.key});
+  final String userRole;
+  const DriverLeaveScreen({super.key, this.userRole = 'driver'});
 
   @override
   ConsumerState<DriverLeaveScreen> createState() => _DriverLeaveScreenState();
@@ -315,7 +316,7 @@ final store = ref.watch(driverStoreProvider);
   ) => GestureDetector(
     onTap: () => Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const ApplyLeavePage()),
+      MaterialPageRoute(builder: (context) => ApplyLeavePage(userRole: widget.userRole)),
     ),
     child: Container(
       width: double.infinity,

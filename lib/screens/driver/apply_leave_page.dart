@@ -6,7 +6,8 @@ import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class ApplyLeavePage extends StatefulWidget {
-  const ApplyLeavePage({super.key});
+  final String userRole;
+  const ApplyLeavePage({super.key, this.userRole = 'driver'});
 
   @override
   State<ApplyLeavePage> createState() => _ApplyLeavePageState();
@@ -87,6 +88,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   Widget build(BuildContext context) {
     final bool isTamil = LanguageStore.isTamil;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isStudent = widget.userRole.toLowerCase() == 'student';
 
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
@@ -128,14 +130,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         isTamil,
                       ),
 
-                      const SizedBox(height: 32),
-
-                      _buildSectionTitle(
-                        isTamil ? "விடுப்பு வகை" : "Leave Type",
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildLeaveTypeSelector(cardColor, titleColor, isTamil),
+                      if (!isStudent) ...[
+                        const SizedBox(height: 32),
+                        _buildSectionTitle(
+                          isTamil ? "விடுப்பு வகை" : "Leave Type",
+                          titleColor,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildLeaveTypeSelector(cardColor, titleColor, isTamil),
+                      ],
 
                       const SizedBox(height: 32),
 
@@ -654,6 +657,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Widget _buildSubmitButton(bool isTamil) {
+    final bool isStudent = widget.userRole.toLowerCase() == 'student';
     return ListenableBuilder(
       listenable: useDriverStore,
       builder: (context, child) {
@@ -666,7 +670,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                      if (_formKey.currentState!.validate() &&
                         _startDate != null &&
                         _endDate != null &&
-                        _selectedLeaveType != null) {
+                        (isStudent || _selectedLeaveType != null)) {
 
                       if (!_endDate!.isAfter(_startDate!)) {
                         showTopToast(
@@ -692,7 +696,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                       final success = await useDriverStore.createLeave(
                         fromDate: fromDate,
                         toDate: toDate,
-                        leaveType: _selectedLeaveType!,
+                        leaveType: isStudent ? 1 : _selectedLeaveType!,
                         reason: _reasonController.text,
                       );
 
