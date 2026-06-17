@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class EditDriverScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> driver;
@@ -15,25 +18,45 @@ class EditDriverScreen extends ConsumerStatefulWidget {
 }
 
 class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
-  final _formKey = GlobalKey<FormState>();
-
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _usernameController;
-  late TextEditingController _ageController;
-  late TextEditingController _licenseNumController;
-  late TextEditingController _experienceController;
-  late TextEditingController _bloodGroupController;
-  late TextEditingController _addressController;
-  late TextEditingController _emergencyNameController;
-  late TextEditingController _emergencyPhoneController;
-
-  DateTime? _licenseExpiryDate;
-  DateTime? _joiningDate;
-  String _driverStatus = 'AVAILABLE';
-
+  int _currentStep = 0;
   bool _isLoading = false;
+  final ImagePicker _picker = ImagePicker();
+
+  final _formKey1 = GlobalKey<FormState>();
+  final _formKey2 = GlobalKey<FormState>();
+  final _formKey3 = GlobalKey<FormState>();
+  final _formKey4 = GlobalKey<FormState>();
+
+  // Profile Image
+  XFile? _profileImage;
+  String? _existingProfilePhotoUrl;
+
+  // Documents
+  XFile? _licenseFrontImage, _licenseBackImage, _aadharImage, _panImage;
+  String? _existingLicenseFront, _existingLicenseBack, _existingAadhar, _existingPan;
+
+  // Step 1: Personal Info
+  late TextEditingController _nameCtrl, _emailCtrl, _phoneCtrl, _altPhoneCtrl;
+  late TextEditingController _fatherNameCtrl, _motherNameCtrl, _spouseNameCtrl;
+  late TextEditingController _religionCtrl, _casteCtrl, _communityCtrl, _aadharCtrl;
+  late TextEditingController _addressCtrl, _ageCtrl, _genderCtrl, _bloodGroupCtrl;
+  DateTime? _dobDate;
+
+  // Step 2: Account & Role
+  late TextEditingController _usernameCtrl;
+  late TextEditingController _nomineeNameCtrl, _nomineeRelationCtrl;
+  DateTime? _nomineeDobDate;
+
+  // Step 3: Role Details
+  late TextEditingController _licenseNumCtrl, _vehicleTypeCtrl, _experienceCtrl;
+  late TextEditingController _emergencyNameCtrl, _emergencyPhoneCtrl;
+  DateTime? _licenseExpiryDate, _joiningDate, _nonTransportExpiryDate;
+  String _driverStatus = 'AVAILABLE';
+  String _shift = 'MORNING';
+
+  // Step 4: Financial & Bank
+  late TextEditingController _salaryBasicCtrl, _grossSalaryCtrl;
+  late TextEditingController _bankNameCtrl, _accNumCtrl, _ifscCtrl, _branchCtrl;
 
   @override
   void initState() {
@@ -41,110 +64,460 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
     final d = widget.driver;
     final dp = d['driverProfile'] ?? {};
 
-    _nameController = TextEditingController(text: d['name'] ?? '');
-    _emailController = TextEditingController(text: d['email'] ?? '');
-    _phoneController = TextEditingController(text: d['phone'] ?? '');
-    _usernameController = TextEditingController(text: d['username'] ?? '');
-    _ageController = TextEditingController(text: (dp['age'] ?? '').toString());
-    _licenseNumController = TextEditingController(text: dp['license_number'] ?? '');
-    _experienceController = TextEditingController(text: (dp['experience_years'] ?? '').toString());
-    _bloodGroupController = TextEditingController(text: dp['blood_group'] ?? '');
-    _addressController = TextEditingController(text: dp['address'] ?? '');
-    _emergencyNameController = TextEditingController(text: dp['emergency_contact_name'] ?? '');
-    _emergencyPhoneController = TextEditingController(text: dp['emergency_contact_phone'] ?? '');
+    _existingProfilePhotoUrl = _getImageUrl(d['profile_photo']);
+    _existingLicenseFront = _getImageUrl(dp['licence_image_front']);
+    _existingLicenseBack = _getImageUrl(dp['licence_image_back']);
+    _existingAadhar = _getImageUrl(d['aadhar_photo']);
+    _existingPan = _getImageUrl(dp['pan_image']);
 
-    _driverStatus = d['status'] ?? 'AVAILABLE';
+    // Step 1
+    _nameCtrl = TextEditingController(text: d['name'] ?? '');
+    _emailCtrl = TextEditingController(text: d['email'] ?? '');
+    _phoneCtrl = TextEditingController(text: d['phone'] ?? '');
+    _altPhoneCtrl = TextEditingController(text: d['mobile_number_2'] ?? d['mobile_2'] ?? '');
+    _fatherNameCtrl = TextEditingController(text: d['father_name'] ?? '');
+    _motherNameCtrl = TextEditingController(text: d['mother_name'] ?? '');
+    _spouseNameCtrl = TextEditingController(text: d['spouse_name'] ?? '');
+    _religionCtrl = TextEditingController(text: d['religious'] ?? d['religion'] ?? '');
+    _casteCtrl = TextEditingController(text: d['caste'] ?? '');
+    _communityCtrl = TextEditingController(text: d['community'] ?? '');
+    _aadharCtrl = TextEditingController(text: d['aadhar_number'] ?? '');
+    _addressCtrl = TextEditingController(text: dp['address'] ?? d['address'] ?? '');
+    _ageCtrl = TextEditingController(text: (d['age'] ?? dp['age'] ?? '').toString());
+    _genderCtrl = TextEditingController(text: d['gender'] ?? 'Male');
+    _bloodGroupCtrl = TextEditingController(text: dp['blood_group'] ?? d['blood_group'] ?? '');
+    _dobDate = _parseDate(d['dob']);
 
-    if (dp['license_expiry_date'] != null && dp['license_expiry_date'] != '1970-01-01') {
-      try {
-        _licenseExpiryDate = DateTime.parse(dp['license_expiry_date']);
-      } catch (_) {}
-    }
-    if (dp['joining_date'] != null && dp['joining_date'] != '1970-01-01') {
-      try {
-        _joiningDate = DateTime.parse(dp['joining_date']);
-      } catch (_) {}
+    // Step 2
+    _usernameCtrl = TextEditingController(text: d['username'] ?? '');
+    _nomineeNameCtrl = TextEditingController(text: dp['nominee_name'] ?? '');
+    _nomineeRelationCtrl = TextEditingController(text: dp['nominee_relation'] ?? '');
+    _nomineeDobDate = _parseDate(dp['nominee_dob']);
+
+    // Step 3
+    _licenseNumCtrl = TextEditingController(text: dp['license_number'] ?? '');
+    _vehicleTypeCtrl = TextEditingController(text: dp['Vehicle_type'] ?? '');
+    _experienceCtrl = TextEditingController(text: (dp['experience_years'] ?? '').toString());
+    _emergencyNameCtrl = TextEditingController(text: dp['emergency_contact_name'] ?? '');
+    _emergencyPhoneCtrl = TextEditingController(text: dp['emergency_contact_phone'] ?? '');
+    _licenseExpiryDate = _parseDate(dp['license_expiry_date']);
+    _joiningDate = _parseDate(dp['joining_date']);
+    _nonTransportExpiryDate = _parseDate(dp['non_transport_expiry_date']);
+    _driverStatus = dp['status'] ?? d['status'] ?? 'AVAILABLE';
+    _shift = dp['shift'] ?? 'MORNING';
+
+    // Step 4
+    _salaryBasicCtrl = TextEditingController(text: (dp['salary_basic'] ?? '').toString());
+    _grossSalaryCtrl = TextEditingController(text: (dp['gross_salary'] ?? '').toString());
+    _bankNameCtrl = TextEditingController(text: d['bank_name'] ?? '');
+    _accNumCtrl = TextEditingController(text: d['account_number'] ?? '');
+    _ifscCtrl = TextEditingController(text: d['ifsc_code'] ?? '');
+    _branchCtrl = TextEditingController(text: d['branch_name'] ?? '');
+  }
+
+  String? _getImageUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    final base = ApiConstants.baseUrl.endsWith('/') ? ApiConstants.baseUrl.substring(0, ApiConstants.baseUrl.length - 1) : ApiConstants.baseUrl;
+    final relative = path.startsWith('/') ? path : '/$path';
+    return '$base$relative';
+  }
+
+  DateTime? _parseDate(dynamic dateStr) {
+    if (dateStr == null || dateStr == '1970-01-01') return null;
+    try {
+      return DateTime.parse(dateStr.toString());
+    } catch (_) {
+      return null;
     }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _usernameController.dispose();
-    _ageController.dispose();
-    _licenseNumController.dispose();
-    _experienceController.dispose();
-    _bloodGroupController.dispose();
-    _addressController.dispose();
-    _emergencyNameController.dispose();
-    _emergencyPhoneController.dispose();
+    _nameCtrl.dispose(); _emailCtrl.dispose(); _phoneCtrl.dispose(); _altPhoneCtrl.dispose();
+    _fatherNameCtrl.dispose(); _motherNameCtrl.dispose(); _spouseNameCtrl.dispose();
+    _religionCtrl.dispose(); _casteCtrl.dispose(); _communityCtrl.dispose(); _aadharCtrl.dispose();
+    _addressCtrl.dispose(); _ageCtrl.dispose(); _genderCtrl.dispose(); _bloodGroupCtrl.dispose();
+    
+    _usernameCtrl.dispose(); _nomineeNameCtrl.dispose(); _nomineeRelationCtrl.dispose();
+    
+    _licenseNumCtrl.dispose(); _vehicleTypeCtrl.dispose(); _experienceCtrl.dispose();
+    _emergencyNameCtrl.dispose(); _emergencyPhoneCtrl.dispose();
+    
+    _salaryBasicCtrl.dispose(); _grossSalaryCtrl.dispose();
+    _bankNameCtrl.dispose(); _accNumCtrl.dispose(); _ifscCtrl.dispose(); _branchCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _updateDriver() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _pickImage(Function(XFile?) onPicked) async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      setState(() => onPicked(image));
+    }
+  }
+
+  Future<void> _submitForm() async {
+    bool isValid = true;
+    if (!(_formKey1.currentState?.validate() ?? true)) isValid = false;
+    if (!(_formKey2.currentState?.validate() ?? true)) isValid = false;
+    if (!(_formKey3.currentState?.validate() ?? true)) isValid = false;
+    if (!(_formKey4.currentState?.validate() ?? true)) isValid = false;
+
+    if (!isValid) {
+      showTopToast(context, "Please check all steps for errors.", isError: true);
+      return;
+    }
 
     setState(() => _isLoading = true);
 
-    final payload = {
-      "id": widget.driver['user_id'] ?? widget.driver['id'],
-      "name": _nameController.text,
-      "email": _emailController.text,
-      "role_id": 4, // Assuming 4 is driver role
-      "phone": _phoneController.text,
-      "username": _usernameController.text,
-      "age": int.tryParse(_ageController.text) ?? 0,
-      "license_number": _licenseNumController.text,
-      "license_expiry_date": _licenseExpiryDate != null
-          ? DateFormat('yyyy-MM-dd').format(_licenseExpiryDate!)
-          : "1970-01-01",
-      "experience_years": int.tryParse(_experienceController.text) ?? 0,
-      "blood_group": _bloodGroupController.text,
-      "address": _addressController.text,
-      "emergency_contact_name": _emergencyNameController.text,
-      "emergency_contact_phone": _emergencyPhoneController.text,
-      "joining_date": _joiningDate != null
-          ? DateFormat('yyyy-MM-dd').format(_joiningDate!)
-          : "1970-01-01",
+    Map<String, String> payload = {
+      "id": (widget.driver['user_id'] ?? widget.driver['id']).toString(),
+      "role_id": "4",
+      "name": _nameCtrl.text,
+      "email": _emailCtrl.text,
+      "phone": _phoneCtrl.text,
+      "mobile_2": _altPhoneCtrl.text,
+      "father_name": _fatherNameCtrl.text,
+      "mother_name": _motherNameCtrl.text,
+      "spouse_name": _spouseNameCtrl.text,
+      "religion": _religionCtrl.text,
+      "caste": _casteCtrl.text,
+      "community": _communityCtrl.text,
+      "aadhar_number": _aadharCtrl.text,
+      "address": _addressCtrl.text,
+      "age": _ageCtrl.text,
+      "gender": _genderCtrl.text,
+      "blood_group": _bloodGroupCtrl.text,
+      "dob": _dobDate != null ? DateFormat('yyyy-MM-dd').format(_dobDate!) : '',
+      
+      "username": _usernameCtrl.text,
+      "nominee_name": _nomineeNameCtrl.text,
+      "nominee_relation": _nomineeRelationCtrl.text,
+      "nominee_dob": _nomineeDobDate != null ? DateFormat('yyyy-MM-dd').format(_nomineeDobDate!) : '',
+      
+      "license_number": _licenseNumCtrl.text,
+      "Vehicle_type": _vehicleTypeCtrl.text,
+      "experience_years": _experienceCtrl.text,
       "driver_status": _driverStatus,
+      "shift": _shift,
+      "emergency_contact_name": _emergencyNameCtrl.text,
+      "emergency_contact_phone": _emergencyPhoneCtrl.text,
+      "license_expiry_date": _licenseExpiryDate != null ? DateFormat('yyyy-MM-dd').format(_licenseExpiryDate!) : '',
+      "joining_date": _joiningDate != null ? DateFormat('yyyy-MM-dd').format(_joiningDate!) : '',
+      "non_transport_expiry_date": _nonTransportExpiryDate != null ? DateFormat('yyyy-MM-dd').format(_nonTransportExpiryDate!) : '',
+      
+      "salary_basic": _salaryBasicCtrl.text,
+      "gross_salary": _grossSalaryCtrl.text,
+      "bank_name": _bankNameCtrl.text,
+      "account_number": _accNumCtrl.text,
+      "ifsc_code": _ifscCtrl.text,
+      "branch_name": _branchCtrl.text,
     };
 
+    Map<String, dynamic> files = {};
+    if (_profileImage != null) files['profile_photo'] = File(_profileImage!.path);
+    if (_licenseFrontImage != null) files['licence_image_front'] = File(_licenseFrontImage!.path);
+    if (_licenseBackImage != null) files['licence_image_back'] = File(_licenseBackImage!.path);
+    if (_aadharImage != null) files['aadhar_photo'] = File(_aadharImage!.path);
+    if (_panImage != null) files['pan_image'] = File(_panImage!.path);
+
     final store = useDriverStore;
-    final result = await store.updateDriver(payload);
+    final result = await store.updateDriverMultipart(payload, files: files);
 
     if (mounted) {
       setState(() => _isLoading = false);
       if (result['success'] == true) {
         showTopToast(context, result['message']);
-        Navigator.pop(context, true); // Pop back and indicate success
+        Navigator.pop(context, true);
       } else {
         showTopToast(context, result['message'], isError: true);
       }
     }
   }
 
-  Widget _buildSectionTitle(String title, Color titleColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, top: 8),
-      child: Row(
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+    final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new, color: titleColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          "Edit Driver Profile",
+          style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
         children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              color: const Color(0xFF6366F1),
-              borderRadius: BorderRadius.circular(10),
+          // Profile Photo Header
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Stack(
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+                      border: Border.all(color: primaryBlue.withOpacity(0.5), width: 2),
+                    ),
+                    child: ClipOval(
+                      child: _profileImage != null
+                          ? Image.file(File(_profileImage!.path), fit: BoxFit.cover)
+                          : _existingProfilePhotoUrl != null
+                              ? Image.network(_existingProfilePhotoUrl!, fit: BoxFit.cover)
+                              : Icon(Icons.person, size: 60, color: Colors.grey[400]),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => _pickImage((img) => _profileImage = img),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryBlue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: bgColor, width: 3),
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: titleColor,
+
+          // Stepper
+          Expanded(
+            child: Stepper(
+              type: StepperType.vertical,
+              physics: const BouncingScrollPhysics(),
+              currentStep: _currentStep,
+              onStepTapped: (step) => setState(() => _currentStep = step),
+              onStepContinue: () {
+                if (_currentStep < 4) {
+                  setState(() => _currentStep += 1);
+                } else {
+                  _submitForm();
+                }
+              },
+              onStepCancel: () {
+                if (_currentStep > 0) {
+                  setState(() => _currentStep -= 1);
+                }
+              },
+              controlsBuilder: (BuildContext context, ControlsDetails details) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : details.onStepContinue,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryBlue,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: _isLoading && _currentStep == 4
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Text(_currentStep == 4 ? 'SAVE CHANGES' : 'CONTINUE', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      if (_currentStep > 0)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: details.onStepCancel,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: isDark ? Colors.white30 : Colors.black26),
+                            ),
+                            child: Text('BACK', style: TextStyle(color: titleColor, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+              steps: <Step>[
+                Step(
+                  title: Text('Personal Info', style: TextStyle(color: titleColor, fontWeight: FontWeight.bold)),
+                  isActive: _currentStep >= 0,
+                  state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+                  content: Form(
+                    key: _formKey1,
+                    child: Column(
+                      children: [
+                        _buildTextField("Full Name *", _nameCtrl, Icons.person, isDark, required: true),
+                        _buildTextField("Email *", _emailCtrl, Icons.email, isDark, type: TextInputType.emailAddress, required: true),
+                        _buildTextField("Primary Phone *", _phoneCtrl, Icons.phone, isDark, type: TextInputType.phone, required: true),
+                        _buildTextField("Alternate Phone", _altPhoneCtrl, Icons.phone_android, isDark, type: TextInputType.phone),
+                        _buildTextField("Father Name", _fatherNameCtrl, Icons.man, isDark),
+                        _buildTextField("Mother Name", _motherNameCtrl, Icons.woman, isDark),
+                        _buildTextField("Spouse Name", _spouseNameCtrl, Icons.favorite, isDark),
+                        _buildTextField("Religion", _religionCtrl, Icons.mosque, isDark),
+                        _buildTextField("Caste", _casteCtrl, Icons.groups, isDark),
+                        _buildTextField("Community", _communityCtrl, Icons.group_work, isDark),
+                        _buildTextField("Aadhaar Number", _aadharCtrl, Icons.credit_card, isDark, type: TextInputType.number),
+                        _buildTextField("Full Address", _addressCtrl, Icons.location_on, isDark),
+                        Row(
+                          children: [
+                            Expanded(child: _buildDatePicker("Date of Birth", _dobDate, Icons.cake, isDark, (d) => setState(() => _dobDate = d))),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildTextField("Age", _ageCtrl, Icons.person_pin, isDark, type: TextInputType.number)),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            Expanded(child: _buildTextField("Gender", _genderCtrl, Icons.wc, isDark)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildTextField("Blood Group", _bloodGroupCtrl, Icons.bloodtype, isDark)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Step(
+                  title: Text('Account & Role', style: TextStyle(color: titleColor, fontWeight: FontWeight.bold)),
+                  isActive: _currentStep >= 1,
+                  state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+                  content: Form(
+                    key: _formKey2,
+                    child: Column(
+                      children: [
+                        _buildTextField("Username *", _usernameCtrl, Icons.alternate_email, isDark, required: true),
+                        const SizedBox(height: 16),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Nominee Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField("Nominee Name", _nomineeNameCtrl, Icons.person_outline, isDark),
+                        _buildDatePicker("Nominee DOB", _nomineeDobDate, Icons.event, isDark, (d) => setState(() => _nomineeDobDate = d)),
+                        _buildTextField("Relation (e.g. Wife, Father)", _nomineeRelationCtrl, Icons.people_outline, isDark),
+                      ],
+                    ),
+                  ),
+                ),
+                Step(
+                  title: Text('Role Details', style: TextStyle(color: titleColor, fontWeight: FontWeight.bold)),
+                  isActive: _currentStep >= 2,
+                  state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+                  content: Form(
+                    key: _formKey3,
+                    child: Column(
+                      children: [
+                        _buildTextField("License Number *", _licenseNumCtrl, Icons.badge, isDark, required: true),
+                        _buildDatePicker("License Expiry", _licenseExpiryDate, Icons.event, isDark, (d) => setState(() => _licenseExpiryDate = d)),
+                        _buildDatePicker("Non-Transport Expiry", _nonTransportExpiryDate, Icons.event_busy, isDark, (d) => setState(() => _nonTransportExpiryDate = d)),
+                        _buildTextField("Vehicle/License Type (e.g. Heavy, Batch)", _vehicleTypeCtrl, Icons.directions_car, isDark),
+                        Row(
+                          children: [
+                            Expanded(child: _buildTextField("Experience (Years)", _experienceCtrl, Icons.history, isDark, type: TextInputType.number)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildDatePicker("Joining Date", _joiningDate, Icons.calendar_today, isDark, (d) => setState(() => _joiningDate = d))),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _driverStatus,
+                          items: const [
+                            DropdownMenuItem(value: 'AVAILABLE', child: Text('AVAILABLE')),
+                            DropdownMenuItem(value: 'ASSIGNED', child: Text('ASSIGNED')),
+                            DropdownMenuItem(value: 'ON_TRIP', child: Text('ON_TRIP')),
+                            DropdownMenuItem(value: 'ON_LEAVE', child: Text('ON_LEAVE')),
+                          ],
+                          onChanged: (v) => setState(() => _driverStatus = v!),
+                          dropdownColor: surfaceColor,
+                          decoration: _inputDecoration("Status", Icons.info_outline, isDark),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _shift,
+                          items: const [
+                            DropdownMenuItem(value: 'MORNING', child: Text('MORNING')),
+                            DropdownMenuItem(value: 'AFTERNOON', child: Text('AFTERNOON')),
+                            DropdownMenuItem(value: 'NIGHT', child: Text('NIGHT')),
+                          ],
+                          onChanged: (v) => setState(() => _shift = v!),
+                          dropdownColor: surfaceColor,
+                          decoration: _inputDecoration("Shift", Icons.schedule, isDark),
+                        ),
+                        const SizedBox(height: 16),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Emergency Contact", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField("Emergency Name", _emergencyNameCtrl, Icons.contact_emergency, isDark),
+                        _buildTextField("Emergency Phone", _emergencyPhoneCtrl, Icons.phone_callback, isDark, type: TextInputType.phone),
+                      ],
+                    ),
+                  ),
+                ),
+                Step(
+                  title: Text('Financial & Bank', style: TextStyle(color: titleColor, fontWeight: FontWeight.bold)),
+                  isActive: _currentStep >= 3,
+                  state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+                  content: Form(
+                    key: _formKey4,
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: _buildTextField("Basic Salary", _salaryBasicCtrl, Icons.payments, isDark, type: TextInputType.number)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildTextField("Gross Salary", _grossSalaryCtrl, Icons.account_balance_wallet, isDark, type: TextInputType.number)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Primary Bank Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField("Bank Name", _bankNameCtrl, Icons.account_balance, isDark),
+                        _buildTextField("Account Number", _accNumCtrl, Icons.numbers, isDark, type: TextInputType.number),
+                        _buildTextField("IFSC Code", _ifscCtrl, Icons.code, isDark),
+                        _buildTextField("Branch Name", _branchCtrl, Icons.store, isDark),
+                      ],
+                    ),
+                  ),
+                ),
+                Step(
+                  title: Text('Documents', style: TextStyle(color: titleColor, fontWeight: FontWeight.bold)),
+                  isActive: _currentStep >= 4,
+                  state: _currentStep == 4 ? StepState.editing : StepState.complete,
+                  content: Column(
+                    children: [
+                      _buildDocumentUploader("Driving Licence (Front)", _licenseFrontImage, _existingLicenseFront, (img) => _licenseFrontImage = img, isDark, primaryBlue, surfaceColor),
+                      _buildDocumentUploader("Driving Licence (Back)", _licenseBackImage, _existingLicenseBack, (img) => _licenseBackImage = img, isDark, primaryBlue, surfaceColor),
+                      _buildDocumentUploader("Aadhaar Card Photo", _aadharImage, _existingAadhar, (img) => _aadharImage = img, isDark, primaryBlue, surfaceColor),
+                      _buildDocumentUploader("PAN Card Photo", _panImage, _existingPan, (img) => _panImage = img, isDark, primaryBlue, surfaceColor),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -152,25 +525,74 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
     );
   }
 
-  Widget _buildCard({required Widget child, required bool isDark, required Color surfaceColor}) {
+  Widget _buildDocumentUploader(String label, XFile? currentImage, String? existingUrl, Function(XFile?) onPicked, bool isDark, Color primaryBlue, Color surfaceColor) {
+    bool hasImage = currentImage != null || existingUrl != null;
+
     return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFF6366F1).withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black12, style: BorderStyle.solid),
       ),
-      child: child,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _pickImage(onPicked),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black12 : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: currentImage != null
+                        ? Image.file(File(currentImage.path), fit: BoxFit.cover)
+                        : existingUrl != null
+                            ? Image.network(existingUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.broken_image, color: Colors.grey[400]))
+                            : Icon(Icons.description, color: Colors.grey[400], size: 30),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasImage ? "Tap to change image" : "Tap to upload image",
+                        style: TextStyle(color: primaryBlue, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.upload_file, color: primaryBlue),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon, bool isDark) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 14),
+      prefixIcon: Icon(icon, color: const Color(0xFF6366F1), size: 20),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.grey[200]!)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
     );
   }
 
@@ -187,37 +609,9 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
       child: TextFormField(
         controller: controller,
         keyboardType: type,
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black87,
-          fontWeight: FontWeight.w500,
-        ),
-        validator: required
-            ? (val) => val == null || val.isEmpty ? "Required" : null
-            : null,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-            fontSize: 14,
-          ),
-          prefixIcon: Icon(icon, color: const Color(0xFF6366F1), size: 20),
-          filled: true,
-          fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
-              color: isDark ? Colors.white10 : Colors.grey[200]!,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-          ),
-        ),
+        style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w500),
+        validator: required ? (val) => val == null || val.trim().isEmpty ? "Required" : null : null,
+        decoration: _inputDecoration(label, icon, isDark),
       ),
     );
   }
@@ -233,219 +627,14 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: () async {
-          final date = await CustomDateTimePicker.show(
-            context,
-            initialDate: selectedDate ?? DateTime.now(),
-            showTime: false,
-          );
-          if (date != null) {
-            onPicked(date);
-          }
+          final date = await CustomDateTimePicker.show(context, initialDate: selectedDate ?? DateTime.now(), showTime: false);
+          if (date != null) onPicked(date);
         },
         child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
-              fontSize: 14,
-            ),
-            prefixIcon: Icon(icon, color: const Color(0xFF6366F1), size: 20),
-            filled: true,
-            fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: isDark ? Colors.white10 : Colors.grey[200]!,
-              ),
-            ),
-          ),
+          decoration: _inputDecoration(label, icon, isDark),
           child: Text(
-            selectedDate != null
-                ? DateFormat('MMM dd, yyyy').format(selectedDate)
-                : 'Select Date',
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusDropdown(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField<String>(
-        value: _driverStatus,
-        items: const [
-          DropdownMenuItem(value: 'AVAILABLE', child: Text('AVAILABLE')),
-          DropdownMenuItem(value: 'ASSIGNED', child: Text('ASSIGNED')),
-          DropdownMenuItem(value: 'ON_TRIP', child: Text('ON_TRIP')),
-          DropdownMenuItem(value: 'ON_LEAVE', child: Text('ON_LEAVE')),
-        ],
-        onChanged: (v) => setState(() => _driverStatus = v!),
-        dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black87,
-          fontWeight: FontWeight.w500,
-          fontSize: 15,
-        ),
-        decoration: InputDecoration(
-          labelText: 'Driver Status',
-          labelStyle: TextStyle(
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-            fontSize: 14,
-          ),
-          prefixIcon: const Icon(Icons.info_outline, color: Color(0xFF6366F1), size: 20),
-          filled: true,
-          fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
-              color: isDark ? Colors.white10 : Colors.grey[200]!,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
-    final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
-
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: titleColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Edit Driver",
-          style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionTitle("Personal Information", titleColor),
-              _buildCard(
-                isDark: isDark,
-                surfaceColor: surfaceColor,
-                child: Column(
-                  children: [
-                    _buildTextField("Full Name", _nameController, Icons.person, isDark, required: true),
-                    _buildTextField("Username", _usernameController, Icons.alternate_email, isDark, required: true),
-                    _buildTextField("Email", _emailController, Icons.email, isDark, type: TextInputType.emailAddress),
-                    _buildTextField("Phone", _phoneController, Icons.phone, isDark, type: TextInputType.phone, required: true),
-                    _buildTextField("Age", _ageController, Icons.cake, isDark, type: TextInputType.number),
-                    _buildTextField("Blood Group", _bloodGroupController, Icons.bloodtype, isDark),
-                    _buildTextField("Address", _addressController, Icons.location_on, isDark),
-                  ],
-                ),
-              ),
-
-              _buildSectionTitle("Professional Details", titleColor),
-              _buildCard(
-                isDark: isDark,
-                surfaceColor: surfaceColor,
-                child: Column(
-                  children: [
-                    _buildTextField("License Number", _licenseNumController, Icons.badge, isDark),
-                    _buildDatePicker("License Expiry Date", _licenseExpiryDate, Icons.event, isDark, (d) => setState(() => _licenseExpiryDate = d)),
-                    _buildTextField("Experience (Years)", _experienceController, Icons.history, isDark, type: TextInputType.number),
-                    _buildDatePicker("Joining Date", _joiningDate, Icons.calendar_today, isDark, (d) => setState(() => _joiningDate = d)),
-                    _buildStatusDropdown(isDark),
-                  ],
-                ),
-              ),
-
-              _buildSectionTitle("Emergency Contact", titleColor),
-              _buildCard(
-                isDark: isDark,
-                surfaceColor: surfaceColor,
-                child: Column(
-                  children: [
-                    _buildTextField("Contact Name", _emergencyNameController, Icons.contact_emergency, isDark),
-                    _buildTextField("Contact Phone", _emergencyPhoneController, Icons.phone_callback, isDark, type: TextInputType.phone),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Save Button
-              Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _updateDriver,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text(
-                          "Save Changes",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
+            selectedDate != null ? DateFormat('MMM dd, yyyy').format(selectedDate) : 'Select Date',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w500),
           ),
         ),
       ),

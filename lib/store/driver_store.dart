@@ -38,7 +38,6 @@ class DriverStore extends ChangeNotifier {
   String _searchQuery = "";
   String get searchQuery => _searchQuery;
 
-
   // Leave State
   List<Map<String, dynamic>> _leaves = [];
   List<Map<String, dynamic>> get leaves => _leaves;
@@ -79,7 +78,8 @@ class DriverStore extends ChangeNotifier {
 
   // Active Routes To Complete
   List<Map<String, dynamic>> _activeRoutesToComplete = [];
-  List<Map<String, dynamic>> get activeRoutesToComplete => _activeRoutesToComplete;
+  List<Map<String, dynamic>> get activeRoutesToComplete =>
+      _activeRoutesToComplete;
   bool _isLoadingActiveRoutes = false;
   bool get isLoadingActiveRoutes => _isLoadingActiveRoutes;
 
@@ -92,9 +92,10 @@ class DriverStore extends ChangeNotifier {
       final token = await UserStore.getToken();
       final driverId = await UserStore.getDriverId();
       if (token == null || driverId == null) return;
-      
-      final url = "${ApiConstants.getDriverAllowances}?page=1&limit=1&driver_id=$driverId&payment_status=Assigned";
-      
+
+      final url =
+          "${ApiConstants.getDriverAllowances}?page=1&limit=1&driver_id=$driverId&payment_status=Assigned";
+
       debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT CURL ---");
       debugPrint("curl --location --request GET '$url' \\");
       ApiConstants.getHeaders(token).forEach((key, value) {
@@ -102,8 +103,11 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("------------------------------------------");
 
-      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
-      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
       debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT RESPONSE ---");
       debugPrint("Status Code: ${response.statusCode}");
       debugPrint("Body: ${response.body}");
@@ -124,13 +128,13 @@ class DriverStore extends ChangeNotifier {
   // Allowances List State
   List<Map<String, dynamic>> _allowances = [];
   List<Map<String, dynamic>> get allowances => _allowances;
-  
+
   bool _isLoadingAllowances = false;
   bool get isLoadingAllowances => _isLoadingAllowances;
-  
+
   bool _isFetchingMoreAllowances = false;
   bool get isFetchingMoreAllowances => _isFetchingMoreAllowances;
-  
+
   int _allowancePage = 1;
   bool _hasMoreAllowances = true;
   bool get hasMoreAllowances => _hasMoreAllowances;
@@ -140,7 +144,7 @@ class DriverStore extends ChangeNotifier {
       _allowancePage = 1;
       _hasMoreAllowances = true;
     }
-    
+
     if (_allowancePage == 1) {
       _isLoadingAllowances = true;
     } else {
@@ -153,8 +157,9 @@ class DriverStore extends ChangeNotifier {
       final driverId = await UserStore.getDriverId();
       if (token == null || driverId == null) return;
 
-      final url = "${ApiConstants.getDriverAllowances}?page=$_allowancePage&limit=10&driver_id=$driverId";
-      
+      final url =
+          "${ApiConstants.getDriverAllowances}?page=$_allowancePage&limit=10&driver_id=$driverId";
+
       debugPrint("--- [DEBUG] FETCH ALLOWANCES CURL ---");
       debugPrint("curl --location --request GET '$url' \\");
       ApiConstants.getHeaders(token).forEach((key, value) {
@@ -162,8 +167,11 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("-------------------------------------");
 
-      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
-      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
       debugPrint("--- [DEBUG] FETCH ALLOWANCES RESPONSE ---");
       debugPrint("Status Code: ${response.statusCode}");
       debugPrint("Body: ${response.body}");
@@ -173,19 +181,22 @@ class DriverStore extends ChangeNotifier {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
           final List<dynamic> items = decoded['data'] ?? [];
-          final newAllowances = items.map((e) => e as Map<String, dynamic>).toList();
-          
+          final newAllowances = items
+              .map((e) => e as Map<String, dynamic>)
+              .toList();
+
           if (isRefresh || _allowancePage == 1) {
             _allowances = newAllowances;
           } else {
             _allowances.addAll(newAllowances);
           }
-          
+
           final pagination = decoded['pagination'];
           if (pagination != null) {
-            _hasMoreAllowances = _allowancePage < (pagination['totalPages'] ?? 1);
+            _hasMoreAllowances =
+                _allowancePage < (pagination['totalPages'] ?? 1);
           } else {
-             _hasMoreAllowances = false;
+            _hasMoreAllowances = false;
           }
         }
       }
@@ -207,11 +218,12 @@ class DriverStore extends ChangeNotifier {
   Future<Map<String, dynamic>> markAllowanceSeen(int allowanceId) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return {"success": false, "message": "Session expired"};
+      if (token == null)
+        return {"success": false, "message": "Session expired"};
 
       final uri = Uri.parse(ApiConstants.allowanceSeen(allowanceId));
       final headers = ApiConstants.getHeaders(token);
-      
+
       debugPrint("--- [DEBUG] ALLOWANCE CONFIRM CURL ---");
       debugPrint("curl --location --request PATCH '$uri' \\");
       headers.forEach((key, value) {
@@ -219,10 +231,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("--------------------------------------");
 
-      final response = await http.patch(
-        uri,
-        headers: headers,
-      );
+      final response = await http.patch(uri, headers: headers);
 
       debugPrint("--- [DEBUG] ALLOWANCE CONFIRM RESPONSE ---");
       debugPrint("Status Code: ${response.statusCode}");
@@ -234,9 +243,15 @@ class DriverStore extends ChangeNotifier {
         if (response.statusCode == 200 || response.statusCode == 201) {
           await fetchAllowances();
           await fetchPendingAllowanceCount();
-          return {"success": true, "message": decoded['message'] ?? "Allowance marked as seen"};
+          return {
+            "success": true,
+            "message": decoded['message'] ?? "Allowance marked as seen",
+          };
         } else {
-          return {"success": false, "message": decoded['message'] ?? "Failed to mark as seen"};
+          return {
+            "success": false,
+            "message": decoded['message'] ?? "Failed to mark as seen",
+          };
         }
       } catch (e) {
         debugPrint("JSON Decode Error: $e");
@@ -247,10 +262,14 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> requestAllowanceRecheck(int allowanceId, String reason) async {
+  Future<Map<String, dynamic>> requestAllowanceRecheck(
+    int allowanceId,
+    String reason,
+  ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return {"success": false, "message": "Session expired"};
+      if (token == null)
+        return {"success": false, "message": "Session expired"};
 
       final response = await http.patch(
         Uri.parse(ApiConstants.allowanceRecheck(allowanceId)),
@@ -262,9 +281,15 @@ class DriverStore extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         await fetchAllowances();
         await fetchPendingAllowanceCount();
-        return {"success": true, "message": decoded['message'] ?? "Recheck requested successfully"};
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Recheck requested successfully",
+        };
       } else {
-        return {"success": false, "message": decoded['message'] ?? "Failed to request recheck"};
+        return {
+          "success": false,
+          "message": decoded['message'] ?? "Failed to request recheck",
+        };
       }
     } catch (e) {
       return {"success": false, "message": "Network error: $e"};
@@ -401,7 +426,9 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> addDriver(Map<String, dynamic> driverData) async {
+  Future<Map<String, dynamic>> addDriver(
+    Map<String, dynamic> driverData,
+  ) async {
     try {
       final token = await UserStore.getToken();
       if (token == null) {
@@ -435,7 +462,7 @@ class DriverStore extends ChangeNotifier {
         await fetchDrivers(forceRefresh: true);
         return {
           "success": true,
-          "message": decoded['message'] ?? "Driver Registered Successfully!"
+          "message": decoded['message'] ?? "Driver Registered Successfully!",
         };
       }
 
@@ -452,7 +479,7 @@ class DriverStore extends ChangeNotifier {
       return {
         "success": false,
         "message": errorMsg,
-        "statusCode": response.statusCode
+        "statusCode": response.statusCode,
       };
     } catch (e) {
       debugPrint("Network error in addDriver: $e");
@@ -460,7 +487,9 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> updateDriver(Map<String, dynamic> driverData) async {
+  Future<Map<String, dynamic>> updateDriver(
+    Map<String, dynamic> driverData,
+  ) async {
     try {
       final token = await UserStore.getToken();
       if (token == null) {
@@ -468,7 +497,7 @@ class DriverStore extends ChangeNotifier {
       }
 
       final url = "${ApiConstants.baseUrl}/auth/user";
-      
+
       final response = await http.put(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -488,17 +517,78 @@ class DriverStore extends ChangeNotifier {
         await fetchDrivers(forceRefresh: true);
         return {
           "success": true,
-          "message": decoded['message'] ?? "Driver Updated Successfully!"
+          "message": decoded['message'] ?? "Driver updated successfully",
+          "data": decoded['data'],
+        };
+      } else {
+        return {
+          "success": false,
+          "message": decoded['message'] ?? "Failed to update driver",
         };
       }
-
-      return {
-        "success": false,
-        "message": decoded['message'] ?? "Failed to update driver",
-        "statusCode": response.statusCode
-      };
     } catch (e) {
-      return {"success": false, "message": "Network error: Connection failed."};
+      debugPrint("Error updating driver: $e");
+      return {"success": false, "message": "An error occurred"};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDriverMultipart(
+    Map<String, String> fields, {
+    Map<String, dynamic>? files,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        return {"success": false, "message": "Session expired"};
+      }
+
+      final url = Uri.parse(
+        "${ApiConstants.baseUrl}/auth/update-user?role=driver",
+      );
+      final request = http.MultipartRequest('PUT', url);
+
+      request.headers.addAll({'authorization': 'TMS $token'});
+
+      request.fields.addAll(fields);
+
+      if (files != null) {
+        for (var entry in files.entries) {
+          if (entry.value != null && entry.value.path.isNotEmpty) {
+            request.files.add(
+              await http.MultipartFile.fromPath(entry.key, entry.value.path),
+            );
+          }
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      Map<String, dynamic> decoded = {};
+      if (response.body.isNotEmpty) {
+        try {
+          decoded = json.decode(response.body);
+        } catch (e) {
+          debugPrint("Failed to decode update response: $e");
+        }
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchDrivers(forceRefresh: true);
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Driver updated successfully",
+          "data": decoded['data'],
+        };
+      } else {
+        return {
+          "success": false,
+          "message": decoded['message'] ?? "Failed to update driver",
+        };
+      }
+    } catch (e) {
+      debugPrint("Error updating driver multipart: $e");
+      return {"success": false, "message": "An error occurred"};
     }
   }
 
@@ -549,7 +639,8 @@ class DriverStore extends ChangeNotifier {
           if (data['id'] != null) {
             await UserStore.saveUserId(data['id']);
           }
-          if (data['driverProfile'] != null && data['driverProfile']['id'] != null) {
+          if (data['driverProfile'] != null &&
+              data['driverProfile']['id'] != null) {
             await UserStore.saveDriverId(data['driverProfile']['id']);
           }
 
@@ -602,15 +693,15 @@ class DriverStore extends ChangeNotifier {
     try {
       final token = await UserStore.getToken();
       final driverId = await UserStore.getDriverId();
-      
+
       if (token == null) {
         _missionsError = "Session expired.";
         return;
       }
 
-      final url = "${ApiConstants.getDriverMissions}?driver_id=${driverId ?? 1}&page=1&limit=20&search=$_searchQuery";
+      final url =
+          "${ApiConstants.getDriverMissions}?driver_id=${driverId ?? 1}&page=1&limit=20&search=$_searchQuery";
 
-      
       // Print CURL for debugging
       debugPrint("--- [DEBUG] FETCH MISSIONS CURL ---");
       debugPrint("curl --location '$url' \\");
@@ -620,10 +711,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("------------------------------------");
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse(url), headers: headers);
 
       // Print Response for debugging
       debugPrint("--- [DEBUG] FETCH MISSIONS RESPONSE ---");
@@ -636,23 +724,25 @@ class DriverStore extends ChangeNotifier {
         if (decoded['success'] == true) {
           final List<dynamic> items = decoded['data'] ?? [];
           _missions = items.map((e) => e as Map<String, dynamic>).toList();
-          
+
           // Auto-start tracking if any mission is already STARTED
           int? startedTripId;
           bool hasStartedMission = _missions.any((m) {
             final status = m['route_status']?.toString().toUpperCase() ?? '';
             final isStarted = status == 'STARTED' || status == 'ONGOING';
-            if (isStarted && m['trip_instances'] != null && (m['trip_instances'] as List).isNotEmpty) {
+            if (isStarted &&
+                m['trip_instances'] != null &&
+                (m['trip_instances'] as List).isNotEmpty) {
               startedTripId = m['trip_instances'][0]['id'];
             }
             return isStarted;
           });
-          
+
           if (hasStartedMission && startedTripId != null) {
-             final role = await UserStore.getRole();
-             if (role == 'driver') {
-               LocationService().startTracking(startedTripId!);
-             }
+            final role = await UserStore.getRole();
+            if (role == 'driver') {
+              LocationService().startTracking(startedTripId!);
+            }
           }
         } else {
           _missionsError = decoded['message'] ?? "Failed to fetch missions";
@@ -679,7 +769,7 @@ class DriverStore extends ChangeNotifier {
     try {
       final token = await UserStore.getToken();
       final userId = await UserStore.getUserId();
-      
+
       if (token == null) {
         _leavesError = "Session expired.";
         return;
@@ -845,7 +935,7 @@ class DriverStore extends ChangeNotifier {
       }
 
       final url = ApiConstants.rewardPoints(userId);
-      
+
       debugPrint("--- [DEBUG] FETCH REWARD POINTS CURL ---");
       debugPrint("curl --location '$url' \\");
       final headers = ApiConstants.getHeaders(token);
@@ -854,10 +944,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("------------------------------------");
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse(url), headers: headers);
 
       debugPrint("--- [DEBUG] FETCH REWARD POINTS RESPONSE ---");
       debugPrint("Status Code: ${response.statusCode}");
@@ -870,7 +957,9 @@ class DriverStore extends ChangeNotifier {
           final data = decoded['data'];
           _totalPoints = data['total_points'] ?? 0;
           final List<dynamic> history = data['history'] ?? [];
-          _rewardHistory = history.map((e) => e as Map<String, dynamic>).toList();
+          _rewardHistory = history
+              .map((e) => e as Map<String, dynamic>)
+              .toList();
         } else {
           _rewardError = decoded['message'] ?? "Failed to fetch reward points";
         }
@@ -936,7 +1025,8 @@ class DriverStore extends ChangeNotifier {
       } else {
         try {
           final decoded = json.decode(response.body);
-          _leavesError = decoded['message'] ?? "Server Error: ${response.statusCode}";
+          _leavesError =
+              decoded['message'] ?? "Server Error: ${response.statusCode}";
         } catch (_) {
           _leavesError = "Server Error: ${response.statusCode}";
         }
@@ -959,23 +1049,25 @@ class DriverStore extends ChangeNotifier {
     try {
       final token = await UserStore.getToken();
       final driverId = await UserStore.getDriverId();
-      
+
       if (token == null || driverId == null) {
-        return {"success": false, "message": "Session expired or Driver ID missing"};
+        return {
+          "success": false,
+          "message": "Session expired or Driver ID missing",
+        };
       }
 
       // final encryptedOtp = CryptoUtils.encryptOTP(otp);
-      final url = isStart ? ApiConstants.startTrip(routeId) : ApiConstants.endLeg(routeId);
+      final url = isStart
+          ? ApiConstants.startTrip(routeId)
+          : ApiConstants.endLeg(routeId);
 
-      final body = {
-        "mode": "OTP",
-        "otp": otp,
-      };
+      final body = {"mode": "OTP", "otp": otp};
 
       debugPrint("--- [DEBUG] STARTING OTP VERIFICATION ---");
       debugPrint("Mode: OTP");
       debugPrint("Value: $otp");
-      
+
       // Log decryption attempt if it looks encrypted (e.g. hex string longer than 6)
       if (otp.length > 6 || !RegExp(r'^\d+$').hasMatch(otp)) {
         try {
@@ -1018,9 +1110,15 @@ class DriverStore extends ChangeNotifier {
             LocationService().stopTracking();
           }
         }
-        return {"success": true, "message": decoded['message'] ?? "Operation successful"};
+        return {
+          "success": true,
+          "message": decoded['message'] ?? "Operation successful",
+        };
       } else {
-        return {"success": false, "message": decoded['message'] ?? "Verification failed"};
+        return {
+          "success": false,
+          "message": decoded['message'] ?? "Verification failed",
+        };
       }
     } catch (e) {
       return {"success": false, "message": "Network error: $e"};
@@ -1028,10 +1126,14 @@ class DriverStore extends ChangeNotifier {
   }
 
   // Maintenance Submissions
-  Future<Map<String, dynamic>> submitFuelEntry(Map<String, dynamic> data, String? proofPath) async {
+  Future<Map<String, dynamic>> submitFuelEntry(
+    Map<String, dynamic> data,
+    String? proofPath,
+  ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return {"success": false, "message": "Session expired"};
+      if (token == null)
+        return {"success": false, "message": "Session expired"};
 
       final url = Uri.parse(ApiConstants.fuelEntry);
       final request = http.MultipartRequest('POST', url);
@@ -1042,12 +1144,14 @@ class DriverStore extends ChangeNotifier {
       });
 
       if (proofPath != null) {
-        request.files.add(await http.MultipartFile.fromPath('proof', proofPath));
+        request.files.add(
+          await http.MultipartFile.fromPath('proof', proofPath),
+        );
       }
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       String? errorMessage;
       try {
         final decoded = json.decode(response.body);
@@ -1056,17 +1160,25 @@ class DriverStore extends ChangeNotifier {
 
       return {
         "success": response.statusCode == 200 || response.statusCode == 201,
-        "message": errorMessage ?? (response.statusCode == 200 ? "Success" : "Failed to log fuel entry")
+        "message":
+            errorMessage ??
+            (response.statusCode == 200
+                ? "Success"
+                : "Failed to log fuel entry"),
       };
     } catch (e) {
       return {"success": false, "message": "Error: $e"};
     }
   }
 
-  Future<Map<String, dynamic>> submitServiceEntry(Map<String, dynamic> data, String? proofPath) async {
+  Future<Map<String, dynamic>> submitServiceEntry(
+    Map<String, dynamic> data,
+    String? proofPath,
+  ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return {"success": false, "message": "Session expired"};
+      if (token == null)
+        return {"success": false, "message": "Session expired"};
 
       final url = Uri.parse(ApiConstants.serviceEntry);
       final request = http.MultipartRequest('POST', url);
@@ -1077,12 +1189,14 @@ class DriverStore extends ChangeNotifier {
       });
 
       if (proofPath != null) {
-        request.files.add(await http.MultipartFile.fromPath('proof', proofPath));
+        request.files.add(
+          await http.MultipartFile.fromPath('proof', proofPath),
+        );
       }
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       String? errorMessage;
       try {
         final decoded = json.decode(response.body);
@@ -1091,17 +1205,25 @@ class DriverStore extends ChangeNotifier {
 
       return {
         "success": response.statusCode == 200 || response.statusCode == 201,
-        "message": errorMessage ?? (response.statusCode == 200 ? "Success" : "Failed to log service entry")
+        "message":
+            errorMessage ??
+            (response.statusCode == 200
+                ? "Success"
+                : "Failed to log service entry"),
       };
     } catch (e) {
       return {"success": false, "message": "Error: $e"};
     }
   }
 
-  Future<Map<String, dynamic>> submitAccidentEntry(Map<String, dynamic> data, String? proofPath) async {
+  Future<Map<String, dynamic>> submitAccidentEntry(
+    Map<String, dynamic> data,
+    String? proofPath,
+  ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return {"success": false, "message": "Session expired"};
+      if (token == null)
+        return {"success": false, "message": "Session expired"};
 
       final url = Uri.parse(ApiConstants.accidentEntry);
       final request = http.MultipartRequest('POST', url);
@@ -1112,12 +1234,14 @@ class DriverStore extends ChangeNotifier {
       });
 
       if (proofPath != null) {
-        request.files.add(await http.MultipartFile.fromPath('proof_file', proofPath));
+        request.files.add(
+          await http.MultipartFile.fromPath('proof_file', proofPath),
+        );
       }
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       String? errorMessage;
       try {
         final decoded = json.decode(response.body);
@@ -1126,7 +1250,11 @@ class DriverStore extends ChangeNotifier {
 
       return {
         "success": response.statusCode == 200 || response.statusCode == 201,
-        "message": errorMessage ?? (response.statusCode == 200 ? "Success" : "Failed to log accident entry")
+        "message":
+            errorMessage ??
+            (response.statusCode == 200
+                ? "Success"
+                : "Failed to log accident entry"),
       };
     } catch (e) {
       return {"success": false, "message": "Error: $e"};
@@ -1138,7 +1266,10 @@ class DriverStore extends ChangeNotifier {
     notifyListeners();
     try {
       final token = await UserStore.getToken();
-      final response = await http.get(Uri.parse(ApiConstants.getVehicleBunks), headers: ApiConstants.getHeaders(token));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getVehicleBunks),
+        headers: ApiConstants.getHeaders(token),
+      );
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         _fuelBunks = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
@@ -1156,7 +1287,10 @@ class DriverStore extends ChangeNotifier {
     notifyListeners();
     try {
       final token = await UserStore.getToken();
-      final response = await http.get(Uri.parse(ApiConstants.getServiceShops), headers: ApiConstants.getHeaders(token));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getServiceShops),
+        headers: ApiConstants.getHeaders(token),
+      );
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         _serviceShops = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
@@ -1183,7 +1317,7 @@ class DriverStore extends ChangeNotifier {
       if (token == null) return;
 
       final url = ApiConstants.pendingFuelEntries;
-      
+
       debugPrint("--- [DEBUG] FETCH PENDING FUEL ENTRIES CURL ---");
       debugPrint("curl --location '$url' \\");
       final headers = ApiConstants.getHeaders(token);
@@ -1192,10 +1326,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("----------------------------------------------");
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
+      final response = await http.get(Uri.parse(url), headers: headers);
 
       debugPrint("--- [DEBUG] FETCH PENDING FUEL ENTRIES RESPONSE ---");
       debugPrint("Status Code: ${response.statusCode}");
@@ -1206,7 +1337,9 @@ class DriverStore extends ChangeNotifier {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
           final List<dynamic> items = decoded['data'] ?? [];
-          _pendingFuelEntries = items.map((e) => e as Map<String, dynamic>).toList();
+          _pendingFuelEntries = items
+              .map((e) => e as Map<String, dynamic>)
+              .toList();
         }
       }
     } catch (e) {
@@ -1229,11 +1362,12 @@ class DriverStore extends ChangeNotifier {
   }) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null) return {"success": false, "message": "Session expired"};
+      if (token == null)
+        return {"success": false, "message": "Session expired"};
 
       final url = Uri.parse(ApiConstants.driverComplete);
       final request = http.MultipartRequest('PATCH', url);
-      
+
       request.headers.addAll(ApiConstants.getHeaders(token));
 
       request.fields['fuel_log_id'] = fuelLogId.toString();
@@ -1245,15 +1379,24 @@ class DriverStore extends ChangeNotifier {
       request.fields['filled_at'] = filledAt;
 
       if (billFilePath != null) {
-        request.files.add(await http.MultipartFile.fromPath('bill_file', billFilePath));
+        request.files.add(
+          await http.MultipartFile.fromPath('bill_file', billFilePath),
+        );
       }
 
       // Log CURL for debugging
       debugPrint("--- [DEBUG] COMPLETE FUEL ENTRY CURL ---");
-      StringBuffer curl = StringBuffer("curl --location --request PATCH '$url' \\\n");
-      request.headers.forEach((key, value) => curl.write("--header '$key: $value' \\\n"));
-      request.fields.forEach((key, value) => curl.write("--form '$key=\"$value\"' \\\n"));
-      if (billFilePath != null) curl.write("--form 'bill_file=@\"$billFilePath\"'");
+      StringBuffer curl = StringBuffer(
+        "curl --location --request PATCH '$url' \\\n",
+      );
+      request.headers.forEach(
+        (key, value) => curl.write("--header '$key: $value' \\\n"),
+      );
+      request.fields.forEach(
+        (key, value) => curl.write("--form '$key=\"$value\"' \\\n"),
+      );
+      if (billFilePath != null)
+        curl.write("--form 'bill_file=@\"$billFilePath\"'");
       debugPrint(curl.toString());
       debugPrint("---------------------------------------");
 
@@ -1272,12 +1415,12 @@ class DriverStore extends ChangeNotifier {
           return {
             "success": true,
             "message": decoded['message'] ?? "Fuel log completed successfully",
-            "mileage_data": decoded['mileage_data']
+            "mileage_data": decoded['mileage_data'],
           };
         } else {
           return {
             "success": false,
-            "message": decoded['message'] ?? "Failed to complete fuel log"
+            "message": decoded['message'] ?? "Failed to complete fuel log",
           };
         }
       } catch (e) {
@@ -1311,7 +1454,9 @@ class DriverStore extends ChangeNotifier {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
-          _activeRoutesToComplete = List<Map<String, dynamic>>.from(decoded['data']);
+          _activeRoutesToComplete = List<Map<String, dynamic>>.from(
+            decoded['data'],
+          );
         }
       }
     } catch (e) {
@@ -1322,5 +1467,3 @@ class DriverStore extends ChangeNotifier {
     }
   }
 }
-
-
