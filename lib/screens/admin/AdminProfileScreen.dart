@@ -175,7 +175,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     final String name = profileData?['name'] ?? "Admin User";
     final String username = profileData?['user_name'] ?? 'admin';
     final String roleStr = _getRoleName(profileData?['role']).toLowerCase();
-    final bool showScanner = roleStr.contains('super admin') || roleStr.contains('transport admin');
+    final bool showScanner = true;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

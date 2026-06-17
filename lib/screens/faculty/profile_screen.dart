@@ -4,6 +4,8 @@ import 'package:tripzo/components/profile/profile_hero.dart';
 import 'package:tripzo/components/profile/typing_text.dart';
 import 'package:tripzo/screens/setting/settings_page.dart';
 import 'package:tripzo/store/faculty_store.dart';
+import 'package:tripzo/screens/setting/scanner_page.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -121,6 +123,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildSectionTitle("Faculty Details", titleColor),
         const SizedBox(height: 16),
         _buildMenuGrid(data, isLoading, cardColor, titleColor, subColor),
+        const SizedBox(height: 32),
+        _buildSectionTitle("Quick Actions", titleColor),
+        const SizedBox(height: 16),
+        _buildScannerTile(context, isDark, cardColor, titleColor),
         const SizedBox(height: 40),
       ],
     );
@@ -278,6 +284,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text("Retry"),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildScannerTile(
+    BuildContext context,
+    bool isDark,
+    Color surfaceColor,
+    Color titleColor,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+        ),
+      ),
+      child: ListTile(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ScannerPage(),
+            ),
+          );
+          if (result != null) {
+            showTopToast(context, "Scanned: $result");
+          }
+        },
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6366F1).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF6366F1), size: 22),
+        ),
+        title: Text(
+          "Scan Code",
+          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+        ),
+        subtitle: Text(
+          "Scan using camera",
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
       ),
     );
   }

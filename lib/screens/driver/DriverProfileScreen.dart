@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
+import 'package:tripzo/screens/setting/scanner_page.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class DriverProfileScreen extends ConsumerStatefulWidget {
   const DriverProfileScreen({super.key});
@@ -182,6 +184,14 @@ final store = ref.watch(driverStoreProvider);
           subColor,
           isTamil,
         ),
+        const SizedBox(height: 32),
+        _buildSectionTitle(
+          isTamil ? "விரைவான செயல்கள்" : "Quick Actions",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildScannerTile(context, isDark, cardColor, titleColor, isTamil),
+        const SizedBox(height: 40),
       ],
     );
   }
@@ -516,5 +526,53 @@ final store = ref.watch(driverStoreProvider);
     } catch (_) {
       return dateStr;
     }
+  }
+
+  Widget _buildScannerTile(
+    BuildContext context,
+    bool isDark,
+    Color surfaceColor,
+    Color titleColor,
+    bool isTamil,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+        ),
+      ),
+      child: ListTile(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ScannerPage(),
+            ),
+          );
+          if (result != null) {
+            showTopToast(context, isTamil ? "ஸ்கேன் செய்யப்பட்டது: $result" : "Scanned: $result");
+          }
+        },
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6366F1).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF6366F1), size: 22),
+        ),
+        title: Text(
+          isTamil ? "ஸ்கேன் செய்க" : "Scan Code",
+          style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
+        ),
+        subtitle: Text(
+          isTamil ? "கேமராவை வைத்து ஸ்கேன் செய்யவும்" : "Scan using camera",
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+      ),
+    );
   }
 }

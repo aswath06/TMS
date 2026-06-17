@@ -2133,7 +2133,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                             ),
                             const SizedBox(height: 16),
                             _buildGuestContacts(cardColor, primaryBlue, subColor),
-                            if (isApprovedState && !isFaculty) ...[
+                            if (isApprovedState && _isTransportOrSuperAdmin) ...[
                               const SizedBox(height: 16),
                               SizedBox(
                                 width: double.infinity,
