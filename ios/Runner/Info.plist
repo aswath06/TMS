@@ -41,6 +41,10 @@
 	<string>We need camera access to capture fuel bill images.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open to verify trip stop arrivals for drivers.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location to verify trip stop arrivals for drivers even when running in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs access to location to verify trip stop arrivals for drivers even when running in the background.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to upload fuel bill images.</string>
 	<key>UIApplicationSceneManifest</key>
