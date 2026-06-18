@@ -9,6 +9,7 @@ import 'package:tripzo/screens/admin/fuel/create_fuel_request_page.dart';
 import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
 import 'package:tripzo/screens/driver/driver_allowance_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart';
+import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 
 import '../../providers/notification_provider.dart';
 import '../../components/notification_bell.dart';
@@ -32,6 +33,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       useDriverStore.fetchProfile();
       useDriverStore.fetchMissions();
+      useDriverStore.fetchDailyBusRuns();
       useDriverStore.fetchRewardPoints();
       useDriverStore.fetchPendingFuelEntries();
       useDriverStore.fetchActiveRoutesToComplete();
@@ -73,30 +75,27 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
 builder: (context, ref, _) {
 final store = ref.watch(driverStoreProvider);
                 final profile = store.profileData.value;
-                final allTasksList = List<Map<String, dynamic>>.from(store.missions);
-                // Helper to normalize status for filtering
-                bool isCompleted(dynamic s) {
-                  if (s is int) return s >= 8;
-                  if (s is String) return s.toUpperCase() == 'COMPLETED';
-                  return false;
+                final List<Map<String, dynamic>> allAssignments = [];
+                for (var run in store.dailyBusRuns) {
+                  final assignmentsList = run['assignment'] as List? ?? [];
+                  for (var a in assignmentsList) {
+                    final status = run['status'];
+                    final startLoc = run['start_location_name'] ?? 'Start';
+                    final haltLoc = run['halt_location_name'] ?? 'Halt';
+                    allAssignments.add({
+                      ...a,
+                      'run_status': status,
+                      'start_location_name': startLoc,
+                      'halt_location_name': haltLoc,
+                    });
+                  }
                 }
-
-                // Filter for non-completed missions and sort by date/time
-                final upcoming = allTasksList.where((m) => !isCompleted(m['status'])).toList();
-                upcoming.sort((a, b) {
-                  final aTime = DateTime.tryParse(a['start_datetime'] ?? '') ?? DateTime(0);
-                  final bTime = DateTime.tryParse(b['start_datetime'] ?? '') ?? DateTime(0);
-                  return aTime.compareTo(bTime);
-                });
-
-                // Show only the most immediate upcoming mission on the dashboard
-                final priorityMissions = upcoming.take(1).toList();
-                final String driverName = profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver");
 
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchProfile();
                     await store.fetchMissions();
+                    await store.fetchDailyBusRuns();
                     await store.fetchPendingFuelEntries();
                     await store.fetchActiveRoutesToComplete();
                     await store.fetchPendingAllowanceCount();
@@ -108,9 +107,9 @@ final store = ref.watch(driverStoreProvider);
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 24),
-                        _buildHeader(driverName, titleColor, subColor, screenWidth, primaryBlue, isTamil),
+                        _buildHeader(profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver"), titleColor, subColor, screenWidth, primaryBlue, isTamil),
                         const SizedBox(height: 32),
-                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, allTasksList, profile, store),
+                        _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, profile, store),
                         const SizedBox(height: 36),
                         _buildActiveRoutesSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
                         const SizedBox(height: 36),
@@ -121,37 +120,19 @@ final store = ref.watch(driverStoreProvider);
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${upcoming.length})", titleColor),
+                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${allAssignments.length})", titleColor),
                             ),
-                            const SizedBox(width: 12),
-                            if (upcoming.length > 1)
-                              GestureDetector(
-                                onTap: () {
-                                  final mainState = context.findAncestorStateOfType<MainScreenState>();
-                                  if (mainState != null) {
-                                    mainState.setIndex(1);
-                                  }
-                                },
-                                child: Text(
-                                  isTamil ? "அனைத்தையும் பார்" : "View All",
-                                  style: TextStyle(
-                                    color: primaryBlue,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                         const SizedBox(height: 18),
-                        if (store.isLoadingMissions && priorityMissions.isEmpty)
+                        if (store.isLoadingBusRuns && allAssignments.isEmpty)
                           const Center(child: CircularProgressIndicator())
-                        else if (priorityMissions.isEmpty)
+                        else if (allAssignments.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else
-                          ...priorityMissions.map((m) => _buildMissionCard(
+                          ...allAssignments.map((a) => _buildAssignmentCard(
                                 context: context,
-                                mission: m,
+                                assignment: a,
                                 surface: surfaceColor,
                                 primary: primaryBlue,
                                 titleColor: titleColor,
@@ -251,15 +232,7 @@ final store = ref.watch(driverStoreProvider);
     );
   }
 
-  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, List<Map<String, dynamic>> missionList, Map<String, dynamic>? profile, DriverStore store) {
-    // Helper to normalize status for filtering
-    bool isCompleted(dynamic s) {
-      if (s is int) return s >= 8;
-      if (s is String) return s.toUpperCase() == 'COMPLETED';
-      return false;
-    }
-    
-    final pendingCount = missionList.where((m) => !isCompleted(m['status'])).length;
+  Widget _buildStatCards(Color primary, Color surface, bool isDark, bool isTamil, Map<String, dynamic>? profile, DriverStore store) {
     final double rewardValue = double.tryParse((profile?['reward_points'] ?? "150").toString()) ?? 150.0;
     
     return IntrinsicHeight(
@@ -418,6 +391,123 @@ final store = ref.watch(driverStoreProvider);
       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color, letterSpacing: -0.8),
       overflow: TextOverflow.ellipsis,
       maxLines: 1,
+    );
+  }
+
+  Widget _buildAssignmentCard({
+    required BuildContext context,
+    required Map<String, dynamic> assignment,
+    required Color surface,
+    required Color primary,
+    required Color titleColor,
+    required Color subColor,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final shiftCode = assignment['shift_code'] ?? 'UNKNOWN';
+    final startTime = _formatDate(assignment['planned_start_time']);
+    final endTime = _formatDate(assignment['planned_end_time']);
+    final vehicleNumber = assignment['vehicle']?['vehicle_number'] ?? 'Unknown Vehicle';
+    final statusStr = assignment['run_status'] ?? 'UNKNOWN';
+
+    String startLoc = assignment['start_location_name'] ?? 'Start';
+    String haltLoc = assignment['halt_location_name'] ?? 'Halt';
+
+    if (shiftCode == 'EVENING') {
+      final temp = startLoc;
+      startLoc = haltLoc;
+      haltLoc = temp;
+    }
+
+    Color statusColor = Colors.blue;
+    if (statusStr == 'READY') statusColor = Colors.green;
+    else if (statusStr == 'ONGOING') statusColor = Colors.orange;
+    else if (statusStr == 'COMPLETED') statusColor = Colors.grey;
+
+    bool isEnabled = true;
+    if (shiftCode == 'EVENING') {
+      final validStatuses = ['FN_COMPLETED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+      if (!validStatuses.contains(statusStr.toUpperCase())) {
+        isEnabled = false;
+      }
+    }
+
+    return GestureDetector(
+      onTap: isEnabled ? () {
+        final Map<String, dynamic> runData = (assignment['run_data'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AssignmentDetailsScreen(
+              assignment: assignment,
+              run: runData,
+            ),
+          ),
+        );
+      } : null,
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.6,
+        child: Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: surface,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(isTamil ? "பணி" : "Assignment", style: TextStyle(fontWeight: FontWeight.w900, color: titleColor, fontSize: 16)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                  child: Text(statusStr.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _iconInfo(Icons.wb_sunny_rounded, shiftCode, isDark),
+                _iconInfo(Icons.directions_car_rounded, vehicleNumber, isDark),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildTimeline(startLoc, haltLoc, primary, titleColor),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(isTamil ? "திட்டமிட்ட தொடக்கம்" : "Planned Start", style: TextStyle(fontSize: 10, color: subColor)),
+                    Text(startTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(isTamil ? "திட்டமிட்ட முடிவு" : "Planned End", style: TextStyle(fontSize: 10, color: subColor)),
+                    Text(endTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
+                  ],
+                ),
+              ],
+            )
+          ],
+        ),
+      )),
     );
   }
 

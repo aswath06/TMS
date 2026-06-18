@@ -35,6 +35,12 @@ class DriverStore extends ChangeNotifier {
   bool _isLoadingMissions = false;
   bool get isLoadingMissions => _isLoadingMissions;
 
+  // Daily Bus Runs State
+  List<Map<String, dynamic>> _dailyBusRuns = [];
+  List<Map<String, dynamic>> get dailyBusRuns => _dailyBusRuns;
+  bool _isLoadingBusRuns = false;
+  bool get isLoadingBusRuns => _isLoadingBusRuns;
+
   String _searchQuery = "";
   String get searchQuery => _searchQuery;
 
@@ -800,50 +806,212 @@ class DriverStore extends ChangeNotifier {
       // Print Response for debugging
       debugPrint("--- [DEBUG] FETCH MISSIONS RESPONSE ---");
       debugPrint("Status Code: ${response.statusCode}");
-      debugPrint("Body: ${response.body}");
       debugPrint("---------------------------------------");
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
-          final List<dynamic> items = decoded['data'] ?? [];
-          _missions = items.map((e) => e as Map<String, dynamic>).toList();
-
-          // Auto-start tracking if any mission is already STARTED
-          int? startedTripId;
-          bool hasStartedMission = _missions.any((m) {
-            final status = m['route_status']?.toString().toUpperCase() ?? '';
-            final isStarted = status == 'STARTED' || status == 'ONGOING';
-            if (isStarted &&
-                m['trip_instances'] != null &&
-                (m['trip_instances'] as List).isNotEmpty) {
-              startedTripId = m['trip_instances'][0]['id'];
-            }
-            return isStarted;
-          });
-
-          if (hasStartedMission && startedTripId != null) {
-            final role = await UserStore.getRole();
-            if (role == 'driver') {
-              LocationService().startTracking(startedTripId!);
-            }
-          }
+          final List<dynamic> missionsData = decoded['data'] ?? [];
+          _missions = missionsData.map((e) => e as Map<String, dynamic>).toList();
         } else {
-          _missionsError = decoded['message'] ?? "Failed to fetch missions";
+          _missionsError = decoded['message'] ?? "Failed to load missions.";
         }
       } else if (response.statusCode == 401) {
         await UserStore.forceLogout();
-        _missionsError = "Session expired. Please login again.";
+        _missionsError = "Session expired.";
       } else {
-        _missionsError = "Server error: ${response.statusCode}";
+        _missionsError = "Error: ${response.statusCode}";
       }
     } catch (e) {
-      _missionsError = "Connection error: $e";
+      _missionsError = "Network error: $e";
     } finally {
       _isLoadingMissions = false;
       notifyListeners();
     }
   }
+
+  Future<Map<String, dynamic>> startBusRun({
+    required int runId,
+    required int startOdometer,
+    String? imageUrl,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/start";
+      final bodyStr = json.encode({
+        "start_odometer": startOdometer,
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "image_url": imageUrl,
+      });
+
+      // --- DEBUG LOGGING ---
+      String curl = "curl -X PATCH '$url' \\\n";
+      curl += "-H 'Authorization: TMS $token' \\\n";
+      curl += "-H 'Content-Type: application/json' \\\n";
+      curl += "-d '$bodyStr'";
+      debugPrint("================= API DEBUG (Start Run) =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("=========================================================");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: bodyStr,
+      );
+
+      debugPrint("================= API RESPONSE (Start Run) ==============");
+      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("=========================================================");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchDailyBusRuns();
+        return {"success": true, "message": "Run started successfully"};
+      }
+      
+      final decoded = json.decode(response.body);
+      return {"success": false, "message": decoded['message'] ?? "Failed to start run"};
+    } catch (e) {
+      debugPrint("Start Run Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  Future<Map<String, dynamic>> setCampusInPassengerCount({
+    required int runId,
+    required int passengerCount,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/campus-in-passenger-count";
+      final bodyStr = json.encode({
+        "passenger_count": passengerCount,
+      });
+
+      // --- DEBUG LOGGING ---
+      String curl = "curl -X PATCH '$url' \\\n";
+      curl += "-H 'Authorization: TMS $token' \\\n";
+      curl += "-H 'Content-Type: application/json' \\\n";
+      curl += "-d '$bodyStr'";
+      debugPrint("================= API DEBUG (Campus In Count) =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("=========================================================");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: bodyStr,
+      );
+
+      debugPrint("================= API RESPONSE (Campus In Count) ==============");
+      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("=========================================================");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": "Passenger count updated successfully"};
+      }
+      
+      final decoded = json.decode(response.body);
+      return {"success": false, "message": decoded['message'] ?? "Failed to update passenger count"};
+    } catch (e) {
+      debugPrint("Campus In Count Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  Future<Map<String, dynamic>> endMorningBusRun({
+    required int runId,
+    required int endOdometer,
+    required bool allowanceNeeded,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/morning-odometer";
+      final bodyStr = json.encode({
+        "end_odometer": endOdometer,
+        "allowance_needed": allowanceNeeded,
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "image_url": null,
+      });
+
+      // --- DEBUG LOGGING ---
+      String curl = "curl -X PATCH '$url' \\\n";
+      curl += "-H 'Authorization: TMS $token' \\\n";
+      curl += "-H 'Content-Type: application/json' \\\n";
+      curl += "-d '$bodyStr'";
+      debugPrint("================= API DEBUG (End Run) =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("=========================================================");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: bodyStr,
+      );
+
+      debugPrint("================= API RESPONSE (End Run) ==============");
+      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("=========================================================");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchDailyBusRuns();
+        return {"success": true, "message": "Run ended successfully"};
+      }
+      
+      final decoded = json.decode(response.body);
+      return {"success": false, "message": decoded['message'] ?? "Failed to end run"};
+    } catch (e) {
+      debugPrint("End Run Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  Future<void> fetchDailyBusRuns() async {
+    _isLoadingBusRuns = true;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      final driverId = await UserStore.getDriverId();
+
+      if (token == null || driverId == null) {
+        _isLoadingBusRuns = false;
+        notifyListeners();
+        return;
+      }
+
+      final dateStr = DateTime.now().toIso8601String().substring(0, 10);
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr&driver_id=$driverId";
+
+      final headers = ApiConstants.getHeaders(token);
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final List<dynamic> runsData = decoded['data']?['runs'] ?? [];
+          _dailyBusRuns = runsData.map((e) => e as Map<String, dynamic>).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching daily bus runs: $e");
+    } finally {
+      _isLoadingBusRuns = false;
+      notifyListeners();
+    }
+  }
+
+
 
   Future<void> fetchLeaves() async {
     _isLoadingLeaves = true;

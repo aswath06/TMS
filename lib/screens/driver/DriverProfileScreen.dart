@@ -189,6 +189,52 @@ final store = ref.watch(driverStoreProvider);
           isTamil,
         ),
         const SizedBox(height: 32),
+        
+        _buildSectionTitle(
+          isTamil ? "தனிப்பட்ட விவரங்கள்" : "Personal Details",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildPersonalGrid(
+          data,
+          isLoading,
+          cardColor,
+          titleColor,
+          subColor,
+          isTamil,
+        ),
+        const SizedBox(height: 32),
+
+        _buildSectionTitle(
+          isTamil ? "வங்கி விவரங்கள்" : "Bank Details",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildBankGrid(
+          data,
+          isLoading,
+          cardColor,
+          titleColor,
+          subColor,
+          isTamil,
+        ),
+        const SizedBox(height: 32),
+
+        _buildSectionTitle(
+          isTamil ? "சம்பள விவரங்கள்" : "Salary Details",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildSalaryGrid(
+          data,
+          isLoading,
+          cardColor,
+          titleColor,
+          subColor,
+          isTamil,
+        ),
+        const SizedBox(height: 32),
+
         _buildSectionTitle(
           isTamil ? "விரைவான செயல்கள்" : "Quick Actions",
           titleColor,
@@ -448,6 +494,237 @@ final store = ref.watch(driverStoreProvider);
         'val': data?['driverProfile']?['total_routes'],
         'icon': Icons.route_rounded,
         'color': Colors.purple,
+      },
+      {
+        'title': isTamil ? 'நிலை' : 'Status',
+        'val': data?['status'],
+        'icon': Icons.info_outline,
+        'color': Colors.green,
+      },
+      {
+        'title': isTamil ? 'புஷ் அறிவிப்பு' : 'Push Notifications',
+        'val': data?['push_notification_enabled'] == true ? 'Enabled' : 'Disabled',
+        'icon': Icons.notifications_active_rounded,
+        'color': Colors.amber,
+      },
+      {
+        'title': isTamil ? 'கடைசி உள்நுழைவு' : 'Last Login At',
+        'val': _formatDate(data?['last_login_at']),
+        'icon': Icons.login_rounded,
+        'color': Colors.indigo,
+      },
+    ];
+    return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
+  }
+
+  Widget _buildPersonalGrid(
+    Map<String, dynamic>? data,
+    bool isLoading,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    bool isTamil,
+  ) {
+    final List<Map<String, dynamic>> items = [
+      {
+        'title': isTamil ? 'வயது' : 'Age',
+        'val': data?['age'],
+        'icon': Icons.cake_rounded,
+        'color': Colors.pink,
+      },
+      {
+        'title': isTamil ? 'பாலினம்' : 'Gender',
+        'val': data?['gender'],
+        'icon': Icons.person_rounded,
+        'color': Colors.blueAccent,
+      },
+      {
+        'title': isTamil ? 'பிறந்த தேதி' : 'Date of Birth',
+        'val': _formatDate(data?['dob']),
+        'icon': Icons.calendar_month_rounded,
+        'color': Colors.orange,
+      },
+      {
+        'title': isTamil ? 'மதம்' : 'Religion',
+        'val': data?['religious'],
+        'icon': Icons.church_rounded,
+        'color': Colors.purple,
+      },
+      {
+        'title': isTamil ? 'சாதி' : 'Caste',
+        'val': data?['caste'],
+        'icon': Icons.group_rounded,
+        'color': Colors.teal,
+      },
+      {
+        'title': isTamil ? 'சமூகம்' : 'Community',
+        'val': data?['community'],
+        'icon': Icons.people_alt_rounded,
+        'color': Colors.brown,
+      },
+      {
+        'title': isTamil ? 'தந்தை பெயர்' : 'Father Name',
+        'val': data?['father_name'],
+        'icon': Icons.family_restroom_rounded,
+        'color': Colors.deepOrange,
+      },
+      {
+        'title': isTamil ? 'தாய் பெயர்' : 'Mother Name',
+        'val': data?['mother_name'],
+        'icon': Icons.pregnant_woman_rounded,
+        'color': Colors.cyan,
+      },
+      {
+        'title': isTamil ? 'துணைவர் பெயர்' : 'Spouse Name',
+        'val': data?['spouse_name'],
+        'icon': Icons.favorite_rounded,
+        'color': Colors.redAccent,
+      },
+      {
+        'title': isTamil ? 'மாற்று தொலைபேசி' : 'Mobile Number 2',
+        'val': data?['mobile_number_2'],
+        'icon': Icons.phone_android_rounded,
+        'color': Colors.lightBlue,
+      },
+      {
+        'title': isTamil ? 'ஆதார் எண்' : 'Aadhar Number',
+        'val': data?['aadhar_number'],
+        'icon': Icons.credit_card_rounded,
+        'color': Colors.green,
+      },
+      {
+        'title': isTamil ? 'திருமண நிலை' : 'Marital Status',
+        'val': data?['driverProfile']?['marital_status'],
+        'icon': Icons.diversity_1_rounded,
+        'color': Colors.indigo,
+      },
+      {
+        'title': isTamil ? 'நியமனப் பெயர்' : 'Nominee Name',
+        'val': data?['driverProfile']?['nominee_name'],
+        'icon': Icons.person_pin_rounded,
+        'color': Colors.deepPurple,
+      },
+      {
+        'title': isTamil ? 'நியமனப் பிறந்த தேதி' : 'Nominee DOB',
+        'val': _formatDate(data?['driverProfile']?['nominee_dob']),
+        'icon': Icons.calendar_today_rounded,
+        'color': Colors.amber,
+      },
+      {
+        'title': isTamil ? 'நியமன உறவு' : 'Nominee Relation',
+        'val': data?['driverProfile']?['nominee_relation'],
+        'icon': Icons.handshake_rounded,
+        'color': Colors.teal,
+      },
+    ];
+    return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
+  }
+
+  Widget _buildBankGrid(
+    Map<String, dynamic>? data,
+    bool isLoading,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    bool isTamil,
+  ) {
+    final List<Map<String, dynamic>> items = [
+      {
+        'title': isTamil ? 'வங்கி பெயர்' : 'Bank Name',
+        'val': data?['bank_name'],
+        'icon': Icons.account_balance_rounded,
+        'color': Colors.blue,
+      },
+      {
+        'title': isTamil ? 'கணக்கு எண்' : 'Account Number',
+        'val': data?['account_number'],
+        'icon': Icons.numbers_rounded,
+        'color': Colors.green,
+      },
+      {
+        'title': isTamil ? 'IFSC குறியீடு' : 'IFSC Code',
+        'val': data?['ifsc_code'],
+        'icon': Icons.code_rounded,
+        'color': Colors.orange,
+      },
+      {
+        'title': isTamil ? 'கிளை பெயர்' : 'Branch Name',
+        'val': data?['branch_name'],
+        'icon': Icons.store_rounded,
+        'color': Colors.purple,
+      },
+      {
+        'title': isTamil ? 'துணை வங்கி' : 'Sub Bank Name',
+        'val': data?['sub_bank_name'],
+        'icon': Icons.account_balance_wallet_rounded,
+        'color': Colors.teal,
+      },
+      {
+        'title': isTamil ? 'துணை கணக்கு' : 'Sub Account Number',
+        'val': data?['sub_account_number'],
+        'icon': Icons.numbers_rounded,
+        'color': Colors.cyan,
+      },
+      {
+        'title': isTamil ? 'துணை IFSC' : 'Sub IFSC Code',
+        'val': data?['sub_bank_ifsc_code'],
+        'icon': Icons.code_rounded,
+        'color': Colors.deepOrange,
+      },
+      {
+        'title': isTamil ? 'துணை கிளை' : 'Sub Branch Name',
+        'val': data?['sub_bank_branch_name'],
+        'icon': Icons.store_mall_directory_rounded,
+        'color': Colors.indigo,
+      },
+    ];
+    return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
+  }
+
+  Widget _buildSalaryGrid(
+    Map<String, dynamic>? data,
+    bool isLoading,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    bool isTamil,
+  ) {
+    final List<Map<String, dynamic>> items = [
+      {
+        'title': isTamil ? 'அடிப்படை சம்பளம்' : 'Basic Salary',
+        'val': data?['driverProfile']?['salary_basic'],
+        'icon': Icons.currency_rupee_rounded,
+        'color': Colors.green,
+      },
+      {
+        'title': isTamil ? 'மொத்த சம்பளம்' : 'Gross Salary',
+        'val': data?['driverProfile']?['gross_salary'],
+        'icon': Icons.account_balance_wallet_rounded,
+        'color': Colors.blue,
+      },
+      {
+        'title': isTamil ? 'அகவிலைப்படி (DA)' : 'DA',
+        'val': data?['driverProfile']?['da'],
+        'icon': Icons.trending_up_rounded,
+        'color': Colors.orange,
+      },
+      {
+        'title': isTamil ? 'சிறப்பு படி (SA)' : 'SA',
+        'val': data?['driverProfile']?['sa'],
+        'icon': Icons.star_rounded,
+        'color': Colors.purple,
+      },
+      {
+        'title': isTamil ? 'EPFO பங்களிப்பு' : 'EPFO Contribution',
+        'val': data?['driverProfile']?['epfo_management_contribution'],
+        'icon': Icons.savings_rounded,
+        'color': Colors.teal,
+      },
+      {
+        'title': isTamil ? 'ஷிப்ட்' : 'Shift',
+        'val': data?['driverProfile']?['shift'],
+        'icon': Icons.schedule_rounded,
+        'color': Colors.indigo,
       },
     ];
     return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
