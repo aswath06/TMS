@@ -80,6 +80,7 @@ final store = ref.watch(driverStoreProvider);
                   final assignmentsList = run['assignment'] as List? ?? [];
                   for (var a in assignmentsList) {
                     final status = run['status'];
+                    
                     final startLoc = run['start_location_name'] ?? 'Start';
                     final haltLoc = run['halt_location_name'] ?? 'Halt';
                     allAssignments.add({
@@ -87,9 +88,29 @@ final store = ref.watch(driverStoreProvider);
                       'run_status': status,
                       'start_location_name': startLoc,
                       'halt_location_name': haltLoc,
+                      'run_data': run,
                     });
                   }
                 }
+                
+                // Sort assignments: Group by run ID, then dynamically order Morning/Evening based on status.
+                allAssignments.sort((a, b) {
+                  int runA = (a['run_data']['id'] ?? 0);
+                  int runB = (b['run_data']['id'] ?? 0);
+                  if (runA != runB) return runB.compareTo(runA); // Newest runs first
+                  
+                  final status = a['run_status']?.toString().toUpperCase() ?? '';
+                  final shiftA = a['shift_code']?.toString().toUpperCase() ?? '';
+                  final shiftB = b['shift_code']?.toString().toUpperCase() ?? '';
+                  
+                  final eveningFirstStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+                  bool eveningFirst = eveningFirstStatuses.contains(status);
+                  
+                  int weightA = shiftA == 'EVENING' ? (eveningFirst ? 0 : 1) : (eveningFirst ? 1 : 0);
+                  int weightB = shiftB == 'EVENING' ? (eveningFirst ? 0 : 1) : (eveningFirst ? 1 : 0);
+                  
+                  return weightA.compareTo(weightB);
+                });
 
                 return RefreshIndicator(
                   onRefresh: () async {
@@ -120,7 +141,7 @@ final store = ref.watch(driverStoreProvider);
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${allAssignments.length})", titleColor),
+                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Bus Routes"} (${allAssignments.length})", titleColor),
                             ),
                           ],
                         ),
@@ -164,7 +185,7 @@ final store = ref.watch(driverStoreProvider);
             Icon(Icons.assignment_turned_in_rounded, size: 64, color: subColor.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(
-              isTamil ? "பணிகள் எதுவும் இல்லை" : "No assignments for today",
+              isTamil ? "பணிகள் எதுவும் இல்லை" : "No bus routes for today",
               style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
             ),
           ],
@@ -426,7 +447,7 @@ final store = ref.watch(driverStoreProvider);
 
     bool isEnabled = true;
     if (shiftCode == 'EVENING') {
-      final validStatuses = ['FN_COMPLETED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+      final validStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
       if (!validStatuses.contains(statusStr.toUpperCase())) {
         isEnabled = false;
       }
@@ -467,7 +488,7 @@ final store = ref.watch(driverStoreProvider);
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(isTamil ? "பணி" : "Assignment", style: TextStyle(fontWeight: FontWeight.w900, color: titleColor, fontSize: 16)),
+                Text(isTamil ? "பணி" : "Bus Route", style: TextStyle(fontWeight: FontWeight.w900, color: titleColor, fontSize: 16)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),

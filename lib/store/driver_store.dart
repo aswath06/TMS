@@ -925,9 +925,117 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
+  // ==========================================
+  // EVENING SHIFT OPERATIONS
+  // ==========================================
+
+  Future<Map<String, dynamic>> startEveningCampusOut({
+    required int runId,
+    required int startOdometer,
+    required int passengerCount,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/campus-out-details";
+      final bodyStr = json.encode({
+        "start_odometer": startOdometer,
+        "passenger_count": passengerCount,
+        "latitude": null,
+        "longitude": null,
+        "image_url": null,
+      });
+
+      debugPrint("API CALL (Evening Campus Out): PATCH $url\nBody: $bodyStr");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: bodyStr,
+      );
+
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": decoded['message'] ?? "Evening run started"};
+      }
+      return {"success": false, "message": decoded['message'] ?? "Failed to start evening run"};
+    } catch (e) {
+      debugPrint("Evening Campus Out Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  Future<Map<String, dynamic>> endEveningOdometer({
+    required int runId,
+    required int endOdometer,
+    required bool allowanceNeeded,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/evening-odometer";
+      final bodyStr = json.encode({
+        "end_odometer": endOdometer,
+        "allowance_needed": allowanceNeeded,
+        "latitude": null,
+        "longitude": null,
+        "image_url": null,
+      });
+
+      debugPrint("API CALL (Evening End): PATCH $url\nBody: $bodyStr");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: bodyStr,
+      );
+
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": decoded['message'] ?? "Evening run ended"};
+      }
+      return {"success": false, "message": decoded['message'] ?? "Failed to end evening run"};
+    } catch (e) {
+      debugPrint("Evening End Odometer Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  Future<Map<String, dynamic>> haltEveningBusRun({
+    required int runId,
+  }) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/halt";
+      
+      debugPrint("API CALL (Evening Halt): PATCH $url");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+      );
+
+      final decoded = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": decoded['message'] ?? "Bus run halted"};
+      }
+      return {"success": false, "message": decoded['message'] ?? "Failed to halt run"};
+    } catch (e) {
+      debugPrint("Evening Halt Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
+  // ==========================================
+
   Future<Map<String, dynamic>> endMorningBusRun({
     required int runId,
     required int endOdometer,
+    required int passengerCount,
     required bool allowanceNeeded,
   }) async {
     try {
@@ -937,9 +1045,10 @@ class DriverStore extends ChangeNotifier {
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/morning-odometer";
       final bodyStr = json.encode({
         "end_odometer": endOdometer,
+        "passenger_count": passengerCount,
         "allowance_needed": allowanceNeeded,
-        "latitude": 0.0,
-        "longitude": 0.0,
+        "latitude": null,
+        "longitude": null,
         "image_url": null,
       });
 

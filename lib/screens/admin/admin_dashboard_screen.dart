@@ -20,6 +20,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'fuel/fuel_price_update_page.dart';
 import 'fuel/fuel_page.dart';
 import 'admin_allowance_screen.dart';
+import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends ConsumerStatefulWidget {
@@ -35,6 +36,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   String _filterType = "all"; // all, rc, insurance, pollution, fitness
   String _searchQuery = "";
   String _userRole = "";
+  
+  List<dynamic> _adminDailyBusRuns = [];
+  bool _isLoadingAdminBusRuns = false;
   // --------------------------------
 
   @override
@@ -213,7 +217,34 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       });
       if (_userRole.toLowerCase() == 'transport admin' || _userRole.toLowerCase() == 'super admin') {
         ref.read(expirationStoreProvider).fetchExpirations();
+        _fetchAdminDailyBusRuns();
       }
+    }
+  }
+
+  Future<void> _fetchAdminDailyBusRuns() async {
+    setState(() => _isLoadingAdminBusRuns = true);
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      
+      final dateStr = DateTime.now().toIso8601String().substring(0, 10);
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr&driver_id=49";
+      
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          setState(() {
+            _adminDailyBusRuns = decoded['data'] ?? [];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching admin bus runs: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingAdminBusRuns = false);
     }
   }
 
@@ -316,6 +347,43 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       index: 6,
                       child: _buildExpirationSection(primaryBlue, surfaceColor, isDark, titleColor, subColor),
                     ),
+                    const SizedBox(height: 36),
+                  ],
+                  if (_userRole.toLowerCase() == 'transport admin') ...[
+                    FadeInUp(
+                      index: 7,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildSectionTitle('Live Bus Routes', titleColor),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (_isLoadingAdminBusRuns && _adminDailyBusRuns.isEmpty)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_adminDailyBusRuns.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 20, bottom: 20),
+                          child: Text(
+                            "No bus routes found",
+                            style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      )
+                    else
+                      ..._adminDailyBusRuns.map((a) {
+                        return _buildAssignmentCard(
+                          context: context,
+                          assignment: a,
+                          surface: surfaceColor,
+                          primary: primaryBlue,
+                          titleColor: titleColor,
+                          subColor: subColor,
+                          isDark: isDark,
+                        );
+                      }),
                     const SizedBox(height: 36),
                   ],
                   FadeInUp(
@@ -1321,6 +1389,172 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ),
         );
       },
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // Daily Bus Routes Card UI Helpers
+  // ---------------------------------------------------------------------
+  
+  String _formatDate(String? dateStr) {
+    if (dateStr == null) return "TBD";
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return "${dt.day} ${months[dt.month - 1]}, ${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  Widget _buildTimeline(String pickup, String drop, Color primary, Color title) {
+    return Row(
+      children: [
+        Column(
+          children: [
+            Icon(Icons.radio_button_checked, color: primary, size: 18),
+            Container(width: 2, height: 20, color: primary.withValues(alpha: 0.2)),
+            Icon(Icons.location_on, color: Colors.redAccent.withValues(alpha: 0.7), size: 18),
+          ],
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(pickup, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: title), overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 18),
+              Text(drop, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: title), overflow: TextOverflow.ellipsis),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _iconInfo(IconData icon, String text, bool isDark) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: isDark ? Colors.white38 : Colors.black26),
+        const SizedBox(width: 6),
+        Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : Colors.black54)),
+      ],
+    );
+  }
+
+  Widget _buildAssignmentCard({
+    required BuildContext context,
+    required dynamic assignment,
+    required Color surface,
+    required Color primary,
+    required Color titleColor,
+    required Color subColor,
+    required bool isDark,
+  }) {
+    final shiftCode = assignment['shift_code'] ?? 'UNKNOWN';
+    final startTime = _formatDate(assignment['planned_start_time']);
+    final endTime = _formatDate(assignment['planned_end_time']);
+    final vehicleNumber = assignment['vehicle']?['vehicle_number'] ?? 'Unknown Vehicle';
+    final statusStr = assignment['run_status'] ?? 'UNKNOWN';
+
+    String startLoc = assignment['start_location_name'] ?? 'Start';
+    String haltLoc = assignment['halt_location_name'] ?? 'Halt';
+
+    if (shiftCode == 'EVENING') {
+      final temp = startLoc;
+      startLoc = haltLoc;
+      haltLoc = temp;
+    }
+
+    Color statusColor = Colors.blue;
+    if (statusStr == 'READY') statusColor = Colors.green;
+    else if (statusStr == 'ONGOING') statusColor = Colors.orange;
+    else if (statusStr == 'COMPLETED') statusColor = Colors.grey;
+
+    bool isEnabled = true;
+    if (shiftCode == 'EVENING') {
+      final validStatuses = ['FN_COMPLETED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+      if (!validStatuses.contains(statusStr.toUpperCase())) {
+        isEnabled = false;
+      }
+    }
+
+    return GestureDetector(
+      onTap: isEnabled ? () {
+        final Map<String, dynamic> runData = (assignment['run_data'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AssignmentDetailsScreen(
+              assignment: assignment,
+              run: runData,
+            ),
+          ),
+        );
+      } : null,
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.6,
+        child: Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: surface,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Bus Route", style: TextStyle(fontWeight: FontWeight.w900, color: titleColor, fontSize: 16)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                  child: Text(statusStr.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _iconInfo(Icons.wb_sunny_rounded, shiftCode, isDark),
+                _iconInfo(Icons.directions_car_rounded, vehicleNumber, isDark),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildTimeline(startLoc, haltLoc, primary, titleColor),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Planned Start", style: TextStyle(fontSize: 10, color: subColor)),
+                    Text(startTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text("Planned End", style: TextStyle(fontSize: 10, color: subColor)),
+                    Text(endTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
+                  ],
+                ),
+              ],
+            )
+          ],
+        ),
+      )),
     );
   }
 }

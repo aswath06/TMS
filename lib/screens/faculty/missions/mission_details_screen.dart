@@ -623,8 +623,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                           width: 1.5,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "DA/TA is required for driver*",
@@ -634,110 +634,39 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
                           ),
-                          const SizedBox(height: 16),
                           Row(
                             children: [
-                              // "YES" option
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setModalState(() {
-                                      allowanceNeeded = true;
-                                    });
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: allowanceNeeded == true
-                                          ? const Color(0xFF10B981).withValues(alpha: 0.08)
-                                          : (isDark ? const Color(0xFF1E293B) : Colors.white),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: allowanceNeeded == true
-                                            ? const Color(0xFF10B981)
-                                            : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                                        width: allowanceNeeded == true ? 2.0 : 1.0,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          allowanceNeeded == true
-                                              ? Icons.radio_button_checked_rounded
-                                              : Icons.radio_button_off_rounded,
-                                          color: allowanceNeeded == true
-                                              ? const Color(0xFF10B981)
-                                              : Colors.grey,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          "Yes",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: allowanceNeeded == true
-                                                ? const Color(0xFF10B981)
-                                                : (isDark ? Colors.white70 : const Color(0xFF334155)),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    allowanceNeeded = true;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: allowanceNeeded == true ? const Color(0xFF6366F1) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: allowanceNeeded == true ? const Color(0xFF6366F1) : (isDark ? Colors.white24 : Colors.black12)),
                                   ),
+                                  child: Text("YES", style: TextStyle(color: allowanceNeeded == true ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)), fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              // "NO" option
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setModalState(() {
-                                      allowanceNeeded = false;
-                                    });
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: allowanceNeeded == false
-                                          ? Colors.red.withValues(alpha: 0.08)
-                                          : (isDark ? const Color(0xFF1E293B) : Colors.white),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: allowanceNeeded == false
-                                            ? Colors.red
-                                            : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                                        width: allowanceNeeded == false ? 2.0 : 1.0,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          allowanceNeeded == false
-                                              ? Icons.radio_button_checked_rounded
-                                              : Icons.radio_button_off_rounded,
-                                          color: allowanceNeeded == false
-                                              ? Colors.red
-                                              : Colors.grey,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          "No",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: allowanceNeeded == false
-                                                ? Colors.red
-                                                : (isDark ? Colors.white70 : const Color(0xFF334155)),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    allowanceNeeded = false;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: allowanceNeeded == false ? Colors.redAccent : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: allowanceNeeded == false ? Colors.redAccent : (isDark ? Colors.white24 : Colors.black12)),
                                   ),
+                                  child: Text("NO", style: TextStyle(color: allowanceNeeded == false ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)), fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ),
                             ],
