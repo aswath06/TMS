@@ -20,9 +20,7 @@ import 'package:tripzo/services/notification_local_service.dart';
 import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/services/notification_socket_service.dart';
 import 'package:tripzo/providers/notification_provider.dart';
-import 'package:tripzo/store/providers.dart';
-
-void main() async {
+import 'package:tripzo/store/providers.dart';void main() async {
   // Ensure Flutter framework is initialized before running code
   WidgetsFlutterBinding.ensureInitialized();
 

@@ -355,6 +355,19 @@ class DriverStore extends ChangeNotifier {
         headers: ApiConstants.getHeaders(token),
       );
 
+      // --- DEBUG LOGGING ---
+      String curl = "curl --location '$url' \\\n";
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        curl += "--header '$key: $value' \\\n";
+      });
+      debugPrint("================= API DEBUG =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      // Truncate response body if it's too huge, or print fully. Let's print fully since user asked.
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("===========================================");
+      // ---------------------
+
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         _totalDrivers = decoded['total_records'] ?? 0;
@@ -388,6 +401,45 @@ class DriverStore extends ChangeNotifier {
 
   Future<void> fetchNextPage() async {
     await fetchDrivers();
+  }
+
+  Future<Map<String, dynamic>?> fetchDriverById(int id) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return null;
+
+      final url = "${ApiConstants.baseUrl}/auth/user/$id";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      // --- DEBUG LOGGING ---
+      String curl = "curl --location '$url' \\\n";
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        curl += "--header '$key: $value' \\\n";
+      });
+      debugPrint("================= API DEBUG (Driver Details) =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint("RESPONSE BODY:");
+      final pattern = RegExp('.{1,800}');
+      for (var match in pattern.allMatches(response.body)) {
+        debugPrint(match.group(0));
+      }
+      debugPrint("==============================================================");
+      // ---------------------
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          return decoded['data'];
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching driver details: $e");
+    }
+    return null;
   }
 
   Future<Map<String, dynamic>?> checkLicense({
@@ -564,6 +616,26 @@ class DriverStore extends ChangeNotifier {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
+      // --- DEBUG LOGGING ---
+      String curl = "curl --location '${url.toString()}' \\\n";
+      curl += "--header 'authorization: TMS $token' \\\n";
+      fields.forEach((key, value) {
+        curl += "--form '$key=\"$value\"' \\\n";
+      });
+      if (files != null) {
+        for (var entry in files.entries) {
+          if (entry.value != null && entry.value.path.isNotEmpty) {
+            curl += "--form '${entry.key}=@\"${entry.value.path}\"' \\\n";
+          }
+        }
+      }
+      debugPrint("================= API DEBUG =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("===========================================");
+      // ---------------------
+
       Map<String, dynamic> decoded = {};
       if (response.body.isNotEmpty) {
         try {
@@ -623,11 +695,23 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
-      // Fetch Full User Profile (Includes roles, driverProfile, etc.)
+      final url = ApiConstants.userMe;
       final response = await http.get(
-        Uri.parse(ApiConstants.userMe),
+        Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
+
+      // --- DEBUG LOGGING ---
+      String curl = "curl --location '$url' \\\n";
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        curl += "--header '$key: $value' \\\n";
+      });
+      debugPrint("================= API DEBUG =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("===========================================");
+      // ---------------------
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/components/profile/info_card.dart';
 import 'package:tripzo/components/profile/profile_hero.dart';
 import 'package:tripzo/components/profile/typing_text.dart';
@@ -143,6 +145,8 @@ final store = ref.watch(driverStoreProvider);
           titleColor: titleColor,
           subColor: subColor,
           isDark: isDark,
+          profileImageUrl: data?['profile_photo'],
+          onAvatarTap: () => _showProfileImagePicker(context),
         ),
         const SizedBox(height: 32),
 
@@ -194,6 +198,77 @@ final store = ref.watch(driverStoreProvider);
         const SizedBox(height: 40),
       ],
     );
+  }
+
+  void _showProfileImagePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Take a photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    try {
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null && mounted) {
+        final File imageFile = File(pickedFile.path);
+        
+        // Show loading toast
+        showTopToast(context, "Uploading profile photo...", isError: false);
+        
+        // Call API
+        final result = await useDriverStore.updateDriverMultipart(
+          {}, // No text fields needed for just profile photo upload
+          files: {'profile_photo': imageFile},
+        );
+
+        if (mounted) {
+          if (result['success']) {
+            showTopToast(context, "Profile photo updated successfully!", isError: false);
+            useDriverStore.fetchProfile(); // Refresh profile to get new image URL
+          } else {
+            showTopToast(context, result['message'] ?? "Failed to update profile photo", isError: true);
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showTopToast(context, "Error picking image: $e", isError: true);
+      }
+    }
   }
 
   Widget _buildOngoingTaskCard(Map<String, dynamic> task, Color card, Color title, Color sub, bool isTamil) {

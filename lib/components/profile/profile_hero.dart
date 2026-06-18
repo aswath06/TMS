@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class ProfileHero extends StatelessWidget {
   final String name;
@@ -7,6 +8,8 @@ class ProfileHero extends StatelessWidget {
   final Color titleColor;
   final Color subColor;
   final bool isDark;
+  final String? profileImageUrl;
+  final VoidCallback? onAvatarTap;
 
   const ProfileHero({
     super.key,
@@ -16,7 +19,38 @@ class ProfileHero extends StatelessWidget {
     required this.titleColor,
     required this.subColor,
     required this.isDark,
+    this.profileImageUrl,
+    this.onAvatarTap,
   });
+
+  String _getInitials(String fullName) {
+    if (fullName.isEmpty || fullName == "...") return "NA";
+    
+    // Remove titles like Mr., Ms., Dr., etc.
+    String cleanName = fullName.replaceAll(RegExp(r'^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*', caseSensitive: false), '');
+    
+    List<String> parts = cleanName.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return "NA";
+    if (parts.length == 1) {
+      return parts[0].length >= 2 ? parts[0].substring(0, 2).toUpperCase() : parts[0].toUpperCase();
+    }
+    
+    String first = parts[0];
+    String last = parts[parts.length - 1];
+    
+    if (first.isEmpty) return "NA";
+    if (last.isEmpty) return first[0].toUpperCase();
+    
+    return "${first[0]}${last[0]}".toUpperCase();
+  }
+
+  String _getFullImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    final base = 'https://tripzo.bitsathy.ac.in';
+    final relative = path.startsWith('/') ? path : '/$path';
+    return '$base$relative';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +70,10 @@ class ProfileHero extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildAvatar(),
+          GestureDetector(
+            onTap: onAvatarTap,
+            child: _buildAvatar(),
+          ),
           const SizedBox(height: 20),
           Text(
             name,
@@ -45,6 +82,7 @@ class ProfileHero extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: titleColor,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
@@ -54,6 +92,7 @@ class ProfileHero extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -61,6 +100,9 @@ class ProfileHero extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
+    final String url = _getFullImageUrl(profileImageUrl);
+    final bool hasImage = url.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: const BoxDecoration(
@@ -71,12 +113,18 @@ class ProfileHero extends StatelessWidget {
       ),
       child: CircleAvatar(
         radius: 50,
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        child: const Icon(
-          Icons.person_rounded,
-          size: 55,
-          color: Color(0xFF6366F1),
-        ),
+        backgroundColor: hasImage ? Colors.transparent : (isDark ? const Color(0xFF1E293B) : Colors.white),
+        backgroundImage: hasImage ? NetworkImage(url) : null,
+        child: !hasImage
+            ? Text(
+                _getInitials(name),
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6366F1),
+                ),
+              )
+            : null,
       ),
     );
   }

@@ -17,15 +17,40 @@ class AdminDriverDetailScreen extends ConsumerStatefulWidget {
 
 class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  late Map<String, dynamic> _driverData;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _driverData = Map<String, dynamic>.from(widget.driver);
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
     _animationController.forward();
+    _loadFullDetails();
+  }
+
+  Future<void> _loadFullDetails() async {
+    final driverId = _driverData['user_id'] ?? _driverData['id'];
+    if (driverId == null) return;
+    
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
+
+    final store = ref.read(driverStoreProvider);
+    final fullData = await store.fetchDriverById(driverId);
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (fullData != null) {
+          _driverData = fullData;
+        }
+      });
+    }
   }
 
   @override
@@ -37,9 +62,26 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
   String _getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    final base = ApiConstants.baseUrl.endsWith('/') ? ApiConstants.baseUrl.substring(0, ApiConstants.baseUrl.length - 1) : ApiConstants.baseUrl;
+    final base = 'https://tripzo.bitsathy.ac.in';
     final relative = path.startsWith('/') ? path : '/$path';
-    return '$base$relative';
+    final url = '$base$relative';
+    return url.contains('?') ? '$url&v=2' : '$url?v=2';
+  }
+
+  void _showFullScreenImage(String imageUrl) {
+    if (imageUrl.isEmpty) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(
+            imageUrl,
+            headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'},
+          ),
+        ),
+      ),
+    )));
   }
 
   Widget _buildAnimatedSection(Widget child, int index) {
@@ -73,10 +115,10 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
 
     final store = ref.read(driverStoreProvider);
-    final status = widget.driver['status'] ?? 1;
+    final status = _driverData['status'] ?? 1;
     final statusLabel = store.getStatusLabel(status);
     final statusColor = store.getStatusColor(status);
-    final dp = widget.driver['driverProfile'] ?? widget.driver;
+    final dp = _driverData['driverProfile'] ?? _driverData;
 
     int sectionIndex = 0;
 
@@ -101,17 +143,19 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => EditDriverScreen(driver: widget.driver),
+                  builder: (context) => EditDriverScreen(driver: _driverData),
                 ),
               );
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
+      body: RefreshIndicator(
+        onRefresh: _loadFullDetails,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          child: Column(
+            children: [
             const SizedBox(height: 20),
             _buildAnimatedSection(
               _buildProfileHero(context, isDark, surfaceColor, primaryBlue, statusLabel, statusColor),
@@ -127,12 +171,12 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                     _buildSectionBlock(
                       "Personal Information",
                       [
-                        _InfoItem(Icons.person, "Full Name", widget.driver['name'] ?? 'N/A'),
-                        _InfoItem(Icons.phone, "Phone", widget.driver['phone'] ?? 'N/A'),
-                        _InfoItem(Icons.phone_android, "Alt Phone", widget.driver['mobile_number_2'] ?? 'N/A'),
-                        _InfoItem(Icons.email, "Email", widget.driver['email'] ?? 'N/A'),
-                        _InfoItem(Icons.cake, "DOB / Age", "${_formatDate(widget.driver['dob'])} (${widget.driver['age'] ?? '-'})"),
-                        _InfoItem(Icons.wc, "Gender", widget.driver['gender'] ?? 'N/A'),
+                        _InfoItem(Icons.person, "Full Name", _driverData['name'] ?? 'N/A'),
+                        _InfoItem(Icons.phone, "Phone", _driverData['phone'] ?? 'N/A'),
+                        _InfoItem(Icons.phone_android, "Alt Phone", _driverData['mobile_number_2'] ?? 'N/A'),
+                        _InfoItem(Icons.email, "Email", _driverData['email'] ?? 'N/A'),
+                        _InfoItem(Icons.cake, "DOB / Age", "${_formatDate(_driverData['dob'])} (${_driverData['age'] ?? '-'})"),
+                        _InfoItem(Icons.wc, "Gender", _driverData['gender'] ?? 'N/A'),
                         _InfoItem(Icons.bloodtype, "Blood Group", dp['blood_group'] ?? 'N/A'),
                         _InfoItem(Icons.family_restroom, "Marital Status", dp['marital_status'] ?? 'N/A'),
                         _InfoItem(Icons.location_on, "Address", dp['address'] ?? 'N/A'),
@@ -146,10 +190,10 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                     _buildSectionBlock(
                       "Identity & Demographics",
                       [
-                        _InfoItem(Icons.credit_card, "Aadhar No", widget.driver['aadhar_number'] ?? 'N/A'),
-                        _InfoItem(Icons.mosque, "Religion", widget.driver['religious'] ?? 'N/A'),
-                        _InfoItem(Icons.groups, "Caste", widget.driver['caste'] ?? 'N/A'),
-                        _InfoItem(Icons.group_work, "Community", widget.driver['community'] ?? 'N/A'),
+                        _InfoItem(Icons.credit_card, "Aadhar No", _driverData['aadhar_number'] ?? 'N/A'),
+                        _InfoItem(Icons.mosque, "Religion", _driverData['religious'] ?? 'N/A'),
+                        _InfoItem(Icons.groups, "Caste", _driverData['caste'] ?? 'N/A'),
+                        _InfoItem(Icons.group_work, "Community", _driverData['community'] ?? 'N/A'),
                       ],
                       titleColor, surfaceColor, isDark,
                     ),
@@ -160,9 +204,9 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                     _buildSectionBlock(
                       "Family Details",
                       [
-                        _InfoItem(Icons.man, "Father's Name", widget.driver['father_name'] ?? 'N/A'),
-                        _InfoItem(Icons.woman, "Mother's Name", widget.driver['mother_name'] ?? 'N/A'),
-                        _InfoItem(Icons.favorite, "Spouse's Name", widget.driver['spouse_name'] ?? 'N/A'),
+                        _InfoItem(Icons.man, "Father's Name", _driverData['father_name'] ?? 'N/A'),
+                        _InfoItem(Icons.woman, "Mother's Name", _driverData['mother_name'] ?? 'N/A'),
+                        _InfoItem(Icons.favorite, "Spouse's Name", _driverData['spouse_name'] ?? 'N/A'),
                       ],
                       titleColor, surfaceColor, isDark,
                     ),
@@ -207,12 +251,12 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                     _buildSectionBlock(
                       "Bank & Salary",
                       [
-                        _InfoItem(Icons.account_balance, "Bank Name", widget.driver['bank_name'] ?? 'N/A'),
-                        _InfoItem(Icons.numbers, "Account No", widget.driver['account_number'] ?? 'N/A'),
-                        _InfoItem(Icons.code, "IFSC Code", widget.driver['ifsc_code'] ?? 'N/A'),
-                        _InfoItem(Icons.store, "Branch", widget.driver['branch_name'] ?? 'N/A'),
-                        _InfoItem(Icons.account_balance, "Sub Bank", widget.driver['sub_bank_name'] ?? 'N/A'),
-                        _InfoItem(Icons.numbers, "Sub Acc No", widget.driver['sub_account_number'] ?? 'N/A'),
+                        _InfoItem(Icons.account_balance, "Bank Name", _driverData['bank_name'] ?? 'N/A'),
+                        _InfoItem(Icons.numbers, "Account No", _driverData['account_number'] ?? 'N/A'),
+                        _InfoItem(Icons.code, "IFSC Code", _driverData['ifsc_code'] ?? 'N/A'),
+                        _InfoItem(Icons.store, "Branch", _driverData['branch_name'] ?? 'N/A'),
+                        _InfoItem(Icons.account_balance, "Sub Bank", _driverData['sub_bank_name'] ?? 'N/A'),
+                        _InfoItem(Icons.numbers, "Sub Acc No", _driverData['sub_account_number'] ?? 'N/A'),
                         _InfoItem(Icons.payments, "Basic Salary", "₹${dp['salary_basic'] ?? '0.00'}"),
                         _InfoItem(Icons.trending_up, "DA", "₹${dp['da'] ?? '0.00'}"),
                         _InfoItem(Icons.card_membership, "SA", "₹${dp['sa'] ?? '0.00'}"),
@@ -248,15 +292,16 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildAttachmentsSection(Color titleColor, Color surfaceColor, bool isDark) {
-    final dp = widget.driver['driverProfile'] ?? widget.driver;
+    final dp = _driverData['driverProfile'] ?? _driverData;
     
     final attachments = [
-      {'title': 'Profile Photo', 'url': widget.driver['profile_photo']},
-      {'title': 'Aadhar Photo', 'url': widget.driver['aadhar_photo']},
+      {'title': 'Profile Photo', 'url': _driverData['profile_photo']},
+      {'title': 'Aadhar Photo', 'url': _driverData['aadhar_photo']},
       {'title': 'License Front', 'url': dp['licence_image_front']},
       {'title': 'License Back', 'url': dp['licence_image_back']},
       {'title': 'PAN Image', 'url': dp['pan_image']},
@@ -280,59 +325,59 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
               final String url = _getImageUrl(rawUrl);
               final bool hasImage = url.isNotEmpty;
 
-              return Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 16),
-                decoration: BoxDecoration(
-                  color: surfaceColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                        child: hasImage 
-                          ? Image.network(
-                              url, 
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, color: Colors.grey.withOpacity(0.5), size: 40),
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
-                            )
-                          : Container(
-                              color: isDark ? Colors.black12 : Colors.grey.shade100,
-                              child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.withOpacity(0.3), size: 40),
-                            ),
+              return GestureDetector(
+                onTap: hasImage ? () => _showFullScreenImage(url) : null,
+                child: Container(
+                  width: 140,
+                  margin: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.black12 : Colors.grey.shade50,
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
-                      ),
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white70 : Colors.black87,
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                          child: hasImage 
+                            ? Image.network(
+                                url, 
+                                headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'},
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, color: Colors.grey.withOpacity(0.5), size: 40),
+                              )
+                            : Container(
+                                color: isDark ? Colors.black12 : Colors.grey.shade100,
+                                child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.withOpacity(0.3), size: 40),
+                              ),
                         ),
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black12 : Colors.grey.shade50,
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                        ),
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -364,8 +409,8 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
     Color statusColor,
   ) {
     final store = useDriverStore;
-    final status = widget.driver['status'] ?? 1;
-    final profilePhotoUrl = _getImageUrl(widget.driver['profile_photo']);
+    final status = _driverData['status'] ?? 1;
+    final profilePhotoUrl = _getImageUrl(_driverData['profile_photo']);
 
     return Container(
       width: double.infinity,
@@ -387,31 +432,51 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           Stack(
             alignment: Alignment.bottomRight,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: profilePhotoUrl.isEmpty ? LinearGradient(
-                    colors: [primaryBlue, primaryBlue.withOpacity(0.6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ) : null,
-                  image: profilePhotoUrl.isNotEmpty ? DecorationImage(
-                    image: NetworkImage(profilePhotoUrl),
-                    fit: BoxFit.cover,
-                  ) : null,
-                ),
-                child: profilePhotoUrl.isEmpty ? Center(
-                  child: Text(
-                    _getInitials(widget.driver['name'] ?? ''),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
+              GestureDetector(
+                onTap: profilePhotoUrl.isNotEmpty ? () => _showFullScreenImage(profilePhotoUrl) : null,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey[200],
                   ),
-                ) : null,
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // If NOT loading and we have NO image, show initials
+                      if (!_isLoading && profilePhotoUrl.isEmpty)
+                        Center(
+                          child: Text(
+                            _getInitials(_driverData['name'] ?? ''),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      
+                      // If NOT loading and we HAVE an image, show the image with its own loader
+                      if (!_isLoading && profilePhotoUrl.isNotEmpty)
+                        Image.network(
+                          profilePhotoUrl,
+                          headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'},
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white, size: 50),
+                        ),
+
+                      // If the API call is STILL loading, show spinner overlay
+                      if (_isLoading)
+                        const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
               Container(
                 padding: const EdgeInsets.all(8),
@@ -437,7 +502,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           ),
           const SizedBox(height: 16),
           Text(
-            widget.driver['name'] ?? 'Unknown',
+            _driverData['name'] ?? 'Unknown',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -446,7 +511,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           ),
           const SizedBox(height: 4),
           Text(
-            "@${widget.driver['username'] ?? widget.driver['user_name'] ?? 'username'}",
+            "@${_driverData['username'] ?? _driverData['user_name'] ?? 'username'}",
             style: const TextStyle(
               color: Colors.grey,
               fontSize: 14,
@@ -573,7 +638,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
   }
 
   Widget _buildStatsRow(Color primaryBlue, Color surfaceColor, bool isDark) {
-    final dp = widget.driver['driverProfile'] ?? widget.driver;
+    final dp = _driverData['driverProfile'] ?? _driverData;
     return Row(
       children: [
         Expanded(

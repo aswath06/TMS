@@ -7,6 +7,9 @@ import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 class EditDriverScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> driver;
@@ -39,7 +42,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
   late TextEditingController _nameCtrl, _emailCtrl, _phoneCtrl, _altPhoneCtrl;
   late TextEditingController _fatherNameCtrl, _motherNameCtrl, _spouseNameCtrl;
   late TextEditingController _religionCtrl, _casteCtrl, _communityCtrl, _aadharCtrl;
-  late TextEditingController _addressCtrl, _ageCtrl, _genderCtrl, _bloodGroupCtrl;
+  late TextEditingController _addressCtrl, _ageCtrl, _genderCtrl, _bloodGroupCtrl, _maritalStatusCtrl;
   DateTime? _dobDate;
 
   // Step 2: Account & Role
@@ -48,15 +51,16 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
   DateTime? _nomineeDobDate;
 
   // Step 3: Role Details
-  late TextEditingController _licenseNumCtrl, _vehicleTypeCtrl, _experienceCtrl;
+  late TextEditingController _licenseNumCtrl, _vehicleTypeCtrl, _experienceCtrl, _expAtBitCtrl;
   late TextEditingController _emergencyNameCtrl, _emergencyPhoneCtrl;
   DateTime? _licenseExpiryDate, _joiningDate, _nonTransportExpiryDate;
   String _driverStatus = 'AVAILABLE';
   String _shift = 'MORNING';
 
   // Step 4: Financial & Bank
-  late TextEditingController _salaryBasicCtrl, _grossSalaryCtrl;
+  late TextEditingController _salaryBasicCtrl, _grossSalaryCtrl, _daCtrl, _saCtrl, _epfoCtrl;
   late TextEditingController _bankNameCtrl, _accNumCtrl, _ifscCtrl, _branchCtrl;
+  late TextEditingController _subBankNameCtrl, _subAccNumCtrl, _subIfscCtrl, _subBranchCtrl;
 
   @override
   void initState() {
@@ -86,6 +90,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
     _ageCtrl = TextEditingController(text: (d['age'] ?? dp['age'] ?? '').toString());
     _genderCtrl = TextEditingController(text: d['gender'] ?? 'Male');
     _bloodGroupCtrl = TextEditingController(text: dp['blood_group'] ?? d['blood_group'] ?? '');
+    _maritalStatusCtrl = TextEditingController(text: dp['marital_status'] ?? '');
     _dobDate = _parseDate(d['dob']);
 
     // Step 2
@@ -98,21 +103,32 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
     _licenseNumCtrl = TextEditingController(text: dp['license_number'] ?? '');
     _vehicleTypeCtrl = TextEditingController(text: dp['Vehicle_type'] ?? '');
     _experienceCtrl = TextEditingController(text: (dp['experience_years'] ?? '').toString());
+    _expAtBitCtrl = TextEditingController(text: (dp['experience_at_Bit'] ?? '').toString());
     _emergencyNameCtrl = TextEditingController(text: dp['emergency_contact_name'] ?? '');
     _emergencyPhoneCtrl = TextEditingController(text: dp['emergency_contact_phone'] ?? '');
     _licenseExpiryDate = _parseDate(dp['license_expiry_date']);
     _joiningDate = _parseDate(dp['joining_date']);
     _nonTransportExpiryDate = _parseDate(dp['non_transport_expiry_date']);
-    _driverStatus = dp['status'] ?? d['status'] ?? 'AVAILABLE';
-    _shift = dp['shift'] ?? 'MORNING';
+    final rawStatus = (dp['status'] ?? d['status'] ?? 'AVAILABLE').toString().toUpperCase();
+    _driverStatus = ['AVAILABLE', 'ASSIGNED', 'ON_TRIP', 'ON_LEAVE'].contains(rawStatus) ? rawStatus : 'AVAILABLE';
+
+    final rawShift = (dp['shift'] ?? 'MORNING').toString().toUpperCase();
+    _shift = ['MORNING', 'AFTERNOON', 'NIGHT'].contains(rawShift) ? rawShift : 'MORNING';
 
     // Step 4
     _salaryBasicCtrl = TextEditingController(text: (dp['salary_basic'] ?? '').toString());
     _grossSalaryCtrl = TextEditingController(text: (dp['gross_salary'] ?? '').toString());
+    _daCtrl = TextEditingController(text: (dp['da'] ?? '').toString());
+    _saCtrl = TextEditingController(text: (dp['sa'] ?? '').toString());
+    _epfoCtrl = TextEditingController(text: (dp['epfo_management_contribution'] ?? '').toString());
     _bankNameCtrl = TextEditingController(text: d['bank_name'] ?? '');
     _accNumCtrl = TextEditingController(text: d['account_number'] ?? '');
     _ifscCtrl = TextEditingController(text: d['ifsc_code'] ?? '');
     _branchCtrl = TextEditingController(text: d['branch_name'] ?? '');
+    _subBankNameCtrl = TextEditingController(text: d['sub_bank_name'] ?? '');
+    _subAccNumCtrl = TextEditingController(text: d['sub_account_number'] ?? '');
+    _subIfscCtrl = TextEditingController(text: d['sub_bank_ifsc_code'] ?? '');
+    _subBranchCtrl = TextEditingController(text: d['sub_bank_branch_name'] ?? '');
   }
 
   String? _getImageUrl(String? path) {
@@ -120,7 +136,8 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
     if (path.startsWith('http')) return path;
     final base = ApiConstants.baseUrl.endsWith('/') ? ApiConstants.baseUrl.substring(0, ApiConstants.baseUrl.length - 1) : ApiConstants.baseUrl;
     final relative = path.startsWith('/') ? path : '/$path';
-    return '$base$relative';
+    final url = '$base$relative';
+    return url.contains('?') ? '$url&v=2' : '$url?v=2';
   }
 
   DateTime? _parseDate(dynamic dateStr) {
@@ -138,21 +155,111 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
     _fatherNameCtrl.dispose(); _motherNameCtrl.dispose(); _spouseNameCtrl.dispose();
     _religionCtrl.dispose(); _casteCtrl.dispose(); _communityCtrl.dispose(); _aadharCtrl.dispose();
     _addressCtrl.dispose(); _ageCtrl.dispose(); _genderCtrl.dispose(); _bloodGroupCtrl.dispose();
+    _maritalStatusCtrl.dispose();
     
     _usernameCtrl.dispose(); _nomineeNameCtrl.dispose(); _nomineeRelationCtrl.dispose();
     
-    _licenseNumCtrl.dispose(); _vehicleTypeCtrl.dispose(); _experienceCtrl.dispose();
+    _licenseNumCtrl.dispose(); _vehicleTypeCtrl.dispose(); _experienceCtrl.dispose(); _expAtBitCtrl.dispose();
     _emergencyNameCtrl.dispose(); _emergencyPhoneCtrl.dispose();
     
-    _salaryBasicCtrl.dispose(); _grossSalaryCtrl.dispose();
+    _salaryBasicCtrl.dispose(); _grossSalaryCtrl.dispose(); _daCtrl.dispose(); _saCtrl.dispose(); _epfoCtrl.dispose();
     _bankNameCtrl.dispose(); _accNumCtrl.dispose(); _ifscCtrl.dispose(); _branchCtrl.dispose();
+    _subBankNameCtrl.dispose(); _subAccNumCtrl.dispose(); _subIfscCtrl.dispose(); _subBranchCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage(Function(XFile?) onPicked) async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Select Image Source',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFF6366F1)),
+                title: const Text('Camera'),
+                onTap: () => Navigator.of(context).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color(0xFF6366F1)),
+                title: const Text('Gallery'),
+                onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    final XFile? image = await _picker.pickImage(source: source, imageQuality: 100);
     if (image != null) {
-      setState(() => onPicked(image));
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: image.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Image',
+            toolbarColor: const Color(0xFF6366F1),
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9
+            ],
+          ),
+          IOSUiSettings(
+            title: 'Crop Image',
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9
+            ],
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() => _isLoading = true);
+        try {
+          final dir = await getTemporaryDirectory();
+          final targetPath = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_compressed.jpg';
+          
+          final compressedFile = await FlutterImageCompress.compressAndGetFile(
+            croppedFile.path, 
+            targetPath,
+            quality: 60,
+          );
+          
+          if (compressedFile != null) {
+            setState(() => onPicked(XFile(compressedFile.path)));
+          } else {
+            setState(() => onPicked(XFile(croppedFile.path)));
+          }
+        } catch (e) {
+          setState(() => onPicked(XFile(croppedFile.path)));
+        } finally {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -188,6 +295,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
       "age": _ageCtrl.text,
       "gender": _genderCtrl.text,
       "blood_group": _bloodGroupCtrl.text,
+      "marital_status": _maritalStatusCtrl.text,
       "dob": _dobDate != null ? DateFormat('yyyy-MM-dd').format(_dobDate!) : '',
       
       "username": _usernameCtrl.text,
@@ -198,6 +306,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
       "license_number": _licenseNumCtrl.text,
       "Vehicle_type": _vehicleTypeCtrl.text,
       "experience_years": _experienceCtrl.text,
+      "experience_at_Bit": _expAtBitCtrl.text,
       "driver_status": _driverStatus,
       "shift": _shift,
       "emergency_contact_name": _emergencyNameCtrl.text,
@@ -208,10 +317,17 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
       
       "salary_basic": _salaryBasicCtrl.text,
       "gross_salary": _grossSalaryCtrl.text,
+      "da": _daCtrl.text,
+      "sa": _saCtrl.text,
+      "epfo_management_contribution": _epfoCtrl.text,
       "bank_name": _bankNameCtrl.text,
       "account_number": _accNumCtrl.text,
       "ifsc_code": _ifscCtrl.text,
       "branch_name": _branchCtrl.text,
+      "sub_bank_name": _subBankNameCtrl.text,
+      "sub_account_number": _subAccNumCtrl.text,
+      "sub_bank_ifsc_code": _subIfscCtrl.text,
+      "sub_bank_branch_name": _subBranchCtrl.text,
     };
 
     Map<String, dynamic> files = {};
@@ -279,7 +395,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                       child: _profileImage != null
                           ? Image.file(File(_profileImage!.path), fit: BoxFit.cover)
                           : _existingProfilePhotoUrl != null
-                              ? Image.network(_existingProfilePhotoUrl!, fit: BoxFit.cover)
+                              ? Image.network(_existingProfilePhotoUrl!, fit: BoxFit.cover, headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'})
                               : Icon(Icons.person, size: 60, color: Colors.grey[400]),
                     ),
                   ),
@@ -393,6 +509,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                             Expanded(child: _buildTextField("Blood Group", _bloodGroupCtrl, Icons.bloodtype, isDark)),
                           ],
                         ),
+                        _buildTextField("Marital Status", _maritalStatusCtrl, Icons.family_restroom, isDark),
                       ],
                     ),
                   ),
@@ -435,12 +552,13 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                           children: [
                             Expanded(child: _buildTextField("Experience (Years)", _experienceCtrl, Icons.history, isDark, type: TextInputType.number)),
                             const SizedBox(width: 12),
-                            Expanded(child: _buildDatePicker("Joining Date", _joiningDate, Icons.calendar_today, isDark, (d) => setState(() => _joiningDate = d))),
+                            Expanded(child: _buildTextField("Exp at BIT", _expAtBitCtrl, Icons.work_history, isDark, type: TextInputType.number)),
                           ],
                         ),
+                        _buildDatePicker("Joining Date", _joiningDate, Icons.calendar_today, isDark, (d) => setState(() => _joiningDate = d)),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: _driverStatus,
+                          value: _driverStatus.toUpperCase(),
                           items: const [
                             DropdownMenuItem(value: 'AVAILABLE', child: Text('AVAILABLE')),
                             DropdownMenuItem(value: 'ASSIGNED', child: Text('ASSIGNED')),
@@ -453,7 +571,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _shift,
+                          value: _shift.toUpperCase(),
                           items: const [
                             DropdownMenuItem(value: 'MORNING', child: Text('MORNING')),
                             DropdownMenuItem(value: 'AFTERNOON', child: Text('AFTERNOON')),
@@ -490,6 +608,14 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                             Expanded(child: _buildTextField("Gross Salary", _grossSalaryCtrl, Icons.account_balance_wallet, isDark, type: TextInputType.number)),
                           ],
                         ),
+                        Row(
+                          children: [
+                            Expanded(child: _buildTextField("DA", _daCtrl, Icons.trending_up, isDark, type: TextInputType.number)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildTextField("SA", _saCtrl, Icons.card_membership, isDark, type: TextInputType.number)),
+                          ],
+                        ),
+                        _buildTextField("EPFO Management Cont.", _epfoCtrl, Icons.security, isDark, type: TextInputType.number),
                         const SizedBox(height: 16),
                         const Align(
                           alignment: Alignment.centerLeft,
@@ -500,6 +626,16 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                         _buildTextField("Account Number", _accNumCtrl, Icons.numbers, isDark, type: TextInputType.number),
                         _buildTextField("IFSC Code", _ifscCtrl, Icons.code, isDark),
                         _buildTextField("Branch Name", _branchCtrl, Icons.store, isDark),
+                        const SizedBox(height: 16),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("Sub Bank Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField("Sub Bank Name", _subBankNameCtrl, Icons.account_balance, isDark),
+                        _buildTextField("Sub Account Number", _subAccNumCtrl, Icons.numbers, isDark, type: TextInputType.number),
+                        _buildTextField("Sub IFSC Code", _subIfscCtrl, Icons.code, isDark),
+                        _buildTextField("Sub Branch Name", _subBranchCtrl, Icons.store, isDark),
                       ],
                     ),
                   ),
@@ -556,7 +692,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                     child: currentImage != null
                         ? Image.file(File(currentImage.path), fit: BoxFit.cover)
                         : existingUrl != null
-                            ? Image.network(existingUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => Icon(Icons.broken_image, color: Colors.grey[400]))
+                            ? Image.network(existingUrl, fit: BoxFit.cover, headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'}, errorBuilder: (c, e, s) => Icon(Icons.broken_image, color: Colors.grey[400]))
                             : Icon(Icons.description, color: Colors.grey[400], size: 30),
                   ),
                 ),

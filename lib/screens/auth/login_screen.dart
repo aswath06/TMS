@@ -253,9 +253,11 @@ curl -X POST "$url" \
                     children: [
                       const AppBranding(),
                       const SizedBox(height: 48),
-                      _buildLoginForm(),
-                      _buildDivider(),
-                      _buildGoogleButton(),
+                      if (!_agreeToTerms) _buildTermsAndConditions() else ...[
+                        _buildLoginForm(),
+                        _buildDivider(),
+                        _buildGoogleButton(),
+                      ],
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -299,78 +301,7 @@ curl -X POST "$url" \
             isPassword: true,
             validator: AppValidators.validatePassword,
           ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
-              child: const Text(
-                "Forgot Password?",
-                style: TextStyle(
-                  color: Color(0xFF6366F1),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () {
-              setState(() {
-                _agreeToTerms = !_agreeToTerms;
-              });
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6.0),
-              child: Row(
-                children: [
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Checkbox(
-                      value: _agreeToTerms,
-                      activeColor: const Color(0xFF6366F1),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      onChanged: (val) {
-                        setState(() {
-                          _agreeToTerms = val ?? false;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        const Text(
-                          "I agree to the ",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _showTermsDialog,
-                          child: const Text(
-                            "Terms & Conditions",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF6366F1),
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           CustomButton(
             text: "Sign In",
             isLoading: _isLoggingIn,
@@ -437,11 +368,63 @@ curl -X POST "$url" \
     );
   }
 
-  void _showTermsDialog() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const TermsAndConditionsScreen(),
+  Widget _buildTermsAndConditions() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subCol = isDark ? Colors.white70 : const Color(0xFF475569);
+    final Color accent = const Color(0xFF6366F1);
+
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withOpacity(0.08),
+            blurRadius: 40,
+            offset: const Offset(0, 20),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Terms & Privacy Policy",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: textCol,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "1. Background Synchronization\n"
+            "This app uses a foreground service to reliably synchronize your missions and updates in real-time, even when running in the background.\n\n"
+            "2. Real-Time Notifications\n"
+            "We connect to a real-time server to instantly notify you of new missions and ride changes.\n\n"
+            "3. Location Tracking\n"
+            "We do not collect or record your physical GPS coordinates in the background.\n\n"
+            "4. Data Security\n"
+            "Your profile details are encrypted locally. We do not sell or share your private information.",
+            style: TextStyle(
+              fontSize: 14,
+              color: subCol,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 32),
+          CustomButton(
+            text: "I UNDERSTAND & AGREE",
+            onPressed: () {
+              setState(() {
+                _agreeToTerms = true;
+              });
+            },
+          ),
+        ],
       ),
     );
   }

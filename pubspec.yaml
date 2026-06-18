@@ -71,6 +71,7 @@ dependencies:
   flutter_riverpod: ^2.5.1
   lottie: ^3.3.3
   package_info_plus: ^9.0.1
+  image_cropper: ^12.2.1
 
 flutter_launcher_icons:
   android: true
