@@ -1,8 +1,12 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 import 'package:provider/provider.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
@@ -40,26 +44,64 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> with 
   }
 
   Future<void> _handleRefresh() async {
-    await useDriverStore.fetchDailyBusRuns();
-    final runId = run['id'];
-    final assignId = assignment['id'];
-
-    if (useDriverStore.dailyBusRuns.isNotEmpty) {
-      for (var r in useDriverStore.dailyBusRuns) {
-        if (r['id'] == runId) {
-          final assigns = r['assignment'] as List? ?? [];
-          for (var a in assigns) {
-            if (a['id'] == assignId) {
+    final role = await UserStore.getRole();
+    if (role == 'transport admin' || role == 'super admin') {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      final userId = await UserStore.getUserId();
+      final dateStr = DateTime.now().toIso8601String().substring(0, 10);
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr${userId != null ? '&user_id=$userId' : ''}";
+      
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          final runs = decoded['data']['runs'] as List? ?? [];
+          for (var r in runs) {
+            if (r['id'] == run['id']) {
               if (mounted) {
                 setState(() {
                   run = r;
-                  assignment = a;
+                  assignment = {...assignment, ...r};
                 });
               }
               return;
             }
           }
-          break;
+        }
+      }
+    } else {
+      await useDriverStore.fetchDailyBusRuns();
+      final runId = run['id'];
+      final assignId = assignment['id'];
+
+      if (useDriverStore.dailyBusRuns.isNotEmpty) {
+        for (var r in useDriverStore.dailyBusRuns) {
+          if (r['id'] == runId) {
+            final assigns = r['assignment'] as List? ?? [];
+            if (assigns.isEmpty) {
+              if (mounted) {
+                setState(() {
+                  run = r;
+                  assignment = {...assignment, ...r};
+                });
+              }
+              return;
+            }
+            
+            for (var a in assigns) {
+              if (a['id'] == assignId) {
+                if (mounted) {
+                  setState(() {
+                    run = r;
+                    assignment = a;
+                  });
+                }
+                return;
+              }
+            }
+            break;
+          }
         }
       }
     }
@@ -472,6 +514,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> with 
                   
                   if (result['success']) {
                     setState(() => _isHaltSubmitting = false);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Success'), backgroundColor: Colors.green));
                     await _handleRefresh();
                   } else {
                     setState(() => _isHaltSubmitting = false);
@@ -646,6 +689,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> with 
                                         if (mounted) {
                                           setState(() => isSubmitting = false);
                                           Navigator.pop(context); // Close sheet
+                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Success'), backgroundColor: Colors.green));
                                           await _handleRefresh(); // Reload page
                                         }
                                       } else {
@@ -921,10 +965,11 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> with 
                                       allowanceNeeded: allowanceNeeded,
                                     );
 
-                                    if (result['success']) {
+                                    if (result['success'] == true) {
                                       if (mounted) {
                                         setState(() => isSubmitting = false);
                                         Navigator.pop(context);
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Success'), backgroundColor: Colors.green));
                                         await _handleRefresh();
                                       }
                                     } else {
@@ -1343,6 +1388,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> with 
                                     if (result['success']) {
                                       setState(() => isSubmitting = false);
                                       Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Success'), backgroundColor: Colors.green));
                                       await _handleRefresh();
                                     } else {
                                       setState(() => isSubmitting = false);
@@ -1555,6 +1601,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> with 
                                     if (result['success']) {
                                       setState(() => isSubmitting = false);
                                       Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Success'), backgroundColor: Colors.green));
                                       await _handleRefresh();
                                     } else {
                                       setState(() => isSubmitting = false);

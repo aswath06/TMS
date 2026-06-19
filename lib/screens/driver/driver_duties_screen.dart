@@ -122,7 +122,7 @@ final store = ref.watch(driverStoreProvider);
                     await store.fetchPendingAllowanceCount();
                   },
                   child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

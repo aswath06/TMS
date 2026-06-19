@@ -2,139 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/security/security_qr_scanner_screen.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:tripzo/utils/api_constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/store/security_vehicle_store.dart';
 
-class SecurityVehicleScreen extends StatefulWidget {
+class SecurityVehicleScreen extends ConsumerStatefulWidget {
   const SecurityVehicleScreen({super.key});
 
   @override
-  State<SecurityVehicleScreen> createState() => _SecurityVehicleScreenState();
+  ConsumerState<SecurityVehicleScreen> createState() => _SecurityVehicleScreenState();
 }
 
-class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
-  static List<Map<String, dynamic>> _cachedApiData = [];
-  static int _cachedSelectedIndex = 0;
-  static DateTime? _lastFetchTime;
-
-  int _selectedIndex = _cachedSelectedIndex; // 0: Outbound, 1: Inbound, 2: Pending
+class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   String _userRole = "";
-
-  List<Map<String, dynamic>> _apiData = List.from(_cachedApiData);
-  bool _isLoading = false;
-  int _page = 1;
-  bool _hasMore = true;
-  bool _isFetchingMore = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadUserRole();
-    _fetchRoutes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(securityVehicleStoreProvider).fetchRoutes();
+    });
     _scrollController.addListener(_onScroll);
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && !_isFetchingMore && _hasMore) {
-        _fetchMoreRoutes();
+      final store = ref.read(securityVehicleStoreProvider);
+      if (!store.isLoading && !store.isFetchingMore && store.hasMore) {
+        store.fetchMoreRoutes();
       }
     }
-  }
-
-  Future<void> _fetchMoreRoutes() async {
-    setState(() => _isFetchingMore = true);
-    _page++;
-    await _fetchRoutesData(isLoadMore: true);
-    if (mounted) setState(() => _isFetchingMore = false);
-  }
-
-  Future<void> _fetchRoutesData({bool isLoadMore = false, bool force = false}) async {
-    if (!mounted) return;
-    if (!force && !isLoadMore && _lastFetchTime != null && DateTime.now().difference(_lastFetchTime!).inSeconds < 5) {
-      return;
-    }
-    if (!isLoadMore) {
-      setState(() {
-        _isLoading = true;
-        _page = 1;
-        _apiData.clear();
-        _hasMore = true;
-      });
-    }
-
-    try {
-      final token = await UserStore.getToken();
-      final types = ['OUT_CAMPUS', 'IN_CAMPUS', 'PENDING'];
-      final type = types[_selectedIndex];
-      final url = ApiConstants.getSecurityRoutes(_page, 10, type);
-      
-      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
-      
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true) {
-          final List rawData = body['data']['data'] ?? [];
-          final pagination = body['data']['pagination'] ?? {};
-          final totalPages = pagination['totalPages'] ?? 1;
-
-          if (_page >= totalPages) {
-            _hasMore = false;
-          }
-
-          final newItems = rawData.map((e) {
-            final List vehicles = e['vehicles'] ?? [];
-            final List drivers = e['drivers'] ?? [];
-            
-            String vNum = 'N/A';
-            if (vehicles.isNotEmpty) vNum = vehicles.first['vehicle_number'] ?? 'N/A';
-            
-            String dName = 'N/A';
-            if (drivers.isNotEmpty) dName = drivers.first['name'] ?? drivers.first['driver_name'] ?? 'N/A';
-
-            return {
-              "id": e['trip_instance_id']?.toString() ?? e['id']?.toString() ?? '',
-              "status": ["Outbound", "Inbound", "Pending"][_selectedIndex],
-              "routeName": e['route_name'] ?? 'Unknown Route',
-              "purpose": e['purpose'] ?? 'No Purpose',
-              "vehicleNumber": vNum,
-              "driverName": dName,
-              "startLocation": e['start_destination'] ?? 'Unknown',
-              "endLocation": e['end_destination'] ?? 'Unknown',
-              "startedBy": e['started_by'],
-              "startedAt": e['started_at'],
-              "endedBy": e['ended_by'],
-              "endedAt": e['ended_at'],
-            };
-          }).toList();
-
-          if (mounted) {
-            setState(() {
-              if (isLoadMore) {
-                _apiData.addAll(newItems);
-              } else {
-                _apiData = newItems;
-              }
-              _cachedApiData = List.from(_apiData);
-              _cachedSelectedIndex = _selectedIndex;
-            });
-          }
-        }
-      }
-      if (!isLoadMore) _lastFetchTime = DateTime.now();
-    } catch (e) {
-      debugPrint("Error fetching routes: $e");
-    } finally {
-      if (mounted && !isLoadMore) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _fetchRoutes({bool force = false}) async {
-    await _fetchRoutesData(isLoadMore: false, force: force);
   }
 
   Future<void> _loadUserRole() async {
@@ -156,6 +57,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = ref.watch(securityVehicleStoreProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
@@ -170,22 +72,22 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () => _fetchRoutes(force: true),
+          onRefresh: () => store.fetchRoutes(force: true),
           child: CustomScrollView(
             controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             _buildHeader(),
             SliverToBoxAdapter(
-              child: _buildToggle(isDark, subColor),
+              child: _buildToggle(isDark, subColor, store),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
             SliverToBoxAdapter(
               child: _buildSearchBar(isDark, subColor),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            _buildListSection(isDark, titleColor, subColor, isMobile),
-            if (_isFetchingMore)
+            _buildListSection(isDark, titleColor, subColor, isMobile, store),
+            if (store.isFetchingMore)
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
@@ -250,7 +152,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
     );
   }
 
-  Widget _buildToggle(bool isDark, Color subColor) {
+  Widget _buildToggle(bool isDark, Color subColor, SecurityVehicleStore store) {
     final tabs = ["Outbound", "Inbound", "Pending"];
 
     return Padding(
@@ -271,14 +173,11 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
         ),
         child: Row(
           children: List.generate(tabs.length, (index) {
-            final isSelected = _selectedIndex == index;
+            final isSelected = store.selectedIndex == index;
             return Expanded(
               child: GestureDetector(
                 onTap: () {
-                  if (_selectedIndex != index) {
-                    setState(() => _selectedIndex = index);
-                    _fetchRoutes(force: true);
-                  }
+                  store.setSelectedIndex(index);
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
@@ -338,17 +237,17 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
     );
   }
 
-  Widget _buildListSection(bool isDark, Color titleColor, Color subColor, bool isMobile) {
-    if (_isLoading) {
+  Widget _buildListSection(bool isDark, Color titleColor, Color subColor, bool isMobile, SecurityVehicleStore store) {
+    if (store.isLoading) {
       return const SliverFillRemaining(
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
     final statuses = ["Outbound", "Inbound", "Pending"];
-    final currentStatus = statuses[_selectedIndex];
+    final currentStatus = statuses[store.selectedIndex];
 
-    final filteredData = _apiData.where((d) {
+    final filteredData = store.currentData.where((d) {
       final matchesStatus = d['status'] == currentStatus;
       final query = _searchQuery.toLowerCase();
       final matchesSearch = query.isEmpty ||
@@ -470,8 +369,12 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
                             data['vehicleNumber'] ?? 'N/A', Colors.orange),
                         _buildBadge(Icons.person_rounded,
                             data['driverName'] ?? 'N/A', Colors.blue),
-                        _buildBadge(Icons.assignment_rounded,
-                            data['purpose'] ?? 'No Purpose', Colors.purple),
+                        if (data['purpose'] != null)
+                          _buildBadge(Icons.assignment_rounded,
+                              data['purpose'], Colors.purple),
+                        if (data['tripType'] != null)
+                          _buildBadge(Icons.swap_horiz_rounded,
+                              data['tripType'].toString().replaceAll('_', ' '), Colors.teal),
                       ],
                     ),
                   ],
@@ -517,6 +420,9 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
   }
 
   Widget _buildRouteLocations(Map<String, dynamic> data, Color titleColor, bool isMobile) {
+    bool isRoundTrip = data['tripType'] == 'ROUND_TRIP';
+    String intermediateStop = data['intermediateStop'] ?? '';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -524,6 +430,10 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
           children: [
             const Icon(Icons.radio_button_checked, size: 14, color: Colors.green),
             Container(width: 2, height: 20, color: Colors.grey.withOpacity(0.3)),
+            if (isRoundTrip && intermediateStop.isNotEmpty) ...[
+              const Icon(Icons.location_on, size: 14, color: Colors.orange),
+              Container(width: 2, height: 20, color: Colors.grey.withOpacity(0.3)),
+            ],
             const Icon(Icons.location_on, size: 14, color: Colors.redAccent),
           ],
         ),
@@ -539,6 +449,15 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 14),
+              if (isRoundTrip && intermediateStop.isNotEmpty) ...[
+                Text(
+                  intermediateStop,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: titleColor),
+                  maxLines: isMobile ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 14),
+              ],
               Text(
                 data['endLocation'] ?? 'Unknown End',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: titleColor),
@@ -554,6 +473,21 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
 
   Widget _buildTimelineInfo(Map<String, dynamic> data, Color primary,
       Color titleColor, Color subColor, bool isMobile) {
+      
+    String startRoleStr = "";
+    if (data['startedByRole'] != null && 
+        data['startedByRole'] != 'Super Admin' && 
+        data['startedByRole'] != 'Security') {
+      startRoleStr = " (${data['startedByRole']})";
+    }
+
+    String endRoleStr = "";
+    if (data['endedByRole'] != null && 
+        data['endedByRole'] != 'Super Admin' && 
+        data['endedByRole'] != 'Security') {
+      endRoleStr = " (${data['endedByRole']})";
+    }
+
     final startChild = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -580,7 +514,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                data['startedBy'] ?? 'Pending',
+                "${data['startedBy'] ?? 'Pending'}$startRoleStr",
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -633,7 +567,7 @@ class _SecurityVehicleScreenState extends State<SecurityVehicleScreen> {
               const SizedBox(height: 2),
               Text(
                 data['endedBy'] != null 
-                    ? data['endedBy'] 
+                    ? "${data['endedBy']}$endRoleStr" 
                     : (data['endedAt'] != null ? 'Not recorded' : 'Not Ended'),
                 style: TextStyle(
                     fontSize: 13,

@@ -229,15 +229,70 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       if (token == null) return;
       
       final dateStr = DateTime.now().toIso8601String().substring(0, 10);
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr&driver_id=49";
+      final userId = await UserStore.getUserId();
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr${userId != null ? '&user_id=$userId' : ''}";
+      
+      debugPrint("--- ADMIN LIVE BUS RUN FETCH ---");
+      debugPrint("URL: $url");
       
       final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      
+      debugPrint("RESPONSE (${response.statusCode}): ${response.body}");
+      debugPrint("--------------------------------");
       
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true && decoded['data'] != null) {
+          final runs = decoded['data']['runs'] as List? ?? [];
+          List<dynamic> flatAssignments = [];
+          for (var r in runs) {
+            final assignments = r['assignment'] as List? ?? [];
+            if (assignments.isEmpty) {
+              final newAssign = Map<String, dynamic>.from(r);
+              newAssign['run_status'] = r['status'] ?? 'UNKNOWN';
+              newAssign['run_data'] = r;
+              
+              if (r['dailyBusRoute'] != null && r['dailyBusRoute']['vehicle'] != null) {
+                newAssign['vehicle'] = r['dailyBusRoute']['vehicle'];
+              }
+              flatAssignments.add(newAssign);
+            } else {
+              for (var a in assignments) {
+                final newAssign = Map<String, dynamic>.from(a);
+                newAssign['run_status'] = a['run_status'] ?? r['status'] ?? 'UNKNOWN';
+                newAssign['shift_code'] = a['shift_code'] ?? r['shift_code'];
+                newAssign['start_location_name'] = a['start_location_name'] ?? r['start_location_name'];
+                newAssign['halt_location_name'] = a['halt_location_name'] ?? r['halt_location_name'];
+                newAssign['run_data'] = r;
+                
+                if (newAssign['vehicle'] == null && r['dailyBusRoute'] != null && r['dailyBusRoute']['vehicle'] != null) {
+                  newAssign['vehicle'] = r['dailyBusRoute']['vehicle'];
+                }
+                
+                flatAssignments.add(newAssign);
+              }
+            }
+          }
+          flatAssignments.sort((a, b) {
+            int runA = (a['run_data']['id'] ?? 0);
+            int runB = (b['run_data']['id'] ?? 0);
+            if (runA != runB) return runB.compareTo(runA); // Newest runs first
+            
+            final status = a['run_status']?.toString().toUpperCase() ?? '';
+            final shiftA = a['shift_code']?.toString().toUpperCase() ?? '';
+            final shiftB = b['shift_code']?.toString().toUpperCase() ?? '';
+            
+            final eveningFirstStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+            bool eveningFirst = eveningFirstStatuses.contains(status);
+            
+            int weightA = shiftA == 'EVENING' ? (eveningFirst ? 0 : 1) : (eveningFirst ? 1 : 0);
+            int weightB = shiftB == 'EVENING' ? (eveningFirst ? 0 : 1) : (eveningFirst ? 1 : 0);
+            
+            return weightA.compareTo(weightB);
+          });
+
           setState(() {
-            _adminDailyBusRuns = decoded['data'] ?? [];
+            _adminDailyBusRuns = flatAssignments;
           });
         }
       }
@@ -246,6 +301,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     } finally {
       if (mounted) setState(() => _isLoadingAdminBusRuns = false);
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    AdminDashboardStore().fetchStats();
+    useFacultyStore.fetchProfile();
+    await _initData();
   }
 
   @override
@@ -285,8 +346,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ),
           SafeArea(
             bottom: true,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+            child: RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: primaryBlue,
+              backgroundColor: surfaceColor,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,6 +476,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ],
               ),
             ),
+           ),
           ),
         ],
       ),
@@ -1473,8 +1539,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
     bool isEnabled = true;
     if (shiftCode == 'EVENING') {
-      final validStatuses = ['FN_COMPLETED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+      final validStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
       if (!validStatuses.contains(statusStr.toUpperCase())) {
+        isEnabled = false;
+      }
+    } else if (shiftCode == 'MORNING') {
+      final disabledStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED'];
+      if (disabledStatuses.contains(statusStr.toUpperCase())) {
         isEnabled = false;
       }
     }

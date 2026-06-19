@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:tripzo/store/security_vehicle_store.dart';
 // Import all existing stores
 import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/store/request_store.dart';
@@ -65,4 +65,8 @@ final notificationProviderFamily = ChangeNotifierProvider<NotificationProvider>(
     apiService: NotificationApiService(baseUrl: "", token: ""),
     socketService: NotificationSocketService(),
   );
+});
+/// SecurityVehicleStore Provider
+final securityVehicleStoreProvider = ChangeNotifierProvider<SecurityVehicleStore>((ref) {
+  return SecurityVehicleStore();
 });

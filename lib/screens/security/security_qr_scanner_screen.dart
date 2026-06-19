@@ -18,6 +18,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
   bool _isScanned = false;
   bool _isProcessing = false;
   bool _isSuccessState = false;
+  String _selectedMode = 'Routes';
 
   late AnimationController _laserController;
   late Animation<double> _laserAnimation;
@@ -56,6 +57,87 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
     debugPrint("==================================================");
 
     try {
+      if (_selectedMode == 'Bus') {
+        String otpCode = code;
+        try {
+          final data = jsonDecode(code);
+          if (data is Map<String, dynamic> && data['otp'] != null) {
+            otpCode = CryptoUtils.decryptOTP(data['otp'].toString());
+          }
+        } catch (_) {}
+
+        final now = DateTime.now();
+        final serviceDate = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+        
+        final timeInMinutes = now.hour * 60 + now.minute;
+        String type = "FN";
+        if (timeInMinutes >= 120 && timeInMinutes <= 660) {
+          type = "FN";
+        } else if (timeInMinutes >= 690 && timeInMinutes <= 1080) {
+          type = "AN";
+        }
+
+        final body = {
+          "otp_code": otpCode,
+          "service_date": serviceDate,
+          "type": type
+        };
+
+        final token = await UserStore.getToken();
+        final url = "https://18x50gz9-8055.inc1.devtunnels.ms/daily-bus/daily-bus-runs/operations/verify-campus-in-otp";
+
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': token ?? '',
+            'Content-Type': 'application/json'
+          },
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final responseData = jsonDecode(response.body);
+          
+          bool isSuccess = true;
+          String errorMessage = "Verification failed";
+          
+          if (responseData == false) {
+            isSuccess = false;
+          } else if (responseData is Map) {
+            if (responseData['status'] == false || responseData['success'] == false || responseData['response'] == false) {
+              isSuccess = false;
+            }
+            if (responseData['message'] != null) {
+              errorMessage = responseData['message'];
+            }
+          }
+          
+          if (!isSuccess) {
+            throw errorMessage;
+          }
+
+          if (!mounted) return;
+          setState(() {
+            _isSuccessState = true;
+            _isProcessing = false;
+          });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Bus verified successfully!'),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          final error = jsonDecode(response.body);
+          throw error['message'] ?? "Action failed (${response.statusCode})";
+        }
+        return;
+      }
+
       dynamic data;
       try {
         data = jsonDecode(code);
@@ -259,6 +341,63 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
                     child: Text(
                       "Scan the official driver QR code displayed on the vehicle dashboard to register gateway clearance.",
                       style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Mode Toggle
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: activeAccentColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: activeAccentColor.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedMode = 'Routes'),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _selectedMode == 'Routes' ? activeAccentColor : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Routes',
+                                  style: TextStyle(
+                                    color: _selectedMode == 'Routes' ? Colors.white : activeAccentColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedMode = 'Bus'),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _selectedMode == 'Bus' ? activeAccentColor : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Bus',
+                                  style: TextStyle(
+                                    color: _selectedMode == 'Bus' ? Colors.white : activeAccentColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   
