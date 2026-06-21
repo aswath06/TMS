@@ -113,6 +113,19 @@ curl -X POST "$url" \
           throw "Role is undefined";
         }
 
+        final allowedRoles = [
+          'transport admin',
+          'super admin',
+          'faculty',
+          'security',
+          'student',
+          'driver'
+        ];
+        
+        if (!allowedRoles.contains(rawRole.toLowerCase())) {
+          throw "You don't have permission to access this resource";
+        }
+
         await UserStore.saveUserData(
           token: token,
           role: rawRole.toLowerCase(),
@@ -189,6 +202,19 @@ curl -X POST "$url" \
 
         if (rawRole == null || rawRole.trim().isEmpty || rawRole.toLowerCase() == 'undefined') {
           throw "Role is undefined";
+        }
+
+        final allowedRoles = [
+          'transport admin',
+          'super admin',
+          'faculty',
+          'security',
+          'student',
+          'driver'
+        ];
+
+        if (!allowedRoles.contains(rawRole.toLowerCase())) {
+          throw "You don't have permission to access this resource";
         }
 
         await UserStore.saveUserData(

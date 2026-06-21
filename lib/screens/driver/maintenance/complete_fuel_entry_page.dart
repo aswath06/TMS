@@ -415,7 +415,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                           _buildHeader(context, titleColor, primary, isTamil),
                           const SizedBox(height: 32),
                         // Premium Info Section
-                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase() == 'BIT'),
+                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == true),
                         const SizedBox(height: 32),
                         
                         // Input Section Title

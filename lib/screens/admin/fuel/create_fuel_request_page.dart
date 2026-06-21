@@ -91,7 +91,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           
           if (role?.toLowerCase() == 'driver') {
             fetchedBunks = fetchedBunks.where((b) {
-              return b['owner_name']?.toString().toUpperCase() != 'BIT';
+              return b['owner_name']?.toString().toUpperCase().startsWith('BIT') != true;
             }).toList();
           }
 
@@ -188,7 +188,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     super.dispose();
   }
 
-  bool get _isBITBunk => _selectedBunk?['owner_name']?.toString().toUpperCase() == 'BIT';
+  bool get _isBITBunk => _selectedBunk?['owner_name']?.toString().toUpperCase().startsWith('BIT') == true;
 
   double get _pricePerLiter {
     if (_selectedBunk == null || _selectedVehicle == null) return 0.0;
@@ -207,7 +207,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
 
   String _getBunkPriceString(Map<String, dynamic> bunk) {
     if (_selectedVehicle == null) return "";
-    final isBit = bunk['owner_name']?.toString().toUpperCase() == 'BIT';
+    final isBit = bunk['owner_name']?.toString().toUpperCase().startsWith('BIT') == true;
     if (!isBit) return "";
     
     final String fuelType = (_selectedVehicle?['fuel_type'] ?? '').toString().toUpperCase();
@@ -397,7 +397,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                                   ? item['vehicle_number'] 
                                   : (isDriver 
                                       ? item['name'] 
-                                      : (item['owner_name']?.toString().toUpperCase() == 'BIT' ? item['owner_name'] : item['name']));
+                                      : (item['owner_name']?.toString().toUpperCase().startsWith('BIT') == true ? item['owner_name'] : item['name']));
                               String subText = isVehicle 
                                   ? "${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
                                   : (isDriver 
