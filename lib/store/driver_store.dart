@@ -56,6 +56,79 @@ class DriverStore extends ChangeNotifier {
   bool _isLoadingLeaveTypes = false;
   bool get isLoadingLeaveTypes => _isLoadingLeaveTypes;
 
+  // Attendance State
+  List<Map<String, dynamic>> _attendance = [];
+  List<Map<String, dynamic>> get attendance => _attendance;
+
+  bool _isLoadingAttendance = false;
+  bool get isLoadingAttendance => _isLoadingAttendance;
+
+  bool _isFetchingMoreAttendance = false;
+  bool get isFetchingMoreAttendance => _isFetchingMoreAttendance;
+
+  int _attendancePage = 1;
+  bool _hasMoreAttendance = true;
+  bool get hasMoreAttendance => _hasMoreAttendance;
+
+  Future<void> fetchAttendance({bool isRefresh = false}) async {
+    if (isRefresh) {
+      _attendancePage = 1;
+      _hasMoreAttendance = true;
+    }
+
+    if (_attendancePage == 1) {
+      _isLoadingAttendance = true;
+    } else {
+      _isFetchingMoreAttendance = true;
+    }
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+
+      final url = "${ApiConstants.getDriverAttendance}?page=$_attendancePage&limit=10";
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final List<dynamic> items = decoded['data'] ?? [];
+          final newItems = items.map((e) => e as Map<String, dynamic>).toList();
+
+          if (isRefresh || _attendancePage == 1) {
+            _attendance = newItems;
+          } else {
+            _attendance.addAll(newItems);
+          }
+
+          final pagination = decoded['pagination'];
+          if (pagination != null) {
+            _hasMoreAttendance = _attendancePage < (pagination['totalPages'] ?? 1);
+          } else {
+            _hasMoreAttendance = false;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching attendance: $e");
+    } finally {
+      _isLoadingAttendance = false;
+      _isFetchingMoreAttendance = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchMoreAttendance() async {
+    if (_isFetchingMoreAttendance || !_hasMoreAttendance) return;
+    _attendancePage++;
+    await fetchAttendance();
+  }
+
   // Maintenance Data
   List<Map<String, dynamic>> _fuelBunks = [];
   List<Map<String, dynamic>> get fuelBunks => _fuelBunks;
@@ -1091,16 +1164,17 @@ class DriverStore extends ChangeNotifier {
 
     try {
       final token = await UserStore.getToken();
+      final userId = await UserStore.getUserId();
       final driverId = await UserStore.getDriverId();
 
-      if (token == null || driverId == null) {
+      if (token == null || (driverId == null && userId == null)) {
         _isLoadingBusRuns = false;
         notifyListeners();
         return;
       }
 
       final dateStr = DateTime.now().toIso8601String().substring(0, 10);
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr&driver_id=$driverId";
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr&driver_id=$driverId&user_ID=$userId";
 
       final headers = ApiConstants.getHeaders(token);
       final response = await http.get(Uri.parse(url), headers: headers);

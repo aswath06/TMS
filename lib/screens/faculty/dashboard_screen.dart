@@ -9,6 +9,7 @@ import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
+import '../../utils/api_constants.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -105,6 +106,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             final String displayName = data?['name'] ?? snapshot.data ?? "Faculty";
                             return _buildHeader(
                               displayName,
+                              data?['profile_photo'],
                               titleColor,
                               subColor,
                               screenWidth,
@@ -179,6 +181,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildHeader(
     String name,
+    String? profilePhoto,
     Color titleColor,
     Color subColor,
     double width,
@@ -237,9 +240,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             backgroundColor: Colors.white,
             child: CircleAvatar(
               radius: width * 0.06,
-              backgroundImage: NetworkImage(
-                "https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff",
-              ),
+              backgroundImage: profilePhoto != null 
+                  ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
+                  : NetworkImage(
+                      "https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff",
+                    ) as ImageProvider,
             ),
           ),
         ),

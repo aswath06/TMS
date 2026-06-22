@@ -4,6 +4,14 @@ class ApiConstants {
   // Dynamic base URL driven by ServerConfig (super admin togglable at runtime)
   static String get baseUrl => ServerConfig().baseUrl;
 
+  static String getImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    final base = baseUrl;
+    final relative = path.startsWith('/') ? path : '/$path';
+    return '$base$relative';
+  }
+
   // DevTunnels bypass header
   static const String bypassHeaderKey = "X-Tunnel-Skip-Anti-Phishing-Page";
   static const String bypassHeaderValue = "true";
@@ -78,6 +86,7 @@ class ApiConstants {
   static String get getTodayDriverCount => "$baseUrl/api/leaves/today-driver-count";
 
   // OCR / Drivers
+  static String get getDriverAttendance => "$baseUrl/api/drivers/attendance/data";
   static String get licenseCheck => "$baseUrl/api/drivers/license-check";
   static String get getAllDriversWithoutPagination => "$baseUrl/api/drivers/get-all-without-pagination";
   static String get getDriverMissions => "$baseUrl/api/drivers/drive-routes";

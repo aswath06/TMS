@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
+import 'package:tripzo/screens/driver/DriverAttendanceScreen.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
@@ -21,6 +22,7 @@ class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       useDriverStore.fetchLeaves();
+      useDriverStore.fetchAttendance(isRefresh: true);
     });
   }
 
@@ -60,6 +62,7 @@ final store = ref.watch(driverStoreProvider);
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchLeaves();
+                    await store.fetchAttendance(isRefresh: true);
                   },
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -69,7 +72,9 @@ final store = ref.watch(driverStoreProvider);
                       children: [
                         const SizedBox(height: 24),
                         _buildHeader(
-                          isTamil ? "விடுப்பு போர்ட்டல்" : "Leave Portal",
+                          widget.userRole == 'driver' 
+                              ? (isTamil ? "வருகை போர்ட்டல்" : "Attendance Portal")
+                              : (isTamil ? "விடுப்பு போர்ட்டல்" : "Leave Portal"),
                           titleColor,
                           screenWidth,
                         ),
@@ -94,8 +99,19 @@ final store = ref.watch(driverStoreProvider);
                         const SizedBox(height: 36),
 
                         _buildHistoryHeader(
+                          isTamil ? "பயோமெட்ரிக் விவரங்கள்" : "Biometric Details",
+                          titleColor,
+                          icon: Icons.fingerprint_rounded,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildBiometricSection(store, surfaceColor, isDark, isTamil, primaryBlue),
+
+                        const SizedBox(height: 36),
+
+                        _buildHistoryHeader(
                           isTamil ? "விடுப்பு வரலாறு" : "Leave History",
                           titleColor,
+                          icon: Icons.history_rounded,
                         ),
                         const SizedBox(height: 16),
                         
@@ -128,6 +144,176 @@ final store = ref.watch(driverStoreProvider);
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBiometricSection(DriverStore store, Color surfaceColor, bool isDark, bool isTamil, Color primaryBlue) {
+    if (store.isLoadingAttendance && store.attendance.isEmpty) {
+      return const StructuralLoading();
+    }
+    
+    if (store.attendance.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text(
+            isTamil ? "பயோமெட்ரிக் தரவு எதுவும் இல்லை" : "No biometric data found",
+            style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+          ),
+        ),
+      );
+    }
+
+    final top5 = store.attendance.take(5).toList();
+
+    return Column(
+      children: [
+        ...top5.map((data) {
+          final String dateStr = data['date'] ?? "";
+          String fnTime = data['fn_time'] ?? "--:--";
+          String anTime = data['an_time'] ?? "--:--";
+
+          try {
+            if (fnTime != "--:--") fnTime = DateFormat("hh:mm a").format(DateFormat("HH:mm:ss").parse(fnTime));
+            if (anTime != "--:--") anTime = DateFormat("hh:mm a").format(DateFormat("HH:mm:ss").parse(anTime));
+          } catch (_) {}
+
+          String displayDate = dateStr;
+          try {
+            final dt = DateTime.parse(dateStr);
+            displayDate = DateFormat("dd-MM-yyyy 'and' EEEE").format(dt);
+          } catch (_) {}
+
+          Widget buildTimeDetail({required String label, required String time, required IconData icon}) {
+            final isMissing = time == "--:--";
+            return Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white10 : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: isMissing ? Colors.grey.shade400 : Colors.grey.shade600),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      time,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isMissing ? Colors.grey.shade400 : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_rounded, size: 16, color: primaryBlue),
+                        const SizedBox(width: 8),
+                        Text(
+                          displayDate,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : const Color(0xFF334155),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(Icons.fingerprint_rounded, size: 20, color: Colors.grey.shade400),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(height: 1, color: isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: buildTimeDetail(
+                        label: "Forenoon", 
+                        time: fnTime, 
+                        icon: Icons.login_rounded,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    Expanded(
+                      child: buildTimeDetail(
+                        label: "Afternoon", 
+                        time: anTime, 
+                        icon: Icons.logout_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DriverAttendanceScreen()),
+            );
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isTamil ? "அனைத்தையும் காண்க" : "View All",
+                style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.arrow_forward_rounded, size: 16, color: primaryBlue),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -372,11 +558,11 @@ final store = ref.watch(driverStoreProvider);
     ),
   );
 
-  Widget _buildHistoryHeader(String title, Color color) => Row(
+  Widget _buildHistoryHeader(String title, Color color, {IconData icon = Icons.history_rounded}) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       _buildSectionTitle(title, color),
-      Icon(Icons.history_rounded, color: Colors.grey.withOpacity(0.5)),
+      Icon(icon, color: Colors.grey.withOpacity(0.5)),
     ],
   );
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
@@ -112,6 +113,18 @@ final store = ref.watch(driverStoreProvider);
                   return weightA.compareTo(weightB);
                 });
 
+                final now = DateTime.now();
+                final List<Map<String, dynamic>> todayMissions = store.missions.where((m) {
+                  final dtStr = m['start_datetime'];
+                  if (dtStr == null) return false;
+                  try {
+                    final dt = DateTime.parse(dtStr);
+                    return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+                  } catch (_) {
+                    return false;
+                  }
+                }).toList();
+
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchProfile();
@@ -128,29 +141,37 @@ final store = ref.watch(driverStoreProvider);
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 24),
-                        _buildHeader(profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver"), titleColor, subColor, screenWidth, primaryBlue, isTamil),
+                        _buildHeader(profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver"), profile?['profile_photo'], titleColor, subColor, screenWidth, primaryBlue, isTamil),
                         const SizedBox(height: 32),
                         _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, profile, store),
                         const SizedBox(height: 36),
                         _buildActiveRoutesSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
-                        const SizedBox(height: 36),
                         _buildPendingFuelSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
-                        const SizedBox(height: 36),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Bus Routes"} (${allAssignments.length})", titleColor),
+                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${allAssignments.length + todayMissions.length})", titleColor),
                             ),
                           ],
                         ),
                         const SizedBox(height: 18),
-                        if (store.isLoadingBusRuns && allAssignments.isEmpty)
+                        if (store.isLoadingBusRuns && allAssignments.isEmpty && todayMissions.isEmpty)
                           const Center(child: CircularProgressIndicator())
-                        else if (allAssignments.isEmpty)
+                        else if (allAssignments.isEmpty && todayMissions.isEmpty)
                           _buildEmptyState(subColor, isTamil)
-                        else
+                        else ...[
+                          ...todayMissions.map((m) => _buildMissionCard(
+                                context: context,
+                                mission: m,
+                                surface: surfaceColor,
+                                primary: primaryBlue,
+                                titleColor: titleColor,
+                                subColor: subColor,
+                                isDark: isDark,
+                                isTamil: isTamil,
+                              )),
                           ...allAssignments.map((a) => _buildAssignmentCard(
                                 context: context,
                                 assignment: a,
@@ -161,6 +182,7 @@ final store = ref.watch(driverStoreProvider);
                                 isDark: isDark,
                                 isTamil: isTamil,
                               )),
+                        ],
                         const SizedBox(height: 36),
                         _buildMaintenanceSections(context, isDark, primaryBlue, surfaceColor, titleColor, subColor, isTamil),
                         const SizedBox(height: 100),
@@ -185,7 +207,7 @@ final store = ref.watch(driverStoreProvider);
             Icon(Icons.assignment_turned_in_rounded, size: 64, color: subColor.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(
-              isTamil ? "பணிகள் எதுவும் இல்லை" : "No bus routes for today",
+              isTamil ? "பணிகள் எதுவும் இல்லை" : "No assignments for today",
               style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
             ),
           ],
@@ -209,7 +231,7 @@ final store = ref.watch(driverStoreProvider);
     );
   }
 
-  Widget _buildHeader(String name, Color titleColor, Color subColor, double width, Color primary, bool isTamil) {
+  Widget _buildHeader(String name, String? profilePhoto, Color titleColor, Color subColor, double width, Color primary, bool isTamil) {
     return Row(
       children: [
         Expanded(
@@ -245,7 +267,9 @@ final store = ref.watch(driverStoreProvider);
             backgroundColor: primary,
             child: CircleAvatar(
               radius: width * 0.06,
-              backgroundImage: NetworkImage("https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff"),
+              backgroundImage: profilePhoto != null 
+                  ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
+                  : NetworkImage("https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff") as ImageProvider,
             ),
           ),
         ),
@@ -431,6 +455,9 @@ final store = ref.watch(driverStoreProvider);
     final vehicleNumber = assignment['vehicle']?['vehicle_number'] ?? 'Unknown Vehicle';
     final statusStr = assignment['run_status'] ?? 'UNKNOWN';
 
+    final routeCode = assignment['run_data']?['dailyBusRoute']?['route_code'] ?? '';
+    final routeName = assignment['run_data']?['dailyBusRoute']?['route_name'] ?? 'Bus Route';
+
     String startLoc = assignment['start_location_name'] ?? 'Start';
     String haltLoc = assignment['halt_location_name'] ?? 'Halt';
 
@@ -469,66 +496,151 @@ final store = ref.watch(driverStoreProvider);
       child: Opacity(
         opacity: isEnabled ? 1.0 : 0.6,
         child: Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            padding: const EdgeInsets.all(22),
+          margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
             color: surface,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(isTamil ? "பணி" : "Bus Route", style: TextStyle(fontWeight: FontWeight.w900, color: titleColor, fontSize: 16)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-                  child: Text(statusStr.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: primary.withValues(alpha: 0.1), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: primary.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _iconInfo(Icons.wb_sunny_rounded, shiftCode, isDark),
-                _iconInfo(Icons.directions_car_rounded, vehicleNumber, isDark),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildTimeline(startLoc, haltLoc, primary, titleColor),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            shiftCode == 'EVENING' ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded,
+                            color: primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              routeCode.isNotEmpty ? routeCode : (isTamil ? "பணி" : "Bus Route"),
+                              style: TextStyle(fontWeight: FontWeight.w900, color: primary, fontSize: 16),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                      child: Text(statusStr.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                    ),
+                  ],
+                ),
+              ),
+              // Body
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(isTamil ? "திட்டமிட்ட தொடக்கம்" : "Planned Start", style: TextStyle(fontSize: 10, color: subColor)),
-                    Text(startTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
+                    // Vehicle details and Route Name
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(isTamil ? "பாதை" : "Route Name", style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text(routeName, style: TextStyle(color: titleColor, fontSize: 15, fontWeight: FontWeight.w800), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: subColor.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.directions_car_rounded, size: 14, color: titleColor),
+                              const SizedBox(width: 6),
+                              Text(vehicleNumber, style: TextStyle(color: titleColor, fontSize: 13, fontWeight: FontWeight.w900)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildTimeline(startLoc, haltLoc, primary, titleColor),
+                    const SizedBox(height: 24),
+                    // Times
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(isTamil ? "திட்டமிட்ட தொடக்கம்" : "Planned Start", style: TextStyle(fontSize: 11, color: subColor, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time_filled_rounded, size: 14, color: primary),
+                                  const SizedBox(width: 4),
+                                  Text(startTime, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(isTamil ? "திட்டமிட்ட முடிவு" : "Planned End", style: TextStyle(fontSize: 11, color: subColor, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time_filled_rounded, size: 14, color: Colors.orangeAccent),
+                                  const SizedBox(width: 4),
+                                  Text(endTime, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(isTamil ? "திட்டமிட்ட முடிவு" : "Planned End", style: TextStyle(fontSize: 10, color: subColor)),
-                    Text(endTime, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: titleColor)),
-                  ],
-                ),
-              ],
-            )
-          ],
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
     );
   }
 
@@ -824,6 +936,7 @@ final store = ref.watch(driverStoreProvider);
           isDark: isDark,
           isTamil: isTamil,
         )),
+        const SizedBox(height: 36),
       ],
     );
   }
@@ -1040,6 +1153,7 @@ final store = ref.watch(driverStoreProvider);
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ...validRoutes.map((route) => _buildActiveRouteCard(route, titleColor, surface, primary, isDark, isTamil)),
+        const SizedBox(height: 36),
       ],
     );
   }

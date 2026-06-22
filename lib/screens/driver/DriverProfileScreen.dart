@@ -11,6 +11,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/setting/scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class DriverProfileScreen extends ConsumerStatefulWidget {
   const DriverProfileScreen({super.key});
@@ -203,6 +204,8 @@ final store = ref.watch(driverStoreProvider);
           subColor,
           isTamil,
         ),
+        const SizedBox(height: 32),
+        _buildDocumentPreview(data, isDark, titleColor, cardColor, isTamil),
         const SizedBox(height: 32),
 
         _buildSectionTitle(
@@ -618,6 +621,104 @@ final store = ref.watch(driverStoreProvider);
       },
     ];
     return _renderGrid(items, isLoading, cardColor, titleColor, subColor);
+  }
+
+  Widget _buildDocumentPreview(Map<String, dynamic>? data, bool isDark, Color titleColor, Color cardColor, bool isTamil) {
+    if (data == null) return const SizedBox();
+
+    final aadhar = data['aadhar_photo'];
+    final pan = data['driverProfile']?['pan_image'];
+    final licFront = data['driverProfile']?['licence_image_front'];
+    final licBack = data['driverProfile']?['licence_image_back'];
+
+    if (aadhar == null && pan == null && licFront == null && licBack == null) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(isTamil ? "ஆவணங்கள்" : "Documents", titleColor),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.85,
+          children: [
+            if (aadhar != null) _buildDocCard(isTamil ? "ஆதார் அட்டை" : "Aadhar Card", aadhar, cardColor, titleColor, isDark),
+            if (pan != null) _buildDocCard(isTamil ? "பான் அட்டை" : "PAN Card", pan, cardColor, titleColor, isDark),
+            if (licFront != null) _buildDocCard(isTamil ? "உரிமம் முன் பக்கம்" : "License Front", licFront, cardColor, titleColor, isDark),
+            if (licBack != null) _buildDocCard(isTamil ? "உரிமம் பின் பக்கம்" : "License Back", licBack, cardColor, titleColor, isDark),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDocCard(String title, String path, Color cardColor, Color titleColor, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.02),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: titleColor),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Scaffold(
+                      backgroundColor: Colors.black,
+                      appBar: AppBar(
+                        backgroundColor: Colors.black,
+                        iconTheme: const IconThemeData(color: Colors.white),
+                        title: Text(title, style: const TextStyle(color: Colors.white)),
+                      ),
+                      body: Center(
+                        child: InteractiveViewer(
+                          panEnabled: true,
+                          minScale: 0.5,
+                          maxScale: 4,
+                          child: Image.network(
+                            ApiConstants.getImageUrl(path),
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 50),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              child: Image.network(
+                ApiConstants.getImageUrl(path),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBankGrid(

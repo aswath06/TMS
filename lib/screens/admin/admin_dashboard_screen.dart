@@ -369,6 +369,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                 data?['name'] ?? snapshot.data ?? "Admin";
                             return _buildHeader(
                               displayName,
+                              data?['profile_photo'],
                               titleColor,
                               subColor,
                               screenWidth,
@@ -487,11 +488,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   // Header, Search, Sections – copied from the faculty dashboard.
   // ---------------------------------------------------------------------
   Widget _buildHeader(
-    String name,
-    Color titleColor,
-    Color subColor,
-    double width,
-    Color primary,
+    String name, String? profilePhoto, Color titleColor, Color subColor, double width, Color primary,
   ) {
     return Row(
       children: [
@@ -552,9 +549,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             backgroundColor: Colors.white,
             child: CircleAvatar(
               radius: width * 0.06,
-              backgroundImage: NetworkImage(
-                'https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff',
-              ),
+              backgroundImage: profilePhoto != null 
+                  ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
+                  : NetworkImage(
+                      'https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff',
+                    ) as ImageProvider,
             ),
           ),
         ),
