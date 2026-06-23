@@ -62,10 +62,13 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
         
-        <!-- Set default FCM channel for heads-up notifications -->
+        <!-- Set default FCM channel and icon for heads-up notifications -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="tms_notifications" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
