@@ -30,8 +30,8 @@ class NotificationLocalService {
 
     // Create the high-importance channel natively so background FCM popups work
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'tms_notifications', // id
-      'TMS Notifications', // title
+      'tms_notifications_v2', // id
+      'TMS High Priority Notifications', // title
       description: 'Real-time notifications for TripZo TMS', // description
       importance: Importance.max,
     );
@@ -49,8 +49,8 @@ class NotificationLocalService {
     String? payload,
   }) async {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'tms_notifications',
-      'TMS Notifications',
+      'tms_notifications_v2',
+      'TMS High Priority Notifications',
       channelDescription: 'Real-time notifications for TripZo TMS',
       importance: Importance.max,
       priority: Priority.high,
