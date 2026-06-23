@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:typed_data';
 import '../utils/routes.dart';
 
 class NotificationLocalService {
@@ -36,10 +37,24 @@ class NotificationLocalService {
       importance: Importance.max,
     );
 
+    const AndroidNotificationChannel assignmentChannel = AndroidNotificationChannel(
+      'route_assignment_channel_v2',
+      'Route Assignments',
+      description: 'Critical alerts for new route assignments',
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('alertsound'),
+    );
+
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(assignmentChannel);
   }
 
   static Future<void> showNotification({
@@ -64,6 +79,52 @@ class NotificationLocalService {
     );
 
     const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notificationsPlugin.show(
+      id,
+      title,
+      body,
+      notificationDetails,
+      payload: payload,
+    );
+  }
+
+  static Future<void> showRouteAssignmentAlert({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    final Int32List additionalFlags = Int32List.fromList(<int>[4]); // FLAG_INSISTENT
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'route_assignment_channel_v2',
+      'Route Assignments',
+      channelDescription: 'Critical alerts for new route assignments',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: const RawResourceAndroidNotificationSound('alertsound'),
+      additionalFlags: additionalFlags,
+      actions: <AndroidNotificationAction>[
+        const AndroidNotificationAction(
+          'acknowledge_action',
+          'Acknowledge',
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'alertsound.mp3',
+    );
+
+    final NotificationDetails notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );

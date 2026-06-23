@@ -55,11 +55,19 @@ class NotificationProvider extends ChangeNotifier {
           notifyListeners();
 
           // Show real-time local push notification on screen
-          await NotificationLocalService.showNotification(
-            id: notification.id,
-            title: notification.title,
-            body: notification.message,
-          );
+          if (notification.type.toUpperCase() == 'ALERT') {
+            await NotificationLocalService.showRouteAssignmentAlert(
+              id: notification.id,
+              title: notification.title,
+              body: notification.message,
+            );
+          } else {
+            await NotificationLocalService.showNotification(
+              id: notification.id,
+              title: notification.title,
+              body: notification.message,
+            );
+          }
 
           // Show beautifully animated top-sliding premium in-app overlay banner
           showPremiumInAppNotification(
@@ -135,11 +143,19 @@ class NotificationProvider extends ChangeNotifier {
 
       // Trigger standard local & top sliding animated push notifications for any missed unread notifications!
       for (final notification in newUnread.reversed) {
-        await NotificationLocalService.showNotification(
-          id: notification.id,
-          title: notification.title,
-          body: notification.message,
-        );
+        if (notification.type.toUpperCase() == 'ALERT') {
+          await NotificationLocalService.showRouteAssignmentAlert(
+            id: notification.id,
+            title: notification.title,
+            body: notification.message,
+          );
+        } else {
+          await NotificationLocalService.showNotification(
+            id: notification.id,
+            title: notification.title,
+            body: notification.message,
+          );
+        }
 
         showPremiumInAppNotification(
           title: notification.title,

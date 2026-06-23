@@ -18,12 +18,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     if (eventType == 'notification:new') {
       await NotificationLocalService.initialize();
       final notification = NotificationModel.fromJson(data);
-      
-      await NotificationLocalService.showNotification(
-        id: notification.id,
-        title: notification.title,
-        body: notification.message,
-      );
+      if (notification.type.toUpperCase() == 'ALERT') {
+        await NotificationLocalService.showRouteAssignmentAlert(
+          id: notification.id,
+          title: notification.title,
+          body: notification.message,
+        );
+      } else {
+        await NotificationLocalService.showNotification(
+          id: notification.id,
+          title: notification.title,
+          body: notification.message,
+        );
+      }
     }
   } catch (e) {
     debugPrint("Error handling background message: $e");
