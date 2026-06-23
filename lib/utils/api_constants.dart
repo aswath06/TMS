@@ -18,6 +18,7 @@ class ApiConstants {
 
   // Auth
   static String get googleLogin => "$baseUrl/auth/google-login";
+  static String get appleLogin => "$baseUrl/auth/apple-login";
   static String get login => "$baseUrl/auth/login-by-username";
   static String get forgotPassword => "$baseUrl/auth/forgot-password";
   static String get userMe => "$baseUrl/auth/user/me";

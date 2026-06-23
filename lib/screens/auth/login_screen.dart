@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -32,6 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _isLoggingIn = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _agreeToTerms = false;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -253,6 +255,95 @@ curl -X POST "$url" \
     }
   }
 
+  // ✅ APPLE LOGIN with SSL bypass
+  Future<void> _handleAppleSignIn() async {
+    if (!_agreeToTerms) {
+      showTopToast(context, "Please agree to the Terms & Conditions to proceed.", isError: true);
+      return;
+    }
+    final client = _createHttpClient();
+    try {
+      setState(() => _isAppleLoading = true);
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final String? idToken = credential.identityToken;
+      if (idToken == null) throw "Failed to retrieve Apple Identity Token.";
+
+      final response = await client.post(
+        Uri.parse(ApiConstants.appleLogin),
+        headers: ApiConstants.getHeaders(null),
+        body: jsonEncode({'idToken': idToken}),
+      );
+
+      if (response.body.isEmpty) {
+        throw "Server returned an empty response. Please try again later.";
+      }
+
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final String jwtToken = responseData['token'];
+        final Map<String, dynamic> userData = responseData['user'];
+        final String? rawRole = userData['role']?.toString();
+
+        if (rawRole == null || rawRole.trim().isEmpty || rawRole.toLowerCase() == 'undefined') {
+          throw "Role is undefined";
+        }
+
+        final allowedRoles = [
+          'transport admin',
+          'super admin',
+          'faculty',
+          'security',
+          'student',
+          'driver'
+        ];
+
+        if (!allowedRoles.contains(rawRole.toLowerCase())) {
+          throw "You don't have permission to access this resource";
+        }
+
+        await UserStore.saveUserData(
+          token: jwtToken,
+          role: rawRole.toLowerCase(),
+          email: userData['email'],
+          id: userData['id'] ?? 0,
+        );
+
+        if (mounted) {
+          ref.read(notificationProviderFamily).initialize(token: jwtToken);
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MainScreen(
+                userRole: userData['role'].toString().toLowerCase(),
+              ),
+            ),
+            (route) => false,
+          );
+        }
+      } else {
+        throw responseData['message'] ?? "Backend Authentication Failed";
+      }
+    } catch (error) {
+      debugPrint("APPLE LOGIN ERROR: $error");
+
+      if (mounted) {
+        showTopToast(context, error.toString(), isError: true);
+      }
+    } finally {
+      client.close();
+      if (mounted) setState(() => _isAppleLoading = false);
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -283,6 +374,10 @@ curl -X POST "$url" \
                         _buildLoginForm(),
                         _buildDivider(),
                         _buildGoogleButton(),
+                        if (Platform.isIOS) ...[
+                          const SizedBox(height: 16),
+                          _buildAppleButton(),
+                        ]
                       ],
                       const SizedBox(height: 24),
                     ],
@@ -377,6 +472,41 @@ curl -X POST "$url" \
               ),
         label: const Text(
           "Continue with Google",
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          side: BorderSide(color: Colors.grey.shade200),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          backgroundColor: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppleButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _isAppleLoading ? null : _handleAppleSignIn,
+        icon: _isAppleLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(
+                Icons.apple,
+                size: 26,
+                color: Colors.black,
+              ),
+        label: const Text(
+          "Continue with Apple",
           style: TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,

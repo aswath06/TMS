@@ -99,6 +99,9 @@ PODS:
   - GTMSessionFetcher/Core (3.5.0)
   - GTMSessionFetcher/Full (3.5.0):
     - GTMSessionFetcher/Core
+  - image_cropper (0.0.5):
+    - Flutter
+    - TOCropViewController (~> 3.1.2)
   - image_picker_ios (0.0.1):
     - Flutter
   - libwebp (1.5.0):
@@ -139,7 +142,11 @@ PODS:
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - sign_in_with_apple (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - SwiftyGif (5.4.5)
+  - TOCropViewController (3.1.2)
   - url_launcher_ios (0.0.1):
     - Flutter
 
@@ -154,6 +161,7 @@ DEPENDENCIES:
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
+  - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - local_auth_ios (from `.symlinks/plugins/local_auth_ios/ios`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
@@ -162,6 +170,7 @@ DEPENDENCIES:
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - pointer_interceptor_ios (from `.symlinks/plugins/pointer_interceptor_ios/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sign_in_with_apple (from `.symlinks/plugins/sign_in_with_apple/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
@@ -182,6 +191,7 @@ SPEC REPOS:
     - SDWebImage
     - SDWebImageWebPCoder
     - SwiftyGif
+    - TOCropViewController
 
 EXTERNAL SOURCES:
   connectivity_plus:
@@ -204,6 +214,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_maps_flutter_ios/ios"
   google_sign_in_ios:
     :path: ".symlinks/plugins/google_sign_in_ios/darwin"
+  image_cropper:
+    :path: ".symlinks/plugins/image_cropper/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   local_auth_ios:
@@ -220,6 +232,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/pointer_interceptor_ios/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  sign_in_with_apple:
+    :path: ".symlinks/plugins/sign_in_with_apple/darwin"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
@@ -244,6 +258,7 @@ SPEC CHECKSUMS:
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
+  image_cropper: fca51f94982730acae168c4b5d691e0f11aeb259
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   local_auth_ios: f7a1841beef3151d140a967c2e46f30637cdf451
@@ -257,7 +272,9 @@ SPEC CHECKSUMS:
   SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   SDWebImageWebPCoder: 0e06e365080397465cc73a7a9b472d8a3bd0f377
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  sign_in_with_apple: 5e34677a4e74c5f42760f41b3bbe05343e84d171
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
+  TOCropViewController: a916930c465b5d9445a74d95e0c0da931771b4df
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
 PODFILE CHECKSUM: 4073873a1751b57ad334310d98b77b3183052d3b
