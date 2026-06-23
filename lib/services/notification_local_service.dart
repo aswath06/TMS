@@ -38,12 +38,12 @@ class NotificationLocalService {
     );
 
     const AndroidNotificationChannel assignmentChannel = AndroidNotificationChannel(
-      'route_assignment_channel_v2',
+      'route_assignment_channel_v3',
       'Route Assignments',
       description: 'Critical alerts for new route assignments',
       importance: Importance.max,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('alertsound'),
+      sound: RawResourceAndroidNotificationSound('alerttone'),
     );
 
     await _notificationsPlugin
@@ -101,12 +101,12 @@ class NotificationLocalService {
     final Int32List additionalFlags = Int32List.fromList(<int>[4]); // FLAG_INSISTENT
 
     final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'route_assignment_channel_v2',
+      'route_assignment_channel_v3',
       'Route Assignments',
       channelDescription: 'Critical alerts for new route assignments',
       importance: Importance.max,
       priority: Priority.high,
-      sound: const RawResourceAndroidNotificationSound('alertsound'),
+      sound: const RawResourceAndroidNotificationSound('alerttone'),
       additionalFlags: additionalFlags,
       actions: <AndroidNotificationAction>[
         const AndroidNotificationAction(
@@ -121,7 +121,7 @@ class NotificationLocalService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
-      sound: 'alertsound.mp3',
+      sound: 'alerttone.mp3',
     );
 
     final NotificationDetails notificationDetails = NotificationDetails(
