@@ -6,7 +6,7 @@ import '../models/notification_model.dart';
 
 // Top-level background message handler
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   debugPrint("Handling a background message: ${message.messageId}");
@@ -53,7 +53,7 @@ class NotificationFirebaseService {
     debugPrint('User granted permission: ${settings.authorizationStatus}');
 
     // Set background handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // Foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

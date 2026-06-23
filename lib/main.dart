@@ -21,13 +21,17 @@ import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:firebase_core/firebase_core.dart';
-
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:tripzo/services/notification_firebase_service.dart';
 void main() async {
   // Ensure Flutter framework is initialized before running code
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Firebase
   await Firebase.initializeApp();
+  
+  // Set Firebase background messaging handler early
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Initialize Background Location Service (Non-blocking)
   LocationService().initializeService().catchError((e) {
