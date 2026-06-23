@@ -11,7 +11,7 @@ import 'package:tripzo/store/admin_allowance_store.dart';
 import 'package:tripzo/store/fleet_monitor_store.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/services/notification_api_service.dart';
-import 'package:tripzo/services/notification_socket_service.dart';
+import 'package:tripzo/services/notification_firebase_service.dart';
 import 'package:tripzo/store/expiration_store.dart';
 
 /// ExpirationStore Provider
@@ -63,7 +63,7 @@ final fleetMonitorStoreProvider = ChangeNotifierProvider<FleetMonitorStore>((ref
 final notificationProviderFamily = ChangeNotifierProvider<NotificationProvider>((ref) {
   return NotificationProvider(
     apiService: NotificationApiService(baseUrl: "", token: ""),
-    socketService: NotificationSocketService(),
+    firebaseService: NotificationFirebaseService(),
   );
 });
 /// SecurityVehicleStore Provider

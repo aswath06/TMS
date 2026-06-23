@@ -62,7 +62,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
   String _getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    final base = 'https://tripzo.bitsathy.ac.in';
+    final base = ApiConstants.baseUrl;
     final relative = path.startsWith('/') ? path : '/$path';
     final url = '$base$relative';
     return url.contains('?') ? '$url&v=2' : '$url?v=2';

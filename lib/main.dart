@@ -18,11 +18,16 @@ import 'utils/routes.dart';
 import 'package:tripzo/services/location_service.dart';
 import 'package:tripzo/services/notification_local_service.dart';
 import 'package:tripzo/services/notification_api_service.dart';
-import 'package:tripzo/services/notification_socket_service.dart';
 import 'package:tripzo/providers/notification_provider.dart';
-import 'package:tripzo/store/providers.dart';void main() async {
+import 'package:tripzo/store/providers.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+void main() async {
   // Ensure Flutter framework is initialized before running code
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
+  await Firebase.initializeApp();
 
   // Initialize Background Location Service (Non-blocking)
   LocationService().initializeService().catchError((e) {

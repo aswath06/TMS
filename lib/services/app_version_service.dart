@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utils/api_constants.dart';
 
 class AppVersionService {
-  static const String _checkUrl = 'https://tripzo.bitsathy.ac.in/api/app-version/check';
+  static String get _checkUrl => '${ApiConstants.baseUrl}/api/app-version/check';
 
   static Future<void> checkAppVersion(BuildContext context, {bool showNoUpdateFound = false}) async {
     try {

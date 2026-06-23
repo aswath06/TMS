@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
-import 'package:tripzo/services/notification_socket_service.dart';
 import 'package:tripzo/models/notification_model.dart';
 
 @pragma('vm:entry-point')
@@ -33,8 +32,7 @@ void onStart(ServiceInstance service) async {
     });
 
     service.on('updateConfig').listen((event) async {
-      // Config updates handle socket refreshes if needed
-      _initializeSocket(service, flutterLocalNotificationsPlugin);
+      // Config updates
     });
 
     // 2. Initialize Notification Plugin
@@ -47,13 +45,7 @@ void onStart(ServiceInstance service) async {
     debugPrint("[BackgroundService] Isolate initialized successfully");
     _updateNotificationUI(flutterLocalNotificationsPlugin, "");
 
-    // 3. Initialize Notification Socket (PERSISTENT SOCKET LOGIC)
-    _initializeSocket(service, flutterLocalNotificationsPlugin);
-
-    // 4. Robustness: Periodically check/reconnect socket connection to keep it alive
-    Timer.periodic(const Duration(minutes: 5), (timer) async {
-      _initializeSocket(service, flutterLocalNotificationsPlugin);
-    });
+    // Removed Socket Initialization since Firebase handles background notifications natively
   } catch (e, stack) {
     debugPrint("[BackgroundService] CRITICAL ISOLATE ERROR: $e");
     debugPrint(stack.toString());
@@ -77,63 +69,3 @@ class AndroidAndroidNotificationDetailsSpec extends AndroidNotificationDetails {
   );
 }
 
-// Global reference for socket persistence in isolate
-NotificationSocketService? _globalSocketService;
-
-Future<void> _initializeSocket(ServiceInstance service, FlutterLocalNotificationsPlugin notifications) async {
-  try {
-    final token = await UserStore.getToken();
-    if (token == null) return;
-
-    if (_globalSocketService != null && _globalSocketService!.socket?.connected == true) {
-      debugPrint("[BackgroundService] Socket already connected. Skipping re-init.");
-      return;
-    }
-
-    debugPrint("[BackgroundService] (Re)Initializing Notification Socket...");
-    _globalSocketService?.disconnect();
-    _globalSocketService = NotificationSocketService();
-    
-    _globalSocketService!.connect(
-      socketBaseUrl: ApiConstants.baseUrl,
-      token: token,
-      onNewNotification: (data) async {
-        debugPrint("[BackgroundService] 🔔 New Socket Notification: $data");
-        
-        try {
-          final notification = NotificationModel.fromJson(data);
-          
-          await notifications.show(
-            notification.id,
-            notification.title,
-            notification.message,
-            const NotificationDetails(
-              android: AndroidNotificationDetails(
-                'tms_notifications',
-                'TMS Notifications',
-                channelDescription: 'Real-time notifications for TripZo TMS',
-                importance: Importance.max,
-                priority: Priority.high,
-                fullScreenIntent: true,
-              ),
-              iOS: DarwinNotificationDetails(
-                presentAlert: true,
-                presentBadge: true,
-                presentSound: true,
-              ),
-            ),
-          );
-
-          service.invoke('new_notification_received', data);
-        } catch (e) {
-          debugPrint("[BackgroundService] Notification parsing error: $e");
-        }
-      },
-      onConnected: () => debugPrint("[BackgroundService] Notification Socket Connected"),
-      onDisconnected: () => debugPrint("[BackgroundService] Notification Socket Disconnected"),
-      onError: (err) => debugPrint("[BackgroundService] Notification Socket Error: $err"),
-    );
-  } catch (e) {
-    debugPrint("[BackgroundService] Socket Init Error: $e");
-  }
-}

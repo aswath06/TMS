@@ -70,4 +70,18 @@ class NotificationApiService {
       throw Exception(body["message"] ?? "Failed to mark all notifications as read");
     }
   }
+
+  Future<void> updateFcmToken(String fcmToken) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.fcmToken),
+      headers: _headers,
+      body: jsonEncode({"fcm_token": fcmToken}),
+    );
+
+    final body = jsonDecode(response.body);
+
+    if (response.statusCode != 200 || body["success"] != true) {
+      throw Exception(body["message"] ?? "Failed to update FCM token");
+    }
+  }
 }

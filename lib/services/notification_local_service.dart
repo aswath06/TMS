@@ -27,6 +27,19 @@ class NotificationLocalService {
         AppRoutes.navigatorKey.currentState?.pushNamed(AppRoutes.notifications);
       },
     );
+
+    // Create the high-importance channel natively so background FCM popups work
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'tms_notifications', // id
+      'TMS Notifications', // title
+      description: 'Real-time notifications for TripZo TMS', // description
+      importance: Importance.max,
+    );
+
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
   static Future<void> showNotification({

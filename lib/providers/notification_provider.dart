@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/notification_model.dart';
-import '../services/notification_socket_service.dart';
+import '../services/notification_firebase_service.dart';
 import '../services/notification_local_service.dart';
 import '../services/notification_api_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -11,16 +11,16 @@ import '../utils/animated_notification.dart';
 
 class NotificationProvider extends ChangeNotifier {
   late NotificationApiService apiService;
-  final NotificationSocketService socketService;
+  final NotificationFirebaseService firebaseService;
 
   NotificationProvider({
     required this.apiService,
-    required this.socketService,
+    required this.firebaseService,
   });
 
   List<NotificationModel> notifications = [];
   int unreadCount = 0;
-  bool isSocketConnected = false;
+  bool isFirebaseInitialized = false;
   bool isLoading = false;
   StreamSubscription? _connectivitySubscription;
 
@@ -37,13 +37,14 @@ class NotificationProvider extends ChangeNotifier {
     await fetchNotifications();
     await fetchUnreadCount();
 
-    // 1. Establish direct Socket Connection in the foreground for real-time push notifications
-    socketService.connect(
-      socketBaseUrl: ApiConstants.baseUrl,
-      token: token,
+    // 1. Establish Firebase Connection
+    await firebaseService.initialize(
       onNewNotification: (data) async {
-        debugPrint("🔔 Foreground direct socket received notification: $data");
+        debugPrint("🔔 Foreground direct firebase received notification: $data");
         try {
+          final eventType = data['event'];
+          if (eventType != 'notification:new') return;
+
           final notification = NotificationModel.fromJson(data);
           
           // Avoid duplicate if already in list
@@ -67,21 +68,25 @@ class NotificationProvider extends ChangeNotifier {
             type: notification.type,
           );
         } catch (e) {
-          debugPrint("Error handling new socket notification in foreground: $e");
+          debugPrint("Error handling new firebase notification: $e");
         }
       },
-      onConnected: () {
-        isSocketConnected = true;
-        notifyListeners();
-        debugPrint("🔔 Foreground Notification Socket Connected");
-      },
-      onDisconnected: () {
-        isSocketConnected = false;
-        notifyListeners();
-        debugPrint("🔔 Foreground Notification Socket Disconnected");
-      },
-      onError: (err) => debugPrint("🔔 Foreground Notification Socket Error: $err"),
     );
+    isFirebaseInitialized = true;
+    
+    // Sync FCM token with backend
+    try {
+      final token = await firebaseService.getToken();
+      if (token != null) {
+        await apiService.updateFcmToken(token);
+        debugPrint("🔔 FCM Token synced with backend");
+      }
+    } catch (e) {
+      debugPrint("Error syncing FCM token: $e");
+    }
+
+    notifyListeners();
+    debugPrint("🔔 Firebase Notification Initialized");
 
     // 2. Backup Listener: Also listen to the Background Service if running
     final service = FlutterBackgroundService();
@@ -225,7 +230,6 @@ class NotificationProvider extends ChangeNotifier {
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
-    socketService.disconnect();
     super.dispose();
   }
 }

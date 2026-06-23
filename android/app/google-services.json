@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068639173405",
+    "project_id": "tripzo-2f843",
+    "storage_bucket": "tripzo-2f843.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068639173405:android:b5296278eb743207cbfff4",
+        "android_client_info": {
+          "package_name": "com.aswath.tripzo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT5OfhITr8bJEkwKi6ZRa6PSLZoKbB6Y0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

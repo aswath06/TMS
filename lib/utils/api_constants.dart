@@ -23,6 +23,7 @@ class ApiConstants {
   static String get forgotPassword => "$baseUrl/auth/forgot-password";
   static String get userMe => "$baseUrl/auth/user/me";
   static String get logoutMe => "$baseUrl/auth/logout-me";
+  static String get fcmToken => "$baseUrl/auth/user/fcm-token";
 
   // Vehicles
   static String get getAllVehicles => "$baseUrl/api/vehicles/get-all";

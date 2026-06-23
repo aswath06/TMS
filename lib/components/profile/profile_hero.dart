@@ -47,7 +47,7 @@ class ProfileHero extends StatelessWidget {
   String _getFullImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    final base = 'https://tripzo.bitsathy.ac.in';
+    final base = ApiConstants.baseUrl;
     final relative = path.startsWith('/') ? path : '/$path';
     return '$base$relative';
   }
