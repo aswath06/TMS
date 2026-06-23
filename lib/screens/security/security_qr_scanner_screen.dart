@@ -84,16 +84,30 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
         };
 
         final token = await UserStore.getToken();
-        final url = "https://18x50gz9-8055.inc1.devtunnels.ms/daily-bus/daily-bus-runs/operations/verify-campus-in-otp";
+        final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/verify-campus-in-otp";
+
+        final requestHeaders = ApiConstants.getHeaders(token);
+        
+        final curlHeadersStr = requestHeaders.entries 
+            .map((e) => "-H '${e.key}: ${e.value}'")
+            .join(' ');
+        final curlBodyStr = "-d '${jsonEncode(body)}'";
+        final curlCommandStr = "curl --location --request POST '$url' \\\n$curlHeadersStr \\\n$curlBodyStr";
+        
+        debugPrint("\n--- [QR SCANNER BUS] SENDING CURL ---");
+        debugPrint(curlCommandStr);
+        debugPrint("---------------------------------\n");
 
         final response = await http.post(
           Uri.parse(url),
-          headers: {
-            'Authorization': token ?? '',
-            'Content-Type': 'application/json'
-          },
+          headers: requestHeaders,
           body: jsonEncode(body),
         );
+
+        debugPrint("\n--- [QR SCANNER BUS] RESPONSE RECEIVED ---");
+        debugPrint("Status Code: ${response.statusCode}");
+        debugPrint("Body: ${response.body}");
+        debugPrint("--------------------------------------\n");
 
         if (response.statusCode == 200 || response.statusCode == 201) {
           final responseData = jsonDecode(response.body);

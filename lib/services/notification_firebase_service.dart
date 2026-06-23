@@ -1,10 +1,33 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'notification_local_service.dart';
+import '../models/notification_model.dart';
 
 // Top-level background message handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   debugPrint("Handling a background message: ${message.messageId}");
+
+  try {
+    final data = message.data;
+    final eventType = data['event'];
+    
+    if (eventType == 'notification:new') {
+      await NotificationLocalService.initialize();
+      final notification = NotificationModel.fromJson(data);
+      
+      await NotificationLocalService.showNotification(
+        id: notification.id,
+        title: notification.title,
+        body: notification.message,
+      );
+    }
+  } catch (e) {
+    debugPrint("Error handling background message: $e");
+  }
 }
 
 class NotificationFirebaseService {
