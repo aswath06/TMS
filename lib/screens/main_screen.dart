@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 import 'package:tripzo/services/app_version_service.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
@@ -190,8 +191,19 @@ class MainScreenState extends State<MainScreen> {
         ? const Color(0xFF0F172A)
         : const Color(0xFFF1F5F9);
 
-    return Scaffold(
-      backgroundColor: bgColor,
+    return NotificationListener<ChangeTabNotification>(
+      onNotification: (notification) {
+        int targetIndex = notification.index;
+        if (targetIndex == -1) targetIndex = _getScreens().length - 1;
+        _pageController.animateToPage(
+          targetIndex,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOutQuart,
+        );
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
       resizeToAvoidBottomInset: false,
       extendBody: true,
       body: Stack(
@@ -218,6 +230,6 @@ class MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

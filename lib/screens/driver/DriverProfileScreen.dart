@@ -147,7 +147,6 @@ final store = ref.watch(driverStoreProvider);
           subColor: subColor,
           isDark: isDark,
           profileImageUrl: data?['profile_photo'],
-          onAvatarTap: () => _showProfileImagePicker(context),
         ),
         const SizedBox(height: 32),
 

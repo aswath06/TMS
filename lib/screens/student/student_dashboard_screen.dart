@@ -8,6 +8,7 @@ import 'package:tripzo/screens/student/student_bus_screen.dart';
 import 'package:tripzo/screens/student/attendance_overview_page.dart';
 import 'package:tripzo/store/providers.dart';
 import '../../components/notification_card.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 
 class StudentDashboardScreen extends ConsumerStatefulWidget {
   const StudentDashboardScreen({super.key});
@@ -179,21 +180,26 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
             ),
             NotificationBell(iconColor: titleColor),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [primary, primary.withOpacity(0.4)],
+            GestureDetector(
+              onTap: () {
+                const ChangeTabNotification(-1).dispatch(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [primary, primary.withOpacity(0.4)],
+                  ),
                 ),
-              ),
-              child: CircleAvatar(
-                radius: width * 0.065,
-                backgroundColor: Colors.white,
                 child: CircleAvatar(
-                  radius: width * 0.06,
-                  backgroundImage: NetworkImage(
-                    "https://ui-avatars.com/api/?name=$displayName&background=6366F1&color=fff",
+                  radius: width * 0.065,
+                  backgroundColor: Colors.white,
+                  child: CircleAvatar(
+                    radius: width * 0.06,
+                    backgroundImage: NetworkImage(
+                      "https://ui-avatars.com/api/?name=$displayName&background=6366F1&color=fff",
+                    ),
                   ),
                 ),
               ),

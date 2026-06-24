@@ -453,6 +453,10 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
                               for (final barcode in barcodes) {
                                 if (!_isScanned && barcode.rawValue != null) {
                                   setState(() => _isScanned = true);
+                                  HapticFeedback.vibrate();
+                                  Future.delayed(const Duration(milliseconds: 200), () {
+                                    HapticFeedback.vibrate();
+                                  });
                                   final String code = barcode.rawValue!;
                                   debugPrint('QR Barcode found! $code');
                                   _processScannedData(code);

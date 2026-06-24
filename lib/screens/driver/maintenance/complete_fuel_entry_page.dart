@@ -392,6 +392,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     final driverName = widget.entry['driver']?['user']?['name'] ?? "N/A";
     final instanceId = widget.entry['instance_id'] ?? "N/A";
     final bunkName = widget.entry['bunk']?['name'] ?? "N/A";
+    final requiredLiter = widget.entry['required_volume']?.toString() ?? "N/A";
 
     return Scaffold(
       backgroundColor: bg,
@@ -415,7 +416,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                           _buildHeader(context, titleColor, primary, isTamil),
                           const SizedBox(height: 32),
                         // Premium Info Section
-                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == true),
+                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, requiredLiter, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == true),
                         const SizedBox(height: 32),
                         
                         // Input Section Title
@@ -511,7 +512,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     );
   }
 
-  Widget _buildInfoSection(bool isTamil, Color surface, Color titleColor, Color subColor, String vehicle, String driver, String bunk, String instance, bool isDark, bool isBitOwner) {
+  Widget _buildInfoSection(bool isTamil, Color surface, Color titleColor, Color subColor, String vehicle, String driver, String bunk, String instance, String requiredLiter, bool isDark, bool isBitOwner) {
     return Container(
       decoration: BoxDecoration(
         color: surface,
@@ -549,7 +550,8 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                 _buildInfoRow(isTamil ? "ஓட்டுநர்" : "Driver Name", driver, titleColor, subColor, Icons.person_rounded),
                 if (!isBitOwner)
                   _buildInfoRow(isTamil ? "பங்க் பெயர்" : "Bunk Name", bunk, titleColor, subColor, Icons.local_gas_station_rounded),
-                _buildInfoRow(isTamil ? "நிகழ்வு ஐடி" : "Instance ID", instance, titleColor, subColor, Icons.tag_rounded, isLast: true),
+                _buildInfoRow(isTamil ? "நிகழ்வு ஐடி" : "Instance ID", instance, titleColor, subColor, Icons.tag_rounded),
+                _buildInfoRow(isTamil ? "தேவையான லிட்டர்" : "Required Max Liter", "$requiredLiter L", titleColor, subColor, Icons.opacity_rounded, isLast: true),
               ],
             ),
           ),

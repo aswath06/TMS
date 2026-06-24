@@ -9,6 +9,7 @@ import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
 import '../../components/notification_bell.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 
 class SecurityDashboardScreen extends ConsumerStatefulWidget {
   const SecurityDashboardScreen({super.key});
@@ -257,21 +258,26 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
         ),
         NotificationBell(iconColor: titleColor),
         const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [primary, primary.withOpacity(0.4)],
+        GestureDetector(
+          onTap: () {
+            const ChangeTabNotification(-1).dispatch(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [primary, primary.withOpacity(0.4)],
+              ),
             ),
-          ),
-          child: CircleAvatar(
-            radius: width * 0.065,
-            backgroundColor: Colors.white,
             child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundImage: NetworkImage(
-                'https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff',
+              radius: width * 0.065,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: width * 0.06,
+                backgroundImage: NetworkImage(
+                  'https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff',
+                ),
               ),
             ),
           ),

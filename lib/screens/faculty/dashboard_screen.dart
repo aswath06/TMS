@@ -10,6 +10,7 @@ import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 import '../../utils/api_constants.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -227,24 +228,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         NotificationBell(iconColor: titleColor),
         const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [primary, primary.withValues(alpha: 0.4)],
+        GestureDetector(
+          onTap: () {
+            const ChangeTabNotification(-1).dispatch(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [primary, primary.withValues(alpha: 0.4)],
+              ),
             ),
-          ),
-          child: CircleAvatar(
-            radius: width * 0.065,
-            backgroundColor: Colors.white,
             child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundImage: profilePhoto != null 
-                  ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
-                  : NetworkImage(
-                      "https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff",
-                    ) as ImageProvider,
+              radius: width * 0.065,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: width * 0.06,
+                backgroundImage: profilePhoto != null 
+                    ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
+                    : NetworkImage(
+                        "https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff",
+                      ) as ImageProvider,
+              ),
             ),
           ),
         ),

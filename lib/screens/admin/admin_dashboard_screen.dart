@@ -21,6 +21,7 @@ import 'fuel/fuel_price_update_page.dart';
 import 'fuel/fuel_page.dart';
 import 'admin_allowance_screen.dart';
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends ConsumerStatefulWidget {
@@ -536,24 +537,29 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         ),
         NotificationBell(iconColor: titleColor),
         const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [primary, primary.withValues(alpha: 0.4)],
+        GestureDetector(
+          onTap: () {
+            const ChangeTabNotification(-1).dispatch(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [primary, primary.withValues(alpha: 0.4)],
+              ),
             ),
-          ),
-          child: CircleAvatar(
-            radius: width * 0.065,
-            backgroundColor: Colors.white,
             child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundImage: profilePhoto != null 
-                  ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
-                  : NetworkImage(
-                      'https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff',
-                    ) as ImageProvider,
+              radius: width * 0.065,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: width * 0.06,
+                backgroundImage: profilePhoto != null 
+                    ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
+                    : NetworkImage(
+                        'https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff',
+                      ) as ImageProvider,
+              ),
             ),
           ),
         ),

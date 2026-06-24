@@ -11,6 +11,7 @@ import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
 import 'package:tripzo/screens/driver/driver_allowance_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart';
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 
 import '../../providers/notification_provider.dart';
 import '../../components/notification_bell.dart';
@@ -260,16 +261,21 @@ final store = ref.watch(driverStoreProvider);
         // Notification Bell Icon
         NotificationBell(iconColor: titleColor),
         const SizedBox(width: 8),
-        Hero(
-          tag: 'driver_avatar',
-          child: CircleAvatar(
-            radius: width * 0.065,
-            backgroundColor: primary,
+        GestureDetector(
+          onTap: () {
+            const ChangeTabNotification(-1).dispatch(context);
+          },
+          child: Hero(
+            tag: 'driver_avatar',
             child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundImage: profilePhoto != null 
-                  ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
-                  : NetworkImage("https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff") as ImageProvider,
+              radius: width * 0.065,
+              backgroundColor: primary,
+              child: CircleAvatar(
+                radius: width * 0.06,
+                backgroundImage: profilePhoto != null 
+                    ? NetworkImage(ApiConstants.getImageUrl(profilePhoto))
+                    : NetworkImage("https://ui-avatars.com/api/?name=$name&background=6366F1&color=fff") as ImageProvider,
+              ),
             ),
           ),
         ),
