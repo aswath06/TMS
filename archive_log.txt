@@ -1,0 +1,376 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild archive -workspace ios/Runner.xcworkspace -scheme Runner -destination generic/platform=iOS -archivePath build.xcarchive CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Automatic COMPILER_INDEX_STORE_ENABLE=NO
+
+Build settings from command line:
+    AD_HOC_CODE_SIGNING_ALLOWED = YES
+    CODE_SIGN_IDENTITY = -
+    CODE_SIGN_STYLE = Automatic
+    COMPILER_INDEX_STORE_ENABLE = NO
+
+note: Using codesigning identity override: -
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (83 targets)
+    Target 'Runner' in project 'Runner'
+        ➜ Implicit dependency on target 'Pods-Runner' in project 'Pods' via file 'Pods_Runner.framework' in build phase 'Link Binary'
+        ➜ Implicit dependency on target 'AppAuth' in project 'Pods' via options '-framework AppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'AppCheckCore' in project 'Pods' via options '-framework AppCheckCore' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'DKImagePickerController' in project 'Pods' via options '-framework DKImagePickerController' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'DKPhotoGallery' in project 'Pods' via options '-framework DKPhotoGallery' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'PromisesObjC' in project 'Pods' via options '-framework FBLPromises' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'FirebaseCore' in project 'Pods' via options '-framework FirebaseCore' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'FirebaseCoreInternal' in project 'Pods' via options '-framework FirebaseCoreInternal' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'FirebaseInstallations' in project 'Pods' via options '-framework FirebaseInstallations' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'FirebaseMessaging' in project 'Pods' via options '-framework FirebaseMessaging' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMAppAuth' in project 'Pods' via options '-framework GTMAppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMSessionFetcher' in project 'Pods' via options '-framework GTMSessionFetcher' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleDataTransport' in project 'Pods' via options '-framework GoogleDataTransport' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'Google-Maps-iOS-Utils' in project 'Pods' via options '-framework GoogleMapsUtils' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleSignIn' in project 'Pods' via options '-framework GoogleSignIn' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleUtilities' in project 'Pods' via options '-framework GoogleUtilities' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'Mantle' in project 'Pods' via options '-framework Mantle' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'SDWebImage' in project 'Pods' via options '-framework SDWebImage' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'SDWebImageWebPCoder' in project 'Pods' via options '-framework SDWebImageWebPCoder' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'SwiftyGif' in project 'Pods' via options '-framework SwiftyGif' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'TOCropViewController' in project 'Pods' via options '-framework TOCropViewController' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'connectivity_plus' in project 'Pods' via options '-framework connectivity_plus' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'file_picker' in project 'Pods' via options '-framework file_picker' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'firebase_core' in project 'Pods' via options '-framework firebase_core' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'firebase_messaging' in project 'Pods' via options '-framework firebase_messaging' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'flutter_background_service_ios' in project 'Pods' via options '-framework flutter_background_service_ios' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'flutter_image_compress_common' in project 'Pods' via options '-framework flutter_image_compress_common' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'flutter_keyboard_visibility' in project 'Pods' via options '-framework flutter_keyboard_visibility' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'flutter_local_notifications' in project 'Pods' via options '-framework flutter_local_notifications' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'geolocator_apple' in project 'Pods' via options '-framework geolocator_apple' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'google_maps_flutter_ios' in project 'Pods' via options '-framework google_maps_flutter_ios' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'google_sign_in_ios' in project 'Pods' via options '-framework google_sign_in_ios' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'image_cropper' in project 'Pods' via options '-framework image_cropper' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'image_picker_ios' in project 'Pods' via options '-framework image_picker_ios' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'libwebp' in project 'Pods' via options '-framework libwebp' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'local_auth_ios' in project 'Pods' via options '-framework local_auth_ios' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'mobile_scanner' in project 'Pods' via options '-framework mobile_scanner' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'nanopb' in project 'Pods' via options '-framework nanopb' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'open_filex' in project 'Pods' via options '-framework open_filex' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'package_info_plus' in project 'Pods' via options '-framework package_info_plus' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'permission_handler_apple' in project 'Pods' via options '-framework permission_handler_apple' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'pointer_interceptor_ios' in project 'Pods' via options '-framework pointer_interceptor_ios' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'shared_preferences_foundation' in project 'Pods' via options '-framework shared_preferences_foundation' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'sign_in_with_apple' in project 'Pods' via options '-framework sign_in_with_apple' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'url_launcher_ios' in project 'Pods' via options '-framework url_launcher_ios' in build setting 'OTHER_LDFLAGS'
+    Target 'Pods-Runner' in project 'Pods'
+        ➜ Explicit dependency on target 'AppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'AppCheckCore' in project 'Pods'
+        ➜ Explicit dependency on target 'DKImagePickerController' in project 'Pods'
+        ➜ Explicit dependency on target 'DKPhotoGallery' in project 'Pods'
+        ➜ Explicit dependency on target 'Firebase' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseInstallations' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseMessaging' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMAppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMSessionFetcher' in project 'Pods'
+        ➜ Explicit dependency on target 'Google-Maps-iOS-Utils' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleDataTransport' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleMaps' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleSignIn' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities' in project 'Pods'
+        ➜ Explicit dependency on target 'Mantle' in project 'Pods'
+        ➜ Explicit dependency on target 'PromisesObjC' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImage' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImageWebPCoder' in project 'Pods'
+        ➜ Explicit dependency on target 'SwiftyGif' in project 'Pods'
+        ➜ Explicit dependency on target 'TOCropViewController' in project 'Pods'
+        ➜ Explicit dependency on target 'connectivity_plus' in project 'Pods'
+        ➜ Explicit dependency on target 'file_picker' in project 'Pods'
+        ➜ Explicit dependency on target 'firebase_core' in project 'Pods'
+        ➜ Explicit dependency on target 'firebase_messaging' in project 'Pods'
+        ➜ Explicit dependency on target 'flutter_background_service_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'flutter_image_compress_common' in project 'Pods'
+        ➜ Explicit dependency on target 'flutter_keyboard_visibility' in project 'Pods'
+        ➜ Explicit dependency on target 'flutter_local_notifications' in project 'Pods'
+        ➜ Explicit dependency on target 'geolocator_apple' in project 'Pods'
+        ➜ Explicit dependency on target 'google_maps_flutter_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'google_sign_in_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'image_cropper' in project 'Pods'
+        ➜ Explicit dependency on target 'image_picker_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'libwebp' in project 'Pods'
+        ➜ Explicit dependency on target 'local_auth_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'mobile_scanner' in project 'Pods'
+        ➜ Explicit dependency on target 'nanopb' in project 'Pods'
+        ➜ Explicit dependency on target 'open_filex' in project 'Pods'
+        ➜ Explicit dependency on target 'package_info_plus' in project 'Pods'
+        ➜ Explicit dependency on target 'permission_handler_apple' in project 'Pods'
+        ➜ Explicit dependency on target 'pointer_interceptor_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'shared_preferences_foundation' in project 'Pods'
+        ➜ Explicit dependency on target 'sign_in_with_apple' in project 'Pods'
+        ➜ Explicit dependency on target 'url_launcher_ios' in project 'Pods'
+    Target 'url_launcher_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'url_launcher_ios-url_launcher_ios_privacy' in project 'Pods'
+    Target 'url_launcher_ios-url_launcher_ios_privacy' in project 'Pods' (no dependencies)
+    Target 'sign_in_with_apple' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+    Target 'shared_preferences_foundation' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'shared_preferences_foundation-shared_preferences_foundation_privacy' in project 'Pods'
+    Target 'shared_preferences_foundation-shared_preferences_foundation_privacy' in project 'Pods' (no dependencies)
+    Target 'pointer_interceptor_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'pointer_interceptor_ios-pointer_interceptor_ios_privacy' in project 'Pods'
+    Target 'pointer_interceptor_ios-pointer_interceptor_ios_privacy' in project 'Pods' (no dependencies)
+    Target 'permission_handler_apple' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'permission_handler_apple-permission_handler_apple_privacy' in project 'Pods'
+    Target 'permission_handler_apple-permission_handler_apple_privacy' in project 'Pods' (no dependencies)
+    Target 'package_info_plus' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'package_info_plus-package_info_plus_privacy' in project 'Pods'
+    Target 'package_info_plus-package_info_plus_privacy' in project 'Pods' (no dependencies)
+    Target 'open_filex' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+    Target 'mobile_scanner' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'mobile_scanner-mobile_scanner_privacy' in project 'Pods'
+    Target 'mobile_scanner-mobile_scanner_privacy' in project 'Pods' (no dependencies)
+    Target 'local_auth_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'local_auth_ios-local_auth_ios_privacy' in project 'Pods'
+    Target 'local_auth_ios-local_auth_ios_privacy' in project 'Pods' (no dependencies)
+    Target 'image_picker_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'image_picker_ios-image_picker_ios_privacy' in project 'Pods'
+    Target 'image_picker_ios-image_picker_ios_privacy' in project 'Pods' (no dependencies)
+    Target 'image_cropper' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'TOCropViewController' in project 'Pods'
+    Target 'google_sign_in_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'AppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMSessionFetcher' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleSignIn' in project 'Pods'
+        ➜ Explicit dependency on target 'google_sign_in_ios-google_sign_in_ios_privacy' in project 'Pods'
+    Target 'google_sign_in_ios-google_sign_in_ios_privacy' in project 'Pods' (no dependencies)
+    Target 'google_maps_flutter_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'Google-Maps-iOS-Utils' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleMaps' in project 'Pods'
+        ➜ Explicit dependency on target 'google_maps_flutter_ios-google_maps_flutter_ios_privacy' in project 'Pods'
+    Target 'google_maps_flutter_ios-google_maps_flutter_ios_privacy' in project 'Pods' (no dependencies)
+    Target 'geolocator_apple' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'geolocator_apple-geolocator_apple_privacy' in project 'Pods'
+    Target 'geolocator_apple-geolocator_apple_privacy' in project 'Pods' (no dependencies)
+    Target 'flutter_local_notifications' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'flutter_local_notifications-flutter_local_notifications_privacy' in project 'Pods'
+    Target 'flutter_local_notifications-flutter_local_notifications_privacy' in project 'Pods' (no dependencies)
+    Target 'flutter_keyboard_visibility' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+    Target 'flutter_image_compress_common' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'Mantle' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImage' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImageWebPCoder' in project 'Pods'
+    Target 'flutter_background_service_ios' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+    Target 'firebase_messaging' in project 'Pods'
+        ➜ Explicit dependency on target 'Firebase' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'firebase_core' in project 'Pods'
+        ➜ Explicit dependency on target 'firebase_messaging-firebase_messaging_Privacy' in project 'Pods'
+    Target 'firebase_messaging-firebase_messaging_Privacy' in project 'Pods' (no dependencies)
+    Target 'firebase_core' in project 'Pods'
+        ➜ Explicit dependency on target 'Firebase' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+    Target 'file_picker' in project 'Pods'
+        ➜ Explicit dependency on target 'DKImagePickerController' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'file_picker-file_picker_ios_privacy' in project 'Pods'
+    Target 'file_picker-file_picker_ios_privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'DKImagePickerController' in project 'Pods' via options '-framework DKImagePickerController' in build setting 'OTHER_LDFLAGS'
+    Target 'connectivity_plus' in project 'Pods'
+        ➜ Explicit dependency on target 'Flutter' in project 'Pods'
+        ➜ Explicit dependency on target 'connectivity_plus-connectivity_plus_privacy' in project 'Pods'
+    Target 'connectivity_plus-connectivity_plus_privacy' in project 'Pods' (no dependencies)
+    Target 'TOCropViewController' in project 'Pods'
+        ➜ Explicit dependency on target 'TOCropViewController-TOCropViewControllerBundle' in project 'Pods'
+    Target 'TOCropViewController-TOCropViewControllerBundle' in project 'Pods' (no dependencies)
+    Target 'SDWebImageWebPCoder' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImage' in project 'Pods'
+        ➜ Explicit dependency on target 'libwebp' in project 'Pods'
+    Target 'libwebp' in project 'Pods' (no dependencies)
+    Target 'Mantle' in project 'Pods' (no dependencies)
+    Target 'GoogleSignIn' in project 'Pods'
+        ➜ Explicit dependency on target 'AppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'AppCheckCore' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMAppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMSessionFetcher' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleSignIn-GoogleSignIn' in project 'Pods'
+    Target 'GoogleSignIn-GoogleSignIn' in project 'Pods'
+        ➜ Implicit dependency on target 'AppAuth' in project 'Pods' via options '-framework AppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'AppCheckCore' in project 'Pods' via options '-framework AppCheckCore' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMAppAuth' in project 'Pods' via options '-framework GTMAppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMSessionFetcher' in project 'Pods' via options '-framework GTMSessionFetcher' in build setting 'OTHER_LDFLAGS'
+    Target 'Google-Maps-iOS-Utils' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleMaps' in project 'Pods'
+    Target 'GoogleMaps' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleMaps-GoogleMapsResources' in project 'Pods'
+    Target 'GoogleMaps-GoogleMapsResources' in project 'Pods' (no dependencies)
+    Target 'GTMAppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'AppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMAppAuth-GTMAppAuth_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMSessionFetcher' in project 'Pods'
+    Target 'GTMAppAuth-GTMAppAuth_Privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'AppAuth' in project 'Pods' via options '-framework AppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMSessionFetcher' in project 'Pods' via options '-framework GTMSessionFetcher' in build setting 'OTHER_LDFLAGS'
+    Target 'GTMSessionFetcher' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMSessionFetcher-GTMSessionFetcher_Core_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'GTMSessionFetcher-GTMSessionFetcher_Full_Privacy' in project 'Pods'
+    Target 'GTMSessionFetcher-GTMSessionFetcher_Full_Privacy' in project 'Pods' (no dependencies)
+    Target 'GTMSessionFetcher-GTMSessionFetcher_Core_Privacy' in project 'Pods' (no dependencies)
+    Target 'Flutter' in project 'Pods' (no dependencies)
+    Target 'Firebase' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseMessaging' in project 'Pods'
+    Target 'FirebaseMessaging' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseInstallations' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseMessaging-FirebaseMessaging_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleDataTransport' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities' in project 'Pods'
+        ➜ Explicit dependency on target 'nanopb' in project 'Pods'
+    Target 'FirebaseMessaging-FirebaseMessaging_Privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'FirebaseCore' in project 'Pods' via options '-framework FirebaseCore' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'FirebaseInstallations' in project 'Pods' via options '-framework FirebaseInstallations' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleDataTransport' in project 'Pods' via options '-framework GoogleDataTransport' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleUtilities' in project 'Pods' via options '-framework GoogleUtilities' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'nanopb' in project 'Pods' via options '-framework nanopb' in build setting 'OTHER_LDFLAGS'
+    Target 'GoogleDataTransport' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleDataTransport-GoogleDataTransport_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'PromisesObjC' in project 'Pods'
+        ➜ Explicit dependency on target 'nanopb' in project 'Pods'
+    Target 'GoogleDataTransport-GoogleDataTransport_Privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'PromisesObjC' in project 'Pods' via options '-framework FBLPromises' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'nanopb' in project 'Pods' via options '-framework nanopb' in build setting 'OTHER_LDFLAGS'
+    Target 'nanopb' in project 'Pods'
+        ➜ Explicit dependency on target 'nanopb-nanopb_Privacy' in project 'Pods'
+    Target 'nanopb-nanopb_Privacy' in project 'Pods' (no dependencies)
+    Target 'FirebaseInstallations' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCore' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseInstallations-FirebaseInstallations_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities' in project 'Pods'
+        ➜ Explicit dependency on target 'PromisesObjC' in project 'Pods'
+    Target 'FirebaseInstallations-FirebaseInstallations_Privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'PromisesObjC' in project 'Pods' via options '-framework FBLPromises' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'FirebaseCore' in project 'Pods' via options '-framework FirebaseCore' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleUtilities' in project 'Pods' via options '-framework GoogleUtilities' in build setting 'OTHER_LDFLAGS'
+    Target 'FirebaseCore' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCore-FirebaseCore_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities' in project 'Pods'
+    Target 'FirebaseCore-FirebaseCore_Privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'FirebaseCoreInternal' in project 'Pods' via options '-framework FirebaseCoreInternal' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleUtilities' in project 'Pods' via options '-framework GoogleUtilities' in build setting 'OTHER_LDFLAGS'
+    Target 'FirebaseCoreInternal' in project 'Pods'
+        ➜ Explicit dependency on target 'FirebaseCoreInternal-FirebaseCoreInternal_Privacy' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities' in project 'Pods'
+    Target 'FirebaseCoreInternal-FirebaseCoreInternal_Privacy' in project 'Pods'
+        ➜ Implicit dependency on target 'GoogleUtilities' in project 'Pods' via options '-framework GoogleUtilities' in build setting 'OTHER_LDFLAGS'
+    Target 'DKImagePickerController' in project 'Pods'
+        ➜ Explicit dependency on target 'DKImagePickerController-DKImagePickerController' in project 'Pods'
+        ➜ Explicit dependency on target 'DKPhotoGallery' in project 'Pods'
+    Target 'DKImagePickerController-DKImagePickerController' in project 'Pods'
+        ➜ Implicit dependency on target 'DKPhotoGallery' in project 'Pods' via options '-framework DKPhotoGallery' in build setting 'OTHER_LDFLAGS'
+    Target 'DKPhotoGallery' in project 'Pods'
+        ➜ Explicit dependency on target 'DKPhotoGallery-DKPhotoGallery' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImage' in project 'Pods'
+        ➜ Explicit dependency on target 'SwiftyGif' in project 'Pods'
+    Target 'DKPhotoGallery-DKPhotoGallery' in project 'Pods'
+        ➜ Implicit dependency on target 'SDWebImage' in project 'Pods' via options '-framework SDWebImage' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'SwiftyGif' in project 'Pods' via options '-framework SwiftyGif' in build setting 'OTHER_LDFLAGS'
+    Target 'SwiftyGif' in project 'Pods'
+        ➜ Explicit dependency on target 'SwiftyGif-SwiftyGif' in project 'Pods'
+    Target 'SwiftyGif-SwiftyGif' in project 'Pods' (no dependencies)
+    Target 'SDWebImage' in project 'Pods'
+        ➜ Explicit dependency on target 'SDWebImage-SDWebImage' in project 'Pods'
+    Target 'SDWebImage-SDWebImage' in project 'Pods' (no dependencies)
+    Target 'AppCheckCore' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities' in project 'Pods'
+        ➜ Explicit dependency on target 'PromisesObjC' in project 'Pods'
+    Target 'PromisesObjC' in project 'Pods'
+        ➜ Explicit dependency on target 'PromisesObjC-FBLPromises_Privacy' in project 'Pods'
+    Target 'PromisesObjC-FBLPromises_Privacy' in project 'Pods' (no dependencies)
+    Target 'GoogleUtilities' in project 'Pods'
+        ➜ Explicit dependency on target 'GoogleUtilities-GoogleUtilities_Privacy' in project 'Pods'
+    Target 'GoogleUtilities-GoogleUtilities_Privacy' in project 'Pods' (no dependencies)
+    Target 'AppAuth' in project 'Pods'
+        ➜ Explicit dependency on target 'AppAuth-AppAuthCore_Privacy' in project 'Pods'
+    Target 'AppAuth-AppAuthCore_Privacy' in project 'Pods' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk -x objective-c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/libtool -V
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/aswath/Documents/tripzo/TMS/ios/Runner/Assets.xcassets
+
+Build description signature: ca00965bc176371e109c6f6296915cff
+Build description path: /Users/aswath/Library/Developer/Xcode/DerivedData/Runner-chsqqdtqlbrtqjacptytktquuyzd/Build/Intermediates.noindex/ArchiveIntermediates/Runner/IntermediateBuildFilesPath/XCBuildData/ca00965bc176371e109c6f6296915cff.xcbuilddata
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'permission_handler_apple-permission_handler_apple_privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 10.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'GTMSessionFetcher-GTMSessionFetcher_Core_Privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'SDWebImage' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'DKImagePickerController-DKImagePickerController' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Runner.xcodeproj: error: "Runner" has entitlements that require signing with a development certificate. Enable development signing in the Signing & Capabilities editor. (in target 'Runner' from project 'Runner')
+note: Run script build phase 'Run Script' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Runner' from project 'Runner')
+note: Run script build phase 'Thin Binary' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Runner' from project 'Runner')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 10.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'GTMSessionFetcher' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 11.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'geolocator_apple-geolocator_apple_privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 10.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'GTMAppAuth' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'PromisesObjC-FBLPromises_Privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'SwiftyGif-SwiftyGif' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'libwebp' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'DKPhotoGallery' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'PromisesObjC' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 10.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'GTMAppAuth-GTMAppAuth_Privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 10.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'GTMSessionFetcher-GTMSessionFetcher_Full_Privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'AppAuth' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'SDWebImageWebPCoder' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'DKImagePickerController' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'flutter_local_notifications-flutter_local_notifications_privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'AppAuth-AppAuthCore_Privacy' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'Mantle' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'SwiftyGif' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'DKPhotoGallery-DKPhotoGallery' from project 'Pods')
+/Users/aswath/Documents/tripzo/TMS/ios/Pods/Pods.xcodeproj: warning: The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 9.0, but the range of supported deployment target versions is 12.0 to 26.5.99. (in target 'SDWebImage-SDWebImage' from project 'Pods')
+** ARCHIVE FAILED **
+
+
+The following build commands failed:
+	Archiving workspace Runner with scheme Runner
+(1 failure)
