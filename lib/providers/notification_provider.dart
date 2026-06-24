@@ -168,12 +168,44 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchNotifications() async {
+  int currentPage = 1;
+  bool hasMore = true;
+  String currentType = 'All';
+
+  Future<void> fetchNotifications({bool refresh = false, String? type}) async {
+    if (type != null && currentType != type) {
+      currentType = type;
+      refresh = true;
+    }
+    
+    if (refresh) {
+      currentPage = 1;
+      hasMore = true;
+      notifications.clear();
+    }
+
+    if (!hasMore || isLoading) return;
+
     isLoading = true;
     notifyListeners();
 
     try {
-      notifications = await apiService.getMyNotifications();
+      final fetchedList = await apiService.getMyNotifications(
+        page: currentPage, 
+        limit: 20, 
+        type: currentType
+      );
+      
+      if (fetchedList.isEmpty || fetchedList.length < 20) {
+        hasMore = false;
+      }
+      
+      if (refresh) {
+        notifications = fetchedList;
+      } else {
+        notifications.addAll(fetchedList);
+      }
+      currentPage++;
     } catch (e) {
       debugPrint("Error fetching notifications: $e");
     } finally {

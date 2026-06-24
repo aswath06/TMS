@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
@@ -131,6 +132,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
           }
 
           if (!mounted) return;
+          HapticFeedback.vibrate();
           setState(() {
             _isSuccessState = true;
             _isProcessing = false;
@@ -212,6 +214,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
+        HapticFeedback.vibrate();
         setState(() {
           _isSuccessState = true;
           _isProcessing = false;

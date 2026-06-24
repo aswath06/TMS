@@ -13,13 +13,30 @@ class NotificationListScreen extends ConsumerStatefulWidget {
 
 class _NotificationListScreenState extends ConsumerState<NotificationListScreen> {
   String _activeFilter = 'All'; // 'All', 'Unread', 'Alerts'
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(notificationProviderFamily).fetchNotifications();
+      ref.read(notificationProviderFamily).fetchNotifications(refresh: true, type: _activeFilter);
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final provider = ref.read(notificationProviderFamily);
+      if (!provider.isLoading && provider.hasMore) {
+        provider.fetchNotifications();
+      }
+    }
   }
 
   @override
@@ -57,14 +74,8 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
                         );
                       }
 
-                      final filteredList = provider.notifications.where((n) {
-                        if (_activeFilter == 'Unread') {
-                          return !n.isRead;
-                        } else if (_activeFilter == 'Alerts') {
-                          return n.type == 'ERROR' || n.type == 'WARNING';
-                        }
-                        return true;
-                      }).toList();
+                      // Data is now filtered from backend
+                      final filteredList = provider.notifications;
 
                       if (filteredList.isEmpty) {
                         return _buildEmptyState(isDark, titleColor, subColor, primaryBlue);
@@ -73,12 +84,21 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
                       return RefreshIndicator(
                         color: primaryBlue,
                         backgroundColor: cardBgColor,
-                        onRefresh: () => provider.fetchNotifications(),
+                        onRefresh: () => provider.fetchNotifications(refresh: true),
                         child: ListView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                          itemCount: filteredList.length,
+                          itemCount: filteredList.length + (provider.hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
+                            if (index == filteredList.length) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: CircularProgressIndicator(color: primaryBlue),
+                                ),
+                              );
+                            }
                             return NotificationCard(
                               notification: filteredList[index],
                               isDashboard: false,
@@ -205,7 +225,10 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
-                  onTap: () => setState(() => _activeFilter = filter),
+                  onTap: () {
+                    setState(() => _activeFilter = filter);
+                    ref.read(notificationProviderFamily).fetchNotifications(refresh: true, type: filter);
+                  },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeInOut,
