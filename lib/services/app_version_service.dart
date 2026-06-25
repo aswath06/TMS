@@ -28,8 +28,12 @@ class AppVersionService {
         if (data['success'] == true) {
           if (data['updateRequired'] == true) {
             final bool forceUpdate = data['forceUpdate'] == true;
-            final String playStoreUrl = data['playStoreUrl'] ?? "";
-            final String appStoreUrl = data['appStoreUrl'] ?? "";
+            final String playStoreUrl = (data['playStoreUrl'] != null && data['playStoreUrl'].toString().isNotEmpty)
+                ? data['playStoreUrl']
+                : "https://play.google.com/store/apps/details?id=com.aswath.tripzo";
+            final String appStoreUrl = (data['appStoreUrl'] != null && data['appStoreUrl'].toString().isNotEmpty)
+                ? data['appStoreUrl']
+                : "https://apps.apple.com/app/tripzo-transport-management/id6780758783";
             final String releaseNotes = data['releaseNotes'] ?? "A new version of the app is available.";
             
             final String storeUrl = Platform.isIOS ? (appStoreUrl.isNotEmpty ? appStoreUrl : playStoreUrl) : playStoreUrl;

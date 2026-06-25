@@ -623,8 +623,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                           width: 1.5,
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             "DA/TA is required for driver*",
@@ -634,39 +634,70 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                               color: isDark ? Colors.white : const Color(0xFF0F172A),
                             ),
                           ),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
-                              GestureDetector(
-                                onTap: () {
-                                  setModalState(() {
-                                    allowanceNeeded = true;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: allowanceNeeded == true ? const Color(0xFF6366F1) : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: allowanceNeeded == true ? const Color(0xFF6366F1) : (isDark ? Colors.white24 : Colors.black12)),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      allowanceNeeded = true;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: allowanceNeeded == true ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: allowanceNeeded == true ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "YES", 
+                                      style: TextStyle(
+                                        color: allowanceNeeded == true ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)), 
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 14,
+                                        letterSpacing: 0.5,
+                                      )
+                                    ),
                                   ),
-                                  child: Text("YES", style: TextStyle(color: allowanceNeeded == true ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)), fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  setModalState(() {
-                                    allowanceNeeded = false;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: allowanceNeeded == false ? Colors.redAccent : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: allowanceNeeded == false ? Colors.redAccent : (isDark ? Colors.white24 : Colors.black12)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      allowanceNeeded = false;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: allowanceNeeded == false ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: allowanceNeeded == false ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "NO", 
+                                      style: TextStyle(
+                                        color: allowanceNeeded == false ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)), 
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 14,
+                                        letterSpacing: 0.5,
+                                      )
+                                    ),
                                   ),
-                                  child: Text("NO", style: TextStyle(color: allowanceNeeded == false ? Colors.white : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)), fontWeight: FontWeight.bold, fontSize: 12)),
                                 ),
                               ),
                             ],
