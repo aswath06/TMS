@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:io' show Platform;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:in_app_update/in_app_update.dart';
 import '../utils/api_constants.dart';
 
 class AppVersionService {
@@ -13,11 +15,12 @@ class AppVersionService {
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final int currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+      final String currentVersion = packageInfo.version;
 
       final response = await http.post(
         Uri.parse(_checkUrl),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'buildNumber': currentBuild}),
+        body: jsonEncode({'buildNumber': currentBuild, 'version': currentVersion}),
       );
 
       if (response.statusCode == 200) {
@@ -26,7 +29,10 @@ class AppVersionService {
           if (data['updateRequired'] == true) {
             final bool forceUpdate = data['forceUpdate'] == true;
             final String playStoreUrl = data['playStoreUrl'] ?? "";
+            final String appStoreUrl = data['appStoreUrl'] ?? "";
             final String releaseNotes = data['releaseNotes'] ?? "A new version of the app is available.";
+            
+            final String storeUrl = Platform.isIOS ? (appStoreUrl.isNotEmpty ? appStoreUrl : playStoreUrl) : playStoreUrl;
 
             if (!forceUpdate && !showNoUpdateFound) { // if checking manually, ignore dismissed
               final prefs = await SharedPreferences.getInstance();
@@ -45,8 +51,25 @@ class AppVersionService {
               }
             }
 
+            if (Platform.isAndroid) {
+              try {
+                final updateInfo = await InAppUpdate.checkForUpdate();
+                if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable) {
+                  if (forceUpdate) {
+                    await InAppUpdate.performImmediateUpdate();
+                  } else {
+                    await InAppUpdate.startFlexibleUpdate();
+                    await InAppUpdate.completeFlexibleUpdate();
+                  }
+                  return; // Successfully triggered Android native update
+                }
+              } catch (e) {
+                debugPrint("InAppUpdate failed or not available yet: \$e");
+              }
+            }
+
             if (context.mounted) {
-              _showUpdateDialog(context, forceUpdate, playStoreUrl, releaseNotes);
+              _showUpdateDialog(context, forceUpdate, storeUrl, releaseNotes);
             }
           } else if (showNoUpdateFound && context.mounted) {
             _showNoUpdateDialog(context);
@@ -146,7 +169,7 @@ class AppVersionService {
     );
   }
 
-  static void _showUpdateDialog(BuildContext context, bool forceUpdate, String playStoreUrl, String releaseNotes) {
+  static void _showUpdateDialog(BuildContext context, bool forceUpdate, String storeUrl, String releaseNotes) {
     showDialog(
       context: context,
       barrierDismissible: !forceUpdate,
@@ -275,7 +298,7 @@ class AppVersionService {
                         flex: 2,
                         child: ElevatedButton(
                           onPressed: () async {
-                            final Uri url = Uri.parse(playStoreUrl);
+                            final Uri url = Uri.parse(storeUrl);
                             if (await canLaunchUrl(url)) {
                               await launchUrl(url, mode: LaunchMode.externalApplication);
                             }

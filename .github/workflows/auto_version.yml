@@ -1,0 +1,82 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse commit message and bump version
+        id: bump
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B | tr '[:upper:]' '[:lower:]')
+          
+          if [[ "$COMMIT_MSG" == *"major"* ]]; then
+            BUMP_TYPE="major"
+          elif [[ "$COMMIT_MSG" == *"minor"* ]]; then
+            BUMP_TYPE="minor"
+          elif [[ "$COMMIT_MSG" == *"patch"* ]] || [[ "$COMMIT_MSG" == *"small"* ]]; then
+            BUMP_TYPE="patch"
+          else
+            echo "No version bump keyword found."
+            exit 0
+          fi
+          
+          echo "Bumping $BUMP_TYPE version..."
+          
+          # Read current version from pubspec.yaml
+          # Format: version: 1.0.0+26
+          CURRENT_VERSION_LINE=$(grep -E "^version: " pubspec.yaml)
+          if [[ -z "$CURRENT_VERSION_LINE" ]]; then
+            echo "Error: version not found in pubspec.yaml"
+            exit 1
+          fi
+          
+          CURRENT_VERSION=$(echo "$CURRENT_VERSION_LINE" | sed 's/version: //g' | tr -d '\r' | tr -d ' ')
+          SEMVER=$(echo "$CURRENT_VERSION" | cut -d '+' -f 1)
+          BUILD_NUM=$(echo "$CURRENT_VERSION" | cut -d '+' -f 2)
+          
+          IFS='.' read -r -a VERSION_PARTS <<< "$SEMVER"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+          
+          if [[ "$BUMP_TYPE" == "major" ]]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [[ "$BUMP_TYPE" == "minor" ]]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [[ "$BUMP_TYPE" == "patch" ]]; then
+            PATCH=$((PATCH + 1))
+          fi
+          
+          NEW_BUILD_NUM=$((BUILD_NUM + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH+$NEW_BUILD_NUM"
+          
+          echo "New Version: $NEW_VERSION"
+          
+          # Use sed to replace the version in pubspec.yaml
+          sed -i "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
+          
+          echo "BUMPED=true" >> $GITHUB_ENV
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Commit and push changes
+        if: env.BUMPED == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${{ env.NEW_VERSION }} [skip ci]"
+          git push
