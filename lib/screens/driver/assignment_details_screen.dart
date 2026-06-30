@@ -1791,7 +1791,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       Expanded(
                         child: _buildMetricTile(
                           "TOTAL DISTANCE",
-                          "${distance!.toStringAsFixed(1)} KM",
+                          "${distance.toStringAsFixed(1)} KM",
                           Icons.route_outlined,
                           primaryColor,
                           isDark,
