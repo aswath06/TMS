@@ -53,7 +53,7 @@ void onStart(ServiceInstance service) async {
 }
 
 // Helper to update background persistent service indicator
-void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText, {bool isHighPriority = false}) {
+void _updateNotificationUI(FlutterLocalNotificationsPlugin notifications, String subText) {
   // No-op to completely hide the background service notification in the notification drawer
 }
 
