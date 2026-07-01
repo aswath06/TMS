@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/admin/request/request_list_page.dart';
+import 'package:tripzo/screens/admin/request/daily_routines_page.dart';
 import 'package:tripzo/screens/admin/fuel/fuel_page.dart';
 import 'package:tripzo/screens/admin/admin_allowance_screen.dart';
 import 'dart:math' as math;
@@ -16,6 +17,7 @@ class AdminRequestHubScreen extends ConsumerStatefulWidget {
 
 class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  String _activeVehicleFilter = 'Total'; // 'Total', 'Student', 'Faculty'
 
   late List<Map<String, dynamic>> _cardsData;
   bool _initialized = false;
@@ -106,7 +108,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'icon': Icons.directions_bus_rounded,
           'color': const Color(0xFF3B82F6),
           'onTap': () {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bus Daily Routines screen coming soon')));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const DailyRoutinesListPage()));
           },
         },
         {
@@ -819,24 +821,29 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
 
   Widget _buildRoutineStats(bool isDark, Color primaryBlue) {
     final tiles = [
-      _buildStatTile("Bus TRW", "45", Icons.directions_bus_rounded, primaryBlue, isDark),
+      _buildStatTile("Total Bus", "45", Icons.directions_bus_rounded, primaryBlue, isDark),
+      _buildStatTile("Running", "4", Icons.speed_rounded, const Color(0xFFEF4444), isDark),
       _buildStatTile("In Service", "42", Icons.build_circle_rounded, const Color(0xFF10B981), isDark),
-      _buildStatTile("Running", "38", Icons.speed_rounded, const Color(0xFFF59E0B), isDark),
-      _buildStatTile("Outcampus", "4", Icons.outbox_rounded, const Color(0xFFEF4444), isDark),
     ];
 
-    // Dummy Vehicles Data
+    // Dummy Vehicles Data (with student and faculty stats mapped)
     final List<Map<String, String>> vehicles = List.generate(5, (index) => {
       "veh": "TN36Z123${index}",
       "fn": "${50 + index * 5}",
-      "an": "${45 + index * 5}"
+      "an": "${45 + index * 5}",
+      "fac_fn": "${10 + index * 2}",
+      "fac_an": "${8 + index * 2}"
     });
 
     int totalFn = 0;
     int totalAn = 0;
+    int totalFacFn = 0;
+    int totalFacAn = 0;
     for (var v in vehicles) {
       totalFn += int.parse(v['fn']!);
       totalAn += int.parse(v['an']!);
+      totalFacFn += int.parse(v['fac_fn']!);
+      totalFacAn += int.parse(v['fac_an']!);
     }
 
     return Column(
@@ -846,92 +853,150 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
         const SizedBox(height: 8),
         _buildPaginatedStats(tiles, isDark),
         const SizedBox(height: 16),
+        
+        // Student Sessions Section
         _buildSectionHeader("Student Sessions", isDark),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildSessionSummaryCard(
+                  "Total", "${totalFn + totalAn}", Icons.groups_rounded, primaryBlue, isDark
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSessionSummaryCard(
+                  "FN", "$totalFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSessionSummaryCard(
+                  "AN", "$totalAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Faculty Sessions Section (Matches student session cards format exactly)
+        _buildSectionHeader("Faculty Sessions", isDark),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildSessionSummaryCard(
+                  "Total", "${totalFacFn + totalFacAn}", Icons.groups_rounded, primaryBlue, isDark
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSessionSummaryCard(
+                  "FN", "$totalFacFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSessionSummaryCard(
+                  "AN", "$totalFacAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Vehicle Assignment Section
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Column(
             children: [
-              // Summary Cards Row
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSessionSummaryCard(
-                      "Total", "${totalFn + totalAn}", Icons.groups_rounded, primaryBlue, isDark
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSessionSummaryCard(
-                      "FN", "$totalFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSessionSummaryCard(
-                      "AN", "$totalAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              // Vehicle List Header
+              // Vehicle List Header with Role Filter Toggle
               Row(
                 children: [
                   Text("Vehicle Assignment", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
                   const Spacer(),
-                  Icon(Icons.directions_bus, size: 16, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildRoleFilterSegment("Total", isDark, primaryBlue),
+                        _buildRoleFilterSegment("Student", isDark, primaryBlue),
+                        _buildRoleFilterSegment("Faculty", isDark, primaryBlue),
+                      ],
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // Vehicle List Cards
-              ...vehicles.map((v) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+              // Vehicle List Cards (dynamic badges based on role selection filter)
+              ...vehicles.map((v) {
+                String fnCount = "";
+                String anCount = "";
+                if (_activeVehicleFilter == 'Student') {
+                  fnCount = v['fn']!;
+                  anCount = v['an']!;
+                } else if (_activeVehicleFilter == 'Faculty') {
+                  fnCount = v['fac_fn']!;
+                  anCount = v['fac_an']!;
+                } else {
+                  fnCount = "${int.parse(v['fn']!) + int.parse(v['fac_fn']!)}";
+                  anCount = "${int.parse(v['an']!) + int.parse(v['fac_an']!)}";
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
-                        shape: BoxShape.circle,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.directions_bus_filled_rounded, size: 20, color: isDark ? Colors.grey[300] : Colors.grey[700]),
                       ),
-                      child: Icon(Icons.directions_bus_filled_rounded, size: 20, color: isDark ? Colors.grey[300] : Colors.grey[700]),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(v['veh']!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
-                          const SizedBox(height: 4),
-                          Text("Active Route", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[500] : Colors.grey[500])),
-                        ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(v['veh']!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
+                            const SizedBox(height: 4),
+                            Text("Active Route", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[500] : Colors.grey[500])),
+                          ],
+                        ),
                       ),
-                    ),
-                    
-                    // Badges for FN and AN
-                    _buildSessionBadge("FN", v['fn']!, const Color(0xFF10B981)),
-                    const SizedBox(width: 8),
-                    _buildSessionBadge("AN", v['an']!, const Color(0xFFF59E0B)),
-                  ],
-                ),
-              )),
+                      _buildSessionBadge("FN", fnCount, const Color(0xFF10B981)),
+                      const SizedBox(width: 8),
+                      _buildSessionBadge("AN", anCount, const Color(0xFFF59E0B)),
+                    ],
+                  ),
+                );
+              }),
             ],
           ),
         ),
@@ -973,6 +1038,39 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           Text("$label ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
           Text(count, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoleFilterSegment(String role, bool isDark, Color primaryBlue) {
+    final bool isSelected = _activeVehicleFilter == role;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _activeVehicleFilter = role;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? primaryBlue : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: isSelected && !isDark
+              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1))]
+              : [],
+        ),
+        child: Text(
+          role,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: isSelected
+                ? (isDark ? Colors.white : primaryBlue)
+                : (isDark ? Colors.grey[400] : Colors.grey[600]),
+          ),
+        ),
       ),
     );
   }

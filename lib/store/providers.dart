@@ -13,6 +13,7 @@ import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/services/notification_firebase_service.dart';
 import 'package:tripzo/store/expiration_store.dart';
+import 'package:tripzo/store/daily_routines_store.dart';
 
 /// ExpirationStore Provider
 final expirationStoreProvider = ChangeNotifierProvider<ExpirationStore>((ref) {
@@ -69,4 +70,9 @@ final notificationProviderFamily = ChangeNotifierProvider<NotificationProvider>(
 /// SecurityVehicleStore Provider
 final securityVehicleStoreProvider = ChangeNotifierProvider<SecurityVehicleStore>((ref) {
   return SecurityVehicleStore();
+});
+
+/// DailyRoutinesStore Provider
+final dailyRoutinesStoreProvider = ChangeNotifierProvider<DailyRoutinesStore>((ref) {
+  return DailyRoutinesStore();
 });
