@@ -26,12 +26,200 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
   String? _selectedGenderFilter;
   String? _selectedBatchFilter;
   String? _selectedDeptFilter;
+  String _attendanceSearchQuery = '';
+  int _attendanceSessionIndex = 0;
+  int _passengerTypeIndex = 0;
+  String? _selectedAttendanceTypeFilter;
+  String? _selectedAttendanceStatusFilter;
+  String? _selectedAttendanceDeptFilter;
+
+
+  String _formatTimeOnly(dynamic dtStr) {
+    if (dtStr == null || dtStr.toString().isEmpty || dtStr == 'null') return 'N/A';
+    try {
+      final DateTime dt = DateTime.parse(dtStr.toString()).toLocal();
+      return DateFormat('hh:mm a').format(dt);
+    } catch (e) {
+      return dtStr.toString();
+    }
+  }
+
+  String _formatDateOnly(dynamic dtStr) {
+    if (dtStr == null || dtStr.toString().isEmpty || dtStr == 'null') return 'N/A';
+    try {
+      final DateTime dt = DateTime.parse(dtStr.toString()).toLocal();
+      return DateFormat('yyyy-MM-dd').format(dt);
+    } catch (e) {
+      return dtStr.toString();
+    }
+  }
+
+  Widget _buildStatTile(String label, String value, String subText, Color accentColor, Color titleColor, Color subColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentColor.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: subColor),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w900, color: titleColor),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subText,
+            style: TextStyle(fontSize: 9, color: subColor.withValues(alpha: 0.7), fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOdoTile(String label, double? odoVal, bool isDark, Color titleColor, Color subColor, {bool isHighlight = false, Color? highlightColor}) {
+    final displayVal = odoVal != null && odoVal > 0 ? "${odoVal.toStringAsFixed(1)} km" : "N/A";
+    final Color bgColor = isHighlight 
+        ? (highlightColor?.withValues(alpha: 0.08) ?? Colors.transparent)
+        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC));
+    final Color borderColor = isHighlight
+        ? (highlightColor?.withValues(alpha: 0.2) ?? Colors.transparent)
+        : Colors.transparent;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: subColor, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            displayVal,
+            style: GoogleFonts.outfit(
+              fontSize: 12, 
+              fontWeight: FontWeight.w900, 
+              color: isHighlight ? (highlightColor ?? titleColor) : titleColor
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerifierWidget(dynamic verifier, bool isDark, Color titleColor, Color subColor, Color primaryBlue) {
+    if (verifier == null || verifier == 'null') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.verified_user_rounded, color: subColor.withValues(alpha: 0.3), size: 20),
+            const SizedBox(width: 10),
+            Text(
+              "Not Verified Yet",
+              style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
+    String name = 'N/A';
+    String roleStr = 'N/A';
+    if (verifier is Map) {
+      name = verifier['name'] ?? verifier['username'] ?? 'N/A';
+      roleStr = verifier['role'] is Map 
+          ? (verifier['role']?['name'] ?? 'N/A') 
+          : (verifier['role']?.toString() ?? 'N/A');
+    } else {
+      name = verifier.toString();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.verified_user_rounded, color: Colors.green, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Verified By",
+                  style: TextStyle(fontSize: 10, color: subColor, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: titleColor),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              roleStr,
+              style: GoogleFonts.outfit(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: Colors.green,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _run = widget.runData;
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _studentSearchController.addListener(() {
       setState(() {
         _studentSearchQuery = _studentSearchController.text.toLowerCase().trim();
@@ -52,24 +240,48 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
       final String? token = await UserStore.getToken();
       if (token == null) return;
 
-      final String serviceDate = _run['service_date'] ?? '';
-      if (serviceDate.isEmpty) return;
+      final role = await UserStore.getRole();
+      final bool isSuperOrTransportAdmin = role != null &&
+          (role.toLowerCase() == 'super admin' ||
+              role.toLowerCase() == 'transport admin');
 
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?page=1&limit=50&service_date=$serviceDate";
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
+      if (isSuperOrTransportAdmin) {
+        final String runId = _run['id']?.toString() ?? '';
+        final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
+        final response = await http.get(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token),
+        );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> runs = data['data']?['runs'] ?? [];
-          final freshRun = runs.firstWhere((r) => r['id'] == _run['id'], orElse: () => null);
-          if (freshRun != null) {
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['success'] == true && data['data'] != null) {
+            final Map<String, dynamic> freshRun = Map<String, dynamic>.from(data['data']);
             setState(() {
-              _run = Map<String, dynamic>.from(freshRun);
+              _run = freshRun;
             });
+          }
+        }
+      } else {
+        final String serviceDate = _run['service_date'] ?? '';
+        if (serviceDate.isEmpty) return;
+
+        final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?page=1&limit=50&service_date=$serviceDate";
+        final response = await http.get(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['success'] == true) {
+            final List<dynamic> runs = data['data']?['runs'] ?? [];
+            final freshRun = runs.firstWhere((r) => r['id'] == _run['id'], orElse: () => null);
+            if (freshRun != null) {
+              setState(() {
+                _run = Map<String, dynamic>.from(freshRun);
+              });
+            }
           }
         }
       }
@@ -354,7 +566,18 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
   }
 
   Widget _buildAssignmentsTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
-    final assignments = _run['assignment'] as List? ?? [];
+    final assignments = List.from(_run['assignment'] ?? []);
+    assignments.sort((a, b) {
+      final String codeA = (a['shift_code'] ?? '').toString().toLowerCase();
+      final String codeB = (b['shift_code'] ?? '').toString().toLowerCase();
+      
+      final bool isMorningA = codeA.contains('morning') || codeA.contains('fn');
+      final bool isMorningB = codeB.contains('morning') || codeB.contains('fn');
+      
+      if (isMorningA && !isMorningB) return -1;
+      if (!isMorningA && isMorningB) return 1;
+      return 0;
+    });
     if (assignments.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshDetails,
@@ -456,7 +679,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Vehicle section title
+                    // Vehicle Section Header
                     Row(
                       children: [
                         Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 18),
@@ -467,13 +690,36 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                         ),
                       ],
                     ),
-                    const Divider(height: 20, thickness: 0.8),
+                    const SizedBox(height: 12),
+                    
                     if (vehicle != null) ...[
-                      _buildDetailRow(Icons.tag_rounded, "Vehicle Number", vehicle['vehicle_number'] ?? 'N/A', isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.bus_alert_rounded, "Make & Model", "${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''}".trim(), isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.local_gas_station_rounded, "Fuel Type", vehicle['fuel_type'] ?? 'N/A', isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.airline_seat_recline_normal_rounded, "Capacity", "${vehicle['capacity'] ?? 'N/A'} Seats", isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.vpn_key_rounded, "Vehicle OTP", vehicle['vehicle_otp'] ?? 'N/A', isDark, titleColor, subColor, isOtp: true),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildGridItem(Icons.tag_rounded, "Vehicle Number", vehicle['vehicle_number'] ?? 'N/A', primaryBlue, titleColor, subColor),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildGridItem(Icons.directions_bus_rounded, "Make & Model", "${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''}".trim().isEmpty ? 'N/A' : "${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''}".trim(), primaryBlue, titleColor, subColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildGridItem(Icons.local_gas_station_rounded, "Fuel Type", vehicle['fuel_type'] ?? 'N/A', primaryBlue, titleColor, subColor),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildGridItem(Icons.airline_seat_recline_normal_rounded, "Capacity", "${vehicle['capacity'] ?? 'N/A'} Seats", primaryBlue, titleColor, subColor),
+                          ),
+                        ],
+                      ),
+                      if (vehicle['vehicle_otp'] != null && vehicle['vehicle_otp'].toString().isNotEmpty && vehicle['vehicle_otp'] != 'null') ...[
+                        const SizedBox(height: 12),
+                        _buildOtpRow(Icons.vpn_key_rounded, "Vehicle OTP", vehicle['vehicle_otp'].toString(), Colors.green, titleColor, subColor),
+                      ],
                     ] else ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -481,7 +727,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                       ),
                     ],
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     // Divider between Vehicle and Driver
                     Container(
                       height: 1,
@@ -489,37 +735,101 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                     ),
                     const SizedBox(height: 20),
 
-                    // Driver section title with Call Button on the right
+                    // Driver Section Header
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
+                        const Icon(Icons.person_pin_rounded, color: Colors.orange, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Driver Information",
+                          style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (driver != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.orange.withValues(alpha: 0.08)),
+                        ),
+                        child: Column(
                           children: [
-                            const Icon(Icons.person_pin_rounded, color: Colors.orange, size: 18),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Driver Information",
-                              style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                                  child: const Icon(Icons.person_rounded, color: Colors.orange, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        driverUser?['name'] ?? 'Driver Name',
+                                        style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: titleColor),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Employee Code: ${driver['employee_code'] ?? 'N/A'}",
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (phone.isNotEmpty && phone != 'N/A')
+                                  IconButton(
+                                    onPressed: () => _makePhoneCall(phone),
+                                    icon: const Icon(Icons.call_rounded, color: Colors.green, size: 16),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Colors.green.withValues(alpha: 0.08),
+                                      padding: const EdgeInsets.all(8),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(height: 1, thickness: 0.8),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.credit_card_rounded, size: 12, color: subColor),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          "License: ${driver['license_number'] ?? 'N/A'}",
+                                          style: TextStyle(fontSize: 11, color: subColor, fontWeight: FontWeight.bold),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    "${driver['experience_years'] ?? '0'} Yrs Exp",
+                                    style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        if (phone.isNotEmpty)
-                          IconButton(
-                            onPressed: () => _makePhoneCall(phone),
-                            icon: const Icon(Icons.call_rounded, color: Colors.green, size: 18),
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.green.withValues(alpha: 0.1),
-                              padding: const EdgeInsets.all(8),
-                            ),
-                          )
-                      ],
-                    ),
-                    const Divider(height: 20, thickness: 0.8),
-                    if (driver != null) ...[
-                      _buildDetailRow(Icons.person_rounded, "Driver Name", driverUser?['name'] ?? 'N/A', isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.pin_rounded, "Employee Code", driver['employee_code'] ?? 'N/A', isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.credit_card_rounded, "License Number", driver['license_number'] ?? 'N/A', isDark, titleColor, subColor),
-                      _buildDetailRow(Icons.timeline_rounded, "Experience", "${driver['experience_years'] ?? '0'} Years", isDark, titleColor, subColor),
+                      ),
                     ] else ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -536,6 +846,391 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
     ),
   );
 }
+
+  Widget _buildVehicleTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
+    final odoReadings = _run['odometerReadings'] as List? ?? [];
+    final campusInVerifier = _run['campusInVerifiedBy'] ?? _run['campus_in_verified_by'];
+    final campusOutVerifier = _run['campusOutVerifiedBy'] ?? _run['campus_out_verified_by'];
+
+    // Parse Odometer Readings
+    double? startOdo;
+    double? campusInOdo;
+    double? campusOutOdo;
+    double? haltOdo;
+
+    for (var reading in odoReadings) {
+      final String type = (reading['reading_type'] ?? '').toString().toUpperCase();
+      final double val = double.tryParse((reading['odometer_reading'] ?? '0').toString()) ?? 0.0;
+      if (type == 'START') {
+        startOdo = val;
+      } else if (type == 'CAMPUS_IN') {
+        campusInOdo = val;
+      } else if (type == 'CAMPUS_OUT') {
+        campusOutOdo = val;
+      } else if (type == 'HALT') {
+        haltOdo = val;
+      }
+    }
+
+    // Morning Time Taken
+    String morningTimeTaken = 'N/A';
+    if (_run['actual_start_at'] != null && _run['actual_campus_in_time'] != null) {
+      final DateTime? start = DateTime.tryParse(_run['actual_start_at'].toString());
+      final DateTime? campusIn = DateTime.tryParse(_run['actual_campus_in_time'].toString());
+      if (start != null && campusIn != null) {
+        final diff = campusIn.difference(start);
+        final hrs = diff.inHours;
+        final mins = diff.inMinutes % 60;
+        morningTimeTaken = hrs > 0 ? "$hrs hrs $mins mins" : "$mins mins";
+      }
+    }
+
+    // Morning Distance Covered
+    double morningDistance = 0.0;
+    if (startOdo != null && campusInOdo != null && startOdo > 0 && campusInOdo > 0) {
+      morningDistance = campusInOdo - startOdo;
+    }
+
+    // Evening Time Taken (only if actual_halt_time is not null)
+    String eveningTimeTaken = 'N/A';
+    bool hasHalt = _run['actual_halt_time'] != null && _run['actual_halt_time'].toString().isNotEmpty && _run['actual_halt_time'].toString() != 'null';
+    if (hasHalt && _run['actual_campus_out_time'] != null) {
+      final DateTime? campusOut = DateTime.tryParse(_run['actual_campus_out_time'].toString());
+      final DateTime? halt = DateTime.tryParse(_run['actual_halt_time'].toString());
+      if (campusOut != null && halt != null) {
+        final diff = halt.difference(campusOut);
+        final hrs = diff.inHours;
+        final mins = diff.inMinutes % 60;
+        eveningTimeTaken = hrs > 0 ? "$hrs hrs $mins mins" : "$mins mins";
+      }
+    }
+
+    // Evening Distance Covered
+    double eveningDistance = 0.0;
+    if (hasHalt && campusOutOdo != null && haltOdo != null && campusOutOdo > 0 && haltOdo > 0) {
+      eveningDistance = haltOdo - campusOutOdo;
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshDetails,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Morning Trip Card
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Card Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: primaryBlue.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.wb_sunny_rounded, color: primaryBlue, size: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Morning Trip",
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: titleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (morningDistance > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: primaryBlue.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              "${morningDistance.toStringAsFixed(2)} km",
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                                color: primaryBlue,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, thickness: 0.5),
+                  
+                  // Grid for Timestamps and Duration
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: _buildStatTile("Start Time", _formatTimeOnly(_run['actual_start_at']), _formatDateOnly(_run['actual_start_at']), primaryBlue, titleColor, subColor)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildStatTile("Campus In", _formatTimeOnly(_run['actual_campus_in_time']), _formatDateOnly(_run['actual_campus_in_time']), Colors.green, titleColor, subColor)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildStatTile("Duration", morningTimeTaken, "Time taken", Colors.orange, titleColor, subColor)),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Odometer Readings Header
+                        Text(
+                          "Odometer Readings",
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildOdoTile("Start Odo", startOdo, isDark, titleColor, subColor),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildOdoTile("Campus In Odo", campusInOdo, isDark, titleColor, subColor),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildOdoTile("Distance", morningDistance > 0 ? morningDistance : null, isDark, titleColor, subColor, isHighlight: true, highlightColor: primaryBlue),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+                        
+                        // Passengers Count Row
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.people_alt_rounded, color: subColor, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Campus In Count",
+                                    style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                _run['campus_in_count']?.toString() ?? '0',
+                                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: titleColor),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+                        
+                        // Verification Footer Stamp
+                        _buildVerifierWidget(campusInVerifier, isDark, titleColor, subColor, primaryBlue),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 2. Evening Trip Card
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Card Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.nights_stay_rounded, color: Colors.orange, size: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Evening Trip",
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: titleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (hasHalt && eveningDistance > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              "${eveningDistance.toStringAsFixed(2)} km",
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, thickness: 0.5),
+                  
+                  // Grid for Timestamps and Duration
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: _buildStatTile("Campus Out", _formatTimeOnly(_run['actual_campus_out_time']), _formatDateOnly(_run['actual_campus_out_time']), Colors.orange, titleColor, subColor)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildStatTile("Halt Time", hasHalt ? _formatTimeOnly(_run['actual_halt_time']) : "N/A", hasHalt ? _formatDateOnly(_run['actual_halt_time']) : "Pending", hasHalt ? Colors.red : subColor, titleColor, subColor)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildStatTile("Duration", hasHalt ? eveningTimeTaken : "N/A", hasHalt ? "Time taken" : "Pending", hasHalt ? Colors.blue : subColor, titleColor, subColor)),
+                          ],
+                        ),
+                        
+                        if (hasHalt) ...[
+                          const SizedBox(height: 16),
+                          
+                          // Odometer Readings Header
+                          Text(
+                            "Odometer Readings",
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: titleColor,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildOdoTile("Campus Out Odo", campusOutOdo, isDark, titleColor, subColor),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildOdoTile("Halt Odometer", haltOdo, isDark, titleColor, subColor),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildOdoTile("Distance", eveningDistance > 0 ? eveningDistance : null, isDark, titleColor, subColor, isHighlight: true, highlightColor: Colors.orange),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        const SizedBox(height: 16),
+                        
+                        // Passengers Count Row
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.people_alt_rounded, color: subColor, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Campus Out Count",
+                                    style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                _run['campus_out_count']?.toString() ?? '0',
+                                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: titleColor),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+                        
+                        // Verification Footer Stamp
+                        _buildVerifierWidget(campusOutVerifier, isDark, titleColor, subColor, Colors.orange),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildTimelineTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue) {
     final stops = _run['runStops'] as List? ?? [];
@@ -696,7 +1391,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
 
   Widget _buildPassengersTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
     final studentsList = _run['students'] as List? ?? [];
-    if (studentsList.isEmpty) {
+    final facultiesList = _run['faculties'] as List? ?? [];
+
+    if (studentsList.isEmpty && facultiesList.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshDetails,
         child: SingleChildScrollView(
@@ -709,7 +1406,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
               children: [
                 Icon(Icons.people_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
                 const SizedBox(height: 12),
-                Text("No student passengers assigned", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
+                Text("No passengers assigned", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -717,92 +1414,222 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
       );
     }
 
-    final filteredStudents = studentsList.where((stud) {
-      final s = stud['student'] as Map<String, dynamic>?;
-      final user = s?['user'] as Map<String, dynamic>?;
-      final String name = (user?['name'] ?? '').toString().toLowerCase();
-      final String roll = (s?['roll_number'] ?? '').toString().toLowerCase();
-      final String dept = (s?['department'] ?? '').toString().toLowerCase();
-      final String morningAtt = (stud['morning_attendance_status'] ?? '').toString().toLowerCase();
-      final String eveningAtt = (stud['evening_attendance_status'] ?? '').toString().toLowerCase();
+    final filteredPassengers = (_passengerTypeIndex == 0 ? studentsList : facultiesList).where((item) {
+      String name = '';
+      String code = '';
+      String dept = '';
+      if (_passengerTypeIndex == 0) {
+        final s = item['student'] as Map?;
+        name = s?['user']?['name']?.toString() ?? '';
+        code = s?['roll_number']?.toString() ?? '';
+        dept = s?['department']?.toString() ?? '';
+      } else {
+        final f = item['faculty'] as Map?;
+        name = f?['user']?['name']?.toString() ?? '';
+        code = f?['employee_code']?.toString() ?? '';
+        dept = f?['department']?.toString() ?? '';
+      }
 
-      final bool matchesText = _studentSearchQuery.isEmpty ||
-          name.contains(_studentSearchQuery) ||
-          roll.contains(_studentSearchQuery) ||
-          dept.contains(_studentSearchQuery) ||
-          morningAtt.contains(_studentSearchQuery) ||
-          eveningAtt.contains(_studentSearchQuery);
+      final String query = _studentSearchQuery.toLowerCase();
+      final bool matchesText = query.isEmpty ||
+          name.toLowerCase().contains(query) ||
+          code.toLowerCase().contains(query) ||
+          dept.toLowerCase().contains(query);
 
-      final bool matchesGender = _selectedGenderFilter == null ||
-          s?['gender']?.toString().toUpperCase() == _selectedGenderFilter;
+      if (_passengerTypeIndex == 0) {
+        final s = item['student'] as Map?;
+        final bool matchesGender = _selectedGenderFilter == null ||
+            s?['gender']?.toString().toUpperCase() == _selectedGenderFilter;
 
-      final bool matchesBatch = _selectedBatchFilter == null ||
-          s?['academic_year']?.toString() == _selectedBatchFilter;
+        final bool matchesBatch = _selectedBatchFilter == null ||
+            s?['academic_year']?.toString() == _selectedBatchFilter;
 
-      final bool matchesDept = _selectedDeptFilter == null ||
-          s?['department']?.toString() == _selectedDeptFilter;
+        final bool matchesDept = _selectedDeptFilter == null ||
+            s?['department']?.toString() == _selectedDeptFilter;
 
-      return matchesText && matchesGender && matchesBatch && matchesDept;
+        return matchesText && matchesGender && matchesBatch && matchesDept;
+      } else {
+        final f = item['faculty'] as Map?;
+        final bool matchesDept = _selectedDeptFilter == null ||
+            f?['department']?.toString() == _selectedDeptFilter;
+
+        return matchesText && matchesDept;
+      }
     }).toList();
 
     return Column(
       children: [
+        // Slidable Segment Toggle & Search bar
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+              // Custom Sliding Segment Toggle for Student/Faculty
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final double toggleWidth = constraints.maxWidth;
+                  final double pillWidth = (toggleWidth - 8) / 2;
+                  return Container(
+                    height: 40,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Sliding Pill
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          left: _passengerTypeIndex * pillWidth,
+                          top: 0,
+                          bottom: 0,
+                          width: pillWidth,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: primaryBlue,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryBlue.withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Interactive labels
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _passengerTypeIndex = 0;
+                                  });
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.school_rounded,
+                                        size: 14,
+                                        color: _passengerTypeIndex == 0 ? Colors.white : subColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Students",
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: _passengerTypeIndex == 0 ? Colors.white : subColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _passengerTypeIndex = 1;
+                                  });
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.badge_rounded,
+                                        size: 14,
+                                        color: _passengerTypeIndex == 1 ? Colors.white : subColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Faculties",
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: _passengerTypeIndex == 1 ? Colors.white : subColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _studentSearchController,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: "Search passengers by name, dept, roll...",
-                      hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w500),
-                      prefixIcon: Icon(Icons.search_rounded, size: 18, color: subColor),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: TextField(
+                        controller: _studentSearchController,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                        decoration: InputDecoration(
+                          hintText: "Search passengers...",
+                          hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w500),
+                          prefixIcon: Icon(Icons.search_rounded, size: 18, color: subColor),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () => _showPassengerFilterBottomSheet(studentsList),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (_selectedGenderFilter != null || _selectedBatchFilter != null || _selectedDeptFilter != null)
-                        ? primaryBlue
-                        : (isDark ? const Color(0xFF1E293B) : Colors.white),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => _showPassengerFilterBottomSheet(_passengerTypeIndex == 0 ? studentsList : facultiesList),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (_selectedGenderFilter != null || _selectedBatchFilter != null || _selectedDeptFilter != null)
+                            ? primaryBlue
+                            : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
+                      child: Icon(
+                        Icons.filter_list_rounded,
+                        color: (_selectedGenderFilter != null || _selectedBatchFilter != null || _selectedDeptFilter != null)
+                            ? Colors.white
+                            : primaryBlue,
+                        size: 20,
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.filter_list_rounded,
-                    color: (_selectedGenderFilter != null || _selectedBatchFilter != null || _selectedDeptFilter != null)
-                        ? Colors.white
-                        : primaryBlue,
-                    size: 20,
-                  ),
-                ),
+                ],
               ),
             ],
           ),
@@ -810,7 +1637,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
         Expanded(
           child: RefreshIndicator(
             onRefresh: _refreshDetails,
-            child: filteredStudents.isEmpty
+            child: filteredPassengers.isEmpty
                 ? SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Container(
@@ -825,27 +1652,75 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    itemCount: filteredStudents.length,
-                  itemBuilder: (context, index) {
-                    final stud = filteredStudents[index];
-                      final s = stud['student'] as Map<String, dynamic>?;
-                      final user = s?['user'] as Map<String, dynamic>?;
-                      final String name = user?['name'] ?? 'Student';
-                      final String roll = s?['roll_number'] ?? '';
-                      final String registerNumber = s?['register_number'] ?? '';
-                      final String dept = s?['department'] ?? '';
-                      final String academicYear = s?['academic_year'] ?? '';
-                      final String gender = s?['gender'] ?? '';
-                      final String phone = user?['phone'] ?? '';
-                      final String email = user?['email'] ?? '';
+                    itemCount: filteredPassengers.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredPassengers[index];
                       
-                      final String morningAtt = stud['morning_attendance_status'] ?? 'ABSENT';
-                      final String eveningAtt = stud['evening_attendance_status'] ?? 'ABSENT';
+                      String name = '';
+                      String initial = '';
+                      String phone = '';
+                      String email = '';
+                      String boardingStop = item['boardingStop']?['stop_name'] ?? 'N/A';
+                      String dropStop = item['dropStop']?['stop_name'] ?? 'N/A';
+                      String boardingOtp = item['boarding_otp']?.toString() ?? '';
+                      
+                      List<Widget> badges = [];
 
-                      final boardingStop = stud['boardingStop']?['stop_name'] ?? 'N/A';
-                      final dropStop = stud['dropStop']?['stop_name'] ?? 'N/A';
+                      if (_passengerTypeIndex == 0) {
+                        final s = item['student'] as Map?;
+                        final user = s?['user'] as Map?;
+                        name = user?['name'] ?? 'Student';
+                        phone = user?['phone'] ?? '';
+                        email = user?['email'] ?? '';
+                        initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
 
-                      final String initial = name.isNotEmpty ? name[0].toUpperCase() : 'S';
+                        final String roll = s?['roll_number'] ?? '';
+                        final String registerNumber = s?['register_number'] ?? '';
+                        final String dept = s?['department'] ?? '';
+                        final String academicYear = s?['academic_year'] ?? '';
+                        final String gender = s?['gender'] ?? '';
+
+                        if (roll.isNotEmpty && roll != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.assignment_ind_rounded, "Roll: $roll", primaryBlue));
+                        }
+                        if (registerNumber.isNotEmpty && registerNumber != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.app_registration_rounded, "Reg: $registerNumber", Colors.teal));
+                        }
+                        if (dept.isNotEmpty && dept != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.school_rounded, dept, Colors.orange));
+                        }
+                        if (academicYear.isNotEmpty && academicYear != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.calendar_month_rounded, "Batch: $academicYear", Colors.purple));
+                        }
+                        if (gender.isNotEmpty && gender != 'N/A') {
+                          badges.add(_buildStudentBadge(
+                            gender.toUpperCase() == 'FEMALE' ? Icons.female_rounded : Icons.male_rounded,
+                            gender,
+                            gender.toUpperCase() == 'FEMALE' ? Colors.pink : Colors.blue,
+                          ));
+                        }
+                      } else {
+                        final f = item['faculty'] as Map?;
+                        final user = f?['user'] as Map?;
+                        name = user?['name'] ?? 'Faculty';
+                        phone = user?['phone'] ?? '';
+                        email = user?['email'] ?? '';
+                        initial = name.isNotEmpty ? name[0].toUpperCase() : 'F';
+
+                        final String employeeCode = f?['employee_code'] ?? '';
+                        final String dept = f?['department'] ?? '';
+                        final String designation = f?['designation'] ?? '';
+
+                        if (employeeCode.isNotEmpty && employeeCode != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.badge_rounded, "Emp Code: $employeeCode", Colors.purple));
+                        }
+                        if (designation.isNotEmpty && designation != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.work_rounded, designation, primaryBlue));
+                        }
+                        if (dept.isNotEmpty && dept != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.school_rounded, dept, Colors.orange));
+                        }
+                      }
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -906,35 +1781,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                                   )
                               ],
                             ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                if (roll.isNotEmpty && roll != 'N/A')
-                                  _buildStudentBadge(Icons.assignment_ind_rounded, "Roll: $roll", primaryBlue),
-                                if (registerNumber.isNotEmpty && registerNumber != 'N/A')
-                                  _buildStudentBadge(Icons.app_registration_rounded, "Reg: $registerNumber", Colors.teal),
-                                if (dept.isNotEmpty && dept != 'N/A')
-                                  _buildStudentBadge(Icons.school_rounded, dept, Colors.orange),
-                                if (academicYear.isNotEmpty && academicYear != 'N/A')
-                                  _buildStudentBadge(Icons.calendar_month_rounded, "Batch: $academicYear", Colors.purple),
-                                if (gender.isNotEmpty && gender != 'N/A')
-                                  _buildStudentBadge(
-                                    gender.toUpperCase() == 'FEMALE' ? Icons.female_rounded : Icons.male_rounded,
-                                    gender,
-                                    gender.toUpperCase() == 'FEMALE' ? Colors.pink : Colors.blue,
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildAttendanceStatus("Morning Attendance", morningAtt),
-                                _buildAttendanceStatus("Evening Attendance", eveningAtt),
-                              ],
-                            ),
+                            if (badges.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: badges,
+                              ),
+                            ],
                             const SizedBox(height: 12),
                             const Divider(height: 1, thickness: 0.8),
                             const SizedBox(height: 8),
@@ -973,11 +1827,36 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                                 Icon(Icons.login_rounded, size: 12, color: subColor),
                                 const SizedBox(width: 6),
                                 Expanded(
-                                  child: Text(
-                                    "Boarding: $boardingStop",
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 11, color: titleColor.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          "Boarding: $boardingStop",
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(fontSize: 11, color: titleColor.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      if (boardingOtp.isNotEmpty && boardingOtp != 'null') ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.withValues(alpha: 0.08),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: Colors.green.withValues(alpha: 0.15)),
+                                          ),
+                                          child: Text(
+                                            "OTP: $boardingOtp",
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ],
@@ -996,6 +1875,515 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                                   ),
                                 ),
                               ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttendanceTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
+    final attendanceList = _run['attendanceRecords'] as List? ?? [];
+    if (attendanceList.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshDetails,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.5,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.rule_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+                const SizedBox(height: 12),
+                Text("No attendance records found", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Filter by search query, type, status, and department
+    final filteredRecords = attendanceList.where((rec) {
+      final type = (rec['type'] ?? '').toString().toUpperCase();
+      String name = '';
+      String roll = '';
+      String reg = '';
+      String code = '';
+      String dept = '';
+      if (type == 'STUDENT') {
+        final s = rec['student'] as Map?;
+        name = s?['user']?['name']?.toString() ?? '';
+        roll = s?['roll_number']?.toString() ?? '';
+        reg = s?['register_number']?.toString() ?? '';
+        dept = s?['department']?.toString() ?? '';
+      } else if (type == 'FACULTY') {
+        final f = rec['faculty'] as Map?;
+        name = f?['user']?['name']?.toString() ?? '';
+        code = f?['employee_code']?.toString() ?? '';
+        dept = f?['department']?.toString() ?? '';
+      }
+
+      final String query = _attendanceSearchQuery.toLowerCase();
+      final bool matchesSearch = query.isEmpty ||
+          name.toLowerCase().contains(query) ||
+          roll.toLowerCase().contains(query) ||
+          reg.toLowerCase().contains(query) ||
+          code.toLowerCase().contains(query) ||
+          dept.toLowerCase().contains(query);
+
+      // Type Filter
+      final bool matchesType = _selectedAttendanceTypeFilter == null ||
+          type == _selectedAttendanceTypeFilter;
+
+      // Status Filter
+      final String sessionStatus = (_attendanceSessionIndex == 0 
+          ? rec['morning_attendance_status'] 
+          : rec['evening_attendance_status'])?.toString().toUpperCase() ?? 'ABSENT';
+      final bool matchesStatus = _selectedAttendanceStatusFilter == null ||
+          sessionStatus == _selectedAttendanceStatusFilter;
+
+      // Department Filter
+      final bool matchesDept = _selectedAttendanceDeptFilter == null ||
+          dept == _selectedAttendanceDeptFilter;
+
+      return matchesSearch && matchesType && matchesStatus && matchesDept;
+    }).toList();
+
+    // Counts for selected session
+    int presentCount = 0;
+    int absentCount = 0;
+    for (var rec in filteredRecords) {
+      final String status = (_attendanceSessionIndex == 0 
+          ? rec['morning_attendance_status'] 
+          : rec['evening_attendance_status'])?.toString().toUpperCase() ?? 'ABSENT';
+      if (status == 'PRESENT') {
+        presentCount++;
+      } else {
+        absentCount++;
+      }
+    }
+
+    return Column(
+      children: [
+        // Horizontal Session Selector Toggle & Search Bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            children: [
+              // Custom Sliding Segmented Toggle
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final double toggleWidth = constraints.maxWidth;
+                  final double pillWidth = (toggleWidth - 8) / 2;
+                  return Container(
+                    height: 40,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Sliding Pill
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          left: _attendanceSessionIndex * pillWidth,
+                          top: 0,
+                          bottom: 0,
+                          width: pillWidth,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: primaryBlue,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryBlue.withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Interactive labels
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _attendanceSessionIndex = 0;
+                                  });
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.wb_sunny_rounded,
+                                        size: 14,
+                                        color: _attendanceSessionIndex == 0 ? Colors.white : subColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Morning",
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: _attendanceSessionIndex == 0 ? Colors.white : subColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _attendanceSessionIndex = 1;
+                                  });
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.nights_stay_rounded,
+                                        size: 14,
+                                        color: _attendanceSessionIndex == 1 ? Colors.white : subColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Evening",
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: _attendanceSessionIndex == 1 ? Colors.white : subColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              
+              // Search Bar & Filter Button
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: primaryBlue.withValues(alpha: 0.05)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        onChanged: (val) {
+                          setState(() {
+                            _attendanceSearchQuery = val;
+                          });
+                        },
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                        decoration: InputDecoration(
+                          hintText: "Search by name, roll, dept...",
+                          hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w500),
+                          prefixIcon: Icon(Icons.search_rounded, size: 18, color: subColor),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => _showAttendanceFilterBottomSheet(attendanceList),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (_selectedAttendanceTypeFilter != null || _selectedAttendanceStatusFilter != null)
+                            ? primaryBlue
+                            : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.filter_list_rounded,
+                        color: (_selectedAttendanceTypeFilter != null || _selectedAttendanceStatusFilter != null)
+                            ? Colors.white
+                            : primaryBlue,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Summary Stats Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Total: ${filteredRecords.length}",
+                    style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          "Present: $presentCount",
+                          style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          "Absent: $absentCount",
+                          style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Scrollable List of Records
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refreshDetails,
+            child: filteredRecords.isEmpty
+                ? SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.35,
+                      alignment: Alignment.center,
+                      child: Text(
+                        "No matching records found",
+                        style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    itemCount: filteredRecords.length,
+                    itemBuilder: (context, index) {
+                      final rec = filteredRecords[index];
+                      final type = (rec['type'] ?? '').toString().toUpperCase();
+                      
+                      String name = 'N/A';
+                      String typeLabel = '';
+                      Color typeColor = Colors.blue;
+                      IconData typeIcon = Icons.school_rounded;
+
+                      String roll = '';
+                      String reg = '';
+                      String dept = '';
+                      String empCode = '';
+                      String designation = '';
+
+                      if (type == 'STUDENT') {
+                        final s = rec['student'] as Map?;
+                        name = s?['user']?['name'] ?? 'Student';
+                        roll = s?['roll_number'] ?? '';
+                        reg = s?['register_number'] ?? '';
+                        dept = s?['department'] ?? '';
+                        
+                        typeLabel = "Student";
+                        typeColor = primaryBlue;
+                        typeIcon = Icons.person_rounded;
+                      } else {
+                        final f = rec['faculty'] as Map?;
+                        name = f?['user']?['name'] ?? 'Faculty';
+                        empCode = f?['employee_code'] ?? '';
+                        dept = f?['department'] ?? '';
+                        designation = f?['designation'] ?? '';
+
+                        typeLabel = "Faculty";
+                        typeColor = Colors.purple;
+                        typeIcon = Icons.badge_rounded;
+                      }
+
+                      final String sessionStatus = (_attendanceSessionIndex == 0 
+                          ? rec['morning_attendance_status'] 
+                          : rec['evening_attendance_status'])?.toString().toUpperCase() ?? 'ABSENT';
+
+                      final isPresent = sessionStatus == 'PRESENT';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isPresent 
+                                ? Colors.green.withValues(alpha: 0.1) 
+                                : Colors.red.withValues(alpha: 0.1),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.01),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Left indicator icon
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: typeColor.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(typeIcon, color: typeColor, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // Center Details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: GoogleFonts.outfit(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: titleColor,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: typeColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          typeLabel,
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                            color: typeColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (type == 'STUDENT') ...[
+                                    Text(
+                                      "Roll: $roll  •  Reg: $reg",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: subColor.withValues(alpha: 0.8),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Dept: $dept",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: subColor.withValues(alpha: 0.8),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Text(
+                                      "Emp Code: $empCode  •  $designation",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: subColor.withValues(alpha: 0.8),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Dept: $dept",
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: subColor.withValues(alpha: 0.8),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+
+                            // Right Attendance Status Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isPresent 
+                                    ? Colors.green.withValues(alpha: 0.1) 
+                                    : Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                isPresent ? "PRESENT" : "ABSENT",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: isPresent ? Colors.green : Colors.red,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -1263,61 +2651,267 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
     );
   }
 
-  Widget _buildAttendanceStatus(String label, String status) {
-    final String s = status.toUpperCase();
-    final bool isPresent = s == 'PRESENT';
-    final Color color = isPresent ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    
-    return Row(
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-            Text(s, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-          ],
-        )
-      ],
+  void _showAttendanceFilterBottomSheet(List<dynamic> attendanceList) {
+    final Set<String> depts = {};
+    for (var rec in attendanceList) {
+      final type = (rec['type'] ?? '').toString().toUpperCase();
+      if (type == 'STUDENT') {
+        final s = rec['student'] as Map?;
+        final d = s?['department']?.toString();
+        if (d != null && d.isNotEmpty) {
+          depts.add(d);
+        }
+      } else if (type == 'FACULTY') {
+        final f = rec['faculty'] as Map?;
+        final d = f?['department']?.toString();
+        if (d != null && d.isNotEmpty) {
+          depts.add(d);
+        }
+      }
+    }
+    final deptList = depts.toList()..sort();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final Color t = isDark ? Colors.white : const Color(0xFF0F172A);
+        final Color sub = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+        final Color primaryBlue = const Color(0xFF6366F1);
+        final Color modalBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(24, 12, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+              decoration: BoxDecoration(
+                color: modalBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Filter Attendance",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: t,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            _selectedAttendanceTypeFilter = null;
+                            _selectedAttendanceStatusFilter = null;
+                            _selectedAttendanceDeptFilter = null;
+                          });
+                          setState(() {});
+                        },
+                        child: Text(
+                          "Reset All",
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Passenger Type Filter (Student / Faculty)
+                  Text(
+                    "PASSENGER TYPE",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: sub,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Student"),
+                        selected: _selectedAttendanceTypeFilter == 'STUDENT',
+                        onSelected: (selected) {
+                          setModalState(() {
+                            _selectedAttendanceTypeFilter = selected ? 'STUDENT' : null;
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        labelStyle: TextStyle(
+                          color: _selectedAttendanceTypeFilter == 'STUDENT' ? primaryBlue : t,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Faculty"),
+                        selected: _selectedAttendanceTypeFilter == 'FACULTY',
+                        onSelected: (selected) {
+                          setModalState(() {
+                            _selectedAttendanceTypeFilter = selected ? 'FACULTY' : null;
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        labelStyle: TextStyle(
+                          color: _selectedAttendanceTypeFilter == 'FACULTY' ? primaryBlue : t,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Attendance Status Filter (Present / Absent)
+                  Text(
+                    "STATUS",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: sub,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Present"),
+                        selected: _selectedAttendanceStatusFilter == 'PRESENT',
+                        onSelected: (selected) {
+                          setModalState(() {
+                            _selectedAttendanceStatusFilter = selected ? 'PRESENT' : null;
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        labelStyle: TextStyle(
+                          color: _selectedAttendanceStatusFilter == 'PRESENT' ? primaryBlue : t,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Absent"),
+                        selected: _selectedAttendanceStatusFilter == 'ABSENT',
+                        onSelected: (selected) {
+                          setModalState(() {
+                            _selectedAttendanceStatusFilter = selected ? 'ABSENT' : null;
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        labelStyle: TextStyle(
+                          color: _selectedAttendanceStatusFilter == 'ABSENT' ? primaryBlue : t,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // Department Filter Section
+                  if (deptList.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      "DEPARTMENT",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: sub,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: deptList.map((d) {
+                          final isSelected = _selectedAttendanceDeptFilter == d;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(d),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setModalState(() {
+                                  _selectedAttendanceDeptFilter = selected ? d : null;
+                                });
+                                setState(() {});
+                              },
+                              selectedColor: primaryBlue.withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: isSelected ? primaryBlue : t,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        "Apply Filters",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value, bool isDark, Color titleColor, Color subColor, {bool isOtp = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: subColor),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w600)),
-          const Spacer(),
-          isOtp
-              ? Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    value,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                )
-              : Text(value, style: TextStyle(fontSize: 13, color: titleColor, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
+
+
 
   void _showVerifyOtpBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark, {String defaultType = 'FN'}) {
     String autoOtp = '';
@@ -1851,6 +3445,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
               ),
               child: TabBar(
                 controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.center,
                 indicator: BoxDecoration(
                   color: primaryBlue,
                   borderRadius: BorderRadius.circular(14),
@@ -1869,8 +3465,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                 unselectedLabelStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold),
                 tabs: const [
                   Tab(text: "Assignments"),
+                  Tab(text: "Vehicle"),
                   Tab(text: "Timeline"),
                   Tab(text: "Passengers"),
+                  Tab(text: "Attendance"),
                 ],
               ),
             ),
@@ -1880,8 +3478,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                 controller: _tabController,
                 children: [
                   _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+                  _buildVehicleTab(isDark, titleColor, subColor, primaryBlue, cardColor),
                   _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
                   _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+                  _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
                 ],
               ),
             ),
@@ -1889,6 +3489,78 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
         ),
       ),
       bottomNavigationBar: bottomBar,
+    );
+  }
+
+  Widget _buildGridItem(IconData icon, String label, String value, Color accentColor, Color titleColor, Color subColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: accentColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: subColor),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w900, color: titleColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOtpRow(IconData icon, String label, String value, Color accentColor, Color titleColor, Color subColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: accentColor),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.bold, color: subColor),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: accentColor,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              value,
+              style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
