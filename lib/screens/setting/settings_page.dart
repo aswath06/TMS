@@ -18,6 +18,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -416,7 +417,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Your message will be sent to SureshKannan and Aswath.",
+                "Submit your questions or feedback, and our support team will get in touch with you shortly.",
                 style: TextStyle(fontSize: 13, color: subTitleColor, height: 1.4),
               ),
               const SizedBox(height: 16),
@@ -508,6 +509,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                 ),
               ),
+              const SizedBox(height: 20),
+              const Divider(height: 1, thickness: 0.8),
+              const SizedBox(height: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: () async {
+                    final Uri url = Uri.parse("https://tripzo.bitsathy.ac.in/support");
+                    try {
+                      await launchUrl(url);
+                    } catch (e) {
+                      debugPrint("Could not launch support URL: $e");
+                    }
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.help_outline_rounded, size: 14, color: primaryBlue),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Visit Online Support Portal",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: primaryBlue,
+                          decoration: TextDecoration.underline,
+                          decorationColor: primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -527,13 +560,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       builder: (context, _) {
         final isProduction = ServerConfig().isProduction;
         final activeColor = isProduction ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-        return Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: activeColor.withOpacity(0.3), width: 1.5),
-          ),
-          child: Column(
+        return Material(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: activeColor.withOpacity(0.3), width: 1.5),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
             children: [
               ListTile(
                 leading: Container(
@@ -635,8 +671,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -827,11 +864,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       listenable: UIConfig(),
       builder: (context, _) {
         final isEnabled = UIConfig().isUIEnhancementEnabled;
-        return Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
+        return Material(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
           child: ListTile(
             leading: _buildIconContainer(
               Icons.auto_awesome_rounded,
@@ -865,11 +901,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     Color primaryBlue,
     bool isTamil,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         leading: _buildIconContainer(
           Icons.system_update_alt_rounded,
@@ -924,11 +959,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     Color primaryBlue, {
     VoidCallback? onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         onTap: onTap,
         leading: _buildIconContainer(icon, primaryBlue),
@@ -982,11 +1016,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     Color subColor,
     Color primaryBlue,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         leading: _buildIconContainer(icon, primaryBlue),
         title: Text(

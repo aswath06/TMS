@@ -528,19 +528,18 @@ curl -X POST "$url" \
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color textCol = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subCol = isDark ? Colors.white70 : const Color(0xFF475569);
-    final Color accent = const Color(0xFF6366F1);
+    final Color subCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
 
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.08),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
             blurRadius: 40,
-            offset: const Offset(0, 20),
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -553,25 +552,41 @@ curl -X POST "$url" \
               fontSize: 22,
               fontWeight: FontWeight.w900,
               color: textCol,
+              letterSpacing: -0.5,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Please read and understand what data & permissions TripZo accesses to deliver a reliable experience.",
+            style: TextStyle(
+              fontSize: 13,
+              color: subCol,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildPolicyTextRow(
+            number: "1",
+            title: "Background Synchronization",
+            content: "Uses a foreground service to reliably synchronize vehicle routes, student manifests, and schedules in real-time. This guarantees seamless updates and data accuracy, ensuring that all ride tracking details remain up-to-date even when the application is minimized or running in the background.",
+            titleColor: textCol,
+            subColor: subCol,
+          ),
+          _buildPolicyTextRow(
+            number: "2",
+            title: "Real-Time Notifications",
+            content: "Connects to our centralized real-time messaging gateway to broadcast push notifications. You will receive instant alerts for immediate route updates, emergency modifications, schedule shifts, and administrative announcements without any delay.",
+            titleColor: textCol,
+            subColor: subCol,
+          ),
+          _buildPolicyTextRow(
+            number: "3",
+            title: "Data Security & Privacy",
+            content: "All sensitive profile details, login sessions, and tokens are stored securely using hardware-accelerated local encryption. We adhere to strict privacy standards: your personal information is never sold, shared, or exposed to third-party entities under any circumstances.",
+            titleColor: textCol,
+            subColor: subCol,
           ),
           const SizedBox(height: 16),
-          Text(
-            "1. Background Synchronization\n"
-            "This app uses a foreground service to reliably synchronize your missions and updates in real-time, even when running in the background.\n\n"
-            "2. Real-Time Notifications\n"
-            "We connect to a real-time server to instantly notify you of new missions and ride changes.\n\n"
-            "3. Location Tracking\n"
-            "We do not collect or record your physical GPS coordinates in the background.\n\n"
-            "4. Data Security\n"
-            "Your profile details are encrypted locally. We do not sell or share your private information.",
-            style: TextStyle(
-              fontSize: 14,
-              color: subCol,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 32),
           CustomButton(
             text: "I UNDERSTAND & AGREE",
             onPressed: () {
@@ -579,6 +594,41 @@ curl -X POST "$url" \
                 _agreeToTerms = true;
               });
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyTextRow({
+    required String number,
+    required String title,
+    required String content,
+    required Color titleColor,
+    required Color subColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$number. $title",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: titleColor,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: 13,
+              color: subColor,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -653,25 +703,19 @@ class TermsAndConditionsScreen extends ConsumerWidget {
                   const SizedBox(height: 32),
                   _buildPremiumSection(
                     title: "Background Synchronization",
-                    content: "Uses a Foreground Data Sync service to reliably synchronize critical mission assignments and updates in real-time, even when the app is in the background.",
+                    content: "Uses a foreground service to reliably synchronize vehicle routes, student manifests, and schedules in real-time. This guarantees seamless updates and data accuracy, ensuring that all ride tracking details remain up-to-date even when the application is minimized or running in the background.",
                     isDark: isDark,
                     accent: accent,
                   ),
                   _buildPremiumSection(
                     title: "Real-Time Notifications",
-                    content: "Connects to a real-time socket server to instantly notify you of new missions, ride changes, and important administrative communications.",
+                    content: "Connects to our centralized real-time messaging gateway to broadcast push notifications. You will receive instant alerts for immediate route updates, emergency modifications, schedule shifts, and administrative announcements without any delay.",
                     isDark: isDark,
                     accent: accent,
                   ),
                   _buildPremiumSection(
-                    title: "NO GPS Location Tracking",
-                    content: "Background and fine/coarse GPS location tracking packages and services have been completely disabled. We do NOT collect, transmit, or record your physical coordinates.",
-                    isDark: isDark,
-                    accent: Colors.redAccent,
-                  ),
-                  _buildPremiumSection(
-                    title: "Data Security & Access",
-                    content: "Your authentication token and profile details are encrypted locally on your device. We never sell, share, or misuse your private account information.",
+                    title: "Data Security & Privacy",
+                    content: "All sensitive profile details, login sessions, and tokens are stored securely using hardware-accelerated local encryption. We adhere to strict privacy standards: your personal information is never sold, shared, or exposed to third-party entities under any circumstances.",
                     isDark: isDark,
                     accent: accent,
                   ),

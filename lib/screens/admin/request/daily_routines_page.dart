@@ -76,7 +76,16 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
           _showSnackBar(data['message'] ?? "Failed to mark run as ready", Colors.red);
         }
       } else {
-        _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
       }
     } catch (e) {
       _showSnackBar("Connection error: $e", Colors.red);
@@ -131,7 +140,16 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
           _showSnackBar(data['message'] ?? "Verification failed", Colors.red);
         }
       } else {
-        _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
       }
     } catch (e) {
       _showSnackBar("Connection error: $e", Colors.red);
@@ -405,7 +423,10 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
       
       _dateScrollController.jumpTo(todayOffset + (diffDays * 68.0));
       
-      ref.read(dailyRoutinesStoreProvider).fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
+      final store = ref.read(dailyRoutinesStoreProvider);
+      if (store.runs.isEmpty || store.selectedDate != _selectedDateFilter) {
+        store.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
+      }
     });
   }
 
@@ -787,6 +808,16 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     final String startLoc = run['start_location_name'] ?? 'Start';
     final String haltLoc = run['halt_location_name'] ?? 'Destination';
     final int stopsCount = (run['runStops'] as List?)?.length ?? 0;
+
+    final bool isMorningConfirmed = run['is_morning_attendance_confirmed'] == true ||
+        run['is_morning_attendance_confirmed']?.toString() == 'true' ||
+        run['morning_attendance_confirmed'] == true ||
+        run['morning_attendance_confirmed']?.toString() == 'true';
+
+    final bool isEveningConfirmed = run['is_evening_attendance_confirmed'] == true ||
+        run['is_evening_attendance_confirmed']?.toString() == 'true' ||
+        run['evening_attendance_confirmed'] == true ||
+        run['evening_attendance_confirmed']?.toString() == 'true';
     
     final assignments = run['assignment'] as List? ?? [];
     String vehicleNo = "No Vehicle Assigned";
@@ -862,8 +893,17 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                 }
               }
             } else {
+              String errorMsg = "An unexpected error occurred.";
+              try {
+                final Map<String, dynamic> data = json.decode(response.body);
+                if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+                  errorMsg = data['message'].toString();
+                } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+                  errorMsg = data['error'].toString();
+                }
+              } catch (_) {}
               if (mounted) {
-                _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+                _showSnackBar(errorMsg, Colors.red);
               }
             }
           } catch (e) {
@@ -884,9 +924,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
             );
           }
         }
-        if (context.mounted) {
-          ref.read(dailyRoutinesStoreProvider).fetchDailyRoutines(isRefresh: true);
-        }
+
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -1137,6 +1175,97 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "MORNING CONFIRMATION",
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: subColor.withValues(alpha: 0.6),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              isMorningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
+                              size: 14,
+                              color: isMorningConfirmed ? Colors.green : Colors.orange,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isMorningConfirmed ? "Confirmed" : "Pending",
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isMorningConfirmed ? Colors.green : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 32,
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "EVENING CONFIRMATION",
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: subColor.withValues(alpha: 0.6),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              isEveningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
+                              size: 14,
+                              color: isEveningConfirmed ? Colors.green : Colors.orange,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              isEveningConfirmed ? "Confirmed" : "Pending",
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isEveningConfirmed ? Colors.green : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             if (status.toUpperCase() == 'PLANNED') ...[
               const SizedBox(height: 18),

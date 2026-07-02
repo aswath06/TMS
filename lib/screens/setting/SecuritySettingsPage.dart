@@ -459,14 +459,14 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
     bool isEnabled = true,
   }) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isEnabled ? 1.0 : 0.5,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
+      child: Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
         child: ListTile(
           onTap: isEnabled ? onTileTap : null,
           contentPadding: const EdgeInsets.symmetric(

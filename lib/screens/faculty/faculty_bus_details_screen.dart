@@ -72,8 +72,17 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
           });
         }
       } else {
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
+            errorMsg = decoded['message'].toString();
+          } else if (decoded['error'] != null && decoded['error'].toString().trim().isNotEmpty) {
+            errorMsg = decoded['error'].toString();
+          }
+        } catch (_) {}
         setState(() {
-          _error = "Server error: ${response.statusCode}";
+          _error = errorMsg;
           _isLoading = false;
         });
       }
@@ -172,38 +181,63 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
   Widget _buildStatusBadge(String status) {
     final String s = status.toUpperCase();
     final Map<String, Map<String, Color>> statusStyles = {
+      'PLANNED': {
+        'bg': const Color(0xFFFEF3C7),
+        'text': const Color(0xFFD97706),
+        'border': const Color(0xFFFDE68A),
+      },
       'READY': {
-        'bg': const Color(0xFFECFDF5),
-        'text': const Color(0xFF10B981),
+        'bg': const Color(0xFFFCE7F3),
+        'text': const Color(0xFFBE185D),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'STARTED': {
+        'bg': const Color(0xFFDBEAFE),
+        'text': const Color(0xFF2563EB),
+        'border': const Color(0xFF93C5FD),
+      },
+      'ARRIVED_CAMPUS': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'CAMPUS_IN': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'FN_COMPLETED': {
+        'bg': const Color(0xFFD1FAE5),
+        'text': const Color(0xFF059669),
         'border': const Color(0xFFA7F3D0),
       },
-      'IN_PROGRESS': {
-        'bg': const Color(0xFFFFFBEB),
-        'text': const Color(0xFFF59E0B),
+      'DEPARTED_CAMPUS': {
+        'bg': const Color(0xFFFEF3C7),
+        'text': const Color(0xFFB45309),
         'border': const Color(0xFFFDE68A),
       },
-      'ON_TRIP': {
-        'bg': const Color(0xFFFFFBEB),
-        'text': const Color(0xFFF59E0B),
-        'border': const Color(0xFFFDE68A),
+      'HALTED': {
+        'bg': const Color(0xFFFAF5FF),
+        'text': const Color(0xFF8B5CF6),
+        'border': const Color(0xFFE9D5FF),
       },
       'COMPLETED': {
-        'bg': const Color(0xFFECFDF5),
-        'text': const Color(0xFF10B981),
+        'bg': const Color(0xFFD1FAE5),
+        'text': const Color(0xFF047857),
         'border': const Color(0xFFA7F3D0),
       },
       'CANCELLED': {
-        'bg': const Color(0xFFF8FAFC),
-        'text': const Color(0xFF64748B),
-        'border': const Color(0xFFE2E8F0),
+        'bg': const Color(0xFFFFE4E6),
+        'text': const Color(0xFFBE123C),
+        'border': const Color(0xFFFECDD3),
       },
     };
 
     final style = statusStyles[s] ??
         {
-          'bg': Colors.grey.withValues(alpha: 0.1),
-          'text': Colors.grey,
-          'border': Colors.grey.withValues(alpha: 0.2),
+          'bg': const Color(0xFFF1F5F9),
+          'text': const Color(0xFF475569),
+          'border': const Color(0xFFE2E8F0),
         };
 
     return Container(
@@ -214,10 +248,10 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
         border: Border.all(color: style['border']!, width: 1),
       ),
       child: Text(
-        s,
+        s.replaceAll('_', ' '),
         style: TextStyle(
           color: style['text'],
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.5,
         ),

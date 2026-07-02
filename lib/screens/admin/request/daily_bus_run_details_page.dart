@@ -7,10 +7,13 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/screens/admin/request/edit_vehicle_driver_page.dart';
+import 'package:tripzo/screens/faculty/faculty_scan_otp_screen.dart';
+import 'package:flutter/services.dart';
 
 class DailyBusRunDetailsPage extends StatefulWidget {
   final Map<String, dynamic> runData;
-  const DailyBusRunDetailsPage({super.key, required this.runData});
+  final bool showEditIcon;
+  const DailyBusRunDetailsPage({super.key, required this.runData, this.showEditIcon = true});
 
   @override
   State<DailyBusRunDetailsPage> createState() => _DailyBusRunDetailsPageState();
@@ -32,6 +35,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
   String? _selectedAttendanceTypeFilter;
   String? _selectedAttendanceStatusFilter;
   String? _selectedAttendanceDeptFilter;
+  final Set<String> _loadingPresentKeys = {};
+  String? _userRole;
+  int? _loggedInUserId;
+  bool _localAttendanceConfirmed = false;
 
 
   String _formatTimeOnly(dynamic dtStr) {
@@ -219,12 +226,25 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
   void initState() {
     super.initState();
     _run = widget.runData;
+    _localAttendanceConfirmed = false;
     _tabController = TabController(length: 5, vsync: this);
     _studentSearchController.addListener(() {
       setState(() {
         _studentSearchQuery = _studentSearchController.text.toLowerCase().trim();
       });
     });
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final role = await UserStore.getRole();
+    final userId = await UserStore.getUserId();
+    if (mounted) {
+      setState(() {
+        _userRole = role;
+        _loggedInUserId = userId;
+      });
+    }
   }
 
   @override
@@ -240,49 +260,22 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
       final String? token = await UserStore.getToken();
       if (token == null) return;
 
-      final role = await UserStore.getRole();
-      final bool isSuperOrTransportAdmin = role != null &&
-          (role.toLowerCase() == 'super admin' ||
-              role.toLowerCase() == 'transport admin');
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
 
-      if (isSuperOrTransportAdmin) {
-        final String runId = _run['id']?.toString() ?? '';
-        final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
-        final response = await http.get(
-          Uri.parse(url),
-          headers: ApiConstants.getHeaders(token),
-        );
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = json.decode(response.body);
-          if (data['success'] == true && data['data'] != null) {
-            final Map<String, dynamic> freshRun = Map<String, dynamic>.from(data['data']);
-            setState(() {
-              _run = freshRun;
-            });
-          }
-        }
-      } else {
-        final String serviceDate = _run['service_date'] ?? '';
-        if (serviceDate.isEmpty) return;
-
-        final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?page=1&limit=50&service_date=$serviceDate";
-        final response = await http.get(
-          Uri.parse(url),
-          headers: ApiConstants.getHeaders(token),
-        );
-
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = json.decode(response.body);
-          if (data['success'] == true) {
-            final List<dynamic> runs = data['data']?['runs'] ?? [];
-            final freshRun = runs.firstWhere((r) => r['id'] == _run['id'], orElse: () => null);
-            if (freshRun != null) {
-              setState(() {
-                _run = Map<String, dynamic>.from(freshRun);
-              });
-            }
-          }
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final Map<String, dynamic> freshRun = Map<String, dynamic>.from(data['data']);
+          setState(() {
+            _run = freshRun;
+          });
         }
       }
     } catch (e) {
@@ -344,7 +337,75 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
           _showSnackBar(data['message'] ?? "Failed to mark run as ready", Colors.red);
         }
       } else {
-        _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Connection error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
+    }
+  }
+
+  Future<void> _confirmAttendance() async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/confirm-attendance";
+
+      // Console log request curl
+      final String curlCmd = "curl -X PATCH '$url' \\\n"
+          "  -H 'accept: */*' \\\n"
+          "  -H 'authorization: TMS $token' \\\n"
+          "  -H 'content-type: application/json'";
+      debugPrint("---- [HTTP REQUEST CURL] ----\n$curlCmd\n----------------------------");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      // Console log HTTP response
+      debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          _showSnackBar("Attendance confirmed successfully.", Colors.green);
+          setState(() {
+            _localAttendanceConfirmed = true;
+          });
+          await _refreshDetails();
+        } else {
+          _showSnackBar(data['message'] ?? "Confirmation failed", Colors.red);
+        }
+      } else {
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
       }
     } catch (e) {
       _showSnackBar("Connection error: $e", Colors.red);
@@ -397,7 +458,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
           _showSnackBar(data['message'] ?? "Verification failed", Colors.red);
         }
       } else {
-        _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
       }
     } catch (e) {
       _showSnackBar("Connection error: $e", Colors.red);
@@ -451,12 +521,90 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
           _showSnackBar(data['message'] ?? "Odometer submission failed", Colors.red);
         }
       } else {
-        _showSnackBar("Server error: ${response.statusCode}", Colors.red);
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
       }
     } catch (e) {
       _showSnackBar("Connection error: $e", Colors.red);
     } finally {
       setState(() => _isLoadingAction = false);
+    }
+  }
+
+  Future<void> _markPassengerPresent(String type, int targetUserId) async {
+    final String key = "${type.toUpperCase()}_$targetUserId";
+    setState(() {
+      _loadingPresentKeys.add(key);
+    });
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/mark-present";
+      final bodyData = {
+        "type": type,
+        "targetUserId": targetUserId,
+      };
+
+      // Console log request curl
+      final String curlCmd = "curl -X PATCH '$url' \\\n"
+          "  -H 'accept: */*' \\\n"
+          "  -H 'authorization: TMS $token' \\\n"
+          "  -H 'content-type: application/json' \\\n"
+          "  --data-raw '${json.encode(bodyData)}'";
+      debugPrint("---- [HTTP REQUEST CURL] ----\n$curlCmd\n----------------------------");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(bodyData),
+      );
+
+      // Console log HTTP response
+      debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          _showSnackBar("Passenger marked present successfully.", Colors.green);
+          await _refreshDetails();
+        } else {
+          _showSnackBar(data['message'] ?? "Failed to mark present", Colors.red);
+        }
+      } else {
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Connection error: $e", Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingPresentKeys.remove(key);
+        });
+      }
     }
   }
 
@@ -623,9 +771,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(24),
-            border: Border(
-              left: BorderSide(color: primaryBlue, width: 5),
-            ),
+            border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.03),
@@ -642,7 +788,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
                   color: primaryBlue.withValues(alpha: 0.06),
-                  borderRadius: const BorderRadius.only(topRight: Radius.circular(24)),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1888,6 +2037,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
   }
 
   Widget _buildAttendanceTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
+    final bool isMorningConfirmed = _run['is_morning_attendance_confirmed'] == true ||
+        _run['is_morning_attendance_confirmed']?.toString() == 'true' ||
+        _run['morning_attendance_confirmed'] == true ||
+        _run['morning_attendance_confirmed']?.toString() == 'true';
+
+    final bool isEveningConfirmed = _run['is_evening_attendance_confirmed'] == true ||
+        _run['is_evening_attendance_confirmed']?.toString() == 'true' ||
+        _run['evening_attendance_confirmed'] == true ||
+        _run['evening_attendance_confirmed']?.toString() == 'true';
+
     final attendanceList = _run['attendanceRecords'] as List? ?? [];
     if (attendanceList.isEmpty) {
       return RefreshIndicator(
@@ -2043,6 +2202,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                                           color: _attendanceSessionIndex == 0 ? Colors.white : subColor,
                                         ),
                                       ),
+                                      if (isMorningConfirmed) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 12,
+                                          color: _attendanceSessionIndex == 0 ? Colors.white : Colors.green,
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -2074,6 +2241,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                                           color: _attendanceSessionIndex == 1 ? Colors.white : subColor,
                                         ),
                                       ),
+                                      if (isEveningConfirmed) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 12,
+                                          color: _attendanceSessionIndex == 1 ? Colors.white : Colors.green,
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -2368,22 +2543,84 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                             const SizedBox(width: 8),
 
                             // Right Attendance Status Pill
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isPresent 
-                                    ? Colors.green.withValues(alpha: 0.1) 
-                                    : Colors.red.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                isPresent ? "PRESENT" : "ABSENT",
-                                style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  color: isPresent ? Colors.green : Colors.red,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isPresent 
+                                        ? Colors.green.withValues(alpha: 0.1) 
+                                        : Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    isPresent ? "PRESENT" : "ABSENT",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: isPresent ? Colors.green : Colors.red,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                if (!isPresent) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      final s = rec['student'] as Map?;
+                                      final f = rec['faculty'] as Map?;
+                                      final int? targetUserId = type == 'STUDENT'
+                                          ? (s?['user_id'] ?? s?['user']?['id'] as int?)
+                                          : (f?['user_id'] ?? f?['user']?['id'] as int?);
+                                      if (targetUserId != null) {
+                                        _markPassengerPresent(type, targetUserId);
+                                      } else {
+                                        _showSnackBar("User ID not found", Colors.red);
+                                      }
+                                    },
+                                    child: Builder(
+                                      builder: (context) {
+                                        final s = rec['student'] as Map?;
+                                        final f = rec['faculty'] as Map?;
+                                        final int? targetUserId = type == 'STUDENT'
+                                            ? (s?['user_id'] ?? s?['user']?['id'] as int?)
+                                            : (f?['user_id'] ?? f?['user']?['id'] as int?);
+                                        final String key = "${type.toUpperCase()}_$targetUserId";
+                                        final isLoading = _loadingPresentKeys.contains(key);
+
+                                        return Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.green.withValues(alpha: 0.3),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: isLoading
+                                              ? const SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child: CircularProgressIndicator(
+                                                    color: Colors.white,
+                                                    strokeWidth: 2,
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.check_rounded,
+                                                  color: Colors.white,
+                                                  size: 14,
+                                                ),
+                                        );
+                                      }
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -3327,27 +3564,279 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
         s == 'CAMPUS_IN' ||
         s == 'FN_COMPLETED';
 
+    final bool isSuperOrTransportAdmin = _userRole != null &&
+        (_userRole!.toLowerCase() == 'super admin' ||
+            _userRole!.toLowerCase() == 'transport admin');
+
+    final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
+        ? int.tryParse(_run['assigned_faculty_user_id'].toString())
+        : null;
+    final bool isAssignedFaculty = _userRole != null &&
+        _userRole!.toLowerCase() == 'faculty' &&
+        assignedFacultyUserId != null &&
+        assignedFacultyUserId == _loggedInUserId;
+
+    Map<String, dynamic>? myFacultyRecord;
+    if (isAssignedFaculty) {
+      final List attendanceList = _run['attendanceRecords'] as List? ?? [];
+      for (var rec in attendanceList) {
+        if (rec['type']?.toString().toUpperCase() == 'FACULTY') {
+          final f = rec['faculty'] as Map?;
+          final int? fUserId = f?['user']?['id'] != null ? int.tryParse(f!['user']['id'].toString()) : null;
+          if (fUserId != null && fUserId == _loggedInUserId) {
+            myFacultyRecord = Map<String, dynamic>.from(rec);
+            break;
+          }
+        }
+      }
+    }
+
+    final String morningStatus = myFacultyRecord != null
+        ? (myFacultyRecord['morning_attendance_status'] ?? 'ABSENT').toString().toUpperCase()
+        : 'ABSENT';
+    final String eveningStatus = myFacultyRecord != null
+        ? (myFacultyRecord['evening_attendance_status'] ?? 'ABSENT').toString().toUpperCase()
+        : 'ABSENT';
+
+    // Morning condition: started or ARRIVED_CAMPUS, and not already marked PRESENT.
+    final bool isMorningScanEligible = (s == 'STARTED' || s == 'ARRIVED_CAMPUS') && morningStatus != 'PRESENT';
+
+    // Evening condition: show when FN_COMPLETED, close when AN_STARTED or marked PRESENT.
+    final bool isEveningScanEligible = s == 'FN_COMPLETED' && eveningStatus != 'PRESENT';
+
+    final bool showScanOtpButton = isAssignedFaculty && (isMorningScanEligible || isEveningScanEligible);
+
+    // Active status based on shift
+    final bool isAn = s.contains('AN') || s == 'FN_COMPLETED';
+    final String activeStatus = isAn ? eveningStatus : morningStatus;
+    final bool isPresent = activeStatus == 'PRESENT';
+
+    final bool isMorningConfirmed = _run['is_morning_attendance_confirmed'] == true ||
+        _run['is_morning_attendance_confirmed']?.toString() == 'true' ||
+        _run['morning_attendance_confirmed'] == true ||
+        _run['morning_attendance_confirmed']?.toString() == 'true';
+
+    final bool isEveningConfirmed = _run['is_evening_attendance_confirmed'] == true ||
+        _run['is_evening_attendance_confirmed']?.toString() == 'true' ||
+        _run['evening_attendance_confirmed'] == true ||
+        _run['evening_attendance_confirmed']?.toString() == 'true';
+
+    final bool isAttendanceConfirmed = isAn ? isEveningConfirmed : isMorningConfirmed;
+
+    final bool showConfirmAttendance = isAssignedFaculty && 
+        (assignedFacultyUserId == 421 || true) &&
+        isPresent && 
+        !isAttendanceConfirmed && 
+        !_localAttendanceConfirmed;
+
     Widget? bottomBar;
-    if (isPlanned) {
-      bottomBar = _buildBottomButton("Mark Run Ready", Icons.check_circle_rounded, primaryBlue, isDark, _isLoadingAction ? null : _markRunReady);
-    } else if (isStarted) {
+    if (isSuperOrTransportAdmin) {
+      if (isPlanned) {
+        bottomBar = _buildBottomButton("Mark Run Ready", Icons.check_circle_rounded, primaryBlue, isDark, _isLoadingAction ? null : _markRunReady);
+      } else if (isStarted) {
+        bottomBar = _buildBottomButton(
+          "Verify Campus In OTP",
+          Icons.vpn_key_rounded,
+          primaryBlue,
+          isDark,
+          _isLoadingAction
+              ? null
+              : () => _showVerifyOtpBottomSheet(
+                    primaryBlue,
+                    titleColor,
+                    subColor,
+                    isDark,
+                    defaultType: s == 'AN_STARTED' ? 'AN' : 'FN',
+                  ),
+        );
+      } else if (isCampusIn) {
+        bottomBar = _buildBottomButton("End Morning", Icons.offline_pin_rounded, primaryBlue, isDark, _isLoadingAction ? null : () => _showEndMorningBottomSheet(primaryBlue, titleColor, subColor, isDark));
+      }
+    } else if (showScanOtpButton) {
+      final String otpType = s == 'FN_COMPLETED' || s.contains('AN') ? 'AN' : 'FN';
       bottomBar = _buildBottomButton(
-        "Verify Campus In OTP",
-        Icons.vpn_key_rounded,
+        "Scan OTP",
+        Icons.qr_code_scanner_rounded,
         primaryBlue,
         isDark,
-        _isLoadingAction
-            ? null
-            : () => _showVerifyOtpBottomSheet(
-                  primaryBlue,
-                  titleColor,
-                  subColor,
-                  isDark,
-                  defaultType: s == 'AN_STARTED' ? 'AN' : 'FN',
-                ),
+        () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FacultyScanOtpScreen(
+                runId: _run['id'] ?? 128,
+                otpType: otpType,
+              ),
+            ),
+          );
+          if (result == true) {
+            _refreshDetails();
+          }
+        },
       );
-    } else if (isCampusIn) {
-      bottomBar = _buildBottomButton("End Morning", Icons.offline_pin_rounded, primaryBlue, isDark, _isLoadingAction ? null : () => _showEndMorningBottomSheet(primaryBlue, titleColor, subColor, isDark));
+    } else if (showConfirmAttendance) {
+      bottomBar = _buildBottomButton(
+        "I Confirm the Attendance",
+        Icons.check_circle_outline_rounded,
+        Colors.green,
+        isDark,
+        _isLoadingAction ? null : _confirmAttendance,
+      );
+    }
+
+    final String morningBoardingOtp = myFacultyRecord != null
+        ? (myFacultyRecord['morning_boarding_otp'] ?? 
+           myFacultyRecord['morning_otp'] ?? 
+           myFacultyRecord['boarding_otp'] ?? 
+           '').toString()
+        : '';
+    final String eveningBoardingOtp = myFacultyRecord != null
+        ? (myFacultyRecord['evening_boarding_otp'] ?? 
+           myFacultyRecord['evening_otp'] ?? 
+           '').toString()
+        : '';
+
+    Widget? facultyAttendanceWidget;
+    if (isAssignedFaculty && myFacultyRecord != null) {
+      final bool isAn = s.contains('AN') || s == 'FN_COMPLETED';
+      final String activeStatus = isAn ? eveningStatus : morningStatus;
+      final String activeLabel = isAn ? "Evening Attendance" : "Morning Attendance";
+      
+      final bool isPresent = activeStatus == 'PRESENT';
+      final Color statusColor = isPresent ? Colors.green : Colors.red;
+      
+      // Build OTP display widgets
+      Widget morningOtpBadge = Container();
+      Widget eveningOtpBadge = Container();
+      
+      if (morningBoardingOtp.isNotEmpty && morningBoardingOtp != 'null') {
+        morningOtpBadge = _buildFacultyOtpPill(
+          label: "Morning Boarding OTP",
+          otp: morningBoardingOtp,
+          isActive: !isAn,
+          primaryBlue: primaryBlue,
+          textColor: titleColor,
+          subColor: subColor,
+          isDark: isDark,
+        );
+      }
+      
+      if (eveningBoardingOtp.isNotEmpty && eveningBoardingOtp != 'null') {
+        eveningOtpBadge = _buildFacultyOtpPill(
+          label: "Evening Boarding OTP",
+          otp: eveningBoardingOtp,
+          isActive: isAn,
+          primaryBlue: primaryBlue,
+          textColor: titleColor,
+          subColor: subColor,
+          isDark: isDark,
+        );
+      }
+      
+      facultyAttendanceWidget = Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: statusColor.withValues(alpha: 0.15),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: statusColor.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Attendance Status Row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.05),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isPresent ? Icons.check_circle_outline_rounded : Icons.cancel_outlined,
+                    color: statusColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activeLabel,
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: subColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          activeStatus,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: statusColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    isAn ? "Morning: $morningStatus" : "Evening: $eveningStatus",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: subColor.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // OTPs Row
+            if ((morningBoardingOtp.isNotEmpty && morningBoardingOtp != 'null') || 
+                (eveningBoardingOtp.isNotEmpty && eveningBoardingOtp != 'null')) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "BOARDING PASSCODES",
+                      style: GoogleFonts.outfit(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: subColor.withValues(alpha: 0.6),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        if (morningBoardingOtp.isNotEmpty && morningBoardingOtp != 'null')
+                          Expanded(child: morningOtpBadge),
+                        if (morningBoardingOtp.isNotEmpty && morningBoardingOtp != 'null' &&
+                            eveningBoardingOtp.isNotEmpty && eveningBoardingOtp != 'null')
+                          const SizedBox(width: 12),
+                        if (eveningBoardingOtp.isNotEmpty && eveningBoardingOtp != 'null')
+                          Expanded(child: eveningOtpBadge),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
     }
 
     return Scaffold(
@@ -3374,7 +3863,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                       ),
                       if (_isLoading)
                         const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                      else if (isEditable)
+                      else if (isEditable && widget.showEditIcon && isSuperOrTransportAdmin)
                         GestureDetector(
                           onTap: () async {
                             final result = await Navigator.push(
@@ -3427,6 +3916,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
                 ],
               ),
             ),
+            if (facultyAttendanceWidget != null) facultyAttendanceWidget,
             // Custom sliding segments TabBar Layout
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -3558,6 +4048,82 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Si
               value,
               style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFacultyOtpPill({
+    required String label,
+    required String otp,
+    required bool isActive,
+    required Color primaryBlue,
+    required Color textColor,
+    required Color subColor,
+    required bool isDark,
+  }) {
+    final Color activeColor = isActive ? primaryBlue : subColor.withValues(alpha: 0.4);
+    final Color bgValues = isActive
+        ? primaryBlue.withValues(alpha: 0.05)
+        : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01));
+    final Color borderValues = isActive
+        ? primaryBlue.withValues(alpha: 0.2)
+        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04));
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgValues,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderValues),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.key_rounded, size: 10, color: activeColor),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.outfit(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    color: isActive ? primaryBlue : subColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                otp,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: isActive ? textColor : subColor.withValues(alpha: 0.6),
+                  letterSpacing: 1.0,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: otp));
+                  _showSnackBar("Copied OTP to clipboard", Colors.green);
+                },
+                child: Icon(
+                  Icons.copy_all_rounded,
+                  size: 14,
+                  color: isActive ? primaryBlue : subColor.withValues(alpha: 0.4),
+                ),
+              ),
+            ],
           ),
         ],
       ),

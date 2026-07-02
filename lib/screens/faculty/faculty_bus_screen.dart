@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:tripzo/screens/faculty/faculty_bus_details_screen.dart';
+import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 
@@ -161,8 +162,17 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
           _isLoading = false;
         });
       } else {
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
+            errorMsg = decoded['message'].toString();
+          } else if (decoded['error'] != null && decoded['error'].toString().trim().isNotEmpty) {
+            errorMsg = decoded['error'].toString();
+          }
+        } catch (_) {}
         setState(() {
-          _error = "Server error: ${response.statusCode}";
+          _error = errorMsg;
           _isLoading = false;
         });
       }
@@ -229,38 +239,63 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
   Widget _buildStatusBadge(String status) {
     final String s = status.toUpperCase();
     final Map<String, Map<String, Color>> statusStyles = {
+      'PLANNED': {
+        'bg': const Color(0xFFFEF3C7),
+        'text': const Color(0xFFD97706),
+        'border': const Color(0xFFFDE68A),
+      },
       'READY': {
-        'bg': const Color(0xFFECFDF5),
-        'text': const Color(0xFF10B981),
+        'bg': const Color(0xFFFCE7F3),
+        'text': const Color(0xFFBE185D),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'STARTED': {
+        'bg': const Color(0xFFDBEAFE),
+        'text': const Color(0xFF2563EB),
+        'border': const Color(0xFF93C5FD),
+      },
+      'ARRIVED_CAMPUS': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'CAMPUS_IN': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'FN_COMPLETED': {
+        'bg': const Color(0xFFD1FAE5),
+        'text': const Color(0xFF059669),
         'border': const Color(0xFFA7F3D0),
       },
-      'IN_PROGRESS': {
-        'bg': const Color(0xFFFFFBEB),
-        'text': const Color(0xFFF59E0B),
+      'DEPARTED_CAMPUS': {
+        'bg': const Color(0xFFFEF3C7),
+        'text': const Color(0xFFB45309),
         'border': const Color(0xFFFDE68A),
       },
-      'ON_TRIP': {
-        'bg': const Color(0xFFFFFBEB),
-        'text': const Color(0xFFF59E0B),
-        'border': const Color(0xFFFDE68A),
+      'HALTED': {
+        'bg': const Color(0xFFFAF5FF),
+        'text': const Color(0xFF8B5CF6),
+        'border': const Color(0xFFE9D5FF),
       },
       'COMPLETED': {
-        'bg': const Color(0xFFECFDF5),
-        'text': const Color(0xFF10B981),
+        'bg': const Color(0xFFD1FAE5),
+        'text': const Color(0xFF047857),
         'border': const Color(0xFFA7F3D0),
       },
       'CANCELLED': {
-        'bg': const Color(0xFFF8FAFC),
-        'text': const Color(0xFF64748B),
-        'border': const Color(0xFFE2E8F0),
+        'bg': const Color(0xFFFFE4E6),
+        'text': const Color(0xFFBE123C),
+        'border': const Color(0xFFFECDD3),
       },
     };
 
     final style = statusStyles[s] ??
         {
-          'bg': Colors.grey.withValues(alpha: 0.1),
-          'text': Colors.grey,
-          'border': Colors.grey.withValues(alpha: 0.2),
+          'bg': const Color(0xFFF1F5F9),
+          'text': const Color(0xFF475569),
+          'border': const Color(0xFFE2E8F0),
         };
 
     return Container(
@@ -271,10 +306,10 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
         border: Border.all(color: style['border']!, width: 1),
       ),
       child: Text(
-        s,
+        s.replaceAll('_', ' '),
         style: TextStyle(
           color: style['text'],
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.5,
         ),
@@ -695,21 +730,22 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
           final busNo = _getBusNumber(run);
           final driverName = _getDriverName(run);
 
+          final bool isMorningConfirmed = run['is_morning_attendance_confirmed'] == true ||
+              run['is_morning_attendance_confirmed']?.toString() == 'true' ||
+              run['morning_attendance_confirmed'] == true ||
+              run['morning_attendance_confirmed']?.toString() == 'true';
+
+          final bool isEveningConfirmed = run['is_evening_attendance_confirmed'] == true ||
+              run['is_evening_attendance_confirmed']?.toString() == 'true' ||
+              run['evening_attendance_confirmed'] == true ||
+              run['evening_attendance_confirmed']?.toString() == 'true';
+
           // Build a card design exactly matching the missions card
           return FadeInWidget(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
               child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FacultyBusDetailsScreen(
-                        runId: run['id'] ?? 128,
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => _loadRunDetailsAndNavigate(run),
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -848,6 +884,97 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
                       
                       _buildSimpleTimelineRow(0, startLoc, false, const Color(0xFF6366F1), titleColor, subColor, true, status.toUpperCase() == 'COMPLETED'),
                       _buildSimpleTimelineRow(1, haltLoc, true, const Color(0xFF6366F1), titleColor, subColor, status.toUpperCase() == 'COMPLETED', status.toUpperCase() == 'COMPLETED'),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "MORNING CONFIRMATION",
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: subColor.withValues(alpha: 0.6),
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isMorningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                        size: 14,
+                                        color: isMorningConfirmed ? Colors.green : Colors.orange,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isMorningConfirmed ? "Confirmed" : "Pending",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isMorningConfirmed ? Colors.green : Colors.orange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 32,
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "EVENING CONFIRMATION",
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: subColor.withValues(alpha: 0.6),
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        isEveningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                        size: 14,
+                                        color: isEveningConfirmed ? Colors.green : Colors.orange,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isEveningConfirmed ? "Confirmed" : "Pending",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isEveningConfirmed ? Colors.green : Colors.orange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -858,6 +985,96 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
         childCount: _runs.length,
       ),
     );
+  }
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _loadRunDetailsAndNavigate(Map<String, dynamic> run) async {
+    final String runId = run['id']?.toString() ?? '';
+    if (runId.isEmpty) return;
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (!mounted) return;
+      if (token == null) {
+        Navigator.of(context).pop();
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final Map<String, dynamic> detailedRun = Map<String, dynamic>.from(responseData['data']);
+
+          final int? loggedInUserId = await UserStore.getUserId();
+          final int? assignedFacultyUserId = detailedRun['assigned_faculty_user_id'] != null 
+              ? int.tryParse(detailedRun['assigned_faculty_user_id'].toString()) 
+              : null;
+
+          if (!mounted) return;
+          if (assignedFacultyUserId == null || assignedFacultyUserId == loggedInUserId) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DailyBusRunDetailsPage(runData: detailedRun, showEditIcon: false),
+              ),
+            );
+          } else {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FacultyBusDetailsScreen(runId: run['id'] ?? 128),
+              ),
+            );
+          }
+        } else {
+          _showSnackBar(responseData['message'] ?? "Failed to load run details", Colors.red);
+        }
+      } else {
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _showSnackBar("Connection error: $e", Colors.red);
+    }
   }
 }
 
