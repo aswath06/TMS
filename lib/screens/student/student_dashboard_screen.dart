@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/store/user_store.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
@@ -75,39 +76,57 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                   const SizedBox(height: 24),
                   _buildHeader(titleColor, screenWidth, primaryBlue),
                   const SizedBox(height: 32),
-                  
-                  _buildSectionTitle("Attendance Overview", titleColor),
-                  const SizedBox(height: 18),
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AttendanceOverviewPage()),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(32),
-                    child: _buildAttendanceSection(primaryBlue, surfaceColor, isDark, screenWidth, titleColor, subColor),
+                  const SizedBox(height: 20),
+                  // Welcome announcement banner
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [primaryBlue, primaryBlue.withValues(alpha: 0.7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryBlue.withValues(alpha: 0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.campaign_rounded, color: Colors.white, size: 28),
+                            const SizedBox(width: 10),
+                            Text(
+                              "CAMPUS ANNOUNCEMENTS",
+                              style: GoogleFonts.outfit(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Stay updated with real-time transit notifications, route updates, and campus bus schedules directly from your feed.",
+                          style: GoogleFonts.outfit(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  
-                  const SizedBox(height: 36),
-                  _buildSectionTitle("Your Transport", titleColor),
-                  const SizedBox(height: 18),
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const StudentBusScreen()),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(32),
-                    child: _buildBusDetailsSection(primaryBlue, surfaceColor, isDark, titleColor, subColor),
-                  ),
-
-                  const SizedBox(height: 36),
-                  _buildSectionTitle("Quick Actions", titleColor),
-                  const SizedBox(height: 18),
-                  _buildQuickActions(context, primaryBlue, surfaceColor, isDark),
-
                   const SizedBox(height: 36),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -126,9 +145,9 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
                   _buildNotificationList(primaryBlue, surfaceColor, isDark),
-
-                  const SizedBox(height: 100), // Bottom padding for navigation bar
+                  const SizedBox(height: 40),
                 ],
               ),
             ),

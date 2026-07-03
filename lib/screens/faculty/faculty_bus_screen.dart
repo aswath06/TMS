@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:tripzo/screens/faculty/faculty_bus_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
@@ -740,6 +739,12 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
               run['evening_attendance_confirmed'] == true ||
               run['evening_attendance_confirmed']?.toString() == 'true';
 
+          final int? assignedFacultyUserId = run['assigned_faculty_user_id'] != null
+              ? int.tryParse(run['assigned_faculty_user_id'].toString())
+              : null;
+          final bool isAssignedSupervisor = assignedFacultyUserId != null &&
+              assignedFacultyUserId == _userId;
+
           // Build a card design exactly matching the missions card
           return FadeInWidget(
             child: Padding(
@@ -884,97 +889,99 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
                       
                       _buildSimpleTimelineRow(0, startLoc, false, const Color(0xFF6366F1), titleColor, subColor, true, status.toUpperCase() == 'COMPLETED'),
                       _buildSimpleTimelineRow(1, haltLoc, true, const Color(0xFF6366F1), titleColor, subColor, status.toUpperCase() == 'COMPLETED', status.toUpperCase() == 'COMPLETED'),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                      if (isAssignedSupervisor) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "MORNING CONFIRMATION",
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      color: subColor.withValues(alpha: 0.6),
-                                      letterSpacing: 0.8,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        isMorningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
-                                        size: 14,
-                                        color: isMorningConfirmed ? Colors.green : Colors.orange,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "MORNING CONFIRMATION",
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        color: subColor.withValues(alpha: 0.6),
+                                        letterSpacing: 0.8,
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        isMorningConfirmed ? "Confirmed" : "Pending",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          isMorningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                          size: 14,
                                           color: isMorningConfirmed ? Colors.green : Colors.orange,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              width: 1,
-                              height: 32,
-                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "EVENING CONFIRMATION",
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      color: subColor.withValues(alpha: 0.6),
-                                      letterSpacing: 0.8,
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          isMorningConfirmed ? "Confirmed" : "Pending",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: isMorningConfirmed ? Colors.green : Colors.orange,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        isEveningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
-                                        size: 14,
-                                        color: isEveningConfirmed ? Colors.green : Colors.orange,
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 32,
+                                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "EVENING CONFIRMATION",
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        color: subColor.withValues(alpha: 0.6),
+                                        letterSpacing: 0.8,
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        isEveningConfirmed ? "Confirmed" : "Pending",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          isEveningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                          size: 14,
                                           color: isEveningConfirmed ? Colors.green : Colors.orange,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          isEveningConfirmed ? "Confirmed" : "Pending",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: isEveningConfirmed ? Colors.green : Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -1033,28 +1040,13 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true && responseData['data'] != null) {
           final Map<String, dynamic> detailedRun = Map<String, dynamic>.from(responseData['data']);
-
-          final int? loggedInUserId = await UserStore.getUserId();
-          final int? assignedFacultyUserId = detailedRun['assigned_faculty_user_id'] != null 
-              ? int.tryParse(detailedRun['assigned_faculty_user_id'].toString()) 
-              : null;
-
           if (!mounted) return;
-          if (assignedFacultyUserId == null || assignedFacultyUserId == loggedInUserId) {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DailyBusRunDetailsPage(runData: detailedRun, showEditIcon: false),
-              ),
-            );
-          } else {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => FacultyBusDetailsScreen(runId: run['id'] ?? 128),
-              ),
-            );
-          }
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DailyBusRunDetailsPage(runData: detailedRun, showEditIcon: false),
+            ),
+          );
         } else {
           _showSnackBar(responseData['message'] ?? "Failed to load run details", Colors.red);
         }
