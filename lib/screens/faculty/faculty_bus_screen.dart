@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class FacultyBusScreen extends ConsumerStatefulWidget {
   const FacultyBusScreen({super.key});
@@ -544,20 +545,20 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
   Widget _buildAnimatedHeader(Color titleColor, Color subColor) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 16.0),
+        padding: const EdgeInsets.fromLTRB(24.0, 32.0, 24.0, 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               "Daily Bus Routes",
-              style: TextStyle(
+              style: GoogleFonts.outfit(
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
                 color: titleColor,
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               "View daily campus bus schedules and details.",
               style: TextStyle(color: subColor, fontSize: 14),
@@ -729,21 +730,6 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
           final busNo = _getBusNumber(run);
           final driverName = _getDriverName(run);
 
-          final bool isMorningConfirmed = run['is_morning_attendance_confirmed'] == true ||
-              run['is_morning_attendance_confirmed']?.toString() == 'true' ||
-              run['morning_attendance_confirmed'] == true ||
-              run['morning_attendance_confirmed']?.toString() == 'true';
-
-          final bool isEveningConfirmed = run['is_evening_attendance_confirmed'] == true ||
-              run['is_evening_attendance_confirmed']?.toString() == 'true' ||
-              run['evening_attendance_confirmed'] == true ||
-              run['evening_attendance_confirmed']?.toString() == 'true';
-
-          final int? assignedFacultyUserId = run['assigned_faculty_user_id'] != null
-              ? int.tryParse(run['assigned_faculty_user_id'].toString())
-              : null;
-          final bool isAssignedSupervisor = assignedFacultyUserId != null &&
-              assignedFacultyUserId == _userId;
 
           // Build a card design exactly matching the missions card
           return FadeInWidget(
@@ -889,99 +875,6 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
                       
                       _buildSimpleTimelineRow(0, startLoc, false, const Color(0xFF6366F1), titleColor, subColor, true, status.toUpperCase() == 'COMPLETED'),
                       _buildSimpleTimelineRow(1, haltLoc, true, const Color(0xFF6366F1), titleColor, subColor, status.toUpperCase() == 'COMPLETED', status.toUpperCase() == 'COMPLETED'),
-                      if (isAssignedSupervisor) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "MORNING CONFIRMATION",
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w900,
-                                        color: subColor.withValues(alpha: 0.6),
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isMorningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
-                                          size: 14,
-                                          color: isMorningConfirmed ? Colors.green : Colors.orange,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          isMorningConfirmed ? "Confirmed" : "Pending",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: isMorningConfirmed ? Colors.green : Colors.orange,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                width: 1,
-                                height: 32,
-                                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "EVENING CONFIRMATION",
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w900,
-                                        color: subColor.withValues(alpha: 0.6),
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isEveningConfirmed ? Icons.check_circle_rounded : Icons.pending_rounded,
-                                          size: 14,
-                                          color: isEveningConfirmed ? Colors.green : Colors.orange,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          isEveningConfirmed ? "Confirmed" : "Pending",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: isEveningConfirmed ? Colors.green : Colors.orange,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -1006,67 +899,13 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
   }
 
   Future<void> _loadRunDetailsAndNavigate(Map<String, dynamic> run) async {
-    final String runId = run['id']?.toString() ?? '';
-    if (runId.isEmpty) return;
-
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DailyBusRunDetailsPage(runData: run, showEditIcon: false),
       ),
     );
-
-    try {
-      final String? token = await UserStore.getToken();
-      if (!mounted) return;
-      if (token == null) {
-        Navigator.of(context).pop();
-        _showSnackBar("Session expired. Please log in again.", Colors.red);
-        return;
-      }
-
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true && responseData['data'] != null) {
-          final Map<String, dynamic> detailedRun = Map<String, dynamic>.from(responseData['data']);
-          if (!mounted) return;
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DailyBusRunDetailsPage(runData: detailedRun, showEditIcon: false),
-            ),
-          );
-        } else {
-          _showSnackBar(responseData['message'] ?? "Failed to load run details", Colors.red);
-        }
-      } else {
-        String errorMsg = "An unexpected error occurred.";
-        try {
-          final Map<String, dynamic> data = json.decode(response.body);
-          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-            errorMsg = data['message'].toString();
-          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
-            errorMsg = data['error'].toString();
-          }
-        } catch (_) {}
-        _showSnackBar(errorMsg, Colors.red);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      _showSnackBar("Connection error: $e", Colors.red);
-    }
   }
 }
 

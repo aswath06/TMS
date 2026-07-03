@@ -75,7 +75,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     // Determine current states from global stores
     // Listen to theme and language changes
     final themeStore = ref.watch(themeStoreProvider);
-    final lStore = ref.watch(languageStoreProvider);
+    ref.watch(languageStoreProvider);
     final bool isTamil = LanguageStore.isTamil;
     
     // Update local state if it differs (e.g. after language was changed elsewhere or on load)
@@ -295,8 +295,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
                     const SizedBox(height: 12),
 
-                    // SUPER ADMIN EXCLUSIVE TILES
-                    if (_userRole.toLowerCase() == "super admin") ...[ 
+                    // SUPER ADMIN & TRANSPORT ADMIN EXCLUSIVE TILES
+                    if (_userRole.toLowerCase() == "super admin" || _userRole.toLowerCase() == "transport admin") ...[
                       _settingsTile(
                         Icons.manage_accounts_rounded,
                         "User Logout",
@@ -313,6 +313,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                    ],
+
+                    // SUPER ADMIN EXCLUSIVE TILES
+                    if (_userRole.toLowerCase() == "super admin") ...[ 
                       _settingsTile(
                         Icons.support_agent_rounded,
                         "Support Tickets",

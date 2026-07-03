@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:tripzo/screens/admin/request/edit_vehicle_driver_page.dart';
 import 'package:tripzo/screens/faculty/faculty_scan_otp_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:shimmer/shimmer.dart';
 
 class DailyBusRunDetailsPage extends StatefulWidget {
   final Map<String, dynamic> runData;
@@ -237,6 +238,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   Future<void> _loadUserRole() async {
     final role = await UserStore.getRole();
     final userId = await UserStore.getUserId();
+    
+    // Fetch full detailed run information while the shimmer skeleton is showing
+    await _refreshDetails();
+
     if (mounted) {
       setState(() {
         _userRole = role;
@@ -244,11 +249,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       });
     }
   }
+
   @override
   void dispose() {
     _studentSearchController.dispose();
     super.dispose();
   }
+
   Future<void> _refreshDetails() async {
     setState(() => _isLoading = true);
     try {
@@ -471,7 +478,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     }
   }
 
-  Future<void> _submitMorningOdometer(int odometer, int passengerCount, bool allowanceNeeded) async {
+  Future<void> _submitMorningOdometer(int odometer, int? passengerCount, bool allowanceNeeded) async {
     setState(() => _isLoadingAction = true);
     try {
       final String? token = await UserStore.getToken();
@@ -484,11 +491,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       if (runId.isEmpty) return;
 
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/morning-odometer";
-      final bodyData = {
+      final Map<String, dynamic> bodyData = {
         "end_odometer": odometer,
-        "passenger_count": passengerCount,
         "allowance_needed": allowanceNeeded,
       };
+      if (passengerCount != null) {
+        bodyData["passenger_count"] = passengerCount;
+      }
 
       // Console log request curl
       final String curlCmd = "curl -X PATCH '$url' \\\n"
@@ -1604,18 +1613,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               final String startFormatted = plannedStart.isNotEmpty ? DateFormat('hh:mm a').format(DateTime.parse(plannedStart)) : 'N/A';
               final String endFormatted = plannedEnd.isNotEmpty ? DateFormat('hh:mm a').format(DateTime.parse(plannedEnd)) : 'N/A';
 
-              final vehicle = assign['vehicle'] as Map<String, dynamic>?;
-              final driver = assign['driver'] as Map<String, dynamic>?;
-              final driverUser = driver?['user'] as Map<String, dynamic>?;
-
-              final String driverName = driverUser?['name']?.toString() ?? 
-                                       driver?['name']?.toString() ?? 
-                                       driver?['driver_name']?.toString() ?? 
-                                       'Driver Name';
-              final String driverUsername = driverUser?['username']?.toString() ?? 
-                                           driver?['username']?.toString() ?? 
-                                           driver?['driver_username']?.toString() ?? 
-                                           '';
+              final vehicle = assign['vehicle'] as Map?;
+              final driver = assign['driver'] as Map?;
+              final driverUser = driver?['user'] as Map?;
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 24),
@@ -1774,12 +1774,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          driverName,
+                                          driverUser?['name'] ?? 'Driver Name',
                                           style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w900, color: titleColor),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          driverUsername,
+                                          driverUser?['username'] ?? '',
                                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subColor),
                                         ),
                                       ],
@@ -4091,7 +4091,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
   void _showEndMorningBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
     final TextEditingController odometerController = TextEditingController();
-    final TextEditingController passengerController = TextEditingController();
     bool allowanceNeeded = false;
 
     showModalBottomSheet(
@@ -4145,25 +4144,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         labelStyle: TextStyle(color: subColor),
                         hintText: "Enter odometer value",
                         prefixIcon: Icon(Icons.speed_rounded, color: primaryBlue),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Passengers Count Field
-                    TextField(
-                      controller: passengerController,
-                      keyboardType: TextInputType.number,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        labelText: "Passenger Count",
-                        labelStyle: TextStyle(color: subColor),
-                        hintText: "Enter passenger count",
-                        prefixIcon: Icon(Icons.people_rounded, color: primaryBlue),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -4244,19 +4224,17 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       child: ElevatedButton(
                         onPressed: () {
                           final String oStr = odometerController.text.trim();
-                          final String pStr = passengerController.text.trim();
-                          if (oStr.isEmpty || pStr.isEmpty) {
-                            _showSnackBar("Please fill in all odometer details", Colors.orange);
+                          if (oStr.isEmpty) {
+                            _showSnackBar("Please fill in odometer details", Colors.orange);
                             return;
                           }
                           final int? odometerVal = int.tryParse(oStr);
-                          final int? passengerVal = int.tryParse(pStr);
-                          if (odometerVal == null || passengerVal == null) {
+                          if (odometerVal == null) {
                             _showSnackBar("Invalid numeric values", Colors.orange);
                             return;
                           }
                           Navigator.pop(context);
-                          _submitMorningOdometer(odometerVal, passengerVal, allowanceNeeded);
+                          _submitMorningOdometer(odometerVal, null, allowanceNeeded);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryBlue,
@@ -4327,6 +4305,138 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     );
   }
 
+  Widget _buildSkeletonLoading(bool isDark, Color cardColor, Color bgColor, Color titleColor, Color subColor) {
+    final shimmerBase = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200;
+    final shimmerHighlight = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade100;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          "Bus Run Details",
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+            color: titleColor,
+          ),
+        ),
+      ),
+      body: Shimmer.fromColors(
+        baseColor: shimmerBase,
+        highlightColor: shimmerHighlight,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Card Skeleton
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Tab Bar Skeleton
+              Row(
+                children: [
+                  Container(
+                    width: 100,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 120,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+
+              // Section 1: Shift Attendance Skeleton
+              Container(
+                width: 140,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Section 2: Driver / Faculty Skeleton
+              Container(
+                width: 120,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Section 3: Stops Details Header Skeleton
+              Container(
+                width: 150,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Stop card 1
+              Container(
+                width: double.infinity,
+                height: 160,
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -4337,12 +4447,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
 
     if (_userRole == null) {
-      return Scaffold(
-        backgroundColor: bgColor,
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return _buildSkeletonLoading(isDark, cardColor, bgColor, titleColor, subColor);
     }
 
     final String runName = _run['run_name'] ?? 'Bus Run';
@@ -4709,23 +4814,38 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                   ),
                                   if (_isLoading)
                                     const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                                  else if (isEditable && widget.showEditIcon && isSuperOrTransportAdmin)
-                                    GestureDetector(
-                                      onTap: () async {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => EditVehicleDriverPage(run: _run),
+                                  else ...[
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isSuperOrTransportAdmin) ...[
+                                          GestureDetector(
+                                            onTap: _refreshDetails,
+                                            child: Icon(Icons.refresh_rounded, color: primaryBlue, size: 24),
                                           ),
-                                        );
-                                        if (result == true) {
-                                          _refreshDetails();
-                                        }
-                                      },
-                                      child: Icon(Icons.edit_rounded, color: primaryBlue, size: 24),
-                                    )
-                                  else
-                                    const SizedBox(width: 24),
+                                          if (isEditable && widget.showEditIcon)
+                                            const SizedBox(width: 16),
+                                        ],
+                                        if (isEditable && widget.showEditIcon && isSuperOrTransportAdmin)
+                                          GestureDetector(
+                                            onTap: () async {
+                                              final result = await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => EditVehicleDriverPage(run: _run),
+                                                ),
+                                              );
+                                              if (result == true) {
+                                                _refreshDetails();
+                                              }
+                                            },
+                                            child: Icon(Icons.edit_rounded, color: primaryBlue, size: 24),
+                                          ),
+                                        if (!isSuperOrTransportAdmin && (!isEditable || !widget.showEditIcon))
+                                          const SizedBox(width: 24),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 20),

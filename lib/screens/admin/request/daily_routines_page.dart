@@ -834,97 +834,14 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
 
     return GestureDetector(
       onTap: () async {
-        final role = await UserStore.getRole();
-        final bool isSuperOrTransportAdmin = role != null &&
-            (role.toLowerCase() == 'super admin' ||
-                role.toLowerCase() == 'transport admin');
-
-        if (isSuperOrTransportAdmin && context.mounted) {
-          // Show loading dialog
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const Center(
-              child: CircularProgressIndicator(),
+        if (context.mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DailyBusRunDetailsPage(runData: run),
             ),
           );
-
-          try {
-            final String? token = await UserStore.getToken();
-            final String runId = run['id']?.toString() ?? '';
-            final String url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
-
-            // Console log request curl
-            final String curlCmd = "curl '$url' \\\n"
-                "  -H 'accept: */*' \\\n"
-                "  -H 'authorization: TMS $token' \\\n"
-                "  -H 'content-type: application/json'";
-            debugPrint("---- [HTTP REQUEST CURL] ----\n$curlCmd\n----------------------------");
-
-            final response = await http.get(
-              Uri.parse(url),
-              headers: ApiConstants.getHeaders(token),
-            );
-
-            // Console log response
-            debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
-
-            // Pop loading dialog
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-
-            if (response.statusCode == 200) {
-              final Map<String, dynamic> responseData = json.decode(response.body);
-              if (responseData['success'] == true && responseData['data'] != null) {
-                final Map<String, dynamic> detailedRun = Map<String, dynamic>.from(responseData['data']);
-
-                if (context.mounted) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DailyBusRunDetailsPage(runData: detailedRun),
-                    ),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  _showSnackBar(responseData['message'] ?? "Failed to load run details", Colors.red);
-                }
-              }
-            } else {
-              String errorMsg = "An unexpected error occurred.";
-              try {
-                final Map<String, dynamic> data = json.decode(response.body);
-                if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-                  errorMsg = data['message'].toString();
-                } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
-                  errorMsg = data['error'].toString();
-                }
-              } catch (_) {}
-              if (mounted) {
-                _showSnackBar(errorMsg, Colors.red);
-              }
-            }
-          } catch (e) {
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-            if (mounted) {
-              _showSnackBar("Connection error: $e", Colors.red);
-            }
-          }
-        } else {
-          if (context.mounted) {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DailyBusRunDetailsPage(runData: run),
-              ),
-            );
-          }
         }
-
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),

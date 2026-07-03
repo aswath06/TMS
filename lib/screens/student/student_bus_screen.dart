@@ -411,12 +411,8 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Text(
-          "Daily Bus Route",
+          "Daily Bus Routes",
           style: GoogleFonts.outfit(
             fontSize: 24,
             fontWeight: FontWeight.w900,
@@ -442,6 +438,76 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                   ),
                 ),
               ),
+              // "Route Dates" + "Jump to Today" section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Route Dates",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: titleColor,
+                        ),
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                          final bool shouldShowJump = (_selectedDateFilter != todayStr) || _isScrolledFarFromToday;
+                          return AnimatedOpacity(
+                            duration: const Duration(milliseconds: 300),
+                            opacity: shouldShowJump ? 1.0 : 0.0,
+                            child: AnimatedBuilder(
+                              animation: _jumpAnimation,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, _jumpAnimation.value),
+                                  child: child,
+                                );
+                              },
+                              child: IgnorePointer(
+                                ignoring: !shouldShowJump,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                                    if (_selectedDateFilter != todayStr) {
+                                      setState(() => _selectedDateFilter = todayStr);
+                                      _loadData();
+                                    }
+                                    _scrollToDate(todayStr);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.fast_rewind_rounded, size: 14, color: primaryBlue),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          "Jump to Today",
+                                          style: TextStyle(
+                                            color: primaryBlue,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: primaryBlue,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _DateSelectorHeaderDelegate(
@@ -461,16 +527,6 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                   },
                   scrollController: _dateScrollController,
                   infiniteScrollMiddle: _infiniteScrollMiddle,
-                  isScrolledFarFromToday: _isScrolledFarFromToday,
-                  onJumpToToday: () {
-                    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                    setState(() {
-                      _selectedDateFilter = todayStr;
-                    });
-                    _loadData();
-                    _scrollToDate(todayStr);
-                  },
-                  jumpAnimation: _jumpAnimation,
                 ),
               ),
               if (_isLoading && _runs.isEmpty)
@@ -710,78 +766,14 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
     );
   }
 
-  void _showSnackBar(String message, Color color) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   Future<void> _loadRunDetailsAndNavigate(Map<String, dynamic> run) async {
-    final String runId = run['id']?.toString() ?? '';
-    if (runId.isEmpty) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DailyBusRunDetailsPage(runData: run, showEditIcon: false),
       ),
     );
-
-    try {
-      final String? token = await UserStore.getToken();
-      if (!mounted) return;
-      if (token == null) {
-        Navigator.of(context).pop();
-        _showSnackBar("Session expired. Please log in again.", Colors.red);
-        return;
-      }
-
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true && responseData['data'] != null) {
-          final Map<String, dynamic> detailedRun = Map<String, dynamic>.from(responseData['data']);
-
-          if (!mounted) return;
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DailyBusRunDetailsPage(runData: detailedRun, showEditIcon: false),
-            ),
-          );
-        } else {
-          _showSnackBar(responseData['message'] ?? "Failed to load run details", Colors.red);
-        }
-      } else {
-        String errorMsg = "An unexpected error occurred.";
-        try {
-          final decoded = json.decode(response.body);
-          if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
-            errorMsg = decoded['message'].toString();
-          }
-        } catch (_) {}
-        _showSnackBar(errorMsg, Colors.red);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      _showSnackBar("Connection error: $e", Colors.red);
-    }
   }
 }
 
@@ -795,9 +787,6 @@ class _DateSelectorHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Function(String) onDateSelected;
   final ScrollController scrollController;
   final int infiniteScrollMiddle;
-  final bool isScrolledFarFromToday;
-  final VoidCallback onJumpToToday;
-  final Animation<double> jumpAnimation;
 
   _DateSelectorHeaderDelegate({
     required this.isDark,
@@ -809,9 +798,6 @@ class _DateSelectorHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.onDateSelected,
     required this.scrollController,
     required this.infiniteScrollMiddle,
-    required this.isScrolledFarFromToday,
-    required this.onJumpToToday,
-    required this.jumpAnimation,
   });
 
   @override
@@ -821,6 +807,45 @@ class _DateSelectorHeaderDelegate extends SliverPersistentHeaderDelegate {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Row(
         children: [
+          // Fixed ALL option on the LEFT
+          GestureDetector(
+            onTap: () => onDateSelected('ALL'),
+            child: Container(
+              width: 65,
+              height: 70,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: selectedDate == 'ALL' ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: selectedDate == 'ALL' ? primaryBlue : titleColor.withValues(alpha: 0.1),
+                ),
+                boxShadow: selectedDate == 'ALL'
+                    ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                    : [],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 20,
+                    color: selectedDate == 'ALL' ? Colors.white : subColor,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "ALL",
+                    style: TextStyle(
+                      color: selectedDate == 'ALL' ? Colors.white : titleColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Scrolling dates
           Expanded(
             child: SizedBox(
               height: 70,
@@ -884,52 +909,6 @@ class _DateSelectorHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          AnimatedBuilder(
-            animation: jumpAnimation,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, jumpAnimation.value),
-                child: child,
-              );
-            },
-            child: GestureDetector(
-              onTap: onJumpToToday,
-              child: Container(
-                height: 70,
-                width: 60,
-                decoration: BoxDecoration(
-                  color: isScrolledFarFromToday ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isScrolledFarFromToday ? primaryBlue : titleColor.withValues(alpha: 0.1),
-                  ),
-                  boxShadow: isScrolledFarFromToday
-                      ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
-                      : [],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.today_rounded,
-                      color: isScrolledFarFromToday ? Colors.white : primaryBlue,
-                      size: 22,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "TODAY",
-                      style: GoogleFonts.outfit(
-                        color: isScrolledFarFromToday ? Colors.white : titleColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -943,8 +922,7 @@ class _DateSelectorHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _DateSelectorHeaderDelegate oldDelegate) {
-    return selectedDate != oldDelegate.selectedDate ||
-        isScrolledFarFromToday != oldDelegate.isScrolledFarFromToday;
+    return selectedDate != oldDelegate.selectedDate;
   }
 }
 

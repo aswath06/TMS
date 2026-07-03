@@ -55,7 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _buildHeader(context, titleColor),
+                        ValueListenableBuilder(
+                          valueListenable: useFacultyStore.profileData,
+                          builder: (context, data, _) {
+                            return _buildHeader(context, titleColor, data);
+                          },
+                        ),
                         const SizedBox(height: 30),
                         ValueListenableBuilder(
                           valueListenable: useFacultyStore.isLoading,
@@ -105,12 +110,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Color subColor,
   ) {
     final bool showTyping = isLoading && data == null;
+    final bool isStudent = data != null && 
+        ((data['role']?.toString().toLowerCase().contains('student') ?? false) || 
+         (data['role'] is Map && data['role']['name']?.toString().toLowerCase().contains('student') == true));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ProfileHero(
-          name: showTyping ? "..." : (data?['name'] ?? "Faculty User"),
+          name: showTyping ? "..." : (data?['name'] ?? (isStudent ? "Student User" : "Faculty User")),
           subtitle: showTyping
               ? "Updating..."
               : "${_getRoleName(data?['role'])} • ${data?['username'] ?? ''}",
@@ -120,13 +128,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           isDark: isDark,
         ),
         const SizedBox(height: 32),
-        _buildSectionTitle("Faculty Details", titleColor),
+        _buildSectionTitle(isStudent ? "Student Details" : "Faculty Details", titleColor),
         const SizedBox(height: 16),
         _buildMenuGrid(data, isLoading, cardColor, titleColor, subColor),
-        const SizedBox(height: 32),
-        _buildSectionTitle("Quick Actions", titleColor),
-        const SizedBox(height: 16),
-        _buildScannerTile(context, isDark, cardColor, titleColor),
+        if (!isStudent) ...[
+          const SizedBox(height: 32),
+          _buildSectionTitle("Quick Actions", titleColor),
+          const SizedBox(height: 16),
+          _buildScannerTile(context, isDark, cardColor, titleColor),
+        ],
         const SizedBox(height: 40),
       ],
     );
@@ -212,12 +222,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color titleColor) {
+  Widget _buildHeader(BuildContext context, Color titleColor, Map<String, dynamic>? data) {
+    final bool isStudent = data != null && 
+        ((data['role']?.toString().toLowerCase().contains('student') ?? false) || 
+         (data['role'] is Map && data['role']['name']?.toString().toLowerCase().contains('student') == true));
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          "Faculty Profile",
+          isStudent ? "Student Profile" : "Faculty Profile",
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,

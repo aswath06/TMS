@@ -80,9 +80,10 @@ final store = ref.watch(driverStoreProvider);
                         ),
                         const SizedBox(height: 32),
 
-                        _buildAttractiveApplyButton(context, primaryBlue, isTamil),
-
-                        const SizedBox(height: 40),
+                        if (widget.userRole != 'student') ...[
+                          _buildAttractiveApplyButton(context, primaryBlue, isTamil),
+                          const SizedBox(height: 40),
+                        ],
 
                         _buildSectionTitle(
                           isTamil ? "நாட்காட்டி பார்வை" : "Calendar Overview",
@@ -96,43 +97,45 @@ final store = ref.watch(driverStoreProvider);
                           isTamil,
                         ),
 
-                        const SizedBox(height: 36),
+                        if (widget.userRole != 'student') ...[
+                          const SizedBox(height: 36),
 
-                        _buildHistoryHeader(
-                          isTamil ? "பயோமெட்ரிக் விவரங்கள்" : "Biometric Details",
-                          titleColor,
-                          icon: Icons.fingerprint_rounded,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildBiometricSection(store, surfaceColor, isDark, isTamil, primaryBlue),
+                          _buildHistoryHeader(
+                            isTamil ? "பயோமெட்ரிக் விவரங்கள்" : "Biometric Details",
+                            titleColor,
+                            icon: Icons.fingerprint_rounded,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildBiometricSection(store, surfaceColor, isDark, isTamil, primaryBlue),
 
-                        const SizedBox(height: 36),
+                          const SizedBox(height: 36),
 
-                        _buildHistoryHeader(
-                          isTamil ? "விடுப்பு வரலாறு" : "Leave History",
-                          titleColor,
-                          icon: Icons.history_rounded,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        if (store.isLoadingLeaves && store.leaves.isEmpty)
-                          const StructuralLoading()
-                        else if (store.leavesError != null)
-                          _buildErrorState(store.leavesError!, isTamil, isDark)
-                        else if (store.leaves.isEmpty)
-                          _buildEmptyHistory(isTamil, isDark)
-                        else
-                          ...store.leaves.map((leave) => Column(
-                            children: [
-                              _buildLeaveHistoryItem(
-                                leave,
-                                surfaceColor,
-                                isDark,
-                                isTamil,
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          )),
+                          _buildHistoryHeader(
+                            isTamil ? "விடுப்பு வரலாறு" : "Leave History",
+                            titleColor,
+                            icon: Icons.history_rounded,
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          if (store.isLoadingLeaves && store.leaves.isEmpty)
+                            const StructuralLoading()
+                          else if (store.leavesError != null)
+                            _buildErrorState(store.leavesError!, isTamil, isDark)
+                          else if (store.leaves.isEmpty)
+                            _buildEmptyHistory(isTamil, isDark)
+                          else
+                            ...store.leaves.map((leave) => Column(
+                              children: [
+                                _buildLeaveHistoryItem(
+                                  leave,
+                                  surfaceColor,
+                                  isDark,
+                                  isTamil,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            )),
+                        ],
 
                         const SizedBox(height: 100),
                       ],

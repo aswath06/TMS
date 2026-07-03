@@ -1108,7 +1108,7 @@ class DriverStore extends ChangeNotifier {
   Future<Map<String, dynamic>> endMorningBusRun({
     required int runId,
     required int endOdometer,
-    required int passengerCount,
+    int? passengerCount,
     required bool allowanceNeeded,
   }) async {
     try {
@@ -1116,14 +1116,17 @@ class DriverStore extends ChangeNotifier {
       if (token == null) return {"success": false, "message": "Session expired"};
 
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/morning-odometer";
-      final bodyStr = json.encode({
+      final Map<String, dynamic> body = {
         "end_odometer": endOdometer,
-        "passenger_count": passengerCount,
         "allowance_needed": allowanceNeeded,
         "latitude": null,
         "longitude": null,
         "image_url": null,
-      });
+      };
+      if (passengerCount != null) {
+        body["passenger_count"] = passengerCount;
+      }
+      final bodyStr = json.encode(body);
 
       // --- DEBUG LOGGING ---
       String curl = "curl -X PATCH '$url' \\\n";

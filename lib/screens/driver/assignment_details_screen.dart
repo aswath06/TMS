@@ -8,6 +8,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> assignment;
@@ -30,6 +31,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
   late Map<String, dynamic> run;
   late AnimationController _pulseController;
   bool _isHaltSubmitting = false;
+  String? _userRole;
 
   @override
   void initState() {
@@ -40,6 +42,16 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final role = await UserStore.getRole();
+    if (mounted) {
+      setState(() {
+        _userRole = role;
+      });
+    }
   }
 
   @override
@@ -384,6 +396,11 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               // Travel Metrics
               _buildTravelMetrics(isDark, primaryBlue, shiftCode),
 
+              if (_userRole == 'driver') ...[
+                const SizedBox(height: 24),
+                _buildAssignedFacultySection(isDark, primaryBlue, surfaceColor, titleColor, subColor),
+              ],
+
               if (stops.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 Container(
@@ -546,14 +563,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       return Container(
         padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).padding.bottom + 16),
         decoration: BoxDecoration(
-          color: surfaceColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         ),
         child: SizedBox(
           width: double.infinity,
@@ -587,14 +597,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       return Container(
         padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).padding.bottom + 16),
         decoration: BoxDecoration(
-          color: surfaceColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         ),
         child: SizedBox(
           width: double.infinity,
@@ -640,14 +643,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       return Container(
         padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).padding.bottom + 16),
         decoration: BoxDecoration(
-          color: surfaceColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         ),
         child: SizedBox(
           width: double.infinity,
@@ -681,14 +677,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       return Container(
         padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).padding.bottom + 16),
         decoration: BoxDecoration(
-          color: surfaceColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         ),
           child: SizedBox(
           width: double.infinity,
@@ -830,10 +819,17 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
                     ? MediaQuery.of(context).viewInsets.bottom
-                    : MediaQuery.of(context).padding.bottom,
+                    : 0,
               ),
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 24
+                      : MediaQuery.of(context).padding.bottom + 24,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
                   borderRadius: const BorderRadius.vertical(
@@ -1123,10 +1119,17 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
                     ? MediaQuery.of(context).viewInsets.bottom
-                    : MediaQuery.of(context).padding.bottom,
+                    : 0,
               ),
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 24
+                      : MediaQuery.of(context).padding.bottom + 24,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
                   borderRadius: const BorderRadius.vertical(
@@ -1213,52 +1216,121 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     ),
                     const SizedBox(height: 20),
 
-                    // Passenger Count Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
-                          width: 1.5,
+                    if (_userRole == 'driver') ...[
+                      // Display Campus In Count
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
                         ),
-                      ),
-                      child: TextField(
-                        controller: passengerController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "Passenger Count",
-                          hintStyle: TextStyle(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
                             color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.group_rounded,
+                                  color: primaryBlue,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  "Campus In Count",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (run['campus_in_count'] == null)
+                                    ? Colors.orange.withValues(alpha: 0.1)
+                                    : primaryBlue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                run['campus_in_count']?.toString() ?? "null",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: (run['campus_in_count'] == null)
+                                      ? Colors.orange
+                                      : primaryBlue,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else ...[
+                      // Passenger Count Input
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: passengerController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF0F172A),
                           ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.group,
-                            color: Color(0xFF6366F1),
+                          decoration: InputDecoration(
+                            hintText: "Passenger Count",
+                            hintStyle: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.group,
+                              color: Color(0xFF6366F1),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
+                    ],
 
                     // DA/TA Required Option (Allowance)
                     Container(
@@ -1428,7 +1500,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       );
                                       return;
                                     }
-                                    if (passengerController.text.isEmpty) {
+                                    if (_userRole != 'driver' &&
+                                        passengerController.text.isEmpty) {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -1461,11 +1534,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                           odometerController.text.trim(),
                                         ) ??
                                         0;
-                                    final int passCount =
-                                        int.tryParse(
-                                          passengerController.text,
-                                        ) ??
-                                        0;
+                                    final int? passCount = (_userRole == 'driver')
+                                        ? null
+                                        : (int.tryParse(
+                                              passengerController.text,
+                                            ) ??
+                                            0);
 
                                     final dynamic rawRunId =
                                         widget.run['id'] ??
@@ -1606,6 +1680,118 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAssignedFacultySection(
+    bool isDark,
+    Color primaryColor,
+    Color surfaceColor,
+    Color titleColor,
+    Color subColor,
+  ) {
+    final faculty = run['assignedFaculty'] as Map<String, dynamic>?;
+    if (faculty == null) return const SizedBox.shrink();
+
+    final String name = faculty['name'] ?? faculty['user']?['name'] ?? 'N/A';
+    final String rawPhone = faculty['phone']?.toString() ?? faculty['user']?['phone']?.toString() ?? '';
+    final String phone = rawPhone.isNotEmpty ? rawPhone : '9876543210';
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_outline_rounded, color: primaryColor, size: 24),
+              const SizedBox(width: 10),
+              Text(
+                "Assigned Faculty",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: titleColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: primaryColor.withValues(alpha: 0.1),
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : 'F',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: titleColor,
+                      ),
+                    ),
+                    if (phone.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        phone,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: subColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (phone.isNotEmpty)
+                IconButton(
+                  onPressed: () async {
+                    final String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                    final Uri url = Uri.parse("tel:$cleanPhone");
+                    try {
+                      await launchUrl(url);
+                    } catch (e) {
+                      debugPrint("Error launching phone dialer: $e");
+                    }
+                  },
+                  icon: const Icon(Icons.call_rounded),
+                  color: Colors.green,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.green.withValues(alpha: 0.1),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1945,10 +2131,17 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
                     ? MediaQuery.of(context).viewInsets.bottom
-                    : MediaQuery.of(context).padding.bottom,
+                    : 0,
               ),
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 24
+                      : MediaQuery.of(context).padding.bottom + 24,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
                   borderRadius: const BorderRadius.vertical(
@@ -2272,10 +2465,17 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
                     ? MediaQuery.of(context).viewInsets.bottom
-                    : MediaQuery.of(context).padding.bottom,
+                    : 0,
               ),
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 24
+                      : MediaQuery.of(context).padding.bottom + 24,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
                   borderRadius: const BorderRadius.vertical(
