@@ -10,6 +10,8 @@ import 'package:tripzo/screens/admin/request/edit_vehicle_driver_page.dart';
 import 'package:tripzo/screens/faculty/faculty_scan_otp_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:lottie/lottie.dart';
+
 
 class DailyBusRunDetailsPage extends StatefulWidget {
   final Map<String, dynamic> runData;
@@ -4475,8 +4477,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         _userRole!.toLowerCase() == 'faculty' &&
         assignedFacultyUserId != null &&
         assignedFacultyUserId == _loggedInUserId;
+    final bool showQrCodeButton = (isSuperOrTransportAdmin || isAssignedFaculty) &&
+        (s == 'STARTED' ||
+         s == 'ARRIVED_CAMPUS' ||
+         s == 'FN_COMPLETED' ||
+         s == 'AN_STARTED' ||
+         s == 'DEPARTED_CAMPUS');
 
     Map<String, dynamic>? myFacultyRecord;
+
     if (_userRole != null && (_userRole!.toLowerCase() == 'faculty' || _userRole!.toLowerCase() == 'student')) {
       final String typeToSearch = _userRole!.toLowerCase() == 'faculty' ? 'FACULTY' : 'STUDENT';
       final String entityKey = _userRole!.toLowerCase() == 'faculty' ? 'faculty' : 'student';
@@ -4857,7 +4866,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
+                                        if (showQrCodeButton) ...[
+                                          GestureDetector(
+                                            onTap: _showQrCodeBottomSheet,
+                                            child: Icon(Icons.qr_code_rounded, color: primaryBlue, size: 24),
+                                          ),
+                                          const SizedBox(width: 16),
+                                        ],
                                         if (isSuperOrTransportAdmin) ...[
+
                                           GestureDetector(
                                             onTap: _refreshDetails,
                                             child: Icon(Icons.refresh_rounded, color: primaryBlue, size: 24),
@@ -5125,4 +5142,202 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       ),
     );
   }
+
+  Future<void> _showQrCodeBottomSheet() async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return FutureBuilder<List<dynamic>?>(
+          future: _fetchQrCodeAnimations(),
+          builder: (context, snapshot) {
+            Widget content;
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              content = const SizedBox(
+                height: 250,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            } else if (snapshot.hasError || snapshot.data == null) {
+              content = SizedBox(
+                height: 250,
+                child: Center(
+                  child: Text(
+                    "Failed to load animations",
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              );
+            } else {
+              final animations = snapshot.data!;
+              if (animations.isEmpty) {
+                content = SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: Text(
+                      "No animations available",
+                      style: TextStyle(color: subColor),
+                    ),
+                  ),
+                );
+              } else {
+                content = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Select Any QR Animation",
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: titleColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.6,
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: animations.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final item = animations[index];
+                          final String name = item['animation_name']?.toString() ?? 'QR Code Animation';
+                          final String jsonStr = item['json']?.toString() ?? '';
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showSnackBar("Selected animation: $name", Colors.green);
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark ? Colors.white10 : Colors.black12,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Left side: Lottie animation
+                                  if (jsonStr.isNotEmpty)
+                                    SizedBox(
+                                      height: 80,
+                                      width: 80,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Lottie.memory(
+                                          utf8.encode(jsonStr),
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      height: 80,
+                                      width: 80,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.qr_code_scanner_rounded, color: subColor),
+                                    ),
+                                  const SizedBox(width: 16),
+                                  // Right side: Name
+                                  Expanded(
+                                    child: Text(
+                                      name,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: titleColor,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(Icons.arrow_forward_ios_rounded, size: 16, color: subColor),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              }
+            }
+
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              padding: EdgeInsets.only(
+                top: 12,
+                bottom: MediaQuery.of(context).padding.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  content,
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<dynamic>?> _fetchQrCodeAnimations() async {
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return null;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-runs/animations";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] is List) {
+          return decoded['data'];
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching QR code animations: $e");
+    }
+    return null;
+  }
 }
+
+
