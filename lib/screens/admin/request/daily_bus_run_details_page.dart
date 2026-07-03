@@ -1284,8 +1284,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             ),
           ),
 
-          if (assignedFacultyUserId == 421) ...[
-            if (assignedFaculty != null) ...[
+          if (assignedFaculty != null) ...[
               const SizedBox(height: 28),
               Text(
                 "Assigned Faculty",
@@ -1360,7 +1359,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 ),
               ),
             ],
-          ] else ...[
             if (driverName != null) ...[
               const SizedBox(height: 28),
               Text(
@@ -1425,7 +1423,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 ),
               ),
             ],
-          ],
 
           const SizedBox(height: 28),
 
@@ -2561,7 +2558,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: Colors.black.withValues(alpha: 05.02),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -4776,9 +4773,51 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       );
     }
 
+    final bool isDriver = _userRole != null && _userRole!.toLowerCase() == 'driver';
+
+    final List<Tab> tabsList;
+    final List<Widget> tabViews;
+
+    if (showOnlyHeaderAndAttendance) {
+      tabsList = const [
+        Tab(text: "My Details"),
+        Tab(text: "Assignment"),
+      ];
+      tabViews = [
+        _buildMyDetailsTab(isDark, titleColor, subColor, primaryBlue, cardColor, morningStatus, eveningStatus),
+        _buildAssignmentsTabForNormalFaculty(isDark, titleColor, subColor, primaryBlue, cardColor),
+      ];
+    } else if (isDriver) {
+      tabsList = const [
+        Tab(text: "Assignments"),
+        Tab(text: "Vehicle"),
+        Tab(text: "Timeline"),
+      ];
+      tabViews = [
+        _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildVehicleTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
+      ];
+    } else {
+      tabsList = const [
+        Tab(text: "Assignments"),
+        Tab(text: "Vehicle"),
+        Tab(text: "Timeline"),
+        Tab(text: "Passengers"),
+        Tab(text: "Attendance"),
+      ];
+      tabViews = [
+        _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildVehicleTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
+        _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+      ];
+    }
+
     return DefaultTabController(
-      key: ValueKey('tab_controller_${showOnlyHeaderAndAttendance}_$_userRole'),
-      length: showOnlyHeaderAndAttendance ? 2 : 5,
+      key: ValueKey('tab_controller_${showOnlyHeaderAndAttendance}_$isDriver'),
+      length: tabsList.length,
       child: Scaffold(
         backgroundColor: bgColor,
         body: SafeArea(
@@ -4901,8 +4940,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           ),
                           child: TabBar(
                             dividerColor: Colors.transparent,
-                            isScrollable: !showOnlyHeaderAndAttendance,
-                            tabAlignment: showOnlyHeaderAndAttendance ? TabAlignment.fill : TabAlignment.center,
+                            isScrollable: tabsList.length > 3,
+                            tabAlignment: tabsList.length <= 3 ? TabAlignment.fill : TabAlignment.center,
                             indicator: BoxDecoration(
                               color: primaryBlue,
                               borderRadius: BorderRadius.circular(14),
@@ -4919,18 +4958,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             unselectedLabelColor: subColor,
                             labelStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w800),
                             unselectedLabelStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold),
-                            tabs: showOnlyHeaderAndAttendance
-                                ? const [
-                                    Tab(text: "My Details"),
-                                    Tab(text: "Assignment"),
-                                  ]
-                                : const [
-                                    Tab(text: "Assignments"),
-                                    Tab(text: "Vehicle"),
-                                    Tab(text: "Timeline"),
-                                    Tab(text: "Passengers"),
-                                    Tab(text: "Attendance"),
-                                  ],
+                            tabs: tabsList,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -4940,18 +4968,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 ];
               },
               body: TabBarView(
-                children: showOnlyHeaderAndAttendance
-                    ? [
-                        _buildMyDetailsTab(isDark, titleColor, subColor, primaryBlue, cardColor, morningStatus, eveningStatus),
-                        _buildAssignmentsTabForNormalFaculty(isDark, titleColor, subColor, primaryBlue, cardColor),
-                      ]
-                    : [
-                        _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-                        _buildVehicleTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-                        _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
-                        _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-                        _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-                      ],
+                children: tabViews,
               ),
             ),
           ),

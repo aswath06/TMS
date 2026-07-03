@@ -262,39 +262,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      (statusStr.toUpperCase() == 'COMPLETED' ||
-                                                  statusStr.toUpperCase() ==
-                                                      'FN_COMPLETED'
-                                              ? Colors.green
-                                              : primaryBlue)
-                                          .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  statusStr.toUpperCase(),
-                                  style: TextStyle(
-                                    color:
-                                        statusStr.toUpperCase() ==
-                                                'COMPLETED' ||
-                                            statusStr.toUpperCase() ==
-                                                'FN_COMPLETED'
-                                        ? Colors.green
-                                        : primaryBlue,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 11,
-                                    letterSpacing: 0.8,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
+                              _buildStatusBadgeWidget(statusStr),
                             ],
                           ),
                         ),
@@ -2230,52 +2198,44 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     ),
                     const SizedBox(height: 20),
 
-                    // Passenger Count Input
+                    // Passenger Count Display
                     Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF0F172A)
-                            : const Color(0xFFF8FAFC),
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                           width: 1.5,
                         ),
                       ),
-                      child: TextField(
-                        controller: passengerController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                      child: Row(
+                        children: [
+                          Icon(Icons.group, color: primaryBlue),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Passenger Count",
+                                style: TextStyle(
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "${widget.run['campus_out_count'] ?? '0'}",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
-                        ),
-                        decoration: InputDecoration(
-                          labelText: "Passenger Count",
-                          labelStyle: TextStyle(
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: primaryBlue,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                          prefixIcon: Icon(Icons.group, color: primaryBlue),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -2321,27 +2281,13 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       );
                                       return;
                                     }
-                                    if (passengerController.text.isEmpty) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Passenger count is required",
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                      return;
-                                    }
-
                                     setState(() => isSubmitting = true);
                                     final int odo =
                                         int.tryParse(odometerController.text) ??
                                         0;
                                     final int passCount =
                                         int.tryParse(
-                                          passengerController.text,
+                                          widget.run['campus_out_count']?.toString() ?? '0',
                                         ) ??
                                         0;
                                     final dynamic rawRunId =
@@ -3021,5 +2967,91 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     if (hours == 0 && minutes == 0)
       parts.add("$seconds sec${seconds > 1 ? 's' : ''}");
     return parts.join(" ");
+  }
+
+  Widget _buildStatusBadgeWidget(String status) {
+    final String s = status.toUpperCase();
+    Color bgColor;
+    Color textColor;
+    Color borderColor;
+
+    switch (s) {
+      case "PLANNED":
+      case "APPROVED":
+      case "ASSIGNED":
+        bgColor = const Color(0xFFFEF3C7);
+        textColor = const Color(0xFFD97706);
+        borderColor = const Color(0xFFFDE68A);
+        break;
+      case "READY":
+        bgColor = const Color(0xFFFCE7F3);
+        textColor = const Color(0xFFBE185D);
+        borderColor = const Color(0xFFFBCFE8);
+        break;
+      case "STARTED":
+      case "ON_TRIP":
+      case "ONGOING":
+        bgColor = const Color(0xFFDBEAFE);
+        textColor = const Color(0xFF2563EB);
+        borderColor = const Color(0xFF93C5FD);
+        break;
+      case "ARRIVED_CAMPUS":
+      case "CAMPUS_IN":
+        bgColor = const Color(0xFFEEF2FF);
+        textColor = const Color(0xFF6366F1);
+        borderColor = const Color(0xFFC7D2FE);
+        break;
+      case "FN_COMPLETED":
+        bgColor = const Color(0xFFD1FAE5);
+        textColor = const Color(0xFF059669);
+        borderColor = const Color(0xFFA7F3D0);
+        break;
+      case "DEPARTED_CAMPUS":
+        bgColor = const Color(0xFFFEF3C7);
+        textColor = const Color(0xFFB45309);
+        borderColor = const Color(0xFFFDE68A);
+        break;
+      case "HALTED":
+        bgColor = const Color(0xFFFAF5FF);
+        textColor = const Color(0xFF8B5CF6);
+        borderColor = const Color(0xFFE9D5FF);
+        break;
+      case "COMPLETED":
+      case "FINISHED":
+        bgColor = const Color(0xFFD1FAE5);
+        textColor = const Color(0xFF047857);
+        borderColor = const Color(0xFFA7F3D0);
+        break;
+      case "CANCELLED":
+      case "REJECTED":
+        bgColor = const Color(0xFFFFE4E6);
+        textColor = const Color(0xFFBE123C);
+        borderColor = const Color(0xFFFECDD3);
+        break;
+      default:
+        bgColor = const Color(0xFFF1F5F9);
+        textColor = const Color(0xFF475569);
+        borderColor = const Color(0xFFE2E8F0);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Text(
+        status.replaceAll('_', ' ').toUpperCase(),
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
+    );
   }
 }
