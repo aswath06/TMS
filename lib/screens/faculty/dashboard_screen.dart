@@ -305,7 +305,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             height: 38,
             width: 38,
             decoration: BoxDecoration(
-              color: primary.withOpacity(0.1),
+              color: primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.tune_rounded, color: primary, size: 20),

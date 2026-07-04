@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';

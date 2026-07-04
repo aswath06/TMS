@@ -109,7 +109,7 @@ class AttendanceOverviewPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -126,7 +126,7 @@ class AttendanceOverviewPage extends StatelessWidget {
                         child: Container(
                           margin: const EdgeInsets.only(left: 12),
                           height: 1,
-                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
                         ),
                       ),
                     ],
@@ -140,7 +140,7 @@ class AttendanceOverviewPage extends StatelessWidget {
                         titleColor: titleColor,
                         subColor: subColor,
                         isDark: isDark,
-                      )).toList(),
+                      )),
                 ],
               ),
             );
@@ -167,7 +167,7 @@ class AttendanceOverviewPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
       ),
       child: Column(
         children: [
@@ -191,7 +191,7 @@ class AttendanceOverviewPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
@@ -221,7 +221,7 @@ class AttendanceOverviewPage extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: tripColor.withOpacity(0.1),
+                  color: tripColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Center(

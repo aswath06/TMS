@@ -124,7 +124,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final divColor = isDark ? Colors.white10 : Colors.black.withOpacity(0.06);
+    final divColor = isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88,
@@ -135,7 +135,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
           decoration: BoxDecoration(
             color: sheetBg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 30, offset: const Offset(0, -4))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 30, offset: const Offset(0, -4))],
           ),
           child: Column(
             children: [
@@ -160,7 +160,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                     Container(
                       padding: const EdgeInsets.all(9),
                       decoration: BoxDecoration(
-                        color: widget.accentColor.withOpacity(0.12),
+                        color: widget.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
@@ -202,15 +202,15 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.07) : const Color(0xFFF1F5F9),
+                    color: isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: widget.accentColor.withOpacity(0.25), width: 1.5),
+                    border: Border.all(color: widget.accentColor.withValues(alpha: 0.25), width: 1.5),
                   ),
                   child: Row(
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Icon(Icons.search_rounded, color: widget.accentColor.withOpacity(0.7), size: 22),
+                        child: Icon(Icons.search_rounded, color: widget.accentColor.withValues(alpha: 0.7), size: 22),
                       ),
                       Expanded(
                         child: TextField(
@@ -274,7 +274,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
         controller: ctrl,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         itemCount: _results.length + 1,
-        separatorBuilder: (_, __) => Divider(height: 1, color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+        separatorBuilder: (_, _) => Divider(height: 1, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
         itemBuilder: (_, i) {
           if (i == 0) {
             return Column(
@@ -338,7 +338,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
             children: [
               _resultTile(_frequent[i], isDark, isFrequent: true),
               if (i < _frequent.length - 1)
-                Divider(height: 1, color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                Divider(height: 1, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
             ],
           ),
         ),
@@ -374,10 +374,10 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isInstitution 
-                    ? widget.accentColor.withOpacity(0.15)
+                    ? widget.accentColor.withValues(alpha: 0.15)
                     : (isFrequent
-                        ? Colors.orange.withOpacity(0.1)
-                        : widget.accentColor.withOpacity(0.08)),
+                        ? Colors.orange.withValues(alpha: 0.1)
+                        : widget.accentColor.withValues(alpha: 0.08)),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(

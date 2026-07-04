@@ -121,8 +121,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       });
     }
     if (_visibleGuestSlots > count) setState(() => _visibleGuestSlots = count);
-    if (_visibleGuestSlots < 1 && count >= 1)
+    if (_visibleGuestSlots < 1 && count >= 1) {
       setState(() => _visibleGuestSlots = 1);
+    }
   }
 
   Future<void> _checkRole() async {
@@ -1394,7 +1395,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
             ),
             value: _enableReturnJourney,
-            activeColor: p,
+            activeThumbColor: p,
             inactiveTrackColor: t.withValues(alpha: 0.05),
             onChanged: (val) {
               setState(() {
@@ -1740,8 +1741,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             : null,
         validator: (v) {
           if (isReq && (v == null || v.trim().isEmpty)) return "Required";
-          if (isNum && v != null && v.isNotEmpty && v.length != 10)
+          if (isNum && v != null && v.isNotEmpty && v.length != 10) {
             return "Must be 10 digits";
+          }
           return null;
         },
       ),
@@ -2384,7 +2386,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   const SizedBox(height: 16),
                   SwitchListTile(
                     title: Text("Use same vehicle for return journey", style: TextStyle(color: t, fontWeight: FontWeight.w600, fontSize: 14)),
-                    activeColor: p,
+                    activeThumbColor: p,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     value: _sameVehicleForBoth,
                     onChanged: (val) {
@@ -2459,7 +2461,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   const SizedBox(height: 16),
                   SwitchListTile(
                     title: Text("Use same driver for return journey", style: TextStyle(color: t, fontWeight: FontWeight.w600, fontSize: 14)),
-                    activeColor: p,
+                    activeThumbColor: p,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     value: _sameDriverForBoth,
                     onChanged: (val) {

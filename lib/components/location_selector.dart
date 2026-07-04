@@ -193,7 +193,7 @@ class _LocationSelectorState extends State<LocationSelector> {
           margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
@@ -269,7 +269,7 @@ class _LocationSelectorState extends State<LocationSelector> {
                 color: widget.cardColor,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: hasValue ? widget.accentColor.withOpacity(0.35) : Colors.transparent,
+                  color: hasValue ? widget.accentColor.withValues(alpha: 0.35) : Colors.transparent,
                   width: 1.5,
                 ),
               ),
@@ -357,7 +357,7 @@ class _LocationSelectorState extends State<LocationSelector> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: widget.accentColor.withOpacity(0.08),
+            color: widget.accentColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(

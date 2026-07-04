@@ -86,7 +86,7 @@ class _SingleLocationSelectorState extends State<SingleLocationSelector> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.2 : 0.08),
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               )
@@ -164,7 +164,7 @@ class _SingleLocationSelectorState extends State<SingleLocationSelector> {
               color: widget.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: hasValue ? widget.accentColor.withOpacity(0.3) : Colors.transparent,
+                color: hasValue ? widget.accentColor.withValues(alpha: 0.3) : Colors.transparent,
                 width: 1.5,
               ),
             ),
@@ -173,7 +173,7 @@ class _SingleLocationSelectorState extends State<SingleLocationSelector> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: widget.accentColor.withOpacity(0.1),
+                    color: widget.accentColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.location_on_rounded, color: widget.accentColor, size: 18),
@@ -206,7 +206,7 @@ class _SingleLocationSelectorState extends State<SingleLocationSelector> {
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.withOpacity(0.5)),
+                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.withValues(alpha: 0.5)),
               ],
             ),
           ),

@@ -189,7 +189,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -553,10 +553,10 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
               color: _selectedDateFilter == 'ALL' ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _selectedDateFilter == 'ALL' ? primaryBlue : titleColor.withOpacity(0.1),
+                color: _selectedDateFilter == 'ALL' ? primaryBlue : titleColor.withValues(alpha: 0.1),
               ),
               boxShadow: _selectedDateFilter == 'ALL'
-                  ? [BoxShadow(color: primaryBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                  ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
                   : [],
             ),
             child: Column(
@@ -601,10 +601,10 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                       color: isSelected ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? primaryBlue : titleColor.withOpacity(0.1),
+                        color: isSelected ? primaryBlue : titleColor.withValues(alpha: 0.1),
                       ),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: primaryBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                          ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
                           : [],
                     ),
                     child: Column(
@@ -613,7 +613,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                         Text(
                           DateFormat('E').format(date).toUpperCase(),
                           style: TextStyle(
-                            color: isSelected ? Colors.white.withOpacity(0.9) : subColor,
+                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -630,7 +630,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                         Text(
                           DateFormat('MMM').format(date).toUpperCase(),
                           style: TextStyle(
-                            color: isSelected ? Colors.white.withOpacity(0.9) : subColor,
+                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -654,7 +654,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -669,7 +669,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
         ),
         decoration: InputDecoration(
           hintText: "Search runs, routes...",
-          hintStyle: TextStyle(color: subColor.withOpacity(0.6), fontWeight: FontWeight.w500),
+          hintStyle: TextStyle(color: subColor.withValues(alpha: 0.6), fontWeight: FontWeight.w500),
           prefixIcon: Icon(Icons.search_rounded, color: subColor),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
@@ -851,7 +851,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -866,7 +866,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.08),
+                    color: primaryBlue.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -896,7 +896,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                 runCode,
                 style: TextStyle(
                   fontSize: 11,
-                  color: subColor.withOpacity(0.7),
+                  color: subColor.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -923,9 +923,9 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(0.04),
+                color: primaryBlue.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: primaryBlue.withOpacity(0.08)),
+                border: Border.all(color: primaryBlue.withValues(alpha: 0.08)),
               ),
               child: Row(
                 children: [
@@ -968,7 +968,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                   Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 14,
-                    color: subColor.withOpacity(0.5),
+                    color: subColor.withValues(alpha: 0.5),
                   ),
                 ],
               ),
@@ -1288,16 +1288,16 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(width: 60, height: 16, decoration: BoxDecoration(color: Colors.grey.withOpacity(isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
-              Container(width: 80, height: 16, decoration: BoxDecoration(color: Colors.grey.withOpacity(isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
+              Container(width: 60, height: 16, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
+              Container(width: 80, height: 16, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
             ],
           ),
           const SizedBox(height: 16),
-          Container(width: 200, height: 24, decoration: BoxDecoration(color: Colors.grey.withOpacity(isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
+          Container(width: 200, height: 24, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
           const SizedBox(height: 8),
-          Container(width: 120, height: 14, decoration: BoxDecoration(color: Colors.grey.withOpacity(isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
+          Container(width: 120, height: 14, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(8))),
           const SizedBox(height: 20),
-          Container(width: double.infinity, height: 50, decoration: BoxDecoration(color: Colors.grey.withOpacity(isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(16))),
+          Container(width: double.infinity, height: 50, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.2), borderRadius: BorderRadius.circular(16))),
         ],
       ),
     );
@@ -1430,7 +1430,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: primaryBlue.withOpacity(0.1),
+                                color: primaryBlue.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -1525,7 +1525,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.directions_bus_filled_rounded, size: 54, color: subColor.withOpacity(0.15)),
+                                      Icon(Icons.directions_bus_filled_rounded, size: 54, color: subColor.withValues(alpha: 0.15)),
                                       const SizedBox(height: 16),
                                       Text(
                                         "No routines found for this date",

@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tripzo/store/providers.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/faculty_store.dart';
-import 'package:tripzo/store/VehicleStore.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
 import '../../components/notification_bell.dart';
@@ -148,7 +146,7 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: primaryBlue.withOpacity(isDark ? 0.1 : 0.05),
+                color: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
               ),
             ),
           ),
@@ -224,7 +222,7 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: FutureBuilder<String?>(
@@ -267,7 +265,7 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [primary, primary.withOpacity(0.4)],
+                colors: [primary, primary.withValues(alpha: 0.4)],
               ),
             ),
             child: CircleAvatar(
@@ -358,7 +356,7 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
   }) {
     final Color bgColor = isSelected ? color : surface;
     final Color textColor = isSelected ? Colors.white : (isDark ? Colors.white : Colors.black);
-    final Color iconBgColor = isSelected ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1);
+    final Color iconBgColor = isSelected ? Colors.white.withValues(alpha: 0.2) : color.withValues(alpha: 0.1);
     final Color iconColor = isSelected ? Colors.white : color;
     final Color subTextColor = isSelected ? Colors.white70 : Colors.grey;
 
@@ -369,19 +367,19 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
         color: bgColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isSelected ? color : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+          color: isSelected ? color : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
           width: 1,
         ),
         boxShadow: [
           if (isSelected)
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             )
           else
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -477,14 +475,14 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
                 decoration: BoxDecoration(
                   color: surfaceColor,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.grey.withOpacity(0.1)),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.grey.withValues(alpha: 0.1)),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withOpacity(0.1),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.directions_car_rounded, color: Color(0xFF6366F1), size: 20),

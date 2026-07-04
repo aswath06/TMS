@@ -335,7 +335,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -352,11 +352,11 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                                 url, 
                                 headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'},
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, color: Colors.grey.withOpacity(0.5), size: 40),
+                                errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, color: Colors.grey.withValues(alpha: 0.5), size: 40),
                               )
                             : Container(
                                 color: isDark ? Colors.black12 : Colors.grey.shade100,
-                                child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.withOpacity(0.3), size: 40),
+                                child: Icon(Icons.image_not_supported_outlined, color: Colors.grey.withValues(alpha: 0.3), size: 40),
                               ),
                         ),
                       ),
@@ -421,7 +421,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -522,9 +522,9 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withOpacity(0.2)),
+              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -594,7 +594,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
             color: surfaceColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
             ),
           ),
           child: Column(
@@ -680,7 +680,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: Column(
@@ -688,7 +688,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),

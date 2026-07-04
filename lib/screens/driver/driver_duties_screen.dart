@@ -13,10 +13,7 @@ import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart'
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/utils/tab_notification.dart';
 
-import '../../providers/notification_provider.dart';
 import '../../components/notification_bell.dart';
-import '../../utils/routes.dart';
-import '../main_screen.dart';
 import 'dart:async';
 
 class DriverDutiesScreen extends ConsumerStatefulWidget {
@@ -474,8 +471,9 @@ final store = ref.watch(driverStoreProvider);
     }
 
     Color statusColor = Colors.blue;
-    if (statusStr == 'READY') statusColor = Colors.green;
-    else if (statusStr == 'ONGOING') statusColor = Colors.orange;
+    if (statusStr == 'READY') {
+      statusColor = Colors.green;
+    } else if (statusStr == 'ONGOING') statusColor = Colors.orange;
     else if (statusStr == 'COMPLETED') statusColor = Colors.grey;
 
     bool isEnabled = true;
@@ -1195,9 +1193,9 @@ final store = ref.watch(driverStoreProvider);
         final seconds = diff.inSeconds % 60;
         
         if (hours > 0) {
-          remainingStr = "${hours}:${minutes.toString().padLeft(2, '0')}";
+          remainingStr = "$hours:${minutes.toString().padLeft(2, '0')}";
         } else {
-          remainingStr = "${minutes}:${seconds.toString().padLeft(2, '0')}";
+          remainingStr = "$minutes:${seconds.toString().padLeft(2, '0')}";
         }
       }
     }

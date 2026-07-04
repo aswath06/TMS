@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:intl/intl.dart';
 import '../models/notification_model.dart';
-import '../providers/notification_provider.dart';
 
 class NotificationCard extends ConsumerStatefulWidget {
   final NotificationModel notification;
@@ -55,14 +54,14 @@ class _NotificationCardState extends ConsumerState<NotificationCard> {
         color: surfaceColor,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isUnread ? alertColor.withOpacity(0.35) : titleColor.withOpacity(0.06),
+          color: isUnread ? alertColor.withValues(alpha: 0.35) : titleColor.withValues(alpha: 0.06),
           width: isUnread ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isUnread 
-                ? alertColor.withOpacity(0.06) 
-                : Colors.black.withOpacity(isDark ? 0.05 : 0.02),
+                ? alertColor.withValues(alpha: 0.06) 
+                : Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -82,7 +81,7 @@ class _NotificationCardState extends ConsumerState<NotificationCard> {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: isUnread ? alertColor : alertColor.withOpacity(0.2),
+                    color: isUnread ? alertColor : alertColor.withValues(alpha: 0.2),
                     width: 5,
                   ),
                 ),
@@ -98,7 +97,7 @@ class _NotificationCardState extends ConsumerState<NotificationCard> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: alertColor.withOpacity(0.1),
+                          color: alertColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(icon, color: alertColor, size: 20),
@@ -145,7 +144,7 @@ class _NotificationCardState extends ConsumerState<NotificationCard> {
                                           shape: BoxShape.circle,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: alertColor.withOpacity(0.4),
+                                              color: alertColor.withValues(alpha: 0.4),
                                               blurRadius: 4,
                                               spreadRadius: 1,
                                             )
@@ -184,14 +183,14 @@ class _NotificationCardState extends ConsumerState<NotificationCard> {
                           Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [alertColor, alertColor.withOpacity(0.8)],
+                                colors: [alertColor, alertColor.withValues(alpha: 0.8)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: alertColor.withOpacity(0.3),
+                                  color: alertColor.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),

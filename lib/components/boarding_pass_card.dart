@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lottie/lottie.dart';
 
 class BoardingPassCard extends StatelessWidget {
   final String startLocationCode;
@@ -57,7 +56,7 @@ class BoardingPassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -120,7 +119,7 @@ class BoardingPassCard extends StatelessWidget {
                                 child: Container(
                                   height: 2,
                                   margin: const EdgeInsets.symmetric(horizontal: 2),
-                                  color: Colors.white.withOpacity(0.5),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                 ),
                               ),
                             ),
@@ -166,7 +165,7 @@ class BoardingPassCard extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             letterSpacing: 1.0,
                           ),
                         ),
@@ -175,7 +174,7 @@ class BoardingPassCard extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -197,7 +196,7 @@ class BoardingPassCard extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             letterSpacing: 1.0,
                           ),
                         ),
@@ -206,7 +205,7 @@ class BoardingPassCard extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -273,7 +272,7 @@ class BoardingPassCard extends StatelessWidget {
                       child: Container(
                         height: 2,
                         margin: const EdgeInsets.symmetric(horizontal: 2),
-                        color: subTextColor.withOpacity(0.3),
+                        color: subTextColor.withValues(alpha: 0.3),
                       ),
                     ),
                   ),
@@ -315,9 +314,9 @@ class BoardingPassCard extends StatelessWidget {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: topBgColor.withOpacity(0.05),
+                    color: topBgColor.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: topBgColor.withOpacity(0.2)),
+                    border: Border.all(color: topBgColor.withValues(alpha: 0.2)),
                   ),
                   child: Center(
                     child: _buildAnimationPlaceholder(),

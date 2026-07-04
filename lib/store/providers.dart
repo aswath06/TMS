@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/security_vehicle_store.dart';
 // Import all existing stores
-import 'package:tripzo/store/VehicleStore.dart';
+import 'package:tripzo/store/vehicle_store.dart';
 import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/dashboard_store.dart';

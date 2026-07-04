@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -10,12 +8,10 @@ import '../utils/routes.dart';
 import '../store/user_store.dart';
 import '../store/isdark.dart'; // Import Theme Store
 import '../store/istamil.dart'; // Import Language Store
-import '../utils/api_constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import '../providers/notification_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -172,6 +168,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       // On startup, we no longer block the user or require 'Always Allow' location permission.
 
       // Navigation to correct landing page
+      if (!mounted) return;
       if (isPinEnabled) {
         Navigator.pushReplacementNamed(
           context,
@@ -310,18 +307,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               color: isDark ? const Color(0xFF1E293B) : Colors.white,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFF4F46E5).withOpacity(0.3),
+                                color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
                                 width: 2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF4F46E5).withOpacity(0.25),
+                                  color: const Color(0xFF4F46E5).withValues(alpha: 0.25),
                                   blurRadius: 30,
                                   spreadRadius: 10,
                                   offset: const Offset(0, 10),
                                 ),
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 10,
                                   spreadRadius: 2,
                                   offset: const Offset(0, 4),
@@ -397,7 +394,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     bool isTamil = LanguageStore.isTamil;
     
     return Container(
-      color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.95),
+      color: (isDark ? const Color(0xFF0F172A) : Colors.white).withValues(alpha: 0.95),
       width: double.infinity,
       height: double.infinity,
       child: Column(
@@ -406,7 +403,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withOpacity(0.1),
+              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -490,7 +487,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Widget _buildNoInternetUI(Size size, bool isDark, Color subTitleColor) {
     return Container(
-      color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(0.9),
+      color: (isDark ? const Color(0xFF0F172A) : Colors.white).withValues(alpha: 0.9),
       width: double.infinity,
       height: double.infinity,
       child: Column(
@@ -557,7 +554,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4F46E5).withOpacity(isDark ? 0.3 : 0.12),
+            color: const Color(0xFF4F46E5).withValues(alpha: isDark ? 0.3 : 0.12),
             blurRadius: 40,
             offset: const Offset(0, 15),
           ),
@@ -623,7 +620,7 @@ class ParticleTextPainter extends CustomPainter {
       final currentX = startX + (p.target.dx - startX) * curvedProgress;
       final currentY = startY + (p.target.dy - startY) * curvedProgress;
       
-      paint.color = p.color.withOpacity(particleProgress); 
+      paint.color = p.color.withValues(alpha: particleProgress); 
       
       canvas.drawCircle(Offset(currentX, currentY), 1.5, paint);
     }

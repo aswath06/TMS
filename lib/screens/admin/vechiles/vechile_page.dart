@@ -146,20 +146,20 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFF6366F1).withOpacity(0.3),
+          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: isDark
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
               ]
             : [
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.15),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
                   blurRadius: 25,
                   offset: const Offset(0, 12),
                 ),
@@ -184,7 +184,7 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.1),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -212,7 +212,7 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
               Container(
                 width: 1,
                 height: 40,
-                color: Colors.grey.withOpacity(0.2),
+                color: Colors.grey.withValues(alpha: 0.2),
               ),
               Expanded(
                 child: _buildSummaryItem(
@@ -264,8 +264,8 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withOpacity(0.2)
-                    : const Color(0xFF6366F1).withOpacity(0.08),
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : const Color(0xFF6366F1).withValues(alpha: 0.08),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -302,7 +302,7 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
             color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
             ),
           ),
           child: Row(
@@ -335,7 +335,7 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
             boxShadow: isSelected && !isDark
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),

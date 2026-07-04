@@ -3,10 +3,13 @@ import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
+import 'package:tripzo/screens/student/student_apply_leave_page.dart';
 import 'package:tripzo/screens/driver/DriverAttendanceScreen.dart';
 import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/student_leave_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 
 class DriverLeaveScreen extends ConsumerStatefulWidget {
   final String userRole;
@@ -21,8 +24,12 @@ class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      useDriverStore.fetchLeaves();
-      useDriverStore.fetchAttendance(isRefresh: true);
+      if (widget.userRole == 'student') {
+        useStudentLeaveStore.fetchLeaves();
+      } else {
+        useDriverStore.fetchLeaves();
+        useDriverStore.fetchAttendance(isRefresh: true);
+      }
     });
   }
 
@@ -61,8 +68,12 @@ builder: (context, ref, _) {
 final store = ref.watch(driverStoreProvider);
                 return RefreshIndicator(
                   onRefresh: () async {
-                    await store.fetchLeaves();
-                    await store.fetchAttendance(isRefresh: true);
+                    if (widget.userRole == 'student') {
+                      await useStudentLeaveStore.fetchLeaves();
+                    } else {
+                      await store.fetchLeaves();
+                      await store.fetchAttendance(isRefresh: true);
+                    }
                   },
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -80,10 +91,8 @@ final store = ref.watch(driverStoreProvider);
                         ),
                         const SizedBox(height: 32),
 
-                        if (widget.userRole != 'student') ...[
-                          _buildAttractiveApplyButton(context, primaryBlue, isTamil),
-                          const SizedBox(height: 40),
-                        ],
+                        _buildAttractiveApplyButton(context, primaryBlue, isTamil),
+                        const SizedBox(height: 40),
 
                         _buildSectionTitle(
                           isTamil ? "நாட்காட்டி பார்வை" : "Calendar Overview",
@@ -107,16 +116,39 @@ final store = ref.watch(driverStoreProvider);
                           ),
                           const SizedBox(height: 16),
                           _buildBiometricSection(store, surfaceColor, isDark, isTamil, primaryBlue),
+                        ],
 
-                          const SizedBox(height: 36),
+                        const SizedBox(height: 36),
 
-                          _buildHistoryHeader(
-                            isTamil ? "விடுப்பு வரலாறு" : "Leave History",
-                            titleColor,
-                            icon: Icons.history_rounded,
-                          ),
-                          const SizedBox(height: 16),
-                          
+                        _buildHistoryHeader(
+                          isTamil ? "விடுப்பு வரலாறு" : "Leave History",
+                          titleColor,
+                          icon: Icons.history_rounded,
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        if (widget.userRole == 'student')
+                          ListenableBuilder(
+                            listenable: useStudentLeaveStore,
+                            builder: (context, _) {
+                              if (useStudentLeaveStore.isLoadingLeaves && useStudentLeaveStore.leaves.isEmpty) {
+                                return const StructuralLoading();
+                              } else if (useStudentLeaveStore.leavesError != null) {
+                                return _buildErrorState(useStudentLeaveStore.leavesError!, isTamil, isDark, onRetry: () => useStudentLeaveStore.fetchLeaves());
+                              } else if (useStudentLeaveStore.leaves.isEmpty) {
+                                return _buildEmptyHistory(isTamil, isDark);
+                              }
+                              return Column(
+                                children: useStudentLeaveStore.leaves.map((leave) => Column(
+                                  children: [
+                                    _buildLeaveHistoryItem(leave, surfaceColor, isDark, isTamil),
+                                    const SizedBox(height: 12),
+                                  ],
+                                )).toList(),
+                              );
+                            },
+                          )
+                        else ...[
                           if (store.isLoadingLeaves && store.leaves.isEmpty)
                             const StructuralLoading()
                           else if (store.leavesError != null)
@@ -236,7 +268,7 @@ final store = ref.watch(driverStoreProvider);
               border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -366,7 +398,7 @@ final store = ref.watch(driverStoreProvider);
         color: surface,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         ),
       ),
       child: Column(
@@ -470,7 +502,7 @@ final store = ref.watch(driverStoreProvider);
       height: 300,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: primary.withOpacity(isDark ? 0.15 : 0.08),
+        color: primary.withValues(alpha: isDark ? 0.15 : 0.08),
       ),
     ),
   );
@@ -505,7 +537,9 @@ final store = ref.watch(driverStoreProvider);
   ) => GestureDetector(
     onTap: () => Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => ApplyLeavePage(userRole: widget.userRole)),
+      MaterialPageRoute(builder: (context) => widget.userRole == 'student' 
+          ? const StudentApplyLeavePage() 
+          : ApplyLeavePage(userRole: widget.userRole)),
     ),
     child: Container(
       width: double.infinity,
@@ -519,7 +553,7 @@ final store = ref.watch(driverStoreProvider);
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: primary.withOpacity(0.4),
+            color: primary.withValues(alpha: 0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -532,7 +566,7 @@ final store = ref.watch(driverStoreProvider);
             top: -20,
             child: CircleAvatar(
               radius: 40,
-              backgroundColor: Colors.white.withOpacity(0.1),
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
             ),
           ),
           Center(
@@ -565,7 +599,7 @@ final store = ref.watch(driverStoreProvider);
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       _buildSectionTitle(title, color),
-      Icon(icon, color: Colors.grey.withOpacity(0.5)),
+      Icon(icon, color: Colors.grey.withValues(alpha: 0.5)),
     ],
   );
 
@@ -575,6 +609,10 @@ final store = ref.watch(driverStoreProvider);
     bool isDark,
     bool isTamil,
   ) {
+    if (widget.userRole == 'student') {
+      return _buildStudentLeaveHistoryItem(leave, surface, isDark, isTamil);
+    }
+    
     final int status = leave['status'] ?? 1;
     final String fromDate = _formatDateShort(leave['from_date']);
     final String toDate = _formatDateShort(leave['to_date']);
@@ -590,8 +628,9 @@ final store = ref.watch(driverStoreProvider);
     }
 
     if (isTamil) {
-      if (status == 1) statusStr = "காத்திருப்பில்";
-      else if (status == 2) statusStr = "அங்கீகரிக்கப்பட்டது";
+      if (status == 1) {
+        statusStr = "காத்திருப்பில்";
+      } else if (status == 2) statusStr = "அங்கீகரிக்கப்பட்டது";
       else if (status == 3) statusStr = "நிராகரிக்கப்பட்டது";
     }
 
@@ -605,7 +644,7 @@ final store = ref.watch(driverStoreProvider);
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
         ),
         child: Row(
           children: [
@@ -613,7 +652,7 @@ final store = ref.watch(driverStoreProvider);
               height: 45,
               width: 45,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
@@ -645,7 +684,7 @@ final store = ref.watch(driverStoreProvider);
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -701,7 +740,7 @@ final store = ref.watch(driverStoreProvider);
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
@@ -740,7 +779,7 @@ final store = ref.watch(driverStoreProvider);
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.05),
+                      color: Colors.grey.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -760,9 +799,9 @@ final store = ref.watch(driverStoreProvider);
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.05),
+                        color: Colors.redAccent.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.redAccent.withOpacity(0.1)),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.1)),
                       ),
                       child: Row(
                         children: [
@@ -796,12 +835,210 @@ final store = ref.watch(driverStoreProvider);
     );
   }
 
+  Widget _buildStudentLeaveHistoryItem(
+    Map<String, dynamic> leave,
+    Color surface,
+    bool isDark,
+    bool isTamil,
+  ) {
+    final String dateStr = _formatDateShort(leave['leave_date']);
+    final String shiftType = leave['shift_type'] ?? "";
+    final String leaveType = leave['leave_type'] ?? "Leave";
+    final bool canRevoke = leave['can_revoke'] == true;
+
+    return GestureDetector(
+      onTap: () => _showStudentLeaveDetailsPopup(context, leave, isTamil, isDark),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 45,
+              width: 45,
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.calendar_month_outlined,
+                color: Colors.blueAccent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    leaveType,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "$dateStr • $shiftType",
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            if (canRevoke)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isTamil ? "ரத்து செய்" : "Cancel",
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showStudentLeaveDetailsPopup(BuildContext context, Map<String, dynamic> leave, bool isTamil, bool isDark) {
+    final type = leave['leave_type'] ?? "Leave";
+    final dateStr = _formatDateLong(leave['leave_date']);
+    final shift = leave['shift_type'] ?? "";
+    final reason = leave['reason'] ?? (isTamil ? "விளக்கப்படவில்லை" : "No reason provided");
+    final bool canRevoke = leave['can_revoke'] == true;
+    final int id = leave['id'];
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(32),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          (isTamil ? "மாணவர் விடுப்பு" : "Student Leave").toUpperCase(),
+                          style: const TextStyle(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    type,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    dateStr,
+                    style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+                  _popupInfoRow(isTamil ? "ஷிப்ட்" : "Shift", shift, Icons.access_time_rounded),
+                  
+                  const SizedBox(height: 20),
+                  Text(
+                    isTamil ? "விடுப்புக்கான காரணம்" : "Reason for Leave",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      reason,
+                      style: const TextStyle(height: 1.5),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+                  if (canRevoke) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final success = await useStudentLeaveStore.revokeLeave(id);
+                          if (success) {
+                            showTopToast(context, isTamil ? "ரத்து செய்யப்பட்டது" : "Leave Revoked Successfully");
+                          }
+                          if (mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(isTamil ? "ரத்து செய்" : "CANCEL LEAVE", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(isTamil ? "சரி" : "CLOSE", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _popupInfoRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF6366F1).withOpacity(0.7)),
+          Icon(icon, size: 18, color: const Color(0xFF6366F1).withValues(alpha: 0.7)),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -821,7 +1058,7 @@ final store = ref.watch(driverStoreProvider);
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: primary.withOpacity(0.1),
+            color: primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: primary, size: 20),
@@ -853,7 +1090,7 @@ final store = ref.watch(driverStoreProvider);
     }
   }
 
-  Widget _buildErrorState(String error, bool isTamil, bool isDark) {
+  Widget _buildErrorState(String error, bool isTamil, bool isDark, {VoidCallback? onRetry}) {
     return Center(
       child: Column(
         children: [
@@ -865,7 +1102,7 @@ final store = ref.watch(driverStoreProvider);
             style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
           ),
           TextButton(
-            onPressed: () => useDriverStore.fetchLeaves(),
+            onPressed: onRetry ?? () => useDriverStore.fetchLeaves(),
             child: Text(isTamil ? "மீண்டும் முயற்சி" : "RETRY"),
           ),
         ],

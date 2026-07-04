@@ -270,9 +270,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       if (runId.isEmpty) return;
 
       int? userId = _loggedInUserId;
-      if (userId == null) {
-        userId = await UserStore.getUserId();
-      }
+      userId ??= await UserStore.getUserId();
 
       String url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
       if (userId != null) {
@@ -5097,7 +5095,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             ],
                           ),
                         ),
-                        if (facultyAttendanceWidget != null) facultyAttendanceWidget,
+                        ?facultyAttendanceWidget,
                         // Custom sliding segments TabBar Layout and View
                         Container(
                           margin: const EdgeInsets.symmetric(horizontal: 24),

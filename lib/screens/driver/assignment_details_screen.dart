@@ -1,16 +1,12 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:tripzo/screens/driver/split_vehicle_screen.dart';
 import 'package:tripzo/screens/driver/merge_vehicle_screen.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
@@ -1869,19 +1865,21 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     if (startReading.isNotEmpty) {
       final valStr = startReading['odometer_reading']?.toString() ?? "0";
       startOdoVal = double.tryParse(valStr) ?? 0;
-      if (startOdoVal > 0)
+      if (startOdoVal > 0) {
         startOdoStr = startOdoVal.toStringAsFixed(
           startOdoVal.truncateToDouble() == startOdoVal ? 0 : 2,
         );
+      }
     }
 
     if (endReading.isNotEmpty) {
       final valStr = endReading['odometer_reading']?.toString() ?? "0";
       endOdoVal = double.tryParse(valStr) ?? 0;
-      if (endOdoVal > 0)
+      if (endOdoVal > 0) {
         endOdoStr = endOdoVal.toStringAsFixed(
           endOdoVal.truncateToDouble() == endOdoVal ? 0 : 2,
         );
+      }
     }
 
     double? distance;
@@ -1989,9 +1987,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                 final startDt = _parseTimestamp(startedAt);
                 final endDt = _parseTimestamp(endedAt);
                 Duration? dur;
-                if (startDt != null && endDt != null)
+                if (startDt != null && endDt != null) {
                   dur = endDt.difference(startDt);
-                else if (startDt != null && endedAt == null)
+                } else if (startDt != null && endedAt == null)
                   dur = DateTime.now().difference(startDt);
 
                 final bool isOngoing = startedAt != null && endedAt == null;
@@ -3036,8 +3034,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     List<String> parts = [];
     if (hours > 0) parts.add("$hours hr${hours > 1 ? 's' : ''}");
     if (minutes > 0) parts.add("$minutes min${minutes > 1 ? 's' : ''}");
-    if (hours == 0 && minutes == 0)
+    if (hours == 0 && minutes == 0) {
       parts.add("$seconds sec${seconds > 1 ? 's' : ''}");
+    }
     return parts.join(" ");
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import '../../providers/notification_provider.dart';
 import '../../components/notification_card.dart';
 
 class NotificationListScreen extends ConsumerStatefulWidget {
@@ -133,7 +132,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: titleColor.withOpacity(0.05),
+                        color: titleColor.withValues(alpha: 0.05),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -177,9 +176,9 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.12),
+                    color: primaryBlue.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: primaryBlue.withOpacity(0.2), width: 1),
+                    border: Border.all(color: primaryBlue.withValues(alpha: 0.2), width: 1),
                   ),
                   child: Row(
                     children: [
@@ -237,12 +236,12 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
                       color: isActive ? primaryBlue : cardBg,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: isActive ? primaryBlue : titleColor.withOpacity(0.08),
+                        color: isActive ? primaryBlue : titleColor.withValues(alpha: 0.08),
                         width: 1.5,
                       ),
                       boxShadow: isActive ? [
                         BoxShadow(
-                          color: primaryBlue.withOpacity(0.3),
+                          color: primaryBlue.withValues(alpha: 0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         )
@@ -264,7 +263,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isActive ? Colors.white.withOpacity(0.25) : primaryBlue.withOpacity(0.12),
+                              color: isActive ? Colors.white.withValues(alpha: 0.25) : primaryBlue.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -338,14 +337,14 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(0.06),
+                color: primaryBlue.withValues(alpha: 0.06),
                 shape: BoxShape.circle,
-                border: Border.all(color: primaryBlue.withOpacity(0.1), width: 2),
+                border: Border.all(color: primaryBlue.withValues(alpha: 0.1), width: 2),
               ),
               child: Icon(
                 _activeFilter == 'Alerts' ? Icons.notification_important_rounded : Icons.notifications_none_rounded,
                 size: 84,
-                color: primaryBlue.withOpacity(0.35),
+                color: primaryBlue.withValues(alpha: 0.35),
               ),
             ),
             const SizedBox(height: 24),
@@ -387,7 +386,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
           right: -100,
           child: CircleAvatar(
             radius: 200,
-            backgroundColor: const Color(0xFF6366F1).withOpacity(isDark ? 0.08 : 0.04),
+            backgroundColor: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.08 : 0.04),
           ),
         ),
         Positioned(
@@ -395,7 +394,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
           left: -100,
           child: CircleAvatar(
             radius: 150,
-            backgroundColor: const Color(0xFFEC4899).withOpacity(isDark ? 0.06 : 0.03),
+            backgroundColor: const Color(0xFFEC4899).withValues(alpha: isDark ? 0.06 : 0.03),
           ),
         ),
       ],

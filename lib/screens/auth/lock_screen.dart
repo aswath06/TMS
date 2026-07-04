@@ -68,7 +68,7 @@ class _LockScreenState extends State<LockScreen> {
     final Color bgColor = isDark ? const Color(0xFF0F172A) : Colors.white; // Slate 900 vs White
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subTextColor = isDark ? Colors.white60 : const Color(0xFF64748B);
-    final Color dotUnselectedColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200;
+    final Color dotUnselectedColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -81,7 +81,7 @@ class _LockScreenState extends State<LockScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark ? primaryBlue.withOpacity(0.1) : primaryBlue.withOpacity(0.05),
+                color: isDark ? primaryBlue.withValues(alpha: 0.1) : primaryBlue.withValues(alpha: 0.05),
               ),
               child: Icon(Icons.lock_person_rounded, size: 68, color: primaryBlue),
             ),
@@ -127,7 +127,7 @@ class _LockScreenState extends State<LockScreen> {
                     ),
                     boxShadow: isFilled ? [
                       BoxShadow(
-                        color: primaryBlue.withOpacity(0.4),
+                        color: primaryBlue.withValues(alpha: 0.4),
                         blurRadius: 10,
                         spreadRadius: 1,
                       )
@@ -172,8 +172,8 @@ class _LockScreenState extends State<LockScreen> {
   Widget _numButton(BuildContext context, String val, {bool isIcon = false}) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color buttonBg = isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF1F5F9); // Slate 100 vs dark glass
-    final Color activeSplashColor = const Color(0xFF6366F1).withOpacity(0.2);
+    final Color buttonBg = isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9); // Slate 100 vs dark glass
+    final Color activeSplashColor = const Color(0xFF6366F1).withValues(alpha: 0.2);
 
     return Container(
       margin: const EdgeInsets.all(12),
@@ -182,7 +182,7 @@ class _LockScreenState extends State<LockScreen> {
         shape: BoxShape.circle,
         boxShadow: isDark ? [] : [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )

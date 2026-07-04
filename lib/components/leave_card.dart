@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
 
@@ -39,7 +38,7 @@ class LeaveCard extends ConsumerWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -49,7 +48,7 @@ class LeaveCard extends ConsumerWidget {
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundColor: primaryColor.withOpacity(0.1),
+              backgroundColor: primaryColor.withValues(alpha: 0.1),
               child: Icon(
                 Icons.airline_seat_recline_extra_rounded,
                 color: primaryColor,
@@ -113,7 +112,7 @@ class LeaveCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: bColor.withOpacity(0.1),
+        color: bColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -164,7 +163,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 30,
             offset: const Offset(0, -10),
           ),
@@ -180,7 +179,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -219,7 +218,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
               children: [
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor: widget.primaryColor.withOpacity(0.1),
+                  backgroundColor: widget.primaryColor.withValues(alpha: 0.1),
                   child: Text(
                     (widget.leaf['driver'] ?? "U")[0].toUpperCase(),
                     style: TextStyle(
@@ -306,13 +305,13 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
                     child: ElevatedButton(
                       onPressed: () => _updateStatus(context, 3), // Reject
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.withOpacity(0.1),
+                        backgroundColor: Colors.red.withValues(alpha: 0.1),
                         foregroundColor: Colors.red,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: Colors.red.withOpacity(0.2)),
+                          side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                         ),
                       ),
                       child: const Text("Reject", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -341,7 +340,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
           const SizedBox(height: 12),
           Text(
             "Submitted on ${_formatTimestamp(widget.leaf['created_at'])}",
-            style: TextStyle(fontSize: 11, color: subColor.withOpacity(0.6)),
+            style: TextStyle(fontSize: 11, color: subColor.withValues(alpha: 0.6)),
           ),
         ],
       ),
@@ -383,7 +382,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: widget.primaryColor.withOpacity(0.05),
+            color: widget.primaryColor.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: widget.primaryColor),
@@ -441,7 +440,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: bColor.withOpacity(0.1),
+        color: bColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

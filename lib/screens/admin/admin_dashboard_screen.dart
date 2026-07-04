@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
-import 'package:tripzo/screens/faculty/missions/mission_history_screen.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/components/request_card.dart';
-import 'package:tripzo/store/request_store.dart';
-import '../../providers/notification_provider.dart';
 import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
@@ -148,7 +144,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
@@ -614,7 +610,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             height: 38,
             width: 38,
             decoration: BoxDecoration(
-              color: primary.withOpacity(0.1),
+              color: primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.tune_rounded, color: primary, size: 20),
@@ -652,9 +648,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             Expanded(
               child: ValueListenableBuilder<int>(
                 valueListenable: AdminDashboardStore().driversPresent,
-                builder: (_, present, __) => ValueListenableBuilder<int>(
+                builder: (_, present, _) => ValueListenableBuilder<int>(
                   valueListenable: AdminDashboardStore().driversOnLeave,
-                  builder: (_, onLeave, ___) {
+                  builder: (_, onLeave, _) {
                     final total = present + onLeave;
                     final double percent = total == 0 ? 0 : present / total;
                     return _buildGraphicalCard(
@@ -676,9 +672,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             Expanded(
               child: ValueListenableBuilder<int>(
                 valueListenable: AdminDashboardStore().driversOnLeave,
-                builder: (_, onLeave, __) => ValueListenableBuilder<int>(
+                builder: (_, onLeave, _) => ValueListenableBuilder<int>(
                   valueListenable: AdminDashboardStore().driversPresent,
-                  builder: (_, present, ___) {
+                  builder: (_, present, _) {
                     final total = present + onLeave;
                     final double percent = total == 0 ? 0 : onLeave / total;
                     return _buildGraphicalCard(
@@ -701,7 +697,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         const SizedBox(height: 16),
         ValueListenableBuilder<int>(
           valueListenable: AdminDashboardStore().movingBuses,
-          builder: (_, buses, __) {
+          builder: (_, buses, _) {
             const int totalBuses = 20; // Example total
             final double percent = buses / totalBuses;
             return _buildGraphicalCard(
@@ -1361,7 +1357,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final vehicle = list[index];
         final isExpired = _expirationTabIndex == 0;
@@ -1538,8 +1534,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
 
     Color statusColor = Colors.blue;
-    if (statusStr == 'READY') statusColor = Colors.green;
-    else if (statusStr == 'ONGOING') statusColor = Colors.orange;
+    if (statusStr == 'READY') {
+      statusColor = Colors.green;
+    } else if (statusStr == 'ONGOING') statusColor = Colors.orange;
     else if (statusStr == 'COMPLETED') statusColor = Colors.grey;
 
     bool isEnabled = true;

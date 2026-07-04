@@ -108,18 +108,18 @@ class _AnimatedInAppNotificationState extends State<AnimatedInAppNotification> w
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: themeColor.withOpacity(0.35),
+                color: themeColor.withValues(alpha: 0.35),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: themeColor.withOpacity(0.15),
+                  color: themeColor.withValues(alpha: 0.15),
                   blurRadius: 20,
                   spreadRadius: 2,
                   offset: const Offset(0, 8),
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
                   blurRadius: 15,
                   offset: const Offset(0, 4),
                 ),
@@ -131,10 +131,10 @@ class _AnimatedInAppNotificationState extends State<AnimatedInAppNotification> w
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: themeColor.withOpacity(0.12),
+                    color: themeColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: themeColor.withOpacity(0.2),
+                      color: themeColor.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),

@@ -133,7 +133,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
               Container(
                 margin: const EdgeInsets.only(left: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.1),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -162,10 +162,10 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -222,11 +222,11 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.withOpacity(0.1)),
+            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.withOpacity(0.1)),
+            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -263,7 +263,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.directions_car_filled_outlined,
-                  size: 60, color: Colors.grey.withOpacity(0.4)),
+                  size: 60, color: Colors.grey.withValues(alpha: 0.4)),
               const SizedBox(height: 16),
               Text(
                 "No routes $currentStatus",
@@ -314,10 +314,10 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -332,7 +332,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: primary.withOpacity(0.1),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(Icons.route_rounded, color: primary, size: 24),
@@ -398,7 +398,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -429,10 +429,10 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
         Column(
           children: [
             const Icon(Icons.radio_button_checked, size: 14, color: Colors.green),
-            Container(width: 2, height: 20, color: Colors.grey.withOpacity(0.3)),
+            Container(width: 2, height: 20, color: Colors.grey.withValues(alpha: 0.3)),
             if (isRoundTrip && intermediateStop.isNotEmpty) ...[
               const Icon(Icons.location_on, size: 14, color: Colors.orange),
-              Container(width: 2, height: 20, color: Colors.grey.withOpacity(0.3)),
+              Container(width: 2, height: 20, color: Colors.grey.withValues(alpha: 0.3)),
             ],
             const Icon(Icons.location_on, size: 14, color: Colors.redAccent),
           ],
@@ -548,7 +548,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
           decoration: BoxDecoration(
             color: (data['endedBy'] != null || data['endedAt'] != null) 
                 ? Colors.redAccent 
-                : Colors.grey.withOpacity(0.3),
+                : Colors.grey.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
         ),
@@ -602,7 +602,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
           Container(
             height: 20,
             width: 2,
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             margin: const EdgeInsets.only(left: 4, top: 12, bottom: 12),
           ),
           endChild,
@@ -616,7 +616,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
         Container(
           height: 40,
           width: 1,
-          color: Colors.grey.withOpacity(0.2),
+          color: Colors.grey.withValues(alpha: 0.2),
           margin: const EdgeInsets.symmetric(horizontal: 10),
         ),
         Expanded(child: endChild),

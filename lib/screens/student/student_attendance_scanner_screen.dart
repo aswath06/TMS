@@ -71,7 +71,7 @@ class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScanne
     }
     
     // Ensure it's 6 digits (basic validation)
-    if (extractedOtp != null && extractedOtp.length > 6) {
+    if (extractedOtp.length > 6) {
         extractedOtp = extractedOtp.substring(0, 6);
     }
     
@@ -98,7 +98,7 @@ class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScanne
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: activeAccentColor.withOpacity(0.1),
+                color: activeAccentColor.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -118,9 +118,9 @@ class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScanne
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: activeAccentColor.withOpacity(0.1),
+                          color: activeAccentColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: activeAccentColor.withOpacity(0.2), width: 1.5),
+                          border: Border.all(color: activeAccentColor.withValues(alpha: 0.2), width: 1.5),
                         ),
                         child: const Icon(
                           Icons.qr_code_scanner_rounded, 
@@ -173,15 +173,15 @@ class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScanne
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.black.withOpacity(0.3) : Colors.white.withOpacity(0.5),
+                      color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
-                        color: activeAccentColor.withOpacity(0.15),
+                        color: activeAccentColor.withValues(alpha: 0.15),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: activeAccentColor.withOpacity(0.1),
+                          color: activeAccentColor.withValues(alpha: 0.1),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         ),
@@ -209,7 +209,7 @@ class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScanne
                           
                           ColorFiltered(
                             colorFilter: ColorFilter.mode(
-                              Colors.black.withOpacity(0.5),
+                              Colors.black.withValues(alpha: 0.5),
                               BlendMode.srcOut,
                             ),
                             child: Stack(
@@ -244,14 +244,14 @@ class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScanne
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      activeAccentColor.withOpacity(0.01),
+                                      activeAccentColor.withValues(alpha: 0.01),
                                       activeAccentColor,
-                                      activeAccentColor.withOpacity(0.01),
+                                      activeAccentColor.withValues(alpha: 0.01),
                                     ],
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: activeAccentColor.withOpacity(0.8),
+                                      color: activeAccentColor.withValues(alpha: 0.8),
                                       blurRadius: 10,
                                       spreadRadius: 2,
                                     ),

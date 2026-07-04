@@ -145,9 +145,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.15)),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
         ),
         child: Icon(icon, size: 22, color: color),
       ),
@@ -211,7 +211,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -224,7 +224,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [primaryBlue, primaryBlue.withOpacity(0.6)],
+                colors: [primaryBlue, primaryBlue.withValues(alpha: 0.6)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -354,7 +354,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: Column(
@@ -452,7 +452,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             right: -100,
             child: CircleAvatar(
               radius: 200,
-              backgroundColor: primaryBlue.withOpacity(0.03),
+              backgroundColor: primaryBlue.withValues(alpha: 0.03),
             ),
           ),
           Positioned(
@@ -460,7 +460,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             left: -50,
             child: CircleAvatar(
               radius: 150,
-              backgroundColor: primaryBlue.withOpacity(0.02),
+              backgroundColor: primaryBlue.withValues(alpha: 0.02),
             ),
           ),
         ],
@@ -480,7 +480,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: ListTile(
@@ -498,7 +498,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: primaryBlue.withOpacity(0.1),
+            color: primaryBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(Icons.qr_code_scanner_rounded, color: primaryBlue, size: 22),

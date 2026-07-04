@@ -134,7 +134,7 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
               ),
               child: SizedBox(
                 width: double.infinity,
@@ -186,10 +186,10 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
           duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.only(bottom: 24),
           decoration: BoxDecoration(
-            color: isHovering ? primaryBlue.withOpacity(0.05) : cardColor,
+            color: isHovering ? primaryBlue.withValues(alpha: 0.05) : cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: isHovering ? primaryBlue : Colors.transparent, width: 2),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,7 +197,7 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.05),
+                  color: primaryBlue.withValues(alpha: 0.05),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Row(
@@ -261,10 +261,10 @@ class _ReassignGuestScreenState extends State<ReassignGuestScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isDragging ? color.withOpacity(0.8) : color.withOpacity(0.1),
+        color: isDragging ? color.withValues(alpha: 0.8) : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-        boxShadow: isDragging ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10)] : [],
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: isDragging ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 10)] : [],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

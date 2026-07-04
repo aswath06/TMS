@@ -543,8 +543,9 @@ class RequestStore extends ChangeNotifier {
           final index = _leaves.indexWhere((l) => l['id'] == leaveId);
           if (index != -1) {
             String statusStr = 'Pending';
-            if (status == 2) statusStr = 'Approved';
-            else if (status == 3) statusStr = 'Rejected';
+            if (status == 2) {
+              statusStr = 'Approved';
+            } else if (status == 3) statusStr = 'Rejected';
             
             _leaves[index]['status'] = statusStr;
             _leaves[index]['rawStatus'] = status;

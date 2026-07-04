@@ -136,8 +136,8 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
       margin: const EdgeInsets.symmetric(horizontal: 5),
       decoration: BoxDecoration(
         color: _focusNodes[index].hasFocus 
-            ? (isDark ? Colors.white.withOpacity(0.12) : Colors.white)
-            : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
+            ? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white)
+            : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _focusNodes[index].hasFocus 
@@ -147,7 +147,7 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
         ),
         boxShadow: _focusNodes[index].hasFocus ? [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.3),
+            color: const Color(0xFF6366F1).withValues(alpha: 0.3),
             blurRadius: 15,
             spreadRadius: 2,
             offset: const Offset(0, 4),
@@ -260,7 +260,7 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [primaryBlue.withOpacity(0.15), Colors.transparent],
+                  colors: [primaryBlue.withValues(alpha: 0.15), Colors.transparent],
                 ),
               ),
             ),
@@ -279,10 +279,10 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(40),
-                        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1.5),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
                         boxShadow: [
                           BoxShadow(
-                            color: primaryBlue.withOpacity(0.2),
+                            color: primaryBlue.withValues(alpha: 0.2),
                             blurRadius: 40,
                             offset: const Offset(0, 20),
                           ),
@@ -299,7 +299,7 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
                                 width: 220,
                                 height: 220,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
                                   borderRadius: BorderRadius.circular(35),
                                 ),
                                 child: Stack(
@@ -409,7 +409,7 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: primaryBlue.withOpacity(0.4),
+                                color: primaryBlue.withValues(alpha: 0.4),
                                 blurRadius: 25,
                                 offset: const Offset(0, 12),
                               ),
@@ -449,20 +449,20 @@ class _VerifyMissionScreenState extends State<VerifyMissionScreen> with SingleTi
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: textColor.withOpacity(0.04),
+                        color: textColor.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(50),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.shield_rounded, size: 16, color: primaryBlue.withOpacity(0.7)),
+                          Icon(Icons.shield_rounded, size: 16, color: primaryBlue.withValues(alpha: 0.7)),
                           const SizedBox(width: 10),
                           Text(
                             "ENCRYPTED CHANNEL V2.0",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
-                              color: subTextColor.withOpacity(0.8),
+                              color: subTextColor.withValues(alpha: 0.8),
                               letterSpacing: 1.5,
                             ),
                           ),

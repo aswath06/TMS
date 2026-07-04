@@ -237,7 +237,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
+                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 )
@@ -249,7 +249,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(statusIcon, color: statusColor, size: 40),
@@ -276,7 +276,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                     Container(
                       width: 1,
                       height: 40,
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                     ),
                     _buildMileageStat(
                       label: isTamil ? "தற்போதைய" : "Current",
@@ -291,7 +291,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.05),
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(

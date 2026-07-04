@@ -5,7 +5,7 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:intl/intl.dart';
 
 class DriverAttendanceScreen extends ConsumerStatefulWidget {
-  const DriverAttendanceScreen({Key? key}) : super(key: key);
+  const DriverAttendanceScreen({super.key});
 
   @override
   ConsumerState<DriverAttendanceScreen> createState() => _DriverAttendanceScreenState();
@@ -150,7 +150,7 @@ class _DriverAttendanceScreenState extends ConsumerState<DriverAttendanceScreen>
                             border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
+                                color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),

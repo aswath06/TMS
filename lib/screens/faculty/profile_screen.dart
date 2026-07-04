@@ -170,21 +170,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (isStudent)
         {
           'title': 'Roll No',
-          'val': data?['studentProfile']?['roll_number'] ?? data?['username'],
+          'val': data['studentProfile']?['roll_number'] ?? data['username'],
           'icon': Icons.badge_rounded,
           'color': Colors.indigo,
         },
       if (isStudent)
         {
           'title': 'Register No',
-          'val': data?['studentProfile']?['register_number'],
+          'val': data['studentProfile']?['register_number'],
           'icon': Icons.assignment_ind_rounded,
           'color': Colors.teal,
         },
       if (isStudent)
         {
           'title': 'Batch / Year',
-          'val': data?['studentProfile']?['academic_year'],
+          'val': data['studentProfile']?['academic_year'],
           'icon': Icons.calendar_today_rounded,
           'color': Colors.orange,
         },
@@ -271,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           icon: Icon(
             Icons.settings_outlined,
-            color: titleColor.withOpacity(0.6),
+            color: titleColor.withValues(alpha: 0.6),
             size: 26,
           ),
         ),
@@ -339,7 +339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: ListTile(
@@ -357,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF6366F1).withOpacity(0.1),
+            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF6366F1), size: 22),
@@ -386,7 +386,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               radius: 140,
               backgroundColor: const Color(
                 0xFF6366F1,
-              ).withOpacity(isDark ? 0.06 : 0.04),
+              ).withValues(alpha: isDark ? 0.06 : 0.04),
             ),
           ),
           Positioned(
@@ -396,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               radius: 80,
               backgroundColor: const Color(
                 0xFFA855F7,
-              ).withOpacity(isDark ? 0.04 : 0.02),
+              ).withValues(alpha: isDark ? 0.04 : 0.02),
             ),
           ),
         ],

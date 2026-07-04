@@ -727,11 +727,11 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
         color: surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -744,7 +744,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),
@@ -828,7 +828,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
 
     // Dummy Vehicles Data (with student and faculty stats mapped)
     final List<Map<String, String>> vehicles = List.generate(5, (index) => {
-      "veh": "TN36Z123${index}",
+      "veh": "TN36Z123$index",
       "fn": "${50 + index * 5}",
       "an": "${45 + index * 5}",
       "fac_fn": "${10 + index * 2}",
@@ -959,11 +959,11 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
+                        color: Colors.black.withValues(alpha: 0.02),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -974,7 +974,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.directions_bus_filled_rounded, size: 20, color: isDark ? Colors.grey[300] : Colors.grey[700]),
@@ -1008,9 +1008,9 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -1028,9 +1028,9 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1058,7 +1058,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           boxShadow: isSelected && !isDark
-              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1))]
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1))]
               : [],
         ),
         child: Text(

@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
-import 'package:tripzo/store/driver_store.dart';
 
 class AddDriverPage extends ConsumerStatefulWidget {
   const AddDriverPage({super.key});
@@ -324,7 +323,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: primaryBlue.withOpacity(0.2),
+                      color: primaryBlue.withValues(alpha: 0.2),
                       width: 2,
                     ),
                   ),
@@ -338,7 +337,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                         child: Icon(
                           Icons.person_rounded,
                           size: 64,
-                          color: primaryBlue.withOpacity(isDark ? 0.3 : 0.1),
+                          color: primaryBlue.withValues(alpha: isDark ? 0.3 : 0.1),
                         ),
                       ),
                       Positioned(
@@ -351,7 +350,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: primaryBlue.withOpacity(0.3),
+                                color: primaryBlue.withValues(alpha: 0.3),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -457,7 +456,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                           "Extract data from image",
                           style: TextStyle(
                             fontSize: 12,
-                            color: titleColor.withOpacity(0.5),
+                            color: titleColor.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -502,9 +501,9 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: primaryBlue.withOpacity(0.05),
+                        color: primaryBlue.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+                        border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
                       ),
                       child: Row(
                         children: [
@@ -640,7 +639,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: primaryBlue.withOpacity(0.3),
+                        color: primaryBlue.withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -657,7 +656,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      disabledBackgroundColor: primaryBlue.withOpacity(0.6),
+                      disabledBackgroundColor: primaryBlue.withValues(alpha: 0.6),
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -717,12 +716,12 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.black.withOpacity(0.03),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.03),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -767,7 +766,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
               border: Border.all(
                 color: path != null
                     ? const Color(0xFF10B981)
-                    : primary.withOpacity(0.2),
+                    : primary.withValues(alpha: 0.2),
                 width: 2,
                 style: path != null
                     ? BorderStyle.solid
@@ -792,7 +791,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: primary.withOpacity(0.6),
+                            color: primary.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -899,7 +898,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
               ),
               filled: true,
               fillColor: isDark
-                  ? Colors.black.withOpacity(0.2)
+                  ? Colors.black.withValues(alpha: 0.2)
                   : Colors.grey.shade50,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -960,7 +959,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: isDark ? Colors.black.withOpacity(0.2) : Colors.grey.shade50,
+            color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.shade50,
             borderRadius: BorderRadius.circular(16),
           ),
           child: DropdownButtonHideUnderline(
@@ -986,7 +985,7 @@ class _AddDriverPageState extends ConsumerState<AddDriverPage> {
                       Icon(
                         icon,
                         size: 20,
-                        color: const Color(0xFF6366F1).withOpacity(0.7),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.7),
                       ),
                       const SizedBox(width: 12),
                       Text(type),

@@ -4,12 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/store/VehicleStore.dart';
-import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
-import 'package:intl/intl.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
 class AdminFinalizeRequestScreen extends ConsumerStatefulWidget {
@@ -288,7 +284,7 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
                     : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                       itemCount: currentFilteredList.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (_, i) {
                         final item = currentFilteredList[i];
                         final bool isSelected = selected != null && (item['id'] == selected['id']);

@@ -341,7 +341,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: filtered.length,
-                              separatorBuilder: (_, _a) => const Divider(
+                              separatorBuilder: (_, a) => const Divider(
                                 height: 1,
                                 indent: 70,
                                 color: Colors.black12,
@@ -544,7 +544,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: filtered.length,
-                              separatorBuilder: (_, _a) => const Divider(
+                              separatorBuilder: (_, a) => const Divider(
                                 height: 1,
                                 indent: 70,
                                 color: Colors.black12,

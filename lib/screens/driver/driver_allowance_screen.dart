@@ -70,7 +70,7 @@ class _DriverAllowanceScreenState extends ConsumerState<DriverAllowanceScreen> {
                     width: 40,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -81,7 +81,7 @@ class _DriverAllowanceScreenState extends ConsumerState<DriverAllowanceScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.report_problem_rounded, color: Colors.red),
@@ -255,7 +255,7 @@ final store = ref.watch(driverStoreProvider);
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.payments_outlined, size: 64, color: subColor.withOpacity(0.2)),
+          Icon(Icons.payments_outlined, size: 64, color: subColor.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
           Text(
             isTamil ? "படிகள் எதுவும் இல்லை" : "No allowances found",
@@ -404,7 +404,7 @@ final store = ref.watch(driverStoreProvider);
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
@@ -419,7 +419,7 @@ final store = ref.watch(driverStoreProvider);
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -440,7 +440,7 @@ final store = ref.watch(driverStoreProvider);
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: primaryBlue.withOpacity(0.1),
+                      color: primaryBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -465,7 +465,7 @@ final store = ref.watch(driverStoreProvider);
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -491,7 +491,7 @@ final store = ref.watch(driverStoreProvider);
                         Container(
                           height: 24,
                           width: 1,
-                          color: subColor.withOpacity(0.2),
+                          color: subColor.withValues(alpha: 0.2),
                           margin: const EdgeInsets.symmetric(horizontal: 12),
                         ),
                       if (formattedEndedAt.isNotEmpty)
@@ -544,7 +544,7 @@ final store = ref.watch(driverStoreProvider);
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.withOpacity(0.1),
+                          backgroundColor: Colors.red.withValues(alpha: 0.1),
                           foregroundColor: Colors.red,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 14),

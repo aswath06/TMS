@@ -25,7 +25,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
   static const int _limit = 15;
   String _searchQuery = '';
   Timer? _searchDebounce;
-  Set<int> _loggingOut = {};
+  final Set<int> _loggingOut = {};
 
   @override
   void initState() {
@@ -137,7 +137,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.logout_rounded, color: Colors.red, size: 30),
@@ -275,7 +275,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
               padding: const EdgeInsets.all(8),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
@@ -303,7 +303,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -390,13 +390,13 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isLoggedIn
-              ? const Color(0xFF10B981).withOpacity(0.25)
-              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04)),
+              ? const Color(0xFF10B981).withValues(alpha: 0.25)
+              : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04)),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.15 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -413,7 +413,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: roleClr.withOpacity(0.12),
+                    color: roleClr.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(_roleIcon(roleCode), color: roleClr, size: 24),
@@ -429,7 +429,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                         color: const Color(0xFF10B981),
                         shape: BoxShape.circle,
                         border: Border.all(color: surface, width: 2),
-                        boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 4)],
+                        boxShadow: [BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.4), blurRadius: 4)],
                       ),
                     ),
                   ),
@@ -458,7 +458,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: roleClr.withOpacity(0.1),
+                          color: roleClr.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -500,8 +500,8 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: isLoggedIn
-                              ? const Color(0xFF10B981).withOpacity(0.1)
-                              : subColor.withOpacity(0.08),
+                              ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                              : subColor.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -532,7 +532,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.08),
+                            color: Colors.red.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -555,11 +555,11 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: isLoggingOut
-                                  ? Colors.red.withOpacity(0.05)
-                                  : Colors.red.withOpacity(0.1),
+                                  ? Colors.red.withValues(alpha: 0.05)
+                                  : Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: Colors.red.withOpacity(isLoggingOut ? 0.2 : 0.3),
+                                color: Colors.red.withValues(alpha: isLoggingOut ? 0.2 : 0.3),
                               ),
                             ),
                             child: isLoggingOut
@@ -641,11 +641,11 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.3, end: 0.7),
       duration: const Duration(milliseconds: 900),
-      builder: (_, value, __) => Container(
+      builder: (_, value, _) => Container(
         height: h,
         width: w,
         decoration: BoxDecoration(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(value * 0.08),
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: value * 0.08),
           borderRadius: BorderRadius.circular(circular ? 100 : 8),
         ),
       ),
@@ -657,7 +657,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.manage_accounts_rounded, size: 72, color: subColor.withOpacity(0.4)),
+          Icon(Icons.manage_accounts_rounded, size: 72, color: subColor.withValues(alpha: 0.4)),
           const SizedBox(height: 16),
           Text(
             'No users found',
@@ -670,7 +670,7 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
           const SizedBox(height: 8),
           Text(
             'Try a different search term',
-            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: subColor.withOpacity(0.6)),
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: subColor.withValues(alpha: 0.6)),
           ),
         ],
       ),

@@ -36,7 +36,7 @@ class CustomButton extends StatelessWidget {
                 ? Colors.white
                 : const Color(0xFF818CF8),
             elevation: isWhite ? 0 : 4,
-            shadowColor: const Color(0xFF4F46E5).withOpacity(0.4),
+            shadowColor: const Color(0xFF4F46E5).withValues(alpha: 0.4),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: isWhite

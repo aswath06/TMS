@@ -82,11 +82,11 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
 
     // Premium Color Palette & Design Tokens
     final Color glassColor = isDark 
-        ? const Color(0xFF0F172A).withOpacity(0.7) 
-        : const Color(0xFFF8FAFC).withOpacity(0.7);
+        ? const Color(0xFF0F172A).withValues(alpha: 0.7) 
+        : const Color(0xFFF8FAFC).withValues(alpha: 0.7);
     final Color cardBg = isDark 
-        ? const Color(0xFF1E293B).withOpacity(0.9) 
-        : Colors.white.withOpacity(0.95);
+        ? const Color(0xFF1E293B).withValues(alpha: 0.9) 
+        : Colors.white.withValues(alpha: 0.95);
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subTextColor = isDark ? Colors.white54 : const Color(0xFF64748B);
     final Color accentColor = const Color(0xFF6366F1); // Indigo-500
@@ -129,12 +129,12 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                   color: cardBg,
                   borderRadius: BorderRadius.circular(40),
                   border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryBlue.withOpacity(isDark ? 0.2 : 0.1),
+                      color: primaryBlue.withValues(alpha: isDark ? 0.2 : 0.1),
                       blurRadius: 50,
                       offset: const Offset(0, 20),
                     ),
@@ -149,7 +149,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                       width: 60,
                       margin: const EdgeInsets.only(top: 12),
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.3),
+                        color: accentColor.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),
@@ -165,7 +165,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: accentColor.withOpacity(0.15),
+                                  color: accentColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -180,7 +180,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                               ),
                               CircleAvatar(
                                 radius: 18,
-                                backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                                backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
                                 child: IconButton(
                                   onPressed: () => Navigator.pop(context),
                                   icon: Icon(Icons.close_rounded, color: subTextColor, size: 18),
@@ -215,7 +215,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                                 borderRadius: BorderRadius.circular(36),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: accentColor.withOpacity(0.3),
+                                    color: accentColor.withValues(alpha: 0.3),
                                     blurRadius: 35,
                                     spreadRadius: 2,
                                   ),
@@ -253,7 +253,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.1),
+                              color: accentColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
@@ -272,7 +272,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                              color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
@@ -288,7 +288,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                                         value: _secondsLeft / 30,
                                         strokeWidth: 5,
                                         strokeCap: StrokeCap.round,
-                                        backgroundColor: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                                        backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
                                         valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                                       ),
                                     ),
@@ -329,7 +329,7 @@ class _OtpFlashScreenState extends State<OtpFlashScreen> with SingleTickerProvid
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.1),
+                                    color: Colors.green.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.shield_rounded, color: Colors.green, size: 18),

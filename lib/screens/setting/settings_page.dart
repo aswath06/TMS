@@ -475,9 +475,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 style: TextStyle(color: titleColor, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: "Type your issue or feedback here...",
-                  hintStyle: TextStyle(color: subTitleColor.withOpacity(0.5)),
+                  hintStyle: TextStyle(color: subTitleColor.withValues(alpha: 0.5)),
                   filled: true,
-                  fillColor: titleColor.withOpacity(0.04),
+                  fillColor: titleColor.withValues(alpha: 0.04),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -534,7 +534,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
-                    disabledBackgroundColor: primaryBlue.withOpacity(0.6),
+                    disabledBackgroundColor: primaryBlue.withValues(alpha: 0.6),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -614,7 +614,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           clipBehavior: Clip.antiAlias,
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: activeColor.withOpacity(0.3), width: 1.5),
+              border: Border.all(color: activeColor.withValues(alpha: 0.3), width: 1.5),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -623,7 +623,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: activeColor.withOpacity(0.12),
+                    color: activeColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -643,7 +643,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 trailing: Switch.adaptive(
                   value: isProduction,
                   activeColor: const Color(0xFF10B981),
-                  inactiveTrackColor: const Color(0xFFF59E0B).withOpacity(0.3),
+                  inactiveTrackColor: const Color(0xFFF59E0B).withValues(alpha: 0.3),
                   inactiveThumbColor: const Color(0xFFF59E0B),
                   onChanged: (val) async {
                     await ServerConfig().setProduction(val);
@@ -684,7 +684,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: activeColor.withOpacity(0.07),
+                    color: activeColor.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -696,7 +696,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           color: activeColor,
                           shape: BoxShape.circle,
                           boxShadow: [
-                            BoxShadow(color: activeColor.withOpacity(0.4), blurRadius: 4, spreadRadius: 1),
+                            BoxShadow(color: activeColor.withValues(alpha: 0.4), blurRadius: 4, spreadRadius: 1),
                           ],
                         ),
                       ),
@@ -824,9 +824,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return GestureDetector(
       onTap: () async {
         await ref.read(languageStoreProvider).setLanguage(label);
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _selectedLanguage = label;
         });
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -991,7 +993,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(height: 4),
         Text(
           isTamil ? "BIT-SSG குழுவினரால் உருவாக்கப்பட்டது" : "Built by BIT-SSG",
-          style: TextStyle(color: subColor.withOpacity(0.5), fontSize: 11),
+          style: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 11),
         ),
       ],
     ),
@@ -1129,7 +1131,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             radius: 150,
             backgroundColor: const Color(
               0xFF6366F1,
-            ).withOpacity(isDark ? 0.1 : 0.05),
+            ).withValues(alpha: isDark ? 0.1 : 0.05),
           ),
         ),
         Positioned(
@@ -1139,7 +1141,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             radius: 120,
             backgroundColor: const Color(
               0xFFEC4899,
-            ).withOpacity(isDark ? 0.08 : 0.04),
+            ).withValues(alpha: isDark ? 0.08 : 0.04),
           ),
         ),
       ],
@@ -1149,15 +1151,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildTopIcon(IconData icon, Color titleColor) => Container(
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
-      color: titleColor.withOpacity(0.05),
+      color: titleColor.withValues(alpha: 0.05),
       shape: BoxShape.circle,
     ),
-    child: Icon(icon, color: titleColor.withOpacity(0.6), size: 20),
+    child: Icon(icon, color: titleColor.withValues(alpha: 0.6), size: 20),
   );
   Widget _buildIconContainer(IconData icon, Color color) => Container(
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Icon(icon, color: color, size: 22),
@@ -1184,7 +1186,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 20,
                       offset: const Offset(0, -5),
                     )
@@ -1213,7 +1215,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -1254,7 +1256,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: titleColor.withOpacity(0.8),
+                        color: titleColor.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 8),

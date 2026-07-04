@@ -5,6 +5,7 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/services/location_service.dart';
+import 'package:tripzo/services/api_service.dart';
 
 final useDriverStore = DriverStore();
 
@@ -20,7 +21,7 @@ class DriverStore extends ChangeNotifier {
   final ValueNotifier<List<dynamic>> upcomingRoutes = ValueNotifier([]);
 
   // List state
-  List<Map<String, dynamic>> _drivers = [];
+  final List<Map<String, dynamic>> _drivers = [];
   List<Map<String, dynamic>> get drivers => _drivers;
 
   bool _isLoading = false;
@@ -297,8 +298,9 @@ class DriverStore extends ChangeNotifier {
   Future<Map<String, dynamic>> markAllowanceSeen(int allowanceId) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null)
+      if (token == null) {
         return {"success": false, "message": "Session expired"};
+      }
 
       final uri = Uri.parse(ApiConstants.allowanceSeen(allowanceId));
       final headers = ApiConstants.getHeaders(token);
@@ -347,8 +349,9 @@ class DriverStore extends ChangeNotifier {
   ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null)
+      if (token == null) {
         return {"success": false, "message": "Session expired"};
+      }
 
       final response = await http.patch(
         Uri.parse(ApiConstants.allowanceRecheck(allowanceId)),
@@ -848,55 +851,33 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchMissions() async {
+  DateTime? _lastMissionsFetch;
+
+  Future<void> fetchMissions({bool isRefresh = false}) async {
+    if (!isRefresh && _searchQuery.isEmpty && _lastMissionsFetch != null && DateTime.now().difference(_lastMissionsFetch!).inMinutes < 5) {
+      return;
+    }
+
     _isLoadingMissions = true;
     _missionsError = null;
     notifyListeners();
 
     try {
-      final token = await UserStore.getToken();
       final driverId = await UserStore.getDriverId();
+      if (driverId == null) throw Exception("Driver ID not found");
 
-      if (token == null) {
-        _missionsError = "Session expired.";
-        return;
-      }
+      final url = "${ApiConstants.getDriverMissions}?driver_id=$driverId&page=1&limit=20&search=$_searchQuery";
+      final response = await ApiService.get(url);
 
-      final url =
-          "${ApiConstants.getDriverMissions}?driver_id=${driverId ?? 1}&page=1&limit=20&search=$_searchQuery";
-
-      // Print CURL for debugging
-      debugPrint("--- [DEBUG] FETCH MISSIONS CURL ---");
-      debugPrint("curl --location '$url' \\");
-      final headers = ApiConstants.getHeaders(token);
-      headers.forEach((key, value) {
-        debugPrint("--header '$key: $value' \\");
-      });
-      debugPrint("------------------------------------");
-
-      final response = await http.get(Uri.parse(url), headers: headers);
-
-      // Print Response for debugging
-      debugPrint("--- [DEBUG] FETCH MISSIONS RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
-      debugPrint("---------------------------------------");
-
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        if (decoded['success'] == true) {
-          final List<dynamic> missionsData = decoded['data'] ?? [];
-          _missions = missionsData.map((e) => e as Map<String, dynamic>).toList();
-        } else {
-          _missionsError = decoded['message'] ?? "Failed to load missions.";
-        }
-      } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
-        _missionsError = "Session expired.";
+      if (response != null && response['success'] == true) {
+        final List<dynamic> missionsData = response['data'] ?? [];
+        _missions = missionsData.map((e) => e as Map<String, dynamic>).toList();
+        if (_searchQuery.isEmpty) _lastMissionsFetch = DateTime.now();
       } else {
-        _missionsError = "Error: ${response.statusCode}";
+        _missionsError = response?['message'] ?? "Failed to load missions.";
       }
     } catch (e) {
-      _missionsError = "Network error: $e";
+      _missionsError = e.toString();
     } finally {
       _isLoadingMissions = false;
       notifyListeners();
@@ -1570,8 +1551,9 @@ class DriverStore extends ChangeNotifier {
   ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null)
+      if (token == null) {
         return {"success": false, "message": "Session expired"};
+      }
 
       final url = Uri.parse(ApiConstants.fuelEntry);
       final request = http.MultipartRequest('POST', url);
@@ -1615,8 +1597,9 @@ class DriverStore extends ChangeNotifier {
   ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null)
+      if (token == null) {
         return {"success": false, "message": "Session expired"};
+      }
 
       final url = Uri.parse(ApiConstants.serviceEntry);
       final request = http.MultipartRequest('POST', url);
@@ -1660,8 +1643,9 @@ class DriverStore extends ChangeNotifier {
   ) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null)
+      if (token == null) {
         return {"success": false, "message": "Session expired"};
+      }
 
       final url = Uri.parse(ApiConstants.accidentEntry);
       final request = http.MultipartRequest('POST', url);
@@ -1800,8 +1784,9 @@ class DriverStore extends ChangeNotifier {
   }) async {
     try {
       final token = await UserStore.getToken();
-      if (token == null)
+      if (token == null) {
         return {"success": false, "message": "Session expired"};
+      }
 
       final url = Uri.parse(ApiConstants.driverComplete);
       final request = http.MultipartRequest('PATCH', url);
@@ -1833,8 +1818,9 @@ class DriverStore extends ChangeNotifier {
       request.fields.forEach(
         (key, value) => curl.write("--form '$key=\"$value\"' \\\n"),
       );
-      if (billFilePath != null)
+      if (billFilePath != null) {
         curl.write("--form 'bill_file=@\"$billFilePath\"'");
+      }
       debugPrint(curl.toString());
       debugPrint("---------------------------------------");
 

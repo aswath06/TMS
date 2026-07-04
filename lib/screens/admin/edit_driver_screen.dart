@@ -388,8 +388,8 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                     decoration: BoxDecoration(
                       color: surfaceColor,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
-                      border: Border.all(color: primaryBlue.withOpacity(0.5), width: 2),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+                      border: Border.all(color: primaryBlue.withValues(alpha: 0.5), width: 2),
                     ),
                     child: ClipOval(
                       child: _profileImage != null
@@ -558,7 +558,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                         _buildDatePicker("Joining Date", _joiningDate, Icons.calendar_today, isDark, (d) => setState(() => _joiningDate = d)),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: _driverStatus.toUpperCase(),
+                          initialValue: _driverStatus.toUpperCase(),
                           items: const [
                             DropdownMenuItem(value: 'AVAILABLE', child: Text('AVAILABLE')),
                             DropdownMenuItem(value: 'ASSIGNED', child: Text('ASSIGNED')),
@@ -571,7 +571,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _shift.toUpperCase(),
+                          initialValue: _shift.toUpperCase(),
                           items: const [
                             DropdownMenuItem(value: 'MORNING', child: Text('MORNING')),
                             DropdownMenuItem(value: 'AFTERNOON', child: Text('AFTERNOON')),

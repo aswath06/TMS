@@ -5,8 +5,7 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
-import 'package:tripzo/store/request_store.dart';
-import 'package:tripzo/screens/admin/add_driver_page.dart'; // Import Add Driver Page
+// Import Add Driver Page
 import 'package:tripzo/screens/admin/request/view_all_leaves_page.dart';
 import 'package:tripzo/screens/admin/admin_driver_detail_screen.dart';
 import 'package:tripzo/components/leave_card.dart';
@@ -22,13 +21,13 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   String _sortType = 'A to Z'; // Default sorting
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  String _searchText = '';
+  final String _searchText = '';
 
   // Driver search and filter variables
   final TextEditingController _driverSearchController = TextEditingController();
   String _driverFilter = 'All'; // All, Available, Assigned, On Trip, On Leave
   DateTime? _selectedDriverDate;
-  bool _isDriverSearchVisible = false; // Visibility state for search bar
+  final bool _isDriverSearchVisible = false; // Visibility state for search bar
   Timer? _searchDebounce;
 
   // Helper to parse 'kilometers' string to double for sorting
@@ -175,7 +174,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? primaryBlue.withOpacity(0.5)
+                ? primaryBlue.withValues(alpha: 0.5)
                 : Colors.transparent,
             width: 1.5,
           ),
@@ -355,7 +354,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
         color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: Column(
@@ -581,9 +580,9 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
         final store = ref.watch(driverStoreProvider);
         return ValueListenableBuilder<int>(
           valueListenable: AdminDashboardStore().driversPresent,
-          builder: (_, present, __) => ValueListenableBuilder<int>(
+          builder: (_, present, _) => ValueListenableBuilder<int>(
             valueListenable: AdminDashboardStore().driversOnLeave,
-            builder: (_, onLeave, ___) {
+            builder: (_, onLeave, _) {
               final int total = store.totalDrivers;
               return Container(
                 padding: const EdgeInsets.all(20),
@@ -597,20 +596,20 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.3),
                     width: 1.5,
                   ),
                   boxShadow: isDark
                       ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),
                         ]
                       : [
                           BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.15),
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.15),
                             blurRadius: 25,
                             offset: const Offset(0, 12),
                           ),
@@ -635,7 +634,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1).withOpacity(0.1),
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -663,7 +662,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                     Container(
                       width: 1,
                       height: 40,
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withValues(alpha: 0.2),
                     ),
                     Expanded(
                       child: _buildSummaryItem(
@@ -873,8 +872,8 @@ final store = ref.watch(requestStoreProvider);
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.2)
-                : const Color(0xFF6366F1).withOpacity(0.08),
+                ? Colors.black.withValues(alpha: 0.2)
+                : const Color(0xFF6366F1).withValues(alpha: 0.08),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -1002,11 +1001,11 @@ final store = ref.watch(driverStoreProvider);
           color: surfaceColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -1049,7 +1048,7 @@ final store = ref.watch(driverStoreProvider);
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.1),
+                                  color: statusColor.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -1107,13 +1106,13 @@ final store = ref.watch(driverStoreProvider);
                 ),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.white.withOpacity(0.02)
+                      ? Colors.white.withValues(alpha: 0.02)
                       : const Color(0xFFF8FAFC),
                   border: Border(
                     top: BorderSide(
                       color: isDark
                           ? Colors.white10
-                          : Colors.black.withOpacity(0.03),
+                          : Colors.black.withValues(alpha: 0.03),
                     ),
                   ),
                 ),
@@ -1168,7 +1167,7 @@ final store = ref.watch(driverStoreProvider);
             Icon(
               icon,
               size: 14,
-              color: const Color(0xFF6366F1).withOpacity(0.7),
+              color: const Color(0xFF6366F1).withValues(alpha: 0.7),
             ),
             const SizedBox(width: 4),
             Text(
@@ -1218,7 +1217,7 @@ final store = ref.watch(driverStoreProvider);
 
     return CircleAvatar(
       radius: 26,
-      backgroundColor: const Color(0xFF6366F1).withOpacity(0.15),
+      backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
       child: Text(
         initials.toUpperCase(),
         style: const TextStyle(

@@ -145,11 +145,11 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
                             color: cardBg,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
+                                color: Colors.black.withValues(alpha: 0.03),
                                 blurRadius: 15,
                                 offset: const Offset(0, 8),
                               ),
@@ -164,7 +164,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: statusColor.withOpacity(0.15),
+                                      color: statusColor.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
@@ -204,7 +204,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundColor: primaryBlue.withOpacity(0.1),
+                                    backgroundColor: primaryBlue.withValues(alpha: 0.1),
                                     child: Text(
                                       (user['name']?.toString().isNotEmpty == true)
                                           ? user['name'].toString().substring(0, 1).toUpperCase()

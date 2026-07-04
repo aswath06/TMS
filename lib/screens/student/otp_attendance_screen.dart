@@ -127,7 +127,7 @@ class _OtpAttendanceScreenState extends State<OtpAttendanceScreen> {
                             boxShadow: hasValue
                                 ? [
                                     BoxShadow(
-                                      color: primaryBlue.withOpacity(0.3),
+                                      color: primaryBlue.withValues(alpha: 0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 6),
                                     )
@@ -164,7 +164,7 @@ class _OtpAttendanceScreenState extends State<OtpAttendanceScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 20,
                     offset: const Offset(0, -5),
                   ),
@@ -294,10 +294,10 @@ class _AnimatedNumpadButtonState extends State<_AnimatedNumpadButton> with Singl
           height: buttonSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isAction ? (widget.isDark ? Colors.white10 : Colors.black.withOpacity(0.05)) : Colors.transparent,
+            color: isAction ? (widget.isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)) : Colors.transparent,
             boxShadow: isAction ? [] : [
               BoxShadow(
-                color: widget.isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02),
+                color: widget.isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               )

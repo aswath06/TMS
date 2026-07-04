@@ -5,12 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/store/driver_store.dart';
-import 'package:tripzo/store/daily_routines_store.dart';
 import 'package:tripzo/store/istamil.dart'; 
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
-import 'package:tripzo/screens/admin/request/daily_routines_page.dart';
-import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -539,7 +535,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
             Icon(
               query.isNotEmpty ? Icons.search_off_rounded : Icons.directions_bus_filled_outlined,
               size: 64,
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
             ),
             const SizedBox(height: 16),
             Text(
@@ -660,7 +656,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -720,8 +716,8 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
         Column(
           children: [
             Icon(Icons.radio_button_checked, color: primary, size: 18),
-            Container(width: 2, height: 20, color: primary.withOpacity(0.2)),
-            Icon(Icons.location_on, color: Colors.redAccent.withOpacity(0.7), size: 18),
+            Container(width: 2, height: 20, color: primary.withValues(alpha: 0.2)),
+            Icon(Icons.location_on, color: Colors.redAccent.withValues(alpha: 0.7), size: 18),
           ],
         ),
         const SizedBox(width: 14),
@@ -765,7 +761,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
           Icon(
             isSearch ? Icons.search_off_rounded : Icons.subtitles_off_rounded,
             size: 64,
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
           ),
           const SizedBox(height: 16),
           Text(text, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),

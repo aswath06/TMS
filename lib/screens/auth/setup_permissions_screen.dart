@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -267,7 +266,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
                     color: canProceed ? null : (isDark ? Colors.grey[800] : Colors.grey[300]),
                     boxShadow: canProceed ? [
                       BoxShadow(
-                        color: const Color(0xFF4F46E5).withOpacity(0.4),
+                        color: const Color(0xFF4F46E5).withValues(alpha: 0.4),
                         blurRadius: 20,
                         spreadRadius: 2,
                         offset: const Offset(0, 8),
@@ -329,14 +328,14 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isOk ? successColor.withOpacity(0.5) : (isDark ? Colors.white10 : Colors.black12),
+            color: isOk ? successColor.withValues(alpha: 0.5) : (isDark ? Colors.white10 : Colors.black12),
             width: 2,
           ),
           boxShadow: [
-            if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            if (!isDark) BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
@@ -344,7 +343,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isOk ? successColor.withOpacity(0.1) : (isDark ? Colors.white10 : Colors.grey.shade100),
+                color: isOk ? successColor.withValues(alpha: 0.1) : (isDark ? Colors.white10 : Colors.grey.shade100),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: isOk ? successColor : (isDark ? Colors.white30 : Colors.grey), size: 28),

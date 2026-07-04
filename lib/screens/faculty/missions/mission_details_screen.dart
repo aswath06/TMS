@@ -1687,7 +1687,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       PageRouteBuilder(
         opaque: false,
         barrierDismissible: true,
-        pageBuilder: (context, _, __) => OtpFlashScreen(
+        pageBuilder: (context, _, _) => OtpFlashScreen(
           otp: otp,
           title: title,
           qrDataPayload: qrPayload,
@@ -2518,8 +2518,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                 final startDt = _parseTimestamp(startedAt);
                 final endDt = _parseTimestamp(endedAt);
                 Duration? dur;
-                if (startDt != null && endDt != null) dur = endDt.difference(startDt);
-                else if (startDt != null && endedAt == null) dur = DateTime.now().difference(startDt);
+                if (startDt != null && endDt != null) {
+                  dur = endDt.difference(startDt);
+                } else if (startDt != null && endedAt == null) dur = DateTime.now().difference(startDt);
                 
                 final bool isOngoing = startedAt != null && endedAt == null;
                 final String label = dur != null ? _formatDuration(dur) : (isOngoing ? "Calculating..." : "N/A");

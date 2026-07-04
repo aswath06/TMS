@@ -170,7 +170,7 @@ class _ScannerPageState extends State<ScannerPage>
       children: [
         ColorFiltered(
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.7),
+            Colors.black.withValues(alpha: 0.7),
             BlendMode.srcOut,
           ),
           child: Stack(
@@ -206,7 +206,7 @@ class _ScannerPageState extends State<ScannerPage>
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: primaryBlue.withOpacity(0.5),
+                          color: primaryBlue.withValues(alpha: 0.5),
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(30),
@@ -222,16 +222,16 @@ class _ScannerPageState extends State<ScannerPage>
                           decoration: BoxDecoration(
                             boxShadow: [
                               BoxShadow(
-                                color: primaryBlue.withOpacity(0.8),
+                                color: primaryBlue.withValues(alpha: 0.8),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               ),
                             ],
                             gradient: LinearGradient(
                               colors: [
-                                primaryBlue.withOpacity(0),
+                                primaryBlue.withValues(alpha: 0),
                                 primaryBlue,
-                                primaryBlue.withOpacity(0),
+                                primaryBlue.withValues(alpha: 0),
                               ],
                             ),
                           ),
@@ -251,9 +251,9 @@ class _ScannerPageState extends State<ScannerPage>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B).withOpacity(0.8),
+                color: const Color(0xFF1E293B).withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: primaryBlue.withOpacity(0.3)),
+                border: Border.all(color: primaryBlue.withValues(alpha: 0.3)),
               ),
               child: Text(
                 isTamil
@@ -293,7 +293,7 @@ class _ScannerPageState extends State<ScannerPage>
           borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.5 : 0.1),
+              color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
               blurRadius: 40,
             ),
           ],

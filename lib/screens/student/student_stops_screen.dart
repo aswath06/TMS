@@ -50,10 +50,10 @@ class StudentStopsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
+                border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -64,7 +64,7 @@ class StudentStopsScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: primaryBlue.withOpacity(0.1),
+                      color: primaryBlue.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Text(

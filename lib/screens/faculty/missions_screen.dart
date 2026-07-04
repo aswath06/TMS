@@ -4,11 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/store/request_store.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -30,7 +28,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
   Timer? _debounce;
   String _selectedFilter = 'ALL';
   String _selectedDateFilter = 'ALL';
-  List<DateTime> _scrollDates = [];
+  final List<DateTime> _scrollDates = [];
 
   final int _infiniteScrollMiddle = 100000;
   late ScrollController _dateScrollController;
@@ -849,8 +847,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                           setModalState(() {});
                           
                           String mappedStatus = "";
-                          if (label == 'APPROVED') mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
-                          else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
+                          if (label == 'APPROVED') {
+                            mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
+                          } else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
                           else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
                           else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
                           
@@ -1024,7 +1023,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 20,
                     offset: const Offset(0, -10),
                   ),
@@ -1039,7 +1038,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -1050,7 +1049,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: primaryBlue.withOpacity(0.1),
+                          color: primaryBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
@@ -1074,7 +1073,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: subColor.withOpacity(0.8),
+                                color: subColor.withValues(alpha: 0.8),
                               ),
                             ),
                           ],
@@ -1149,7 +1148,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: subColor.withOpacity(0.6),
+                        color: subColor.withValues(alpha: 0.6),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -1169,9 +1168,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                         ),
                         child: Row(
                           children: [
@@ -1203,7 +1202,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                  color: subColor.withOpacity(0.6),
+                                  color: subColor.withValues(alpha: 0.6),
                                   letterSpacing: 1.2,
                                 ),
                               ),
@@ -1223,9 +1222,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                                   ),
                                   child: Row(
                                     children: [
@@ -1259,7 +1258,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                  color: subColor.withOpacity(0.6),
+                                  color: subColor.withValues(alpha: 0.6),
                                   letterSpacing: 1.2,
                                 ),
                               ),
@@ -1279,9 +1278,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                                   ),
                                   child: Row(
                                     children: [
@@ -1314,7 +1313,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: subColor.withOpacity(0.6),
+                      color: subColor.withValues(alpha: 0.6),
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -1403,7 +1402,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                       final bytes = response.bodyBytes;
                                       final tempDir = await getTemporaryDirectory();
                                       final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
-                                      final fileName = isRangeReport ? "Transport_Report_${startStr}_to_${endStr}.$ext" : "Transport_Report_$startStr.$ext";
+                                      final fileName = isRangeReport ? "Transport_Report_${startStr}_to_$endStr.$ext" : "Transport_Report_$startStr.$ext";
                                       final file = File("${tempDir.path}/$fileName");
                                       await file.writeAsBytes(bytes);
 
@@ -1452,7 +1451,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                             elevation: 0,
-                            shadowColor: primaryBlue.withOpacity(0.4),
+                            shadowColor: primaryBlue.withValues(alpha: 0.4),
                           ),
                           child: downloading
                               ? const SizedBox(
@@ -1491,10 +1490,10 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
           decoration: BoxDecoration(
-            color: isSelected ? primaryBlue.withOpacity(0.08) : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
+            color: isSelected ? primaryBlue.withValues(alpha: 0.08) : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? primaryBlue : Colors.grey.withOpacity(0.15),
+              color: isSelected ? primaryBlue : Colors.grey.withValues(alpha: 0.15),
               width: 2,
             ),
           ),

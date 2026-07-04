@@ -1,0 +1,144 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
+
+final useStudentLeaveStore = StudentLeaveStore();
+
+class StudentLeaveStore extends ChangeNotifier {
+  static final StudentLeaveStore _instance = StudentLeaveStore._internal();
+  factory StudentLeaveStore() => _instance;
+  StudentLeaveStore._internal();
+
+  List<Map<String, dynamic>> _leaves = [];
+  List<Map<String, dynamic>> get leaves => _leaves;
+  
+  bool _isLoadingLeaves = false;
+  bool get isLoadingLeaves => _isLoadingLeaves;
+  
+  String? _leavesError;
+  String? get leavesError => _leavesError;
+  
+  bool _isApplying = false;
+  bool get isApplying => _isApplying;
+
+  Future<void> fetchLeaves() async {
+    _isLoadingLeaves = true;
+    _leavesError = null;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        _leavesError = "Session expired.";
+        return;
+      }
+
+      final url = "${ApiConstants.baseUrl}/transport-leaves/get-all";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          final List<dynamic> items = decoded['data'] ?? [];
+          _leaves = items.map((e) => e as Map<String, dynamic>).toList();
+        } else {
+          _leavesError = "Failed to load leaves";
+        }
+      } else {
+        _leavesError = "Error: ${response.statusCode}";
+      }
+    } catch (e) {
+      _leavesError = "Network error: $e";
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createLeave({
+    required String date,
+    required String shiftType,
+    required String leaveType,
+    required String reason,
+  }) async {
+    _isApplying = true;
+    _leavesError = null;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) {
+        _leavesError = "Session expired.";
+        _isApplying = false;
+        notifyListeners();
+        return false;
+      }
+
+      final url = "${ApiConstants.baseUrl}/transport-leaves/apply";
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({
+          "leave_date": date,
+          "shift_type": shiftType,
+          "leave_type": leaveType,
+          "reason": reason
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          await fetchLeaves();
+          return true;
+        } else {
+          _leavesError = decoded['message'] ?? "Failed to apply leave";
+        }
+      } else {
+        try {
+          final decoded = json.decode(response.body);
+          _leavesError = decoded['message'] ?? "Failed with status ${response.statusCode}";
+        } catch (_) {
+          _leavesError = "Failed with status ${response.statusCode}";
+        }
+      }
+    } catch (e) {
+      _leavesError = "Network error: $e";
+    } finally {
+      _isApplying = false;
+      notifyListeners();
+    }
+    return false;
+  }
+
+  Future<bool> revokeLeave(int id) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return false;
+
+      final url = "${ApiConstants.baseUrl}/transport-leaves/revoke/$id";
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await fetchLeaves();
+        return true;
+      }
+    } catch (e) {
+      debugPrint("Error revoking: $e");
+    }
+    return false;
+  }
+
+  void resetLeavesError() {
+    _leavesError = null;
+    notifyListeners();
+  }
+}

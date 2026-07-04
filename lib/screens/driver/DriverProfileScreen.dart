@@ -323,9 +323,9 @@ final store = ref.watch(driverStoreProvider);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withOpacity(0.08),
+        color: const Color(0xFF6366F1).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -364,11 +364,11 @@ final store = ref.watch(driverStoreProvider);
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: title.withOpacity(0.05)),
+        border: Border.all(color: title.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
-          Icon(Icons.calendar_today_rounded, size: 18, color: sub.withOpacity(0.5)),
+          Icon(Icons.calendar_today_rounded, size: 18, color: sub.withValues(alpha: 0.5)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -662,7 +662,7 @@ final store = ref.watch(driverStoreProvider);
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -670,7 +670,7 @@ final store = ref.watch(driverStoreProvider);
         children: [
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.02),
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.02),
             child: Text(
               title,
               textAlign: TextAlign.center,
@@ -700,7 +700,7 @@ final store = ref.watch(driverStoreProvider);
                           child: Image.network(
                             ApiConstants.getImageUrl(path),
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 50),
+                            errorBuilder: (_, _, _) => const Icon(Icons.broken_image, color: Colors.grey, size: 50),
                           ),
                         ),
                       ),
@@ -711,7 +711,7 @@ final store = ref.watch(driverStoreProvider);
               child: Image.network(
                 ApiConstants.getImageUrl(path),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
               ),
             ),
           ),
@@ -893,7 +893,7 @@ final store = ref.watch(driverStoreProvider);
           },
           icon: Icon(
             Icons.settings_outlined,
-            color: titleColor.withOpacity(0.6),
+            color: titleColor.withValues(alpha: 0.6),
             size: 26,
           ),
         ),
@@ -952,7 +952,7 @@ final store = ref.watch(driverStoreProvider);
               radius: 140,
               backgroundColor: const Color(
                 0xFF6366F1,
-              ).withOpacity(isDark ? 0.06 : 0.04),
+              ).withValues(alpha: isDark ? 0.06 : 0.04),
             ),
           ),
           Positioned(
@@ -962,7 +962,7 @@ final store = ref.watch(driverStoreProvider);
               radius: 80,
               backgroundColor: const Color(
                 0xFFA855F7,
-              ).withOpacity(isDark ? 0.04 : 0.02),
+              ).withValues(alpha: isDark ? 0.04 : 0.02),
             ),
           ),
         ],
@@ -992,7 +992,7 @@ final store = ref.watch(driverStoreProvider);
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),
       child: ListTile(
@@ -1010,7 +1010,7 @@ final store = ref.watch(driverStoreProvider);
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFF6366F1).withOpacity(0.1),
+            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF6366F1), size: 22),

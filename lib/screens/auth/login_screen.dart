@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:convert';
@@ -9,13 +8,11 @@ import 'dart:io';
 import 'package:tripzo/components/custom_button.dart';
 import 'package:tripzo/components/custom_input.dart';
 import 'package:tripzo/components/app_branding.dart';
-import 'package:tripzo/components/auth/login_error_dialog.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/validators.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import '../../providers/notification_provider.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import '../main_screen.dart' show MainScreen;
 
@@ -82,8 +79,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // ✅ PRINT CURL
       final curl =
           '''
-curl -X POST "$url" \
--H "Content-Type: application/json" \
+curl -X POST "$url" 
+-H "Content-Type: application/json" 
 -d '${jsonEncode(body)}'
 ''';
 
@@ -399,7 +396,7 @@ curl -X POST "$url" \
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.08),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
             blurRadius: 40,
             offset: const Offset(0, 20),
           ),
@@ -850,7 +847,7 @@ class BackgroundDecorator extends ConsumerWidget {
             height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF6366F1).withOpacity(0.05),
+              color: const Color(0xFF6366F1).withValues(alpha: 0.05),
             ),
           ),
         ),
@@ -862,7 +859,7 @@ class BackgroundDecorator extends ConsumerWidget {
             height: 200,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF6366F1).withOpacity(0.03),
+              color: const Color(0xFF6366F1).withValues(alpha: 0.03),
             ),
           ),
         ),

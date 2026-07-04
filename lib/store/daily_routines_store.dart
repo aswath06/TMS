@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/services/api_service.dart';
 
 class DailyRoutinesStore extends ChangeNotifier {
   List<Map<String, dynamic>> _runs = [];
@@ -29,6 +30,8 @@ class DailyRoutinesStore extends ChangeNotifier {
   String get selectedDate => _selectedDate;
   String get currentSearch => _currentSearch;
 
+  DateTime? _lastFetch;
+
   Future<void> fetchDailyRoutines({
     int page = 1,
     int limit = 50,
@@ -41,6 +44,10 @@ class DailyRoutinesStore extends ChangeNotifier {
     }
     if (date != null) {
       _selectedDate = date;
+    }
+
+    if (!isRefresh && page == 1 && _lastFetch != null && _currentSearch.isEmpty && DateTime.now().difference(_lastFetch!).inMinutes < 5) {
+      return;
     }
 
     if (isRefresh) {
@@ -56,15 +63,6 @@ class DailyRoutinesStore extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final String? token = await UserStore.getToken();
-      if (token == null) {
-        _errorMessage = "Session expired.";
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      // Endpoint: GET /daily-bus/bus-run/get-all?page=1&limit=50&service_date=2026-07-01
       String url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?page=$page&limit=$limit";
       if (_selectedDate.isNotEmpty && _selectedDate != 'ALL') {
         url += "&service_date=${Uri.encodeComponent(_selectedDate)}";
@@ -73,49 +71,30 @@ class DailyRoutinesStore extends ChangeNotifier {
         url += "&search=${Uri.encodeComponent(_currentSearch)}";
       }
 
-      // Console log request curl
-      final String curlCmd = "curl '$url' \\\n"
-          "  -H 'accept: */*' \\\n"
-          "  -H 'authorization: TMS $token'";
-      debugPrint("---- [GET HTTP REQUEST CURL] ----\n$curlCmd\n----------------------------");
+      final data = await ApiService.get(url);
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
+      if (data != null && data['success'] == true) {
+        final resData = data['data'] ?? {};
+        final List<dynamic> runsList = resData['runs'] ?? [];
+        final List<Map<String, dynamic>> formattedRuns = runsList.map((run) => Map<String, dynamic>.from(run)).toList();
 
-      // Console log HTTP response
-      debugPrint("---- [GET HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          final resData = data['data'] ?? {};
-          final List<dynamic> runsList = resData['runs'] ?? [];
-          final List<Map<String, dynamic>> formattedRuns = runsList.map((run) => Map<String, dynamic>.from(run)).toList();
-
-          if (page == 1) {
-            _runs = formattedRuns;
-          } else {
-            _runs.addAll(formattedRuns);
-          }
-
-          _currentPage = resData['current_page'] ?? page;
-          _limit = resData['limit'] ?? limit;
-          _totalCount = resData['total_count'] ?? 0;
-          _totalPages = resData['total_pages'] ?? 1;
-          _hasMore = _runs.length < _totalCount;
+        if (page == 1) {
+          _runs = formattedRuns;
+          if (_currentSearch.isEmpty) _lastFetch = DateTime.now();
         } else {
-          _errorMessage = data['message'] ?? "Failed to load routines.";
+          _runs.addAll(formattedRuns);
         }
-      } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
-        _errorMessage = "Session expired. Please login again.";
+
+        _currentPage = resData['current_page'] ?? page;
+        _limit = resData['limit'] ?? limit;
+        _totalCount = resData['total_count'] ?? 0;
+        _totalPages = resData['total_pages'] ?? 1;
+        _hasMore = _runs.length < _totalCount;
       } else {
-        _errorMessage = "Server Error: ${response.statusCode}";
+        _errorMessage = data?['message'] ?? "Failed to load routines.";
       }
     } catch (e) {
-      _errorMessage = "Connection failed.";
+      _errorMessage = e.toString();
       debugPrint("DailyRoutinesStore Error: $e");
     } finally {
       _isLoading = false;

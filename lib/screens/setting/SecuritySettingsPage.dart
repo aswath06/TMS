@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tripzo/store/isdark.dart'; // Ensure this path is correct
+// Ensure this path is correct
 import 'package:tripzo/utils/toast_utils.dart';
 
 class SecuritySettingsPage extends StatefulWidget {
@@ -315,8 +315,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
         ),
         filled: true,
         fillColor: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.black.withOpacity(0.05),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 18,
@@ -476,7 +476,7 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: primaryBlue.withOpacity(0.1),
+              color: primaryBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: primaryBlue, size: 24),

@@ -6,9 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/toast_utils.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'dart:io';
 import 'package:tripzo/utils/download_helper.dart';
 
 class BackupSettingsPage extends StatefulWidget {
@@ -142,7 +140,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, -10),
                 ),
@@ -157,7 +155,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                     width: 40,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -168,7 +166,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: primaryBlue.withOpacity(0.1),
+                        color: primaryBlue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Icon(
@@ -196,7 +194,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                         ? const Color(0xFF0F172A)
                         : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                   ),
                   child: Column(
                     children: [
@@ -232,7 +230,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                 ),
                               ],
@@ -279,7 +277,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                       const SizedBox(height: 12),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeColor: primaryBlue,
+                        activeThumbColor: primaryBlue,
                         title: Text(
                           "Email Notifications",
                           style: GoogleFonts.plusJakartaSans(
@@ -412,7 +410,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, -10),
                 ),
@@ -427,7 +425,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                     width: 40,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -437,7 +435,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: primaryBlue.withOpacity(0.1),
+                      color: primaryBlue.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -477,7 +475,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                         ? const Color(0xFF0F172A)
                         : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                   ),
                   child: TextField(
                     controller: passwordController,
@@ -911,7 +909,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
         ],
       ),
       child: Column(
@@ -962,8 +960,8 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: backup['backup_type'] == 'MANUAL'
-                      ? Colors.blue.withOpacity(0.1)
-                      : Colors.green.withOpacity(0.1),
+                      ? Colors.blue.withValues(alpha: 0.1)
+                      : Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

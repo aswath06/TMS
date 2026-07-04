@@ -228,15 +228,15 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: primaryBlue.withOpacity(0.08)),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: primaryBlue.withOpacity(0.06),
+            color: primaryBlue.withValues(alpha: 0.06),
             blurRadius: 30,
             offset: const Offset(0, 12),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -252,7 +252,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [primaryBlue, primaryBlue.withOpacity(0.6)],
+                  colors: [primaryBlue, primaryBlue.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -299,7 +299,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                   .toString()
                   .toUpperCase(),
               style: TextStyle(
-                color: Colors.grey.withOpacity(0.5),
+                color: Colors.grey.withValues(alpha: 0.5),
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1,
@@ -309,9 +309,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withOpacity(0.2)),
+              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -381,11 +381,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             color: surfaceColor,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.1 : 0.03),
+                color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -400,7 +400,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.1),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
@@ -485,11 +485,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.06),
+            color: color.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -501,7 +501,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+                colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -569,12 +569,12 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.04),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.04),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.15 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -598,8 +598,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF6366F1).withOpacity(0.15),
-                  const Color(0xFF8B5CF6).withOpacity(0.08),
+                  const Color(0xFF6366F1).withValues(alpha: 0.15),
+                  const Color(0xFF8B5CF6).withValues(alpha: 0.08),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -620,8 +620,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.grey.withOpacity(0.08),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -635,8 +635,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
               height: 1,
               thickness: 1,
               color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.grey.withOpacity(0.1),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey.withValues(alpha: 0.1),
               indent: 16,
               endIndent: 16,
             ),
@@ -649,13 +649,14 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
 
   Widget _buildMaintenanceList(Color surface, bool isDark) {
     final List<dynamic> history = _vehicleData!['serviceHistory'] ?? [];
-    if (history.isEmpty)
+    if (history.isEmpty) {
       return const Center(
         child: Text(
           "No maintenance records",
           style: TextStyle(color: Colors.grey),
         ),
       );
+    }
     return Column(
       children: history
           .map(
@@ -692,16 +693,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
             ),
             boxShadow: isDark
                 ? []
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -719,7 +720,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6).withOpacity(0.1),
+                            color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: const Icon(
@@ -830,16 +831,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         ),
         boxShadow: isDark
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -850,7 +851,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -992,13 +993,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: primaryBlue.withOpacity(0.1),
+            backgroundColor: primaryBlue.withValues(alpha: 0.1),
             child: Icon(Icons.person_rounded, color: primaryBlue, size: 28),
           ),
           const SizedBox(width: 20),
@@ -1032,7 +1033,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: t.withOpacity(0.7),
+                        color: t.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -1046,7 +1047,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
@@ -1063,7 +1064,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                 "ID: ${driver['id'] ?? ''}",
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey.withOpacity(0.5),
+                  color: Colors.grey.withValues(alpha: 0.5),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1210,13 +1211,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         color: surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         ),
         boxShadow: isDark
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -1228,7 +1229,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 20),
@@ -1310,16 +1311,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
             ),
             boxShadow: isDark
                 ? []
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
+                      color: Colors.black.withValues(alpha: 0.03),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1450,7 +1451,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                         height: 1,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.3),
+                            color: Colors.grey.withValues(alpha: 0.3),
                           ),
                         ),
                       ),
@@ -1500,7 +1501,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -1557,7 +1558,7 @@ class _AnimatedStatusDotState extends State<_AnimatedStatusDot>
             boxShadow: [
               BoxShadow(
                 color: (widget.isActive ? Colors.green : Colors.orange)
-                    .withOpacity(0.5),
+                    .withValues(alpha: 0.5),
                 blurRadius: 4 + (_controller.value * 4),
                 spreadRadius: _controller.value * 2,
               ),

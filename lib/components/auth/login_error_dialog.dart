@@ -68,7 +68,7 @@ class LoginErrorDialog extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: baseColor.withOpacity(0.1),
+              color: baseColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(

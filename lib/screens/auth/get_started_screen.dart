@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../utils/routes.dart';
-import '../../store/user_store.dart';
 import '../../store/isdark.dart';
 import '../../store/istamil.dart';
 
@@ -86,12 +85,12 @@ class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerPr
           Positioned(
             top: -100,
             right: -100,
-            child: _buildBlurCircle(300, const Color(0xFF6366F1).withOpacity(0.05)),
+            child: _buildBlurCircle(300, const Color(0xFF6366F1).withValues(alpha: 0.05)),
           ),
           Positioned(
             bottom: -50,
             left: -50,
-            child: _buildBlurCircle(250, const Color(0xFF4F46E5).withOpacity(0.05)),
+            child: _buildBlurCircle(250, const Color(0xFF4F46E5).withValues(alpha: 0.05)),
           ),
 
           SafeArea(
@@ -198,7 +197,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> with SingleTickerPr
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF4F46E5).withOpacity(0.4),
+                            color: const Color(0xFF4F46E5).withValues(alpha: 0.4),
                             blurRadius: 20,
                             spreadRadius: 2,
                             offset: const Offset(0, 8),

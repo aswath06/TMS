@@ -17,7 +17,7 @@ class AppBranding extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF4F46E5).withOpacity(0.1),
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
                   blurRadius: 25,
                   offset: const Offset(0, 10),
                 ),
@@ -78,7 +78,7 @@ class BackgroundDecorator extends StatelessWidget {
           right: -size.width * 0.1,
           child: _circle(
             size.width * 0.6,
-            const Color(0xFF6366F1).withOpacity(0.04),
+            const Color(0xFF6366F1).withValues(alpha: 0.04),
           ),
         ),
         Positioned(
@@ -86,7 +86,7 @@ class BackgroundDecorator extends StatelessWidget {
           left: -size.width * 0.1,
           child: _circle(
             size.width * 0.4,
-            const Color(0xFF4F46E5).withOpacity(0.03),
+            const Color(0xFF4F46E5).withValues(alpha: 0.03),
           ),
         ),
       ],

@@ -106,7 +106,7 @@ class _AdminAllowanceScreenState extends ConsumerState<AdminAllowanceScreen> {
                         width: 40,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -121,7 +121,7 @@ class _AdminAllowanceScreenState extends ConsumerState<AdminAllowanceScreen> {
                     // Driver Dropdown
                     Text(
                       isTamil ? "ஓட்டுநரைத் தேர்ந்தெடுக்கவும்" : "Select Driver",
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: titleColor.withOpacity(0.8)),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: titleColor.withValues(alpha: 0.8)),
                     ),
                     const SizedBox(height: 8),
                     Consumer(
@@ -132,7 +132,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<int>(
@@ -151,7 +151,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                     value: driver['id'],
                                     child: Text(driver['user']?['name'] ?? "Unknown"),
                                   );
-                                }).toList(),
+                                }),
                               ],
                               onChanged: (val) {
                                 setModalState(() {
@@ -169,7 +169,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     // Date Picker
                     Text(
                       isTamil ? "தேதியைத் தேர்ந்தெடுக்கவும்" : "Select Date",
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: titleColor.withOpacity(0.8)),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: titleColor.withValues(alpha: 0.8)),
                     ),
                     const SizedBox(height: 8),
                     InkWell(
@@ -191,7 +191,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -291,7 +291,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                     blurRadius: 20,
                     offset: const Offset(0, -10),
                   ),
@@ -306,7 +306,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -318,7 +318,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: primaryBlue.withOpacity(0.1),
+                          color: primaryBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
@@ -416,7 +416,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: subColor.withOpacity(0.6),
+                        color: subColor.withValues(alpha: 0.6),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -434,9 +434,9 @@ final store = ref.watch(adminAllowanceStoreProvider);
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                         ),
                         child: Row(
                           children: [
@@ -468,7 +468,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w900,
-                                  color: subColor.withOpacity(0.6),
+                                  color: subColor.withValues(alpha: 0.6),
                                   letterSpacing: 1.2,
                                 ),
                               ),
@@ -486,9 +486,9 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                                   ),
                                   child: Row(
                                     children: [
@@ -522,7 +522,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w900,
-                                  color: subColor.withOpacity(0.6),
+                                  color: subColor.withValues(alpha: 0.6),
                                   letterSpacing: 1.2,
                                 ),
                               ),
@@ -540,9 +540,9 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                                   ),
                                   child: Row(
                                     children: [
@@ -576,7 +576,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: subColor.withOpacity(0.6),
+                      color: subColor.withValues(alpha: 0.6),
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -590,9 +590,9 @@ final store = ref.watch(adminAllowanceStoreProvider);
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             decoration: BoxDecoration(
-                              color: selectedFormat == 'pdf' ? primaryBlue : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02)),
+                              color: selectedFormat == 'pdf' ? primaryBlue : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02)),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: selectedFormat == 'pdf' ? primaryBlue : titleColor.withOpacity(0.05)),
+                              border: Border.all(color: selectedFormat == 'pdf' ? primaryBlue : titleColor.withValues(alpha: 0.05)),
                             ),
                             child: Column(
                               children: [
@@ -603,7 +603,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
-                                    color: selectedFormat == 'pdf' ? Colors.white : titleColor.withOpacity(0.6),
+                                    color: selectedFormat == 'pdf' ? Colors.white : titleColor.withValues(alpha: 0.6),
                                   ),
                                 ),
                               ],
@@ -619,9 +619,9 @@ final store = ref.watch(adminAllowanceStoreProvider);
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             decoration: BoxDecoration(
-                              color: selectedFormat == 'excel' ? primaryBlue : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02)),
+                              color: selectedFormat == 'excel' ? primaryBlue : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02)),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: selectedFormat == 'excel' ? primaryBlue : titleColor.withOpacity(0.05)),
+                              border: Border.all(color: selectedFormat == 'excel' ? primaryBlue : titleColor.withValues(alpha: 0.05)),
                             ),
                             child: Column(
                               children: [
@@ -632,7 +632,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
-                                    color: selectedFormat == 'excel' ? Colors.white : titleColor.withOpacity(0.6),
+                                    color: selectedFormat == 'excel' ? Colors.white : titleColor.withValues(alpha: 0.6),
                                   ),
                                 ),
                               ],
@@ -797,7 +797,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
           padding: const EdgeInsets.all(8.0),
           child: Container(
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -811,7 +811,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: primaryBlue.withOpacity(0.1),
+                color: primaryBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 18),
@@ -831,7 +831,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 5)),
                   ],
                 ),
                 child: TextField(
@@ -869,7 +869,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                           color: !_showPendingTab ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: !_showPendingTab
-                              ? [BoxShadow(color: primaryBlue.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                              ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
                               : [],
                         ),
                         alignment: Alignment.center,
@@ -896,7 +896,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                           color: _showPendingTab ? const Color(0xFFF59E0B) : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: _showPendingTab
-                              ? [BoxShadow(color: const Color(0xFFF59E0B).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+                              ? [BoxShadow(color: const Color(0xFFF59E0B).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))]
                               : [],
                         ),
                         alignment: Alignment.center,
@@ -921,7 +921,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                   margin: const EdgeInsets.only(left: 6),
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: _showPendingTab ? Colors.white.withOpacity(0.2) : const Color(0xFFF59E0B).withOpacity(0.15),
+                                    color: _showPendingTab ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFF59E0B).withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -1047,7 +1047,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.payments_outlined, size: 64, color: subColor.withOpacity(0.2)),
+          Icon(Icons.payments_outlined, size: 64, color: subColor.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
           Text(
             isTamil ? "எந்த படிகளும் கிடைக்கவில்லை" : "No allowances found",
@@ -1056,7 +1056,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
           const SizedBox(height: 8),
           Text(
             isTamil ? "பட்டியல் காலியாக உள்ளது" : "Try adjusting your filters",
-            style: TextStyle(fontSize: 14, color: subColor.withOpacity(0.8)),
+            style: TextStyle(fontSize: 14, color: subColor.withValues(alpha: 0.8)),
           ),
         ],
       ),
@@ -1191,7 +1191,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -1209,7 +1209,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -1316,7 +1316,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     Expanded(
                       child: Text(
                         allowanceReason,
-                        style: TextStyle(fontSize: 13, color: titleColor.withOpacity(0.8), height: 1.4),
+                        style: TextStyle(fontSize: 13, color: titleColor.withValues(alpha: 0.8), height: 1.4),
                       ),
                     ),
                   ],
@@ -1371,7 +1371,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: primaryBlue.withOpacity(0.1),
+                          color: primaryBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1429,7 +1429,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.15),
+                  color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1527,12 +1527,12 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     color: cardBg,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.15),
+                      color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withValues(alpha: 0.15),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1558,7 +1558,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.15),
+                              color: Colors.orange.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -1633,7 +1633,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_outline_rounded, size: 64, color: Colors.green.withOpacity(0.2)),
+          Icon(Icons.check_circle_outline_rounded, size: 64, color: Colors.green.withValues(alpha: 0.2)),
           const SizedBox(height: 16),
           Text(
             isTamil ? "நிலுவையில் உள்ளவை எதுவும் இல்லை" : "All Caught Up!",
@@ -1642,7 +1642,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
           const SizedBox(height: 8),
           Text(
             isTamil ? "அனைத்து படிகளும் வெற்றிகரமாக உருவாக்கப்பட்டது" : "No pending allowance creations found.",
-            style: TextStyle(fontSize: 14, color: subColor.withOpacity(0.8)),
+            style: TextStyle(fontSize: 14, color: subColor.withValues(alpha: 0.8)),
           ),
         ],
       ),
@@ -1706,12 +1706,12 @@ final store = ref.watch(adminAllowanceStoreProvider);
           color: cardBg,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: const Color(0xFFF59E0B).withOpacity(0.12),
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -1763,7 +1763,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF59E0B).withOpacity(0.1),
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -1807,7 +1807,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.person_rounded, size: 14, color: primaryColor.withOpacity(0.6)),
+                              Icon(Icons.person_rounded, size: 14, color: primaryColor.withValues(alpha: 0.6)),
                               const SizedBox(width: 4),
                               Text(
                                 isTamil ? "ஓட்டுநர்" : "DRIVER",
@@ -1832,7 +1832,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.directions_bus_rounded, size: 14, color: primaryColor.withOpacity(0.6)),
+                              Icon(Icons.directions_bus_rounded, size: 14, color: primaryColor.withValues(alpha: 0.6)),
                               const SizedBox(width: 4),
                               Text(
                                 isTamil ? "வாகனம்" : "VEHICLE",

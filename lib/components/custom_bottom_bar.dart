@@ -39,7 +39,7 @@ class CustomBottomBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.08),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.08),
               blurRadius: 30,
               offset: const Offset(0, 10),
             ),
@@ -61,7 +61,7 @@ class CustomBottomBar extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? brandColor.withOpacity(0.12)
+                      ? brandColor.withValues(alpha: 0.12)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                 ),

@@ -71,9 +71,9 @@ class NotificationLocalService {
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
-      color: const Color(0xFF6366F1), // TripZo Primary Indigo
+      color: Color(0xFF6366F1), // TripZo Primary Indigo
       enableLights: true,
-      ledColor: const Color(0xFF6366F1),
+      ledColor: Color(0xFF6366F1),
       ledOnMs: 1000,
       ledOffMs: 500,
     );

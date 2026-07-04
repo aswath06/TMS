@@ -27,9 +27,9 @@ class AppRoutes {
 
       case login:
         return PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const LoginScreen(),
+          pageBuilder: (_, _, _) => const LoginScreen(),
           transitionDuration: const Duration(milliseconds: 800),
-          transitionsBuilder: (_, animation, __, child) =>
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
         );
       case notifications:

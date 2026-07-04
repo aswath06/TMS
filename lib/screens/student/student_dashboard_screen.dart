@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:tripzo/store/user_store.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
-import 'package:tripzo/screens/student/attendance_overview_page.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/notification_card.dart';
 import 'package:tripzo/utils/tab_notification.dart';
@@ -63,8 +60,8 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    primaryBlue.withOpacity(isDark ? 0.2 : 0.1),
-                    primaryBlue.withOpacity(0.0),
+                    primaryBlue.withValues(alpha: isDark ? 0.2 : 0.1),
+                    primaryBlue.withValues(alpha: 0.0),
                   ]
                 )
               ),
@@ -129,7 +126,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: primary.withOpacity(0.1),
+                      color: primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -166,7 +163,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [primary, primary.withOpacity(0.4)],
+                    colors: [primary, primary.withValues(alpha: 0.4)],
                   ),
                 ),
                 child: CircleAvatar(
@@ -194,11 +191,11 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
         color: surface,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
         ),
         boxShadow: [
           BoxShadow(
-            color: primary.withOpacity(0.05),
+            color: primary.withValues(alpha: 0.05),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -214,7 +211,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
@@ -290,11 +287,11 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
         color: surface,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
         ),
         boxShadow: [
           BoxShadow(
-            color: primary.withOpacity(0.06),
+            color: primary.withValues(alpha: 0.06),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -307,8 +304,8 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  primary.withOpacity(0.12),
-                  primary.withOpacity(0.02),
+                  primary.withValues(alpha: 0.12),
+                  primary.withValues(alpha: 0.02),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -329,7 +326,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: primary.withOpacity(0.4),
+                        color: primary.withValues(alpha: 0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),
@@ -394,7 +391,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                           Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.15),
+                              color: Colors.orange.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(Icons.access_time_rounded, size: 16, color: Colors.orange),
@@ -418,7 +415,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                     ],
                   ),
                 ),
-                Container(width: 1, height: 50, color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                Container(width: 1, height: 50, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -431,9 +428,9 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.12),
+                          color: Colors.green.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.green.withOpacity(0.3)),
+                          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -510,10 +507,10 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
           decoration: BoxDecoration(
             color: surface,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: color.withOpacity(0.12)),
+            border: Border.all(color: color.withValues(alpha: 0.12)),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.04),
+                color: color.withValues(alpha: 0.04),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -524,7 +521,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 28),
@@ -574,11 +571,11 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Column(
           children: [
-            Icon(Icons.notifications_none_rounded, color: Colors.grey.withOpacity(0.5), size: 40),
+            Icon(Icons.notifications_none_rounded, color: Colors.grey.withValues(alpha: 0.5), size: 40),
             const SizedBox(height: 12),
             Text(
               "No new notifications",

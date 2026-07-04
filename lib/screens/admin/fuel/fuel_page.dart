@@ -774,7 +774,7 @@ class _FuelPageState extends State<FuelPage> {
                                       final bytes = response.bodyBytes;
                                       final tempDir = await getTemporaryDirectory();
                                       final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
-                                      final fileName = "Fuel_Report_${startStr}_to_${endStr}.$ext";
+                                      final fileName = "Fuel_Report_${startStr}_to_$endStr.$ext";
                                       final file = File("${tempDir.path}/$fileName");
                                       await file.writeAsBytes(bytes);
                                       

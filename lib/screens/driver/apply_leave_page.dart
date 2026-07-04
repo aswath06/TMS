@@ -174,10 +174,10 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.08),
+                              color: Colors.red.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.red.withOpacity(0.2),
+                                color: Colors.red.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
@@ -241,7 +241,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
               children: [
                 Expanded(
                   child: Divider(
-                    color: primaryBlue.withOpacity(0.2),
+                    color: primaryBlue.withValues(alpha: 0.2),
                     thickness: 1,
                   ),
                 ),
@@ -251,9 +251,9 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.1),
+                    color: primaryBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: primaryBlue.withOpacity(0.3)),
+                    border: Border.all(color: primaryBlue.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     _getDaysDifference(isTamil),
@@ -266,7 +266,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                 ),
                 Expanded(
                   child: Divider(
-                    color: primaryBlue.withOpacity(0.2),
+                    color: primaryBlue.withValues(alpha: 0.2),
                     thickness: 1,
                   ),
                 ),
@@ -306,7 +306,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -359,9 +359,9 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: primaryBlue.withOpacity(0.05),
+        color: primaryBlue.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -432,12 +432,12 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: titleColor.withOpacity(0.05),
+            color: titleColor.withValues(alpha: 0.05),
             shape: BoxShape.circle,
           ),
           child: Icon(
             Icons.edit_calendar_outlined,
-            color: titleColor.withOpacity(0.6),
+            color: titleColor.withValues(alpha: 0.6),
             size: 20,
           ),
         ),
@@ -495,12 +495,12 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
             : null,
         decoration: InputDecoration(
           hintText: h,
-          hintStyle: TextStyle(color: t.withOpacity(0.4), fontSize: 13),
+          hintStyle: TextStyle(color: t.withValues(alpha: 0.4), fontSize: 13),
           prefixIcon: Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: primaryBlue.withOpacity(0.1),
+              color: primaryBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(i, size: 18, color: primaryBlue),
@@ -585,7 +585,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      Icons.category_outlined,
+                      Icons.event_note_rounded,
                       size: 18,
                       color: primaryBlue,
                     ),
@@ -629,7 +629,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
-                          Icons.category_outlined,
+                          Icons.event_note_rounded,
                           size: 18,
                           color: primaryBlue,
                         ),
@@ -770,7 +770,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
             right: -50,
             child: CircleAvatar(
               radius: 150,
-              backgroundColor: primaryBlue.withOpacity(isDark ? 0.1 : 0.05),
+              backgroundColor: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
             ),
           ),
           Positioned(
@@ -780,7 +780,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
               radius: 120,
               backgroundColor: const Color(
                 0xFFEC4899,
-              ).withOpacity(isDark ? 0.08 : 0.04),
+              ).withValues(alpha: isDark ? 0.08 : 0.04),
             ),
           ),
         ],

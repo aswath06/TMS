@@ -53,7 +53,6 @@ void showTopToast(BuildContext context, String message, {bool isError = false}) 
   }
 
   final overlayState = AppRoutes.navigatorKey.currentState?.overlay ?? Overlay.of(context);
-  if (overlayState == null) return;
 
   late OverlayEntry overlayEntry;
 
@@ -254,12 +253,12 @@ class _TopToastWidgetState extends State<_TopToastWidget> with SingleTickerProvi
                 color: widget.bgColor,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: widget.iconColor.withOpacity(0.15),
+                  color: widget.iconColor.withValues(alpha: 0.15),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),

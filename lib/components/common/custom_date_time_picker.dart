@@ -17,7 +17,7 @@ class CustomDateTimePicker {
   }) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color primaryBlue = accent ?? const Color(0xFF6366F1);
-    final Color cColor = cardColor ?? (isDark ? const Color(0xFF0F172A).withOpacity(0.8) : Colors.white.withOpacity(0.8));
+    final Color cColor = cardColor ?? (isDark ? const Color(0xFF0F172A).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8));
     final Color tColor = titleColor ?? (isDark ? Colors.white : const Color(0xFF0F172A));
     final Color sTitleColor = subTitleColor ?? (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
 
@@ -157,7 +157,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dividerColor = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
+    final dividerColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05);
 
     return ScaleTransition(
       scale: _scaleAnim,
@@ -171,9 +171,9 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
             decoration: BoxDecoration(
               color: widget.cardColor,
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: Colors.white.withOpacity(0.1), width: 1.5),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 40, offset: const Offset(0, 10)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 40, offset: const Offset(0, 10)),
               ],
             ),
             child: SingleChildScrollView(
@@ -184,7 +184,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                   const SizedBox(height: 12),
                   Container(
                     width: 40, height: 4,
-                    decoration: BoxDecoration(color: widget.subTitleColor.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(color: widget.subTitleColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
@@ -192,7 +192,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: widget.accent.withOpacity(0.1), shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: widget.accent.withValues(alpha: 0.1), shape: BoxShape.circle),
                           child: Icon(Icons.event_note_rounded, color: widget.accent, size: 20),
                         ),
                         const SizedBox(width: 12),
@@ -253,7 +253,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) => Expanded(child: Center(child: Text(d, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: widget.subTitleColor.withOpacity(0.5), letterSpacing: 0.5))))).toList(),
+            children: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) => Expanded(child: Center(child: Text(d, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: widget.subTitleColor.withValues(alpha: 0.5), letterSpacing: 0.5))))).toList(),
           ),
           const SizedBox(height: 8),
           GridView.builder(
@@ -276,13 +276,13 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
                     gradient: isSelected ? LinearGradient(colors: [widget.accent, widget.accent.withBlue(255)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
-                    color: isSelected ? null : (isToday ? widget.accent.withOpacity(0.12) : Colors.transparent),
+                    color: isSelected ? null : (isToday ? widget.accent.withValues(alpha: 0.12) : Colors.transparent),
                     borderRadius: BorderRadius.circular(12),
-                    border: isToday && !isSelected ? Border.all(color: widget.accent.withOpacity(0.3), width: 1.5) : null,
-                    boxShadow: isSelected ? [BoxShadow(color: widget.accent.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
+                    border: isToday && !isSelected ? Border.all(color: widget.accent.withValues(alpha: 0.3), width: 1.5) : null,
+                    boxShadow: isSelected ? [BoxShadow(color: widget.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
                   ),
                   child: Center(
-                    child: Text('$day', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, color: disabled ? widget.subTitleColor.withOpacity(0.2) : (isSelected ? Colors.white : (isToday ? widget.accent : widget.titleColor)))),
+                    child: Text('$day', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600, color: disabled ? widget.subTitleColor.withValues(alpha: 0.2) : (isSelected ? Colors.white : (isToday ? widget.accent : widget.titleColor)))),
                   ),
                 ),
               );
@@ -299,7 +299,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: widget.accent.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: widget.accent.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, size: 16, color: widget.accent),
       ),
     );
@@ -312,7 +312,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
         children: [
           Row(
             children: [
-              Icon(Icons.schedule_rounded, size: 18, color: widget.accent.withOpacity(0.6)),
+              Icon(Icons.schedule_rounded, size: 18, color: widget.accent.withValues(alpha: 0.6)),
               const SizedBox(width: 8),
               Text("Set Time", style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: widget.titleColor)),
               const Spacer(),
@@ -321,11 +321,11 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: _isValid 
-                        ? [widget.accent.withOpacity(0.15), widget.accent.withOpacity(0.05)]
-                        : [Colors.red.withOpacity(0.15), Colors.red.withOpacity(0.05)]
+                        ? [widget.accent.withValues(alpha: 0.15), widget.accent.withValues(alpha: 0.05)]
+                        : [Colors.red.withValues(alpha: 0.15), Colors.red.withValues(alpha: 0.05)]
                   ), 
                   borderRadius: BorderRadius.circular(10), 
-                  border: Border.all(color: _isValid ? widget.accent.withOpacity(0.1) : Colors.red.withOpacity(0.3))
+                  border: Border.all(color: _isValid ? widget.accent.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.3))
                 ), 
                 child: Text(
                   '${_selectedHour.toString().padLeft(2, '0')}:${_selectedMinute.toString().padLeft(2, '0')} ${_isAM ? 'AM' : 'PM'}', 
@@ -345,7 +345,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
             child: Row(
               children: [
                 Expanded(child: _wheelSpinner(count: 12, controller: _hourCtrl, labelBuilder: (i) => '${i + 1}'.padLeft(2, '0'), onChanged: (i) => setState(() => _selectedHour = i + 1), isDark: isDark)),
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text(":", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w300, color: widget.accent.withOpacity(0.3)))),
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text(":", style: TextStyle(fontSize: 32, fontWeight: FontWeight.w300, color: widget.accent.withValues(alpha: 0.3)))),
                 Expanded(child: _wheelSpinner(count: 60, controller: _minuteCtrl, labelBuilder: (i) => '$i'.padLeft(2, '0'), onChanged: (i) => setState(() => _selectedMinute = i), isDark: isDark)),
                 const SizedBox(width: 16),
                 _buildAmPmToggle(isDark),
@@ -360,12 +360,12 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
   Widget _wheelSpinner({required int count, required FixedExtentScrollController controller, required String Function(int) labelBuilder, required ValueChanged<int> onChanged, required bool isDark}) {
     return Stack(
       children: [
-        Center(child: Container(height: 44, decoration: BoxDecoration(color: widget.accent.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: widget.accent.withOpacity(0.15), width: 1)))),
+        Center(child: Container(height: 44, decoration: BoxDecoration(color: widget.accent.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: widget.accent.withValues(alpha: 0.15), width: 1)))),
         ListWheelScrollView.useDelegate(
           controller: controller, itemExtent: 44, perspective: 0.006, diameterRatio: 1.4, physics: const FixedExtentScrollPhysics(), onSelectedItemChanged: onChanged,
           childDelegate: ListWheelChildBuilderDelegate(childCount: count, builder: (_, index) {
             final isSelected = controller.hasClients && controller.selectedItem == index;
-            return Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 200), style: GoogleFonts.plusJakartaSans(fontSize: isSelected ? 22 : 16, fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500, color: isSelected ? widget.accent : widget.subTitleColor.withOpacity(0.4)), child: Text(labelBuilder(index))));
+            return Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 200), style: GoogleFonts.plusJakartaSans(fontSize: isSelected ? 22 : 16, fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500, color: isSelected ? widget.accent : widget.subTitleColor.withValues(alpha: 0.4)), child: Text(labelBuilder(index))));
           }),
         ),
       ],
@@ -383,9 +383,9 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
         duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic, width: 60, height: 48,
         decoration: BoxDecoration(
           gradient: active ? LinearGradient(colors: [widget.accent, widget.accent.withBlue(255)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
-          color: active ? null : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03)),
+          color: active ? null : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: active ? [BoxShadow(color: widget.accent.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
+          boxShadow: active ? [BoxShadow(color: widget.accent.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
         ),
         child: Center(child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: active ? Colors.white : widget.subTitleColor, letterSpacing: 0.5))),
       ),
@@ -397,10 +397,10 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: widget.subTitleColor.withOpacity(0.15)))), child: Text("Dismiss", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: widget.subTitleColor.withOpacity(0.7), fontSize: 15)))),
+          Expanded(child: TextButton(onPressed: () => Navigator.pop(context), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: widget.subTitleColor.withValues(alpha: 0.15)))), child: Text("Dismiss", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: widget.subTitleColor.withValues(alpha: 0.7), fontSize: 15)))),
           const SizedBox(width: 16),
           Expanded(child: Container(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: widget.accent.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 6))]),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: widget.accent.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 6))]),
             child: ElevatedButton(
               onPressed: () {
                 if (!_isValid) {
@@ -416,7 +416,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                 Navigator.pop(context, _buildResult());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isValid ? widget.accent : widget.accent.withOpacity(0.3), 
+                backgroundColor: _isValid ? widget.accent : widget.accent.withValues(alpha: 0.3), 
                 foregroundColor: Colors.white, 
                 padding: const EdgeInsets.symmetric(vertical: 18), 
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), 
