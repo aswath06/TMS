@@ -214,7 +214,7 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
               final provider = ref.watch(notificationProviderFamily);
               int count = 0;
               if (filter == 'All') {
-                count = provider.notifications.length;
+                count = provider.totalCount;
               } else if (filter == 'Unread') {
                 count = provider.unreadCount;
               } else {

@@ -69,7 +69,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final token = await UserStore.getToken();
       if (token == null) return;
       
-      final url = "${ApiConstants.baseUrl}/user/push-notification-preference";
+      final url = "${ApiConstants.baseUrl}/auth/user/push-notification-preference";
       final response = await http.patch(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),

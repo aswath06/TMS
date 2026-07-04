@@ -20,6 +20,7 @@ class NotificationProvider extends ChangeNotifier {
 
   List<NotificationModel> notifications = [];
   int unreadCount = 0;
+  int totalCount = 0;
   bool isFirebaseInitialized = false;
   bool isLoading = false;
   StreamSubscription? _connectivitySubscription;
@@ -125,7 +126,9 @@ class NotificationProvider extends ChangeNotifier {
 
   Future<void> fetchNotificationsAndSyncMissed() async {
     try {
-      final fetchedList = await apiService.getMyNotifications();
+      final response = await apiService.getMyNotifications();
+      final fetchedList = response["data"] as List<NotificationModel>;
+      totalCount = response["total"] as int;
       
       // Filter out notifications we already have in our list, AND are unread
       final List<NotificationModel> newUnread = [];
@@ -190,11 +193,14 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final fetchedList = await apiService.getMyNotifications(
+      final response = await apiService.getMyNotifications(
         page: currentPage, 
         limit: 10, 
         type: currentType
       );
+      
+      final fetchedList = response["data"] as List<NotificationModel>;
+      totalCount = response["total"] as int;
       
       if (fetchedList.isEmpty || fetchedList.length < 10) {
         hasMore = false;
