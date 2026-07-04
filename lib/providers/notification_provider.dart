@@ -192,11 +192,11 @@ class NotificationProvider extends ChangeNotifier {
     try {
       final fetchedList = await apiService.getMyNotifications(
         page: currentPage, 
-        limit: 20, 
+        limit: 10, 
         type: currentType
       );
       
-      if (fetchedList.isEmpty || fetchedList.length < 20) {
+      if (fetchedList.isEmpty || fetchedList.length < 10) {
         hasMore = false;
       }
       

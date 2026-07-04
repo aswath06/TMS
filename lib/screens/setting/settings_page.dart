@@ -48,8 +48,51 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     super.initState();
     _loadUserRole();
     _loadAppVersion();
+    _loadNotificationPreference();
     ServerConfig().load(); // load persisted server preference
     UIConfig().load(); // load persisted UI setting
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    final enabled = await UserStore.getPushNotificationEnabled();
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _updateNotificationPreference(bool enabled) async {
+    setState(() => _notificationsEnabled = enabled);
+    
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      
+      final url = "${ApiConstants.baseUrl}/user/push-notification-preference";
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({"enabled": enabled}),
+      );
+      
+      if (response.statusCode == 200) {
+        await UserStore.savePushNotificationEnabled(enabled);
+        if (mounted) {
+          showTopToast(context, enabled ? "Notifications enabled" : "Notifications disabled", isError: false);
+        }
+      } else {
+        if (mounted) {
+          setState(() => _notificationsEnabled = !enabled);
+          showTopToast(context, "Failed to update preference", isError: true);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _notificationsEnabled = !enabled);
+        showTopToast(context, "Connection error", isError: true);
+      }
+    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -111,27 +154,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 32),
 
                     // --- NOTIFICATIONS ---
-                    _buildSectionTitle(
-                      isTamil ? "அறிவிப்புகள்" : "Notifications",
-                      titleColor,
-                      primaryBlue,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildToggleTile(
-                      Icons.notifications_active_outlined,
-                      isTamil ? "செய்தி அறிவிப்பு" : "Push Notifications",
-                      isTamil
-                          ? "முக்கிய தகவல்களை உடனுக்குடன் பெறவும்"
-                          : "Receive alerts and updates",
-                      _notificationsEnabled,
-                      (val) => setState(() => _notificationsEnabled = val),
-                      cardColor,
-                      titleColor,
-                      subTitleColor,
-                      primaryBlue,
-                    ),
-
-                    const SizedBox(height: 32),
+                    if (_userRole.toLowerCase() != 'driver') ...[
+                      _buildSectionTitle(
+                        isTamil ? "அறிவிப்புகள்" : "Notifications",
+                        titleColor,
+                        primaryBlue,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildToggleTile(
+                        Icons.notifications_active_outlined,
+                        isTamil ? "செய்தி அறிவிப்பு" : "Push Notifications",
+                        isTamil
+                            ? "முக்கிய தகவல்களை உடனுக்குடன் பெறவும்"
+                            : "Receive alerts and updates",
+                        _notificationsEnabled,
+                        (val) => _updateNotificationPreference(val),
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                      ),
+                      const SizedBox(height: 32),
+                    ],
 
                     // --- APPEARANCE ---
                     _buildSectionTitle(

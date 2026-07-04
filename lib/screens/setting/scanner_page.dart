@@ -20,7 +20,11 @@ class _ScannerPageState extends State<ScannerPage>
     with SingleTickerProviderStateMixin {
   bool isProcessing = false;
   String? scannedSessionId;
-  final MobileScannerController cameraController = MobileScannerController();
+  final MobileScannerController cameraController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.unrestricted,
+    returnImage: false,
+    autoStart: true,
+  );
   final TextEditingController _hoursController = TextEditingController(
     text: "24",
   );

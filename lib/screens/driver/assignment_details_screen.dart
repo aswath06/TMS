@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
+import 'package:tripzo/screens/driver/split_vehicle_screen.dart';
+import 'package:tripzo/screens/driver/merge_vehicle_screen.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
@@ -227,6 +230,68 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: titleColor),
+        actions: [
+          if (statusStr == 'STARTED')
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.merge_rounded, color: primaryBlue, size: 20),
+                ),
+                onPressed: () async {
+                  final dynamic rawRunId = run['id'] ?? assignment['daily_bus_run_id'];
+                  final int runId = rawRunId is int ? rawRunId : int.tryParse(rawRunId?.toString() ?? '0') ?? 0;
+                  
+                  if (runId == 0) return;
+
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MergeVehicleScreen(currentRunId: runId),
+                    ),
+                  );
+                  if (result == true) {
+                    _handleRefresh();
+                  }
+                },
+              ),
+            ),
+          if (statusStr == 'DEPARTED_CAMPUS' || statusStr == 'MERGED_HALTED')
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.call_split_rounded, color: primaryBlue, size: 20),
+                ),
+                onPressed: () async {
+                  final dynamic rawRunId = run['id'] ?? assignment['daily_bus_run_id'];
+                  final int runId = rawRunId is int ? rawRunId : int.tryParse(rawRunId?.toString() ?? '0') ?? 0;
+                  
+                  if (runId == 0) return;
+
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SplitVehicleScreen(runId: runId),
+                    ),
+                  );
+                  if (result == true) {
+                    _handleRefresh();
+                  }
+                },
+              ),
+            ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
@@ -641,85 +706,92 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           ),
         ),
       );
-    } else if (statusStr == 'DEPARTED_CAMPUS') {
+    } else if (statusStr == 'DEPARTED_CAMPUS' || statusStr == 'RESUMED_MIDWAY') {
       return Container(
         padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).padding.bottom + 16),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         ),
-          child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-          onPressed: _isHaltSubmitting
-              ? null
-              : () async {
-                  setState(() => _isHaltSubmitting = true);
-                  final dynamic rawRunId =
-                      widget.run['id'] ?? widget.assignment['daily_bus_run_id'];
-                  final int runId = rawRunId is int
-                      ? rawRunId
-                      : int.tryParse(rawRunId?.toString() ?? '0') ?? 0;
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isHaltSubmitting
+                        ? null
+                        : () async {
+                            setState(() => _isHaltSubmitting = true);
+                            final dynamic rawRunId =
+                                widget.run['id'] ?? widget.assignment['daily_bus_run_id'];
+                            final int runId = rawRunId is int
+                                ? rawRunId
+                                : int.tryParse(rawRunId?.toString() ?? '0') ?? 0;
 
-                  if (runId == 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Error: Run ID is missing"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    setState(() => _isHaltSubmitting = false);
-                    return;
-                  }
+                            if (runId == 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Error: Run ID is missing"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              setState(() => _isHaltSubmitting = false);
+                              return;
+                            }
 
-                  final result = await useDriverStore.haltEveningBusRun(
-                    runId: runId,
-                  );
+                            final result = await useDriverStore.haltEveningBusRun(
+                              runId: runId,
+                            );
 
-                  if (result['success']) {
-                    setState(() => _isHaltSubmitting = false);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result['message'] ?? 'Success'),
-                        backgroundColor: Colors.green,
+                            if (result['success']) {
+                              setState(() => _isHaltSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(result['message'] ?? 'Success'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              await _handleRefresh();
+                            } else {
+                              setState(() => _isHaltSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(result['message']),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    );
-                    await _handleRefresh();
-                  } else {
-                    setState(() => _isHaltSubmitting = false);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result['message']),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: _isHaltSubmitting
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : const Text(
-                  "I Am Halting The Vehicle",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    ),
+                    child: _isHaltSubmitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            "I Am Halting The Vehicle",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
+              ),
+
+            ],
           ),
-        ),
       );
     } else if (statusStr == 'HALTED') {
       return Container(
@@ -3006,6 +3078,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         textColor = const Color(0xFF059669);
         borderColor = const Color(0xFFA7F3D0);
         break;
+      case "RESUMED_MIDWAY":
+      case "MERGED_HALTED":
       case "DEPARTED_CAMPUS":
         bgColor = const Color(0xFFFEF3C7);
         textColor = const Color(0xFFB45309);

@@ -180,29 +180,53 @@ class _NotificationCardState extends ConsumerState<NotificationCard> {
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () {
-                            ref.read(notificationProviderFamily).markAsRead(widget.notification.id);
-                          },
-                          icon: Icon(Icons.done_all_rounded, size: 14, color: alertColor),
-                          label: Text(
-                            "Mark as Seen",
-                            style: TextStyle(
-                              fontSize: 11, 
-                              fontWeight: FontWeight.w800,
-                              color: alertColor,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [alertColor, alertColor.withOpacity(0.8)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: alertColor.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  ref.read(notificationProviderFamily).markAsRead(widget.notification.id);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.done_all_rounded, size: 16, color: Colors.white),
+                                      const SizedBox(width: 6),
+                                      const Text(
+                                        "Mark as Read",
+                                        style: TextStyle(
+                                          fontSize: 12, 
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          style: TextButton.styleFrom(
-                            backgroundColor: alertColor.withOpacity(0.08),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
                     ),
                   ],
                 ],

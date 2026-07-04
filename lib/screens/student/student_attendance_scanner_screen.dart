@@ -11,7 +11,11 @@ class StudentAttendanceScannerScreen extends StatefulWidget {
 }
 
 class _StudentAttendanceScannerScreenState extends State<StudentAttendanceScannerScreen> with SingleTickerProviderStateMixin {
-  final MobileScannerController cameraController = MobileScannerController();
+  final MobileScannerController cameraController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.unrestricted,
+    returnImage: false,
+    autoStart: true,
+  );
   bool _isScanned = false;
   late AnimationController _laserController;
   late Animation<double> _laserAnimation;

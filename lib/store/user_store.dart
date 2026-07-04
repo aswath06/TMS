@@ -30,6 +30,18 @@ class UserStore {
     await prefs.setString(_keyLoginDate, DateTime.now().toIso8601String());
   }
 
+  static const String _keyPushNotificationEnabled = 'push_notification_enabled';
+
+  static Future<bool> getPushNotificationEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyPushNotificationEnabled) ?? true;
+  }
+
+  static Future<void> savePushNotificationEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPushNotificationEnabled, enabled);
+  }
+
   // Getters
   static Future<String?> getToken() async =>
       (await SharedPreferences.getInstance()).getString(_keyToken);

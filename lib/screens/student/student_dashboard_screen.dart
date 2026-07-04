@@ -7,8 +7,9 @@ import '../../utils/routes.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
 import 'package:tripzo/screens/student/attendance_overview_page.dart';
 import 'package:tripzo/store/providers.dart';
-import '../../components/notification_card.dart';
+import 'package:tripzo/components/notification_card.dart';
 import 'package:tripzo/utils/tab_notification.dart';
+import 'package:tripzo/store/faculty_store.dart';
 
 class StudentDashboardScreen extends ConsumerStatefulWidget {
   const StudentDashboardScreen({super.key});
@@ -18,9 +19,17 @@ class StudentDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (useFacultyStore.profileData.value == null) {
+      useFacultyStore.fetchProfile();
+    }
+  }
+
   // Mock Data
   final double attendancePercentage = 0.85; // 85%
-  final String studentName = "Alex Carter";
+  final String studentName = "Student";
   final Map<String, String> busDetails = {
     "busNumber": "13",
     "route": "Route 4 - Downtown",
@@ -107,10 +116,10 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
   }
 
   Widget _buildHeader(Color titleColor, double width, Color primary) {
-    return FutureBuilder<String?>(
-      future: UserStore.getName(),
-      builder: (context, snapshot) {
-        final displayName = snapshot.data ?? studentName;
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: useFacultyStore.profileData,
+      builder: (context, profileData, _) {
+        final displayName = profileData?['name'] ?? studentName;
         return Row(
           children: [
             Expanded(

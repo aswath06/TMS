@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/components/common/structural_loading.dart';
 
 class StudentBusScreen extends ConsumerStatefulWidget {
   const StudentBusScreen({super.key});
@@ -530,9 +531,10 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                 ),
               ),
               if (_isLoading && _runs.isEmpty)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(),
+                const SliverToBoxAdapter(
+                  child: StructuralLoading(
+                    padding: 24,
+                    itemCount: 4,
                   ),
                 )
               else if (_error != null && _runs.isEmpty)
@@ -681,12 +683,15 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Text(
-                            routeName,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF6366F1),
-                              fontWeight: FontWeight.w800,
+                          Flexible(
+                            child: Text(
+                              routeName,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6366F1),
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),

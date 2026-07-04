@@ -149,6 +149,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Color titleColor,
     Color subColor,
   ) {
+    final bool isStudent = data != null && 
+        ((data['role']?.toString().toLowerCase().contains('student') ?? false) || 
+         (data['role'] is Map && data['role']['name']?.toString().toLowerCase().contains('student') == true));
+
     final List<Map<String, dynamic>> items = [
       {
         'title': 'Email',
@@ -156,12 +160,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'icon': Icons.alternate_email_rounded,
         'color': Colors.blue,
       },
-      {
-        'title': 'Username',
-        'val': data?['username'],
-        'icon': Icons.person_outline_rounded,
-        'color': Colors.indigo,
-      },
+      if (!isStudent)
+        {
+          'title': 'Username',
+          'val': data?['username'],
+          'icon': Icons.person_outline_rounded,
+          'color': Colors.indigo,
+        },
+      if (isStudent)
+        {
+          'title': 'Roll No',
+          'val': data?['studentProfile']?['roll_number'] ?? data?['username'],
+          'icon': Icons.badge_rounded,
+          'color': Colors.indigo,
+        },
+      if (isStudent)
+        {
+          'title': 'Register No',
+          'val': data?['studentProfile']?['register_number'],
+          'icon': Icons.assignment_ind_rounded,
+          'color': Colors.teal,
+        },
+      if (isStudent)
+        {
+          'title': 'Batch / Year',
+          'val': data?['studentProfile']?['academic_year'],
+          'icon': Icons.calendar_today_rounded,
+          'color': Colors.orange,
+        },
       {
         'title': 'Phone',
         'val': data?['phone'],

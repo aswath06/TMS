@@ -1024,6 +1024,8 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
         textColor = const Color(0xFF059669);
         borderColor = const Color(0xFFA7F3D0);
         break;
+      case "RESUMED_MIDWAY":
+      case "MERGED_HALTED":
       case "DEPARTED_CAMPUS":
         bgColor = const Color(0xFFFEF3C7);
         textColor = const Color(0xFFB45309);

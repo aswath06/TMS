@@ -105,7 +105,7 @@ final store = ref.watch(driverStoreProvider);
                   final shiftA = a['shift_code']?.toString().toUpperCase() ?? '';
                   final shiftB = b['shift_code']?.toString().toUpperCase() ?? '';
                   
-                  final eveningFirstStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+                  final eveningFirstStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'RESUMED_MIDWAY', 'MERGED_HALTED', 'HALTED', 'COMPLETED'];
                   bool eveningFirst = eveningFirstStatuses.contains(status);
                   
                   int weightA = shiftA == 'EVENING' ? (eveningFirst ? 0 : 1) : (eveningFirst ? 1 : 0);
@@ -480,7 +480,7 @@ final store = ref.watch(driverStoreProvider);
 
     bool isEnabled = true;
     if (shiftCode == 'EVENING') {
-      final validStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+      final validStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'RESUMED_MIDWAY', 'MERGED_HALTED', 'HALTED', 'COMPLETED'];
       if (!validStatuses.contains(statusStr.toUpperCase())) {
         isEnabled = false;
       }

@@ -21,7 +21,11 @@ class FacultyScanOtpScreen extends StatefulWidget {
 }
 
 class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with SingleTickerProviderStateMixin {
-  final MobileScannerController cameraController = MobileScannerController();
+  final MobileScannerController cameraController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.unrestricted,
+    returnImage: false,
+    autoStart: true,
+  );
   late AnimationController _laserController;
   bool _isProcessing = false;
 

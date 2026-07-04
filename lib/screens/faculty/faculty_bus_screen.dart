@@ -8,6 +8,7 @@ import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tripzo/components/common/structural_loading.dart';
 
 class FacultyBusScreen extends ConsumerStatefulWidget {
   const FacultyBusScreen({super.key});
@@ -508,13 +509,11 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               if (_isLoading)
-                const SliverFillRemaining(
-                  hasScrollBody: false, 
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryBlue)
-                    )
-                  )
+                const SliverToBoxAdapter(
+                  child: StructuralLoading(
+                    padding: 24,
+                    itemCount: 4,
+                  ),
                 )
               else if (_error != null)
                 SliverFillRemaining(

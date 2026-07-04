@@ -15,7 +15,11 @@ class SecurityQrScannerScreen extends StatefulWidget {
 }
 
 class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with SingleTickerProviderStateMixin {
-  final MobileScannerController cameraController = MobileScannerController();
+  final MobileScannerController cameraController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.unrestricted,
+    returnImage: false,
+    autoStart: true,
+  );
   bool _isScanned = false;
   bool _isProcessing = false;
   bool _isSuccessState = false;

@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import '../utils/routes.dart';
 
 class NotificationLocalService {
@@ -70,6 +71,11 @@ class NotificationLocalService {
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
+      color: const Color(0xFF6366F1), // TripZo Primary Indigo
+      enableLights: true,
+      ledColor: const Color(0xFF6366F1),
+      ledOnMs: 1000,
+      ledOffMs: 500,
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -108,6 +114,11 @@ class NotificationLocalService {
       priority: Priority.high,
       sound: const RawResourceAndroidNotificationSound('alerttone'),
       additionalFlags: additionalFlags,
+      color: const Color(0xFFEF4444), // Critical Alert Red
+      enableLights: true,
+      ledColor: const Color(0xFFEF4444),
+      ledOnMs: 1000,
+      ledOffMs: 500,
       actions: <AndroidNotificationAction>[
         const AndroidNotificationAction(
           'acknowledge_action',

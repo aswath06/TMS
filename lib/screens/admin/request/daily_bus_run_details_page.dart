@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ import 'package:tripzo/screens/faculty/faculty_scan_otp_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:lottie/lottie.dart';
+import 'package:tripzo/store/faculty_store.dart';
 
 
 class DailyBusRunDetailsPage extends StatefulWidget {
@@ -267,7 +269,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       final String runId = _run['id']?.toString() ?? '';
       if (runId.isEmpty) return;
 
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
+      int? userId = _loggedInUserId;
+      if (userId == null) {
+        userId = await UserStore.getUserId();
+      }
+
+      String url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
+      if (userId != null) {
+        url += "?user_id=$userId";
+      }
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -611,6 +621,117 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           _loadingPresentKeys.remove(key);
         });
       }
+    }
+  }
+
+  Future<void> _sendAttendanceReminders() async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-runs/$runId/send-attendance-reminders";
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar("Reminders sent successfully.", Colors.green);
+      } else {
+        String errorMsg = "Failed to send reminders.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Connection error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
+    }
+  }
+
+  void _showFindPopup() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Send Reminders"),
+          content: const Text("It will make the absent student and faculty phone to ring as a reminder."),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _sendAttendanceReminders();
+              },
+              child: const Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateAnimationForRun(int animationId) async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/animation";
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({"animation_id": animationId}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final String msg = data['message'] ?? "Animation updated successfully.";
+        _showSnackBar(msg, Colors.green);
+      } else {
+        String errorMsg = "Failed to update animation.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Connection error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
     }
   }
 
@@ -1219,10 +1340,23 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     if (assignments.isNotEmpty) {
       final assign = assignments.first;
       driver = assign['driver'] as Map<String, dynamic>?;
-      driverUser = driver?['user'] as Map<String, dynamic>?;
+      driverUser = _run['driver_assigned']?['user'] as Map<String, dynamic>?;
     }
     final String? driverName = driverUser?['name']?.toString();
     final String? driverUsername = driverUser?['username']?.toString();
+
+    final bool isAssignedFaculty = _userRole != null &&
+        _userRole!.toLowerCase() == 'faculty' &&
+        assignedFacultyUserId != null &&
+        assignedFacultyUserId == _loggedInUserId;
+
+    final bool isNormalUser = _userRole != null &&
+        ((_userRole!.toLowerCase() == 'faculty' && !isAssignedFaculty) ||
+         _userRole!.toLowerCase() == 'student');
+
+    final bool showMorningQrIcon = isNormalUser && morningStatus.toUpperCase() == 'PRESENT';
+    final bool showEveningQrIcon = isNormalUser && eveningStatus.toUpperCase() == 'PRESENT';
+
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1267,6 +1401,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     "Morning Shift",
                     morningStatus,
                     isDark,
+                    showQrIcon: showMorningQrIcon,
+                    onTapQr: () => _fetchAndShowOperationAnimation(shift: 'MORNING'),
                   ),
                 ),
                 Container(
@@ -1280,6 +1416,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     "Evening Shift",
                     eveningStatus,
                     isDark,
+                    showQrIcon: showEveningQrIcon,
+                    onTapQr: () => _fetchAndShowOperationAnimation(shift: 'EVENING'),
                   ),
                 ),
               ],
@@ -1481,42 +1619,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     );
   }
 
-  Widget _buildProfileRow(IconData icon, String label, String value, Color titleColor, Color subColor) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: subColor.withValues(alpha: 0.7)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
-                  color: subColor.withValues(alpha: 0.6),
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: titleColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAttendanceStatusColumn(String title, String status, bool isDark) {
+  Widget _buildAttendanceStatusColumn(
+    String title,
+    String status,
+    bool isDark, {
+    bool showQrIcon = false,
+    VoidCallback? onTapQr,
+  }) {
     final String s = status.toUpperCase();
     Color statusColor;
     IconData icon;
@@ -1550,19 +1659,36 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           children: [
             Icon(icon, color: statusColor, size: 20),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                statusLabel,
-                style: GoogleFonts.outfit(
-                  color: statusColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
+            GestureDetector(
+              onTap: showQrIcon ? onTapQr : null,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      statusLabel,
+                      style: GoogleFonts.outfit(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    if (showQrIcon) ...[
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.qr_code_rounded,
+                        color: statusColor,
+                        size: 14,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -2921,8 +3047,36 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       }
     }
 
+    final bool isSuperOrTransportAdmin = _userRole == 'Super Admin' || _userRole == 'Transport Admin';
+    final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
+        ? int.tryParse(_run['assigned_faculty_user_id'].toString())
+        : null;
+    final bool isAssignedFaculty = _userRole != null &&
+        _userRole!.toLowerCase() == 'faculty' &&
+        assignedFacultyUserId != null &&
+        assignedFacultyUserId == _loggedInUserId;
+    final bool showFindButton = isSuperOrTransportAdmin || isAssignedFaculty;
+
     return Column(
       children: [
+        if (showFindButton)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _showFindPopup,
+                icon: const Icon(Icons.ring_volume_rounded, size: 18),
+                label: const Text("Find"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+              ),
+            ),
+          ),
         // Horizontal Session Selector Toggle & Search Bar
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -4259,8 +4413,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   }
 
   Widget _buildBottomButton(String text, IconData icon, Color primaryBlue, bool isDark, VoidCallback? onPressed) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomPadding),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [
@@ -4271,35 +4426,48 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryBlue,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 0,
-        ),
-        child: _isLoadingAction
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    text,
-                    style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900),
-                  ),
-                ],
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            if (onPressed != null)
+              BoxShadow(
+                color: primaryBlue.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+          ),
+          child: _isLoadingAction
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 24),
+                    const SizedBox(width: 10),
+                    Text(
+                      text,
+                      style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -4450,10 +4618,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     }
 
     final String runName = _run['run_name'] ?? 'Bus Run';
-    final String runCode = _run['run_code'] ?? '';
     final String status = _run['status'] ?? 'PENDING';
-    final String routeName = _run['dailyBusRoute']?['route_name'] ?? _run['daily_bus_route']?['route_name'] ?? 'Route';
-    final String routeCode = _run['dailyBusRoute']?['route_code'] ?? _run['daily_bus_route']?['route_code'] ?? 'Route';
 
     final String s = status.toUpperCase();
     final bool isPlanned = s == 'PLANNED';
@@ -4833,7 +4998,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           child: RefreshIndicator(
             onRefresh: _refreshDetails,
             notificationPredicate: (ScrollNotification notification) {
-              return notification.depth == 1 || notification.depth == 0;
+              // Ensure refresh triggers properly regardless of scroll view depth inside tabs
+              return notification.metrics.axis == Axis.vertical;
             },
             child: NestedScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -4915,20 +5081,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                       children: [
                                         Text(
                                           runName,
-                                          style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w900, color: titleColor),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "$routeName • $routeCode",
-                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: primaryBlue),
-                                        ),
-                                        if (runCode.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            runCode,
-                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subColor.withValues(alpha: 0.7)),
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w900,
+                                            color: titleColor,
+                                            height: 1.2,
                                           ),
-                                        ],
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -5214,11 +5373,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           final item = animations[index];
                           final String name = item['animation_name']?.toString() ?? 'QR Code Animation';
                           final String jsonStr = item['json']?.toString() ?? '';
+                          final int animationId = int.tryParse(item['id']?.toString() ?? item['animation_id']?.toString() ?? '') ?? 0;
 
                           return GestureDetector(
                             onTap: () {
                               Navigator.pop(context);
-                              _showSnackBar("Selected animation: $name", Colors.green);
+                              _updateAnimationForRun(animationId);
                             },
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -5337,6 +5497,796 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       debugPrint("Error fetching QR code animations: $e");
     }
     return null;
+  }
+
+  Future<void> _fetchAndShowOperationAnimation({String shift = 'MORNING'}) async {
+    final String runId = _run['id']?.toString() ?? '';
+    if (runId.isEmpty) return;
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (!mounted) return;
+      if (token == null) {
+        Navigator.pop(context); // Close loading loader
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/animation";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading loader
+
+      final Map<String, dynamic> decoded = json.decode(response.body);
+      if (decoded['success'] == true && decoded['data'] != null) {
+        final animationData = decoded['data'];
+        final String name = animationData['animation_name']?.toString() ?? '';
+        final String jsonStr = animationData['json']?.toString() ?? '';
+
+        if (jsonStr.isNotEmpty) {
+          _showBoardingPassModal(name, jsonStr, shift);
+        } else {
+          _showSnackBar("No animation data found.", Colors.orange);
+        }
+      } else {
+        // success is false, show the toast/snackbar message
+        final String msg = decoded['message'] ?? "Something went wrong";
+        _showSnackBar(msg, Colors.red);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading loader
+      }
+      debugPrint("Error fetching operation animation: $e");
+      _showSnackBar("Failed to connect to the server.", Colors.red);
+    }
+  }
+
+  Future<void> _showBoardingPassModal(String animationName, String jsonStr, String shift) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (useFacultyStore.profileData.value == null) {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+      await useFacultyStore.fetchProfile();
+      if (mounted) {
+        Navigator.pop(context); // Close loading indicator
+      }
+    }
+
+    // Gather student info from run data
+    final myDetails = _run['my_details'] as Map<String, dynamic>?;
+    final List attendanceList = _run['attendanceRecords'] as List? ?? [];
+    Map<String, dynamic>? myRecord;
+    for (var rec in attendanceList) {
+      if (rec['type']?.toString().toUpperCase() == 'STUDENT') {
+        final pMap = rec['student'] as Map?;
+        final int? pUserId = pMap?['user']?['id'] != null ? int.tryParse(pMap!['user']['id'].toString()) : null;
+        if (pUserId != null && pUserId == _loggedInUserId) {
+          myRecord = Map<String, dynamic>.from(rec);
+          break;
+        }
+      }
+    }
+
+    final profileData = useFacultyStore.profileData.value;
+    final studentProfile = profileData?['studentProfile'] as Map?;
+
+    final String studentName = profileData?['name']?.toString()
+        ?? myRecord?['student']?['user']?['name']?.toString()
+        ?? myDetails?['name']?.toString()
+        ?? 'Student';
+        
+    final String rollNumber = studentProfile?['roll_number']?.toString()
+        ?? myRecord?['student']?['roll_number']?.toString()
+        ?? myDetails?['roll_number']?.toString()
+        ?? '—';
+        
+    final String registerNumber = studentProfile?['register_number']?.toString()
+        ?? myRecord?['student']?['register_number']?.toString()
+        ?? myDetails?['register_number']?.toString()
+        ?? '—';
+
+    final String academicYear = studentProfile?['academic_year']?.toString()
+        ?? myRecord?['student']?['academic_year']?.toString()
+        ?? myDetails?['academic_year']?.toString()
+        ?? '—';
+
+    // The user doesn't want username in student profile, but we can pass registerNumber instead of username to the dialog
+    final String tripDate = _run['service_date']?.toString() ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final String runName = _run['run_name']?.toString() ?? 'Bus Run';
+
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (ctx) {
+        return _BoardingPassDialog(
+          isDark: isDark,
+          studentName: studentName,
+          rollNumber: rollNumber,
+          registerNumber: registerNumber,
+          academicYear: academicYear,
+          shift: shift,
+          tripDate: tripDate,
+          runName: runName,
+          animationName: animationName,
+          jsonStr: jsonStr,
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boarding Pass Dialog Widget (Stateful for live clock)
+// ---------------------------------------------------------------------------
+class _BoardingPassDialog extends StatefulWidget {
+  final bool isDark;
+  final String studentName;
+  final String rollNumber;
+  final String registerNumber;
+  final String academicYear;
+  final String shift;
+  final String tripDate;
+  final String runName;
+  final String animationName;
+  final String jsonStr;
+
+  const _BoardingPassDialog({
+    required this.isDark,
+    required this.studentName,
+    required this.rollNumber,
+    required this.registerNumber,
+    required this.academicYear,
+    required this.shift,
+    required this.tripDate,
+    required this.runName,
+    required this.animationName,
+    required this.jsonStr,
+  });
+
+  @override
+  State<_BoardingPassDialog> createState() => _BoardingPassDialogState();
+}
+
+class _BoardingPassDialogState extends State<_BoardingPassDialog> {
+  late Timer _clockTimer;
+  late String _currentTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTime = DateFormat('hh:mm:ss a').format(DateTime.now());
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _currentTime = DateFormat('hh:mm:ss a').format(DateTime.now());
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = widget.isDark;
+    final bool isMorning = widget.shift.toUpperCase() == 'MORNING';
+
+    // ── Professional Elegant Dark/Monochrome Palette ─────────────────
+    const Color headerStripLight = Color(0xFF1E1E1E); // Sleek Charcoal
+    const Color headerStripDark  = Color(0xFF121212); // Deep Black
+
+    const Color accentLight = Color(0xFFD4AF37);         // Gold Accent
+    const Color accentDark  = Color(0xFFFACC15);
+
+    const Color cardLight   = Color(0xFFFAFAF9);         // Warm off-white
+    const Color cardDark    = Color(0xFF1E293B);
+
+    const Color bodyBgLight = Color(0xFFEEEEEE);
+    const Color bodyBgDark  = Color(0xFF0F172A);
+
+    const Color labelLight  = Color(0xFF6B7280);
+    const Color labelDark   = Color(0xFF94A3B8);
+
+    const Color valueLight  = Color(0xFF111827);
+    const Color valueDark   = Color(0xFFF1F5F9);
+
+    const Color dividerLight = Color(0xFFD1D5DB);
+    const Color dividerDark  = Color(0xFF334155);
+
+    final Color headerStrip = isDark ? headerStripDark  : headerStripLight;
+    final Color accent      = isDark ? accentDark       : accentLight;
+    final Color cardBg      = isDark ? cardDark         : cardLight;
+    final Color pageBg      = isDark ? bodyBgDark       : bodyBgLight;
+    final Color labelColor  = isDark ? labelDark        : labelLight;
+    final Color valueColor  = isDark ? valueDark        : valueLight;
+    final Color divider     = isDark ? dividerDark      : dividerLight;
+
+    // Shift accent strip colour
+    final Color shiftAccent = isMorning
+        ? const Color(0xFFF59E0B)   // Amber
+        : const Color(0xFF3B82F6);  // Blue
+
+    // Format trip date
+    String formattedDate = widget.tripDate;
+    String formattedDateShort = widget.tripDate;
+    try {
+      final dt = DateFormat('yyyy-MM-dd').parse(widget.tripDate);
+      formattedDate      = DateFormat('dd MMM yyyy').format(dt);
+      formattedDateShort = DateFormat('EEE').format(dt).toUpperCase();
+    } catch (_) {}
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: pageBg,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: 18,
+              right: 18,
+              top: 18,
+              bottom: 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── CLOSE BUTTON ──
+                Align(
+                  alignment: Alignment.topRight,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close, size: 20, color: Colors.black54),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // ══════════════════════════════════════════════
+                //  BOARDING PASS CARD
+                // ══════════════════════════════════════════════
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Column(
+                      children: [
+
+                        // ── HEADER STRIP ──────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                          color: headerStrip,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Bus icon circle
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.directions_bus_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'TRIPZO TRANSIT',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white.withValues(alpha: 0.6),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.8,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'BOARDING PASS',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Shift pill — right-aligned
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: shiftAccent.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isMorning
+                                          ? Icons.wb_sunny_outlined
+                                          : Icons.nights_stay_outlined,
+                                      color: Colors.white,
+                                      size: 11,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isMorning ? 'MORNING' : 'EVENING',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ── PASSENGER BLOCK ────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // NAME — big, like airline
+                              _fieldLabel('PASSENGER NAME', labelColor),
+                              const SizedBox(height: 3),
+                              Text(
+                                widget.studentName.toUpperCase(),
+                                style: GoogleFonts.outfit(
+                                  color: valueColor,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                  height: 1.1,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 14),
+
+                              // Roll + Username + Academic Year side-by-side
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _fieldLabel('ROLL NUMBER', labelColor),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          widget.rollNumber,
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.black87,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 36,
+                                    color: divider,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _fieldLabel('REG. NUMBER', labelColor),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          widget.registerNumber.isNotEmpty && widget.registerNumber != 'null' ? widget.registerNumber : 'N/A',
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.black87,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.3,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 36,
+                                    color: divider,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _fieldLabel('ACADEMIC YR', labelColor),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          widget.academicYear,
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.black87,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.3,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+
+                              Divider(color: divider, thickness: 1, height: 1),
+                              const SizedBox(height: 14),
+
+                              // Run name + shift row
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _fieldLabel('ROUTE / RUN', labelColor),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          widget.runName,
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.black87,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 36,
+                                    color: divider,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _fieldLabel('SHIFT', labelColor),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          isMorning ? 'MORNING' : 'EVENING',
+                                          style: GoogleFonts.outfit(
+                                            color: shiftAccent,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+
+                        // ── PERFORATED TEAR LINE ──────────────────
+                        _PerforatedCutLine(cardBg: cardBg, lineColor: divider),
+
+                        // ── BOTTOM STUB ────────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Date | Time
+                              Row(
+                                children: [
+                                  // DATE block
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _fieldLabel('TRIP DATE', labelColor),
+                                        const SizedBox(height: 3),
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                                          textBaseline: TextBaseline.alphabetic,
+                                          children: [
+                                            Text(
+                                              formattedDateShort,
+                                              style: GoogleFonts.outfit(
+                                                color: accent,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              formattedDate,
+                                              style: GoogleFonts.outfit(
+                                                color: Colors.black87,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(width: 1, height: 36, color: divider),
+                                  const SizedBox(width: 16),
+                                  // TIME block — live
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            _fieldLabel('CURRENT TIME', labelColor),
+                                            const SizedBox(width: 5),
+                                            Container(
+                                              width: 6,
+                                              height: 6,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF22C55E),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          _currentTime,
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.black87,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            fontFeatures: [
+                                              const FontFeature.tabularFigures(),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              Divider(color: divider, thickness: 1, height: 1),
+                              const SizedBox(height: 16),
+
+                              // ── ANIMATION SECTION ──────────────
+                              if (widget.animationName.isNotEmpty)
+                                Row(
+                                  children: [
+                                    _fieldLabel(
+                                      widget.animationName.toUpperCase(),
+                                      labelColor,
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 10),
+
+                              // Lottie animation — centred, no heavy border
+                              Center(
+                                child: Container(
+                                  width: 190,
+                                  height: 190,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : Colors.black.withValues(alpha: 0.02),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: divider,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(15),
+                                    child: Lottie.memory(
+                                      utf8.encode(widget.jsonStr),
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Footer note — like the fine print on real tickets
+                              Center(
+                                child: Text(
+                                  'This pass is valid only for the listed trip date and shift.',
+                                  style: GoogleFonts.outfit(
+                                    color: labelColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 0.2,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text, Color color) {
+    return Text(
+      text,
+      style: GoogleFonts.outfit(
+        color: color,
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Perforated cut line widget
+// ---------------------------------------------------------------------------
+class _PerforatedCutLine extends StatelessWidget {
+  final Color cardBg;
+  final Color lineColor;
+  const _PerforatedCutLine({required this.cardBg, required this.lineColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 28,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Left semicircle cutout
+          Positioned(
+            left: -14,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor == Colors.transparent
+                    ? const Color(0xFFF1F5F9)
+                    : Theme.of(context).scaffoldBackgroundColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          // Right semicircle cutout
+          Positioned(
+            right: -14,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor == Colors.transparent
+                    ? const Color(0xFFF1F5F9)
+                    : Theme.of(context).scaffoldBackgroundColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          // Dashed line
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final dashWidth = 6.0;
+                final dashSpace = 5.0;
+                final totalWidth = constraints.maxWidth;
+                final dashCount = (totalWidth / (dashWidth + dashSpace)).floor();
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(
+                    dashCount,
+                    (i) => Container(
+                      width: dashWidth,
+                      height: 1.5,
+                      color: lineColor,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Scissors icon in the center
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(
+              Icons.content_cut_rounded,
+              size: 14,
+              color: lineColor,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

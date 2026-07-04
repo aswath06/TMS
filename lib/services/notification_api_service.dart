@@ -14,7 +14,7 @@ class NotificationApiService {
 
   Map<String, String> get _headers => ApiConstants.getHeaders(token);
 
-  Future<List<NotificationModel>> getMyNotifications({int page = 1, int limit = 20, String type = 'All'}) async {
+  Future<List<NotificationModel>> getMyNotifications({int page = 1, int limit = 10, String type = 'All'}) async {
     String url = '${ApiConstants.myNotifications}?page=$page&limit=$limit&type=$type';
     final response = await http.get(
       Uri.parse(url),
