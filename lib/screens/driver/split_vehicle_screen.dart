@@ -18,24 +18,17 @@ class SplitVehicleScreen extends StatefulWidget {
 
 class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
   final TextEditingController _startOdometerController = TextEditingController();
-  final TextEditingController _placeController = TextEditingController();
   bool _isSubmitting = false;
 
   @override
   void dispose() {
     _startOdometerController.dispose();
-    _placeController.dispose();
     super.dispose();
   }
 
   Future<void> _submitSplit() async {
     if (_startOdometerController.text.trim().isEmpty) {
       showTopToast(context, "Please enter start odometer reading", isError: true);
-      return;
-    }
-
-    if (_placeController.text.trim().isEmpty) {
-      showTopToast(context, "Please enter place", isError: true);
       return;
     }
 
@@ -53,7 +46,6 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
 
       final Map<String, dynamic> body = {
         "startOdometer": int.tryParse(_startOdometerController.text.trim()) ?? 0,
-        "place": _placeController.text.trim(),
       };
 
       debugPrint("---- [SPLIT VEHICLE: SUBMIT] ----\nPATCH $url\nBody: ${json.encode(body)}\n----------------------------");
@@ -184,21 +176,6 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
             ),
             const SizedBox(height: 28),
 
-            Row(
-              children: [
-                const Icon(Icons.speed_rounded, size: 18, color: primaryBlue),
-                const SizedBox(width: 8),
-                Text(
-                  "Start Odometer",
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: primaryBlue,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
             TextField(
               controller: _startOdometerController,
               keyboardType: TextInputType.number,
@@ -209,7 +186,7 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
-                hintText: "Enter start odometer reading",
+                hintText: "Start Odometer",
                 hintStyle: TextStyle(
                   color: isDark ? Colors.white30 : Colors.black38,
                   fontWeight: FontWeight.normal,
@@ -217,68 +194,25 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
                 prefixIcon: Icon(Icons.speed_rounded,
                     color: primaryBlue.withValues(alpha: 0.6), size: 20),
                 filled: true,
-                fillColor: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : const Color(0xFFF8FAFC),
+                fillColor: Colors.transparent,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    width: 1,
+                  ),
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    width: 1,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(
-                    color: primaryBlue.withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 16),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Icon(Icons.place_rounded, size: 18, color: primaryBlue),
-                const SizedBox(width: 8),
-                Text(
-                  "Place Name",
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
                     color: primaryBlue,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _placeController,
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                hintText: "Enter place name",
-                hintStyle: TextStyle(
-                  color: isDark ? Colors.white30 : Colors.black38,
-                  fontWeight: FontWeight.normal,
-                ),
-                prefixIcon: Icon(Icons.place_rounded,
-                    color: primaryBlue.withValues(alpha: 0.6), size: 20),
-                filled: true,
-                fillColor: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: primaryBlue.withValues(alpha: 0.4),
                     width: 1.5,
                   ),
                 ),

@@ -24,7 +24,6 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
   Map<String, dynamic>? _selectedStop;
 
   // Form controllers
-  final TextEditingController _placeController = TextEditingController();
   final TextEditingController _remarkController = TextEditingController();
   final TextEditingController _endOdometerController = TextEditingController();
 
@@ -42,7 +41,6 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
 
   @override
   void dispose() {
-    _placeController.dispose();
     _remarkController.dispose();
     _endOdometerController.dispose();
     super.dispose();
@@ -79,6 +77,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
           setState(() {
             _routes = routeList
                 .map((r) => Map<String, dynamic>.from(r))
+                .where((r) => r['id'].toString() != widget.currentRunId.toString())
                 .toList();
           });
         }
@@ -104,39 +103,47 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
         return;
       }
 
-      final String url =
-          "${ApiConstants.baseUrl}/daily-bus/bus-run/$routeId/stops";
+      final String url1 = "${ApiConstants.baseUrl}/daily-bus/bus-run/${widget.currentRunId}/stops";
+      final String url2 = "${ApiConstants.baseUrl}/daily-bus/bus-run/$routeId/stops";
 
-      debugPrint("---- [MERGE: GET STOPS] ----\ncurl '$url' -H 'Authorization: TMS $token'\n----------------------------");
+      debugPrint("---- [MERGE: GET STOPS] ----\ncurl '$url1' & '$url2'\n----------------------------");
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      );
+      final responses = await Future.wait([
+        http.get(Uri.parse(url1), headers: ApiConstants.getHeaders(token)),
+        http.get(Uri.parse(url2), headers: ApiConstants.getHeaders(token)),
+      ]);
 
-      debugPrint("---- [MERGE: STOPS RESPONSE ${response.statusCode}] ----\n${response.body}\n----------------------------");
+      List<Map<String, dynamic>> combinedStops = [];
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> stopList = data['data'] ?? [];
-          setState(() {
-            _stops = stopList
-                .map((s) => Map<String, dynamic>.from(s))
-                .toList();
-            // Sort by stop_order
-            _stops.sort((a, b) =>
-                (a['stop_order'] ?? 0).compareTo(b['stop_order'] ?? 0));
-          });
+      void processResponse(http.Response response, String label) {
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['success'] == true) {
+            final List<dynamic> stopList = data['data'] ?? [];
+            for (var s in stopList) {
+              var stopMap = Map<String, dynamic>.from(s);
+              stopMap['route_type'] = label;
+              combinedStops.add(stopMap);
+            }
+          }
+        } else if (response.statusCode == 401) {
+          UserStore.forceLogout();
         }
-      } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+      }
+
+      processResponse(responses[0], "My Stops");
+      processResponse(responses[1], "Other Bus Stop");
+
+      if (mounted) {
+        setState(() {
+          _stops = combinedStops;
+        });
       }
     } catch (e) {
       debugPrint("Error fetching stops: $e");
       if (mounted) showTopToast(context, "Failed to load stops", isError: true);
     } finally {
-      setState(() => _isLoadingStops = false);
+      if (mounted) setState(() => _isLoadingStops = false);
     }
   }
 
@@ -168,7 +175,6 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
         "targetRunId": _selectedRoute!['id'],
         "mergeStopId": _selectedStop!['id'],
         "shiftPeriod": "MORNING",
-        "place": _placeController.text.trim(),
         "remark": _remarkController.text.trim(),
         "endOdometer": int.tryParse(_endOdometerController.text.trim()) ?? 0,
         "allowanceNeeded": _allowanceNeeded,
@@ -417,6 +423,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
 
     final searchCtrl = TextEditingController();
     List<Map<String, dynamic>> filtered = List.from(_stops);
+    String filterType = 'All';
 
     showModalBottomSheet(
       context: context,
@@ -492,31 +499,100 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TextField(
-                      controller: searchCtrl,
-                      onChanged: (val) {
-                        setModalState(() {
-                          filtered = _stops
-                              .where((s) => (s['stop_name'] ?? '')
-                                  .toString()
-                                  .toLowerCase()
-                                  .contains(val.toLowerCase()))
-                              .toList();
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Search stop...",
-                        prefixIcon: const Icon(Icons.search_rounded,
-                            color: Color(0xFF6366F1)),
-                        filled: true,
-                        fillColor: Colors.black.withValues(alpha: 0.04),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: searchCtrl,
+                            onChanged: (val) {
+                              setModalState(() {
+                                filtered = _stops.where((s) {
+                                  final searchMatch = (s['stop_name'] ?? '').toString().toLowerCase().contains(val.toLowerCase());
+                                  final typeMatch = filterType == 'All' || s['route_type'] == filterType;
+                                  return searchMatch && typeMatch;
+                                }).toList();
+                              });
+                            },
+                            decoration: InputDecoration(
+                              hintText: "Search stop...",
+                              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6366F1)),
+                              filled: true,
+                              fillColor: Colors.black.withValues(alpha: 0.04),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                            ),
+                          ),
                         ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 0),
-                      ),
+                        const SizedBox(width: 12),
+                        InkWell(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                              ),
+                              builder: (ctx) {
+                                return SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(height: 16),
+                                      const Text("Filter Stops", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 16),
+                                      ListTile(
+                                        title: const Text("All"),
+                                        trailing: filterType == 'All' ? const Icon(Icons.check, color: Color(0xFF6366F1)) : null,
+                                        onTap: () {
+                                          setModalState(() {
+                                            filterType = 'All';
+                                            filtered = _stops.where((s) => (s['stop_name'] ?? '').toString().toLowerCase().contains(searchCtrl.text.toLowerCase())).toList();
+                                          });
+                                          Navigator.pop(ctx);
+                                        },
+                                      ),
+                                      ListTile(
+                                        title: const Text("My Stops"),
+                                        trailing: filterType == 'My Stops' ? const Icon(Icons.check, color: Color(0xFF6366F1)) : null,
+                                        onTap: () {
+                                          setModalState(() {
+                                            filterType = 'My Stops';
+                                            filtered = _stops.where((s) => s['route_type'] == 'My Stops' && (s['stop_name'] ?? '').toString().toLowerCase().contains(searchCtrl.text.toLowerCase())).toList();
+                                          });
+                                          Navigator.pop(ctx);
+                                        },
+                                      ),
+                                      ListTile(
+                                        title: const Text("Other Bus Stop"),
+                                        trailing: filterType == 'Other Bus Stop' ? const Icon(Icons.check, color: Color(0xFF6366F1)) : null,
+                                        onTap: () {
+                                          setModalState(() {
+                                            filterType = 'Other Bus Stop';
+                                            filtered = _stops.where((s) => s['route_type'] == 'Other Bus Stop' && (s['stop_name'] ?? '').toString().toLowerCase().contains(searchCtrl.text.toLowerCase())).toList();
+                                          });
+                                          Navigator.pop(ctx);
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  ),
+                                );
+                              }
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(Icons.filter_list_rounded, color: Color(0xFF6366F1)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -574,17 +650,49 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
                                       ),
                                     ),
                                   ),
-                                  title: Text(
-                                    stop['stop_name'] ?? '',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          stop['stop_name'] ?? '',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (stop['route_type'] != null)
+                                        Container(
+                                          margin: const EdgeInsets.only(left: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: stop['route_type'] == 'My Stops'
+                                                ? Colors.purple.withValues(alpha: 0.1)
+                                                : Colors.green.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            stop['route_type'],
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: stop['route_type'] == 'My Stops'
+                                                  ? Colors.purple
+                                                  : Colors.green,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  subtitle: Text(
-                                    "Pickup: ${stop['pickup_plan_time'] ?? '-'}  •  Drop: ${stop['drop_plan_time'] ?? '-'}",
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      "Pickup: ${stop['pickup_plan_time'] ?? '-'}  •  Drop: ${stop['drop_plan_time'] ?? '-'}",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                   ),
                                   trailing: isSelected
@@ -758,37 +866,19 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
             // ─── Form Fields (after stop selected) ────────────
             if (_selectedStop != null) ...[
               const SizedBox(height: 28),
-              _buildSectionLabel(
-                  "Place Name", Icons.place_rounded, primaryBlue),
-              const SizedBox(height: 10),
-              _buildInputField(
-                controller: _placeController,
-                hint: "Enter place name",
-                icon: Icons.place_rounded,
-                isDark: isDark,
-                accentColor: primaryBlue,
-              ),
-
-              const SizedBox(height: 24),
-              _buildSectionLabel(
-                  "Remark", Icons.notes_rounded, primaryBlue),
-              const SizedBox(height: 10),
               _buildInputField(
                 controller: _remarkController,
-                hint: "Enter remark",
+                hint: "Remark",
                 icon: Icons.notes_rounded,
                 isDark: isDark,
                 accentColor: primaryBlue,
                 maxLines: 3,
               ),
 
-              const SizedBox(height: 24),
-              _buildSectionLabel("End Odometer",
-                  Icons.speed_rounded, primaryBlue),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               _buildInputField(
                 controller: _endOdometerController,
-                hint: "Enter end odometer reading",
+                hint: "End Odometer",
                 icon: Icons.speed_rounded,
                 isDark: isDark,
                 accentColor: primaryBlue,
@@ -1005,17 +1095,25 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
         prefixIcon: Icon(icon,
             color: accentColor.withValues(alpha: 0.6), size: 20),
         filled: true,
-        fillColor: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : const Color(0xFFF8FAFC),
+        fillColor: Colors.transparent,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: isDark ? Colors.white24 : Colors.black12,
+            width: 1,
+          ),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: isDark ? Colors.white24 : Colors.black12,
+            width: 1,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: accentColor.withValues(alpha: 0.4),
+            color: accentColor,
             width: 1.5,
           ),
         ),
