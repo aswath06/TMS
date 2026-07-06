@@ -403,26 +403,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 32),
 
                     // LOGOUT TILE
-                    _settingsTile(
-                      Icons.logout_rounded,
-                        isTamil ? "வெளியேறு" : "Sign Out",
-                        isTamil
-                            ? "கணக்கிலிருந்து பாதுகாப்பாக வெளியேறவும்"
-                            : "Log out of your account",
-                        cardColor,
-                        Colors.redAccent,
-                        subTitleColor,
-                        Colors.red,
-                        onTap: () => _showLogoutBottomSheet(
-                          context,
-                          isTamil,
-                          primaryBlue,
-                          isDark,
+                    if (!['student', 'faculty', 'transport_admin', 'driver', 'non teaching faculty', 'intern'].contains(_userRole))
+                      _settingsTile(
+                        Icons.logout_rounded,
+                          isTamil ? "வெளியேறு" : "Sign Out",
+                          isTamil
+                              ? "கணக்கிலிருந்து பாதுகாப்பாக வெளியேறவும்"
+                              : "Log out of your account",
                           cardColor,
-                          titleColor,
+                          Colors.redAccent,
                           subTitleColor,
+                          Colors.red,
+                          onTap: () => _showLogoutBottomSheet(
+                            context,
+                            isTamil,
+                            primaryBlue,
+                            isDark,
+                            cardColor,
+                            titleColor,
+                            subTitleColor,
+                          ),
                         ),
-                      ),
 
 
                     const SizedBox(height: 60),
