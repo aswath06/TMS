@@ -18,6 +18,7 @@ import 'fuel/fuel_page.dart';
 import 'admin_allowance_screen.dart';
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/utils/tab_notification.dart';
+import 'package:tripzo/screens/admin/live_bus_routes_screen.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends ConsumerStatefulWidget {
@@ -229,10 +230,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       final userId = await UserStore.getUserId();
       final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr${userId != null ? '&user_id=$userId' : ''}";
       
+      final headers = ApiConstants.getHeaders(token);
+      final headersString = headers.entries.map((e) => "--header '${e.key}: ${e.value}'").join(" \\\n");
       debugPrint("--- ADMIN LIVE BUS RUN FETCH ---");
-      debugPrint("URL: $url");
+      debugPrint("CURL COMMAND:\ncurl --location '$url' \\\n$headersString");
       
-      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      final response = await http.get(Uri.parse(url), headers: headers);
       
       debugPrint("RESPONSE (${response.statusCode}): ${response.body}");
       debugPrint("--------------------------------");
@@ -279,7 +282,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             final shiftA = a['shift_code']?.toString().toUpperCase() ?? '';
             final shiftB = b['shift_code']?.toString().toUpperCase() ?? '';
             
-            final eveningFirstStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+            final eveningFirstStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'RESUMED_MIDWAY', 'MERGED_HALTED', 'HALTED', 'COMPLETED'];
             bool eveningFirst = eveningFirstStatuses.contains(status);
             
             int weightA = shiftA == 'EVENING' ? (eveningFirst ? 0 : 1) : (eveningFirst ? 1 : 0);
@@ -415,38 +418,64 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   if (_userRole.toLowerCase() == 'transport admin') ...[
                     FadeInUp(
                       index: 7,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildSectionTitle('Live Bus Routes', titleColor),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    if (_isLoadingAdminBusRuns && _adminDailyBusRuns.isEmpty)
-                      const Center(child: CircularProgressIndicator())
-                    else if (_adminDailyBusRuns.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 20, bottom: 20),
-                          child: Text(
-                            "No bus routes found",
-                            style: TextStyle(color: subColor, fontWeight: FontWeight.bold),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => LiveBusRoutesScreen(adminDailyBusRuns: _adminDailyBusRuns),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: surfaceColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: primaryBlue.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(Icons.directions_bus, color: primaryBlue),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Live Bus Routes", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor)),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _isLoadingAdminBusRuns ? "Loading..." : "${_adminDailyBusRuns.length} Active Routes",
+                                        style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Icon(Icons.arrow_forward_ios, size: 16, color: subColor),
+                            ],
                           ),
                         ),
-                      )
-                    else
-                      ..._adminDailyBusRuns.map((a) {
-                        return _buildAssignmentCard(
-                          context: context,
-                          assignment: a,
-                          surface: surfaceColor,
-                          primary: primaryBlue,
-                          titleColor: titleColor,
-                          subColor: subColor,
-                          isDark: isDark,
-                        );
-                      }),
+                      ),
+                    ),
                     const SizedBox(height: 36),
                   ],
                   FadeInUp(
@@ -1541,7 +1570,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
 
     bool isEnabled = true;
     if (shiftCode == 'EVENING') {
-      final validStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'HALTED', 'COMPLETED'];
+      final validStatuses = ['FN_COMPLETED', 'AN_STARTED', 'DEPARTED_CAMPUS', 'RESUMED_MIDWAY', 'MERGED_HALTED', 'HALTED', 'COMPLETED'];
       if (!validStatuses.contains(statusStr.toUpperCase())) {
         isEnabled = false;
       }

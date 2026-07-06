@@ -85,7 +85,9 @@ final store = ref.watch(driverStoreProvider);
                         _buildHeader(
                           widget.userRole == 'driver' 
                               ? (isTamil ? "வருகை போர்ட்டல்" : "Attendance Portal")
-                              : (isTamil ? "விடுப்பு போர்ட்டல்" : "Leave Portal"),
+                              : widget.userRole == 'student'
+                                  ? (isTamil ? "போக்குவரத்து இருப்பு" : "Transport Availability")
+                                  : (isTamil ? "விடுப்பு போர்ட்டல்" : "Leave Portal"),
                           titleColor,
                           screenWidth,
                         ),
@@ -121,7 +123,9 @@ final store = ref.watch(driverStoreProvider);
                         const SizedBox(height: 36),
 
                         _buildHistoryHeader(
-                          isTamil ? "விடுப்பு வரலாறு" : "Leave History",
+                          widget.userRole == 'student'
+                              ? (isTamil ? "வரலாறு" : "Availability History")
+                              : (isTamil ? "விடுப்பு வரலாறு" : "Leave History"),
                           titleColor,
                           icon: Icons.history_rounded,
                         ),
@@ -361,7 +365,9 @@ final store = ref.watch(driverStoreProvider);
             Icon(Icons.history_toggle_off_rounded, size: 48, color: isDark ? Colors.white24 : Colors.black12),
             const SizedBox(height: 12),
             Text(
-              isTamil ? "வரலாறு எதுவும் இல்லை" : "No leave history found",
+              widget.userRole == 'student' 
+                  ? (isTamil ? "வரலாறு எதுவும் இல்லை" : "No availability history found")
+                  : (isTamil ? "வரலாறு எதுவும் இல்லை" : "No leave history found"),
               style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.bold),
             ),
           ],
@@ -573,17 +579,19 @@ final store = ref.watch(driverStoreProvider);
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.add_task_rounded,
+                Icon(
+                  widget.userRole == 'student' ? Icons.directions_bus_rounded : Icons.add_task_rounded,
                   color: Colors.white,
                   size: 28,
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  isTamil ? "விடுப்பு விண்ணப்பிக்க" : "APPLY NEW LEAVE",
+                  widget.userRole == 'student'
+                      ? (isTamil ? "போக்குவரத்து இருப்பை மாற்று" : "UPDATE TRANSPORT AVAILABILITY")
+                      : (isTamil ? "விடுப்பு விண்ணப்பிக்க" : "APPLY NEW LEAVE"),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

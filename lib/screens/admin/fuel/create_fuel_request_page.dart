@@ -1256,6 +1256,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       final response = await http.Response.fromStream(streamedResponse);
 
       log("\n--- RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
+      if (!mounted) return;
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -1295,14 +1296,18 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Network error"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Network error"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 }

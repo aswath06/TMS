@@ -402,10 +402,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     
                     const SizedBox(height: 32),
 
-                    // LOGOUT TILE (Hidden for Driver, Security, Faculty)
-                    if (_userRole.toLowerCase() == "admin" || _userRole.toLowerCase() == "super admin")
-                      _settingsTile(
-                        Icons.logout_rounded,
+                    // LOGOUT TILE
+                    _settingsTile(
+                      Icons.logout_rounded,
                         isTamil ? "வெளியேறு" : "Sign Out",
                         isTamil
                             ? "கணக்கிலிருந்து பாதுகாப்பாக வெளியேறவும்"

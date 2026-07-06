@@ -671,7 +671,8 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                       const SizedBox(height: 12),
                       
                       // Route info + Capacity
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Icon(Icons.directions_bus_outlined, size: 14, color: subColor),
                           const SizedBox(width: 4),
@@ -683,15 +684,12 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Flexible(
-                            child: Text(
-                              routeName,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF6366F1),
-                                fontWeight: FontWeight.w800,
-                              ),
+                          Text(
+                            routeName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6366F1),
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(width: 8),

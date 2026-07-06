@@ -114,6 +114,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
 
   Future<void> _requestNotification() async {
     PermissionStatus status = await Permission.notification.status;
+    if (!mounted) return;
     
     if (status.isPermanentlyDenied || status.isDenied) {
       if (Theme.of(context).platform == TargetPlatform.iOS) {
@@ -132,6 +133,7 @@ class _SetupPermissionsScreenState extends State<SetupPermissionsScreen> with Ti
       }
       
       status = await Permission.notification.status;
+      if (!mounted) return;
       
       // If it is still denied after requesting, the user might have permanently denied it
       // so we need to redirect them to settings.

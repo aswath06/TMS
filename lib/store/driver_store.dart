@@ -428,7 +428,7 @@ class DriverStore extends ChangeNotifier {
       }
 
       String url =
-          "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10";
+          "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10&sortBy=joining_date&sortOrder=DESC";
       if (_driverSearchQuery.isNotEmpty) {
         url += "&search=${Uri.encodeComponent(_driverSearchQuery)}";
       }

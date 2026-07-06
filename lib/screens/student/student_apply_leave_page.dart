@@ -72,7 +72,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                       const SizedBox(height: 32),
 
                       _buildSectionTitle(
-                        isTamil ? "தேதி" : "Leave Date",
+                        isTamil ? "தேதி" : "Availability Date",
                         titleColor,
                       ),
                       const SizedBox(height: 16),
@@ -86,33 +86,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                       const SizedBox(height: 16),
                       _buildShiftChips(cardColor, titleColor, isTamil),
 
-                      const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        isTamil ? "விடுப்பு வகை" : "Leave Type",
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildLeaveTypeDropdown(cardColor, titleColor, isTamil),
 
-                      const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        isTamil ? "காரணம்" : "Reason for Leave",
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _inputField(
-                        isTamil
-                            ? "இங்கே விவரிக்கவும்..."
-                            : "Describe your reason here...",
-                        Icons.notes_rounded,
-                        cardColor,
-                        titleColor,
-                        max: 4,
-                        controller: _reasonController,
-                        isTamil: isTamil,
-                      ),
-
-                      const SizedBox(height: 32),
 
                       ListenableBuilder(
                         listenable: useStudentLeaveStore,
@@ -403,7 +377,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
               ),
               const SizedBox(height: 4),
               Text(
-                isTamil ? "விடுப்பு விண்ணப்பம்" : "Apply Leave",
+                isTamil ? "போக்குவரத்து இருப்பு" : "Transport Availability",
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -518,14 +492,13 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                 : () async {
                     if (_formKey.currentState!.validate() &&
                         _selectedDate != null &&
-                        _selectedShift != null &&
-                        _selectedLeaveType != null) {
+                        _selectedShift != null) {
 
                       final success = await useStudentLeaveStore.createLeave(
                         date: DateFormat('yyyy-MM-dd').format(_selectedDate!),
                         shiftType: _selectedShift!,
-                        leaveType: _selectedLeaveType!,
-                        reason: _reasonController.text,
+                        leaveType: 'General leave',
+                        reason: 'Availability update',
                       );
 
                       if (!context.mounted) return;

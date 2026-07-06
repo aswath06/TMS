@@ -281,6 +281,21 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         headers: ApiConstants.getHeaders(token),
       );
 
+      if (_userRole?.toLowerCase() == 'student') {
+        debugPrint("🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟");
+        debugPrint("🚀 [STUDENT] FETCHING ROUTINE DETAILS 🚀");
+        debugPrint("🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟");
+        debugPrint("🔗 CURL COMMAND:");
+        debugPrint("curl --location --request GET '$url' \\");
+        debugPrint("--header 'authorization: TMS $token' \\");
+        debugPrint("--header 'Content-Type: application/json'");
+        debugPrint("--------------------------------------------");
+        debugPrint("📦 RESPONSE DATA:");
+        debugPrint("🚥 Status Code: ${response.statusCode} ${response.statusCode == 200 ? '✅' : '❌'}");
+        debugPrint("📄 Body: ${response.body}");
+        debugPrint("🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟");
+      }
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -666,25 +681,107 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Send Reminders"),
-          content: const Text("It will make the absent student and faculty phone to ring as a reminder."),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text("Cancel"),
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _sendAttendanceReminders();
-              },
-              child: const Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.notifications_active_rounded,
+                    color: Color(0xFF6366F1),
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Send Reminders",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "It will make the absent student and faculty phone to ring as a reminder.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _sendAttendanceReminders();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text(
+                          "Send",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -3045,7 +3142,11 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       }
     }
 
-    final bool isSuperOrTransportAdmin = _userRole == 'Super Admin' || _userRole == 'Transport Admin';
+    final bool isSuperOrTransportAdmin = _userRole != null &&
+        (_userRole!.toLowerCase() == 'super_admin' ||
+         _userRole!.toLowerCase() == 'super admin' ||
+         _userRole!.toLowerCase() == 'transport admin' ||
+            _userRole!.toLowerCase() == 'transport_admin');
     final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
         ? int.tryParse(_run['assigned_faculty_user_id'].toString())
         : null;
@@ -4470,6 +4571,152 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     );
   }
 
+  Future<void> _deleteTrip(BuildContext context) async {
+    try {
+      final token = await UserStore.getToken();
+      final url = Uri.parse('https://tripzo.bitsathy.ac.in/daily-bus/daily-bus-runs/${_run['id']}');
+      
+      final response = await http.delete(
+        url,
+        headers: {
+          'accept': '*/*',
+          'authorization': 'TMS $token',
+        },
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Trip deleted successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context, true); 
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete trip: ${response.statusCode}', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting trip: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _confirmDeleteTrip(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final bool isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.delete_forever_rounded,
+                    color: Colors.red,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Delete Trip",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Are you sure you want to delete this trip? This action cannot be undone.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
+                          _deleteTrip(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text(
+                          "Delete",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSkeletonLoading(bool isDark, Color cardColor, Color bgColor, Color titleColor, Color subColor) {
     final shimmerBase = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200;
     final shimmerHighlight = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade100;
@@ -4630,8 +4877,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         s == 'FN_COMPLETED';
 
     final bool isSuperOrTransportAdmin = _userRole != null &&
-        (_userRole!.toLowerCase() == 'super admin' ||
-            _userRole!.toLowerCase() == 'transport admin');
+        (_userRole!.toLowerCase() == 'super_admin' ||
+         _userRole!.toLowerCase() == 'super admin' ||
+         _userRole!.toLowerCase() == 'transport admin' ||
+            _userRole!.toLowerCase() == 'transport_admin');
 
     final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
         ? int.tryParse(_run['assigned_faculty_user_id'].toString())
@@ -4970,7 +5219,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         _buildVehicleTab(isDark, titleColor, subColor, primaryBlue, cardColor),
         _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
       ];
-    } else {
+    } else if (isSuperOrTransportAdmin) {
       tabsList = const [
         Tab(text: "Assignments"),
         Tab(text: "Vehicle"),
@@ -4981,6 +5230,19 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       tabViews = [
         _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
         _buildVehicleTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
+        _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+      ];
+    } else {
+      tabsList = const [
+        Tab(text: "Assignments"),
+        Tab(text: "Timeline"),
+        Tab(text: "Passengers"),
+        Tab(text: "Attendance"),
+      ];
+      tabViews = [
+        _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
         _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
         _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
         _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
@@ -5089,7 +5351,18 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                       ],
                                     ),
                                   ),
-                                  _buildStatusBadge(status),
+                                  Row(
+                                    children: [
+                                      if (isSuperOrTransportAdmin && s == 'PLANNED') ...[
+                                        GestureDetector(
+                                          onTap: () => _confirmDeleteTrip(context),
+                                          child: const Icon(Icons.delete_rounded, color: Colors.red, size: 24),
+                                        ),
+                                        const SizedBox(width: 12),
+                                      ],
+                                      _buildStatusBadge(status),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ],

@@ -71,7 +71,15 @@ class DailyRoutinesStore extends ChangeNotifier {
         url += "&search=${Uri.encodeComponent(_currentSearch)}";
       }
 
+      debugPrint("🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟");
+      debugPrint("🚀 FETCHING ALL ROUTINES (LIVE BUS ROUTES) 🚀");
+      debugPrint("🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟");
+      debugPrint("🔗 URL: $url");
+      debugPrint("--------------------------------------------");
       final data = await ApiService.get(url);
+      debugPrint("📦 RESPONSE RECEIVED");
+      debugPrint("📄 Body: ${data.toString()}");
+      debugPrint("🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟");
 
       if (data != null && data['success'] == true) {
         final resData = data['data'] ?? {};
