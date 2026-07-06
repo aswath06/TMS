@@ -46,10 +46,23 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
 
     try {
       final String? token = await UserStore.getToken();
+      final String url = "${ApiConstants.vehicleDashboard}${widget.vehicleId}";
       final response = await http.get(
-        Uri.parse("${ApiConstants.vehicleDashboard}${widget.vehicleId}"),
+        Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
+
+      // --- DEBUG LOGGING ---
+      String curl = "curl --location '$url' \\\n";
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        curl += "--header '$key: $value' \\\n";
+      });
+      debugPrint("================= API DEBUG =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint("RESPONSE BODY: ${response.body}");
+      debugPrint("===========================================");
+      // ---------------------
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -150,6 +163,37 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                           surfaceColor,
                           isDark,
                         ),
+                        const SizedBox(height: 16),
+                        _buildSectionTitle("Technical Details", titleColor),
+                        const SizedBox(height: 16),
+                        _buildInfoGrid(
+                          [
+                            _InfoItem(
+                              Icons.settings_suggest,
+                              "Engine No.",
+                              _vehicleData!['vehicleData']['engine_number'] ?? 'N/A',
+                            ),
+                            _InfoItem(
+                              Icons.qr_code,
+                              "Chassis No.",
+                              _vehicleData!['vehicleData']['chassis_number'] ?? 'N/A',
+                            ),
+                            _InfoItem(
+                              Icons.water_drop,
+                              "Tank Cap.",
+                              _vehicleData!['vehicleData']['fuel_tank_capacity'] != null
+                                  ? "${_vehicleData!['vehicleData']['fuel_tank_capacity']} L"
+                                  : 'N/A',
+                            ),
+                            _InfoItem(
+                              Icons.cake,
+                              "Vehicle Age",
+                              _vehicleData!['vehicleData']['vehicle_age'] ?? 'N/A',
+                            ),
+                          ],
+                          surfaceColor,
+                          isDark,
+                        ),
                         _buildSectionTitle(
                           "Registration & Compliance",
                           titleColor,
@@ -183,6 +227,20 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                               "FC Date",
                               _formatDate(
                                 _vehicleData!['vehicleData']['fc_expiry_date'],
+                              ),
+                            ),
+                            _InfoItem(
+                              Icons.request_quote,
+                              "Tax Valid",
+                              _formatDate(
+                                _vehicleData!['vehicleData']['tax_valid_upto'],
+                              ),
+                            ),
+                            _InfoItem(
+                              Icons.assignment_turned_in,
+                              "Permit Valid",
+                              _formatDate(
+                                _vehicleData!['vehicleData']['permit_valid_upto'],
                               ),
                             ),
                           ],
@@ -270,7 +328,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            veh['vehicle_number'] ?? 'N/A',
+            veh['bus_number'] != null && veh['bus_number'].toString().trim().isNotEmpty
+                ? "${veh['vehicle_number'] ?? 'N/A'} (${veh['bus_number']})"
+                : veh['vehicle_number'] ?? 'N/A',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,

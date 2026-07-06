@@ -68,8 +68,8 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
   }
 
   Future<File?> _compressImage(File file) async {
-    final tempDir = await getTemporaryDirectory();
-    final path = '${tempDir.path}/compressed_fuel_bill_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final docDir = await getApplicationDocumentsDirectory();
+    final path = '${docDir.path}/compressed_fuel_bill_${DateTime.now().millisecondsSinceEpoch}.jpg';
     
     final result = await FlutterImageCompress.compressAndGetFile(
       file.absolute.path,

@@ -789,7 +789,8 @@ class _FacultyBusScreenState extends ConsumerState<FacultyBusScreen> with Single
                       const SizedBox(height: 12),
                       
                       // Route info + Capacity
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Icon(Icons.directions_bus_outlined, size: 14, color: subColor),
                           const SizedBox(width: 4),

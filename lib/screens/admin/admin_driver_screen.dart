@@ -9,6 +9,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/screens/admin/request/view_all_leaves_page.dart';
 import 'package:tripzo/screens/admin/admin_driver_detail_screen.dart';
 import 'package:tripzo/components/leave_card.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class AdminDriverScreen extends ConsumerStatefulWidget {
   const AdminDriverScreen({super.key});
@@ -35,6 +36,25 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
     return double.tryParse(kmString.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
   }
 
+  int _calculateExperience(Map<String, dynamic>? dp) {
+    if (dp == null) return 0;
+    final joiningDateStr = dp['joining_date']?.toString() ?? dp['created_at']?.toString();
+    if (joiningDateStr != null && joiningDateStr.isNotEmpty) {
+      try {
+        final startDate = DateTime.parse(joiningDateStr);
+        final now = DateTime.now();
+        int experience = now.year - startDate.year;
+        if (now.month < startDate.month || (now.month == startDate.month && now.day < startDate.day)) {
+          experience--;
+        }
+        return experience < 0 ? 0 : experience;
+      } catch (e) {
+        return int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
+      }
+    }
+    return int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
+  }
+
   void _sortLocalDrivers(List<Map<String, dynamic>> list, String sortType) {
     if (sortType == 'A to Z') {
       list.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
@@ -54,11 +74,11 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
       );
     } else if (sortType == 'Max Experience') {
       list.sort(
-        (a, b) => (b['driverProfile']?['experience_years'] ?? 0).compareTo(a['driverProfile']?['experience_years'] ?? 0),
+        (a, b) => _calculateExperience(b['driverProfile']).compareTo(_calculateExperience(a['driverProfile'])),
       );
     } else if (sortType == 'Min Experience') {
       list.sort(
-        (a, b) => (a['driverProfile']?['experience_years'] ?? 0).compareTo(b['driverProfile']?['experience_years'] ?? 0),
+        (a, b) => _calculateExperience(a['driverProfile']).compareTo(_calculateExperience(b['driverProfile'])),
       );
     }
   }
@@ -982,7 +1002,7 @@ final store = ref.watch(driverStoreProvider);
     final dp = driver['driverProfile'] ?? driver;
     final String kmDisplay = "${dp['total_kilometer_drive'] ?? dp['total_kilometer_drived'] ?? 0} km";
     final String employeeCode = dp['employee_code'] ?? 'N/A';
-    final int experience = int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
+    final int experience = _calculateExperience(dp);
     final int routes = int.tryParse(dp['total_routes']?.toString() ?? '0') ?? 0;
     final String bloodGroup = dp['blood_group'] ?? 'N/A';
 
@@ -1194,7 +1214,10 @@ final store = ref.watch(driverStoreProvider);
   }
 
   Widget _buildDriverAvatar(Map<String, dynamic> driver, bool isDark) {
-    final String? imageUrl = driver['image'];
+    String? imageUrl = driver['profile_photo'] ?? driver['image'];
+    if (imageUrl != null && imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+      imageUrl = '${ApiConstants.baseUrl}$imageUrl';
+    }
     final String name = driver['name'] ?? '';
 
     if (imageUrl != null && imageUrl.isNotEmpty) {

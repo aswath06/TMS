@@ -95,11 +95,11 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          setState(() {
-            _maxBackups = maxBackups;
-            _emailNotifications = emailNotifications;
-          });
           if (mounted) {
+            setState(() {
+              _maxBackups = maxBackups;
+              _emailNotifications = emailNotifications;
+            });
             showTopToast(context, "Settings updated successfully");
           }
         }
@@ -593,11 +593,14 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
         await downloadFile(bytes, "backup_$id.sql");
+        if (!mounted) return;
         showTopToast(context, "Backup downloaded successfully");
       } else {
+        if (!mounted) return;
         showTopToast(context, "Failed to download", isError: true);
       }
     } catch (e) {
+      if (!mounted) return;
       showTopToast(context, "Error: $e", isError: true);
     }
   }

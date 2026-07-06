@@ -222,7 +222,7 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
                         _InfoItem(Icons.event, "License Expiry", _formatDate(dp['license_expiry_date'] ?? dp['license_expiry'])),
                         _InfoItem(Icons.event_busy, "Non-Transport Exp.", _formatDate(dp['non_transport_expiry_date'])),
                         _InfoItem(Icons.calendar_today, "Joining Date", _formatDate(dp['joining_date'] ?? dp['created_at'])),
-                        _InfoItem(Icons.history, "Exp. Total", "${dp['experience_years'] ?? 0} Years"),
+                        _InfoItem(Icons.history, "Exp. Total", "${_calculateExperience(dp)} Years"),
                         _InfoItem(Icons.work_history, "Exp. at BIT", "${dp['experience_at_Bit'] ?? 0} Years"),
                         _InfoItem(Icons.directions_car, "Vehicle Type", dp['Vehicle_type'] ?? 'N/A'),
                         _InfoItem(Icons.schedule, "Shift", dp['shift'] ?? 'N/A'),
@@ -731,6 +731,25 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
     } catch (e) {
       return dateStr.toString();
     }
+  }
+
+  int _calculateExperience(Map<String, dynamic>? dp) {
+    if (dp == null) return 0;
+    final joiningDateStr = dp['joining_date']?.toString() ?? dp['created_at']?.toString();
+    if (joiningDateStr != null && joiningDateStr.isNotEmpty) {
+      try {
+        final startDate = DateTime.parse(joiningDateStr);
+        final now = DateTime.now();
+        int experience = now.year - startDate.year;
+        if (now.month < startDate.month || (now.month == startDate.month && now.day < startDate.day)) {
+          experience--;
+        }
+        return experience < 0 ? 0 : experience;
+      } catch (e) {
+        return int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
+      }
+    }
+    return int.tryParse(dp['experience_years']?.toString() ?? '0') ?? 0;
   }
 }
 

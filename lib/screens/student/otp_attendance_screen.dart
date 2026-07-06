@@ -104,48 +104,51 @@ class _OtpAttendanceScreenState extends State<OtpAttendanceScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // OTP Display
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(_maxLen, (index) {
-                        final bool hasValue = index < _otpCode.length;
-                        final String digit = hasValue ? _otpCode[index] : "";
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutBack,
-                          width: hasValue ? 50 : 42,
-                          height: hasValue ? 62 : 52,
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: hasValue ? primaryBlue : (isDark ? Colors.white24 : Colors.black12),
-                              width: hasValue ? 2 : 1,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(_maxLen, (index) {
+                          final bool hasValue = index < _otpCode.length;
+                          final String digit = hasValue ? _otpCode[index] : "";
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeOutBack,
+                            width: hasValue ? 50 : 42,
+                            height: hasValue ? 62 : 52,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: hasValue ? primaryBlue : (isDark ? Colors.white24 : Colors.black12),
+                                width: hasValue ? 2 : 1,
+                              ),
+                              boxShadow: hasValue
+                                  ? [
+                                      BoxShadow(
+                                        color: primaryBlue.withValues(alpha: 0.3),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
+                                      )
+                                    ]
+                                  : [],
                             ),
-                            boxShadow: hasValue
-                                ? [
-                                    BoxShadow(
-                                      color: primaryBlue.withValues(alpha: 0.3),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 6),
-                                    )
-                                  ]
-                                : [],
-                          ),
-                          child: Center(
-                            child: Text(
-                              digit,
-                              style: TextStyle(
-                                fontSize: hasValue ? 28 : 24,
-                                fontWeight: FontWeight.w900,
-                                color: titleColor,
+                            child: Center(
+                              child: Text(
+                                digit,
+                                style: TextStyle(
+                                  fontSize: hasValue ? 28 : 24,
+                                  fontWeight: FontWeight.w900,
+                                  color: titleColor,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        }),
+                      ),
                     ),
                   ),
                 ],

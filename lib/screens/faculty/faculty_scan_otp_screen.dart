@@ -936,9 +936,11 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
 
               return Transform.translate(
                 offset: Offset(shakeOffset, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(6, (index) {
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(6, (index) {
                     final bool isCurrent = _focusNodes[index].hasFocus;
                     
                     // Center the 6 boxes into one single box in the center (item index relative to center offset is (index - 2.5) * (48.0 + 12.0))
@@ -1013,6 +1015,7 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                       ),
                     );
                   }),
+                ),
                 ),
               );
             },

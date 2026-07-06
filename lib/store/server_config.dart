@@ -9,7 +9,7 @@ class ServerConfig extends ChangeNotifier {
   static const String productionUrl = "https://tripzo.bitsathy.ac.in";
   static const String devTunnelUrl = "https://18x50gz9-8055.inc1.devtunnels.ms";
 
-  // Singleton
+  // Singleton131432
   static final ServerConfig _instance = ServerConfig._internal();
   factory ServerConfig() => _instance;
   ServerConfig._internal();
