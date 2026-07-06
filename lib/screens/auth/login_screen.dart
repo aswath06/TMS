@@ -116,7 +116,7 @@ curl -X POST "$url"
           'transport admin',
           'super admin',
           'faculty',
-          'non teaching faculty',
+          'non teaching',
           'intern',
           'security',
           'student',
@@ -209,7 +209,8 @@ curl -X POST "$url"
           'transport admin',
           'super admin',
           'faculty',
-          'non teaching faculty',
+          'non teaching',
+          'intern',
           'security',
           'student',
           'driver'
@@ -300,7 +301,8 @@ curl -X POST "$url"
           'transport admin',
           'super admin',
           'faculty',
-          'non teaching faculty',
+          'non teaching',
+          'intern',
           'security',
           'student',
           'driver'

@@ -146,7 +146,7 @@ class MainScreenState extends State<MainScreen> {
           const AdminProfileScreen(),
         ];
       case 'faculty':
-      case 'non teaching faculty':
+      case 'non teaching':
       case 'intern':
         return [
           const DashboardScreen(),

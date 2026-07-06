@@ -403,7 +403,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     const SizedBox(height: 32),
 
                     // LOGOUT TILE
-                    if (!['student', 'faculty', 'transport_admin', 'driver', 'non teaching faculty', 'intern'].contains(_userRole))
+                    if (!['student', 'faculty', 'transport_admin', 'driver', 'non teaching', 'intern'].contains(_userRole))
                       _settingsTile(
                         Icons.logout_rounded,
                           isTamil ? "வெளியேறு" : "Sign Out",

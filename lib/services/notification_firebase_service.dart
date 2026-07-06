@@ -57,6 +57,13 @@ class NotificationFirebaseService {
       sound: true,
     );
 
+    // Ensure foreground notifications appear on iOS natively
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
     debugPrint('User granted permission: ${settings.authorizationStatus}');
 
     // Set background handler

@@ -122,7 +122,7 @@ class CustomBottomBar extends StatelessWidget {
           ),
         ];
       case 'faculty':
-      case 'non teaching faculty':
+      case 'non teaching':
       case 'intern':
         return [
           _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
