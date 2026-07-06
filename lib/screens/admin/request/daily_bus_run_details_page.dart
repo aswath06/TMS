@@ -4574,7 +4574,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   Future<void> _deleteTrip(BuildContext context) async {
     try {
       final token = await UserStore.getToken();
-      final url = Uri.parse('https://tripzo.bitsathy.ac.in/daily-bus/daily-bus-runs/${_run['id']}');
+      final url = Uri.parse('${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/${_run['id']}');
       
       final response = await http.delete(
         url,

@@ -8,6 +8,7 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/server_config.dart';
+import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/ui_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/services/app_version_service.dart';
@@ -563,7 +564,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Center(
                 child: GestureDetector(
                   onTap: () async {
-                    final Uri url = Uri.parse("https://tripzo.bitsathy.ac.in/support");
+                    final Uri url = Uri.parse("${ApiConstants.baseUrl}/support");
                     try {
                       await launchUrl(url);
                     } catch (e) {
