@@ -38,6 +38,13 @@ class AdminAllowanceStore extends ChangeNotifier {
   List<Map<String, dynamic>> _driversList = [];
   List<Map<String, dynamic>> get driversList => _driversList;
 
+  // Purposes & Types
+  List<Map<String, dynamic>> _purposes = [];
+  List<Map<String, dynamic>> get purposes => _purposes;
+  
+  List<Map<String, dynamic>> _types = [];
+  List<Map<String, dynamic>> get types => _types;
+
   void setFilters({String? search, int? driverId, String? date}) {
     if (search != null) _searchQuery = search;
     if (driverId != null) _selectedDriverId = driverId == -1 ? null : driverId; // -1 for clear
@@ -161,12 +168,133 @@ class AdminAllowanceStore extends ChangeNotifier {
   void resetStore() {
     _allowances.clear();
     _pendingCreations.clear();
+    _purposes.clear();
+    _types.clear();
     _searchQuery = "";
     _selectedDriverId = null;
     _selectedDate = null;
     _allowancePage = 1;
     _hasMoreAllowances = true;
     notifyListeners();
+  }
+
+  Future<void> fetchPurposes() async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      final response = await http.get(Uri.parse(ApiConstants.getAllowancePurposes), headers: ApiConstants.getHeaders(token));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          _purposes = (decoded['data'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching purposes: $e");
+    }
+  }
+
+  Future<bool> createPurpose(String name) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return false;
+      final response = await http.post(
+        Uri.parse(ApiConstants.getAllowancePurposes),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({"name": name}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          await fetchPurposes();
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error creating purpose: $e");
+      return false;
+    }
+  }
+
+  Future<void> fetchTypes() async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      final response = await http.get(Uri.parse(ApiConstants.getAllowanceTypes), headers: ApiConstants.getHeaders(token));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          _types = (decoded['data'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching types: $e");
+    }
+  }
+
+  Future<bool> createAllowance(Map<String, dynamic> data) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return false;
+      final response = await http.post(
+        Uri.parse(ApiConstants.createAllowance),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(data),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        debugPrint("Create failed: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Error creating allowance: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateAllowance(int id, Map<String, dynamic> data) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return false;
+      final response = await http.patch(
+        Uri.parse(ApiConstants.updateAllowance(id)),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(data),
+      );
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        debugPrint("Update failed: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Error updating allowance: $e");
+      return false;
+    }
+  }
+
+  Future<bool> deleteAllowance(int id) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return false;
+      final response = await http.delete(
+        Uri.parse(ApiConstants.deleteAllowance(id)),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        debugPrint("Delete failed: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Error deleting allowance: $e");
+      return false;
+    }
   }
 }
 

@@ -5,6 +5,13 @@ import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/screens/admin/vechiles/admin_vehicle_form_screen.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io' as io;
+import 'package:open_filex/open_filex.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   final dynamic vehicleId;
@@ -116,6 +123,27 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+
+          if (_vehicleData != null)
+            IconButton(
+              icon: Icon(Icons.edit_rounded, color: primaryBlue),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminVehicleFormScreen(
+                      vehicleData: _vehicleData!['vehicleData'],
+                    ),
+                  ),
+                );
+                if (result == true) {
+                  _fetchVehicleDetails();
+                }
+              },
+            ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: _isLoading
           ? _buildShimmerLoading(isDark, bgColor)
@@ -217,9 +245,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                             ),
                             _InfoItem(
                               Icons.description,
-                              "RC Date",
+                              "Registration Date",
                               _formatDate(
-                                _vehicleData!['vehicleData']['rc_expiry_date'],
+                                _vehicleData!['vehicleData']['registration_date'],
                               ),
                             ),
                             _InfoItem(
@@ -273,6 +301,269 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     );
   }
 
+  Future<void> _showQrDialog(BuildContext context, bool isDark, Color primaryBlue) async {
+    final GlobalKey qrKey = GlobalKey();
+    final TextEditingController passwordCtrl = TextEditingController();
+    bool obscureText = true;
+
+    final vehicle = _vehicleData!['vehicleData'];
+    final otpValue = vehicle['id'].toString(); // Using ID as mock OTP
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.qr_code_2, color: Colors.orange.shade400),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    "Vehicle OTP Management",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.red),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Dashed Box
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.indigo.withValues(alpha: 0.2),
+                            width: 1.5,
+                            style: BorderStyle.solid,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () {},
+                                  icon: const Icon(Icons.refresh, color: Color(0xFF6366F1), size: 16),
+                                  label: const Text("Reset", style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    try {
+                                      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+                                      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+                                      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                                      final pngBytes = byteData!.buffer.asUint8List();
+
+                                      final directory = await getApplicationDocumentsDirectory();
+                                      final file = io.File('${directory.path}/vehicle_otp_$otpValue.png');
+                                      await file.writeAsBytes(pngBytes);
+                                      
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Branded QR Code Downloaded!"), backgroundColor: Colors.green));
+                                      }
+                                      OpenFilex.open(file.path);
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error saving QR: $e"), backgroundColor: Colors.red));
+                                      }
+                                    }
+                                  },
+                                  icon: const Icon(Icons.download, color: Colors.white, size: 16),
+                                  label: const Text("Download PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6366F1),
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            RepaintBoundary(
+                              key: qrKey,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFF6366F1).withValues(alpha: 0.6),
+                                    width: 2.5,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      "${vehicle['vehicle_number'] ?? 'N/A'} - ${vehicle['bus_number'] ?? 'N/A'} - TYPE : ${(vehicle['fuel_type'] ?? 'UNKNOWN').toString().toUpperCase()}",
+                                      style: const TextStyle(
+                                        color: Colors.black54,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.5,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 32),
+                                    QrImageView(
+                                      data: otpValue,
+                                      version: QrVersions.auto,
+                                      size: 220.0,
+                                      backgroundColor: Colors.white,
+                                      embeddedImage: const AssetImage('assets/TripZo.png'),
+                                      embeddedImageStyle: const QrEmbeddedImageStyle(
+                                        size: Size(50, 50),
+                                      ),
+                                      eyeStyle: const QrEyeStyle(
+                                        eyeShape: QrEyeShape.square,
+                                        color: Color(0xFF6366F1),
+                                      ),
+                                      dataModuleStyle: const QrDataModuleStyle(
+                                        dataModuleShape: QrDataModuleShape.circle,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      // Reset OTP Section
+                      Text(
+                        "Generate New OTP",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Please enter your password to confirm generating a new OTP for this vehicle. This will invalidate the old OTP.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        "ADMIN PASSWORD *",
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey.shade500),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: passwordCtrl,
+                        obscureText: obscureText,
+                        decoration: InputDecoration(
+                          hintText: "Enter your password",
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                          suffixIcon: IconButton(
+                            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                            onPressed: () {
+                              setState(() {
+                                obscureText = !obscureText;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Mocking reset action
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("OTP Reset successfully!"), backgroundColor: Colors.green));
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade500,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("Reset OTP", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            backgroundColor: isDark ? const Color(0xFF334155) : Colors.grey.shade200,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          child: Text("Close", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      }
+    );
+  }
+
+  String? _getVehicleImageUrl(Map<String, dynamic> veh) {
+    final keys = ['vehicle_profile_url', 'image', 'vehicle_image', 'photo', 'vehicle_photo', 'avatar', 'picture', 'file', 'image_url', 'logo', 'thumbnail', 'front_image', 'vehicle_front_image'];
+    for (var key in keys) {
+      if (veh[key] != null && veh[key].toString().isNotEmpty && veh[key].toString() != 'null') {
+        return veh[key].toString();
+      }
+    }
+    if (veh['vehicle_type'] is Map && veh['vehicle_type']['image'] != null) {
+      return veh['vehicle_type']['image'].toString();
+    }
+    return null;
+  }
+
   Widget _buildVehicleHero(bool isDark, Color surfaceColor, Color primaryBlue) {
     final veh = _vehicleData!['vehicleData'] ?? {};
     final status = veh['status'] ?? 'ACTIVE';
@@ -305,25 +596,32 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           Hero(
             tag: 'vehicle_plate_${widget.vehicleId}',
             child: Container(
-              width: 100,
-              height: 100,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                border: Border.all(color: primaryBlue.withValues(alpha: 0.2), width: 4),
                 gradient: LinearGradient(
                   colors: [primaryBlue, primaryBlue.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
+                image: _getVehicleImageUrl(veh) != null
+                    ? DecorationImage(
+                        image: NetworkImage(ApiConstants.getImageUrl(_getVehicleImageUrl(veh)!)),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-              child: Center(
-                child: Icon(
-                  _getVehicleIcon(
-                    veh['vehicleType']?['name'] ?? veh['vehicle_type'] ?? '',
-                  ),
-                  color: Colors.white,
-                  size: 48,
-                ),
-              ),
+              child: _getVehicleImageUrl(veh) == null
+                  ? Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Image.asset(
+                        'assets/TripZo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    )
+                  : null,
             ),
           ),
           const SizedBox(height: 16),
