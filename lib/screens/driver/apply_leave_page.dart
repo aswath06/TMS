@@ -11,6 +11,7 @@ class ApplyLeavePage extends StatefulWidget {
 
   @override
   State<ApplyLeavePage> createState() => _ApplyLeavePageState();
+  
 }
 
 class _ApplyLeavePageState extends State<ApplyLeavePage> {
