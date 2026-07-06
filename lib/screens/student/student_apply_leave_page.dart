@@ -26,10 +26,12 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
   final Color primaryBlue = const Color(0xFF6366F1);
 
   Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final DateTime? picked = await CustomDateTimePicker.show(
       context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      minDate: DateTime.now(),
+      initialDate: _selectedDate ?? today,
+      minDate: today,
       showTime: false,
       accent: primaryBlue,
     );
@@ -86,8 +88,6 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                       const SizedBox(height: 16),
                       _buildShiftChips(cardColor, titleColor, isTamil),
 
-
-
                       ListenableBuilder(
                         listenable: useStudentLeaveStore,
                         builder: (context, child) {
@@ -95,7 +95,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                             return const SizedBox.shrink();
                           }
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 24),
+                            margin: const EdgeInsets.only(top: 24),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,
@@ -131,6 +131,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                         },
                       ),
 
+                      const SizedBox(height: 32),
                       _buildSubmitButton(isTamil),
                       const SizedBox(height: 50),
                     ],

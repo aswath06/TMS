@@ -77,9 +77,14 @@ class _OtpAttendanceScreenState extends State<OtpAttendanceScreen> {
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color primaryBlue = const Color(0xFF6366F1);
     
-    // Calculate size dynamically
     final double screenHeight = MediaQuery.of(context).size.height;
     final double keypadHeight = screenHeight * 0.45;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    // Calculate dynamic size
+    final double availableWidth = screenWidth - 48; // 24 padding each side
+    double baseBoxWidth = (availableWidth - (5 * 8)) / 6; // 8 spacing between 6 boxes
+    baseBoxWidth = baseBoxWidth.clamp(35.0, 60.0);
+    final double baseBoxHeight = baseBoxWidth * 1.25;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -106,49 +111,46 @@ class _OtpAttendanceScreenState extends State<OtpAttendanceScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(_maxLen, (index) {
-                          final bool hasValue = index < _otpCode.length;
-                          final String digit = hasValue ? _otpCode[index] : "";
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOutBack,
-                            width: hasValue ? 50 : 42,
-                            height: hasValue ? 62 : 52,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: hasValue ? primaryBlue : (isDark ? Colors.white24 : Colors.black12),
-                                width: hasValue ? 2 : 1,
-                              ),
-                              boxShadow: hasValue
-                                  ? [
-                                      BoxShadow(
-                                        color: primaryBlue.withValues(alpha: 0.3),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
-                                      )
-                                    ]
-                                  : [],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_maxLen, (index) {
+                        final bool hasValue = index < _otpCode.length;
+                        final String digit = hasValue ? _otpCode[index] : "";
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutBack,
+                          width: hasValue ? baseBoxWidth + 6 : baseBoxWidth,
+                          height: hasValue ? baseBoxHeight + 8 : baseBoxHeight,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: hasValue ? primaryBlue : (isDark ? Colors.white24 : Colors.black12),
+                              width: hasValue ? 2.5 : 1,
                             ),
-                            child: Center(
-                              child: Text(
-                                digit,
-                                style: TextStyle(
-                                  fontSize: hasValue ? 28 : 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: titleColor,
-                                ),
+                            boxShadow: hasValue
+                                ? [
+                                    BoxShadow(
+                                      color: primaryBlue.withValues(alpha: 0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    )
+                                  ]
+                                : [],
+                          ),
+                          child: Center(
+                            child: Text(
+                              digit,
+                              style: TextStyle(
+                                fontSize: hasValue ? 28 : 24,
+                                fontWeight: FontWeight.w900,
+                                color: titleColor,
                               ),
                             ),
-                          );
-                        }),
-                      ),
+                          ),
+                        );
+                      }),
                     ),
                   ),
                 ],

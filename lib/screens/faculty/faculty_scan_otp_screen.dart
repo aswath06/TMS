@@ -933,6 +933,12 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
             builder: (context, child) {
               final double shakeOffset = _shakeAnimation.value * 12.0;
               final double mergeVal = _mergeAnimation.value;
+              
+              final double screenWidth = MediaQuery.of(context).size.width;
+              final double availableWidth = screenWidth - 48; // 24 padding each side
+              double baseBoxWidth = (availableWidth - (5 * 12)) / 6; // 12 is the horizontal margin spacing (6 * 2)
+              baseBoxWidth = baseBoxWidth.clamp(35.0, 55.0);
+              final double baseBoxHeight = baseBoxWidth * 1.35;
 
               return Transform.translate(
                 offset: Offset(shakeOffset, 0),
@@ -943,8 +949,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                     children: List.generate(6, (index) {
                     final bool isCurrent = _focusNodes[index].hasFocus;
                     
-                    // Center the 6 boxes into one single box in the center (item index relative to center offset is (index - 2.5) * (48.0 + 12.0))
-                    final double translationX = -(index - 2.5) * (48.0 + 12.0) * mergeVal;
+                    // Center the 6 boxes into one single box in the center (item index relative to center offset is (index - 2.5) * (baseBoxWidth + 12.0))
+                    final double translationX = -(index - 2.5) * (baseBoxWidth + 12.0) * mergeVal;
                     
                     Color bgCol = isDark ? const Color(0xFF1E293B) : Colors.white;
                     Color borderCol = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200;
@@ -966,8 +972,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                     return Transform.translate(
                       offset: Offset(translationX, 0),
                       child: Container(
-                        width: 48,
-                        height: 64,
+                        width: baseBoxWidth,
+                        height: baseBoxHeight,
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
