@@ -11,6 +11,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:tripzo/store/admin_allowance_store.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
+import 'package:tripzo/screens/admin/admin_allowance_form_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
@@ -71,6 +72,39 @@ class _AdminAllowanceScreenState extends ConsumerState<AdminAllowanceScreen> {
 
   void _onSearchChanged(String query) {
     adminAllowanceStore.setFilters(search: query);
+  }
+
+  void _showDeleteConfirmation(int allowanceId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Discard Allowance Request?'),
+          content: const Text('Are you absolutely sure you want to delete this allowance?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                bool success = await adminAllowanceStore.deleteAllowance(allowanceId);
+                if (success) {
+                  showTopToast(context, 'Allowance deleted successfully');
+                  adminAllowanceStore.fetchAllowances(isRefresh: true);
+                } else {
+                  showTopToast(context, 'Failed to delete allowance', isError: true);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showFilterModal(BuildContext context) {
@@ -1039,6 +1073,25 @@ final store = ref.watch(adminAllowanceStoreProvider);
           ),
         ],
       ),
+      floatingActionButton: !_showPendingTab
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminAllowanceFormScreen(),
+                  ),
+                );
+              },
+              backgroundColor: primaryBlue,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: Text(
+                isTamil ? "புதிய படி" : "Add Allowance",
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              elevation: 4,
+            )
+          : null,
     );
   }
 
@@ -1228,13 +1281,90 @@ final store = ref.watch(adminAllowanceStoreProvider);
                       ],
                     ),
                   ),
-                  Text(
-                    "₹$amount",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: primaryBlue,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        "₹$amount",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert_rounded, color: Colors.grey),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 8,
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        offset: const Offset(0, 40),
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AdminAllowanceFormScreen(allowance: item),
+                              ),
+                            );
+                          } else if (value == 'delete') {
+                            _showDeleteConfirmation(item['id']);
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          PopupMenuItem<String>(
+                            value: 'edit',
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: primaryBlue.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.edit_rounded, size: 16, color: primaryBlue),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Edit Allowance',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: titleColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem<String>(
+                            value: 'delete',
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Delete',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1720,35 +1850,10 @@ final store = ref.watch(adminAllowanceStoreProvider);
         child: InkWell(
           borderRadius: BorderRadius.circular(24),
           onTap: () {
-            String timeStr = "TBD";
-            if (tripLegs != null && tripLegs.isNotEmpty) {
-              final firstLeg = tripLegs[0];
-              if (firstLeg['planned_start_at'] != null) {
-                try {
-                  final dt = DateTime.parse(firstLeg['planned_start_at']).toLocal();
-                  timeStr = DateFormat('hh:mm a').format(dt);
-                } catch (_) {}
-              }
-            }
-
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MissionDetailsScreen(
-                  missionTitle: routeName,
-                  time: timeStr,
-                  driverName: driverName,
-                  driverPhone: "",
-                  vehicleInfo: vehicleNumber,
-                  capacity: "0",
-                  pathType: routeRequest['trip_type'] ?? "ONE_WAY",
-                  status: item['status'] ?? "UNKNOWN",
-                  statusColor: Colors.orange,
-                  requestId: routeRequest['id']?.toString() ?? "",
-                  creatorName: "Transport Department",
-                  rawStatus: 8,
-                  stops: const [],
-                ),
+                builder: (context) => AdminAllowanceFormScreen(pendingCreation: item),
               ),
             );
           },

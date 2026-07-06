@@ -1750,25 +1750,63 @@ class _FuelPageState extends State<FuelPage> {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      volume,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: primary,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          volume,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: primary,
+                          ),
+                        ),
+                        Text(
+                          status.replaceAll('_', ' '),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: isHistory ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      status.replaceAll('_', ' '),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: isHistory ? Colors.green : Colors.orange,
+                    if (!isHistory) ...[
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert, color: subColor, size: 20),
+                        padding: EdgeInsets.zero,
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CreateFuelRequestPage(initialFuelData: item),
+                              ),
+                            );
+                            if (result == true) {
+                              _fetchApprovalLogs();
+                              _fetchFuelLogs(isRefresh: true);
+                            }
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 16),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],

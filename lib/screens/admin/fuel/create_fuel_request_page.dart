@@ -12,7 +12,8 @@ import '../../../utils/api_constants.dart';
 import '../../../store/user_store.dart';
 
 class CreateFuelRequestPage extends StatefulWidget {
-  const CreateFuelRequestPage({super.key});
+  final Map<String, dynamic>? initialFuelData;
+  const CreateFuelRequestPage({super.key, this.initialFuelData});
 
   @override
   State<CreateFuelRequestPage> createState() => _CreateFuelRequestPageState();
@@ -46,6 +47,22 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     super.initState();
     _volumeController.addListener(() => setState(() {}));
     _amountController.addListener(() => setState(() {}));
+
+    if (widget.initialFuelData != null) {
+      final data = widget.initialFuelData!;
+      _volumeController.text = data['required_volume']?.toString() ?? data['filled_volume']?.toString() ?? '';
+      _filledVolumeController.text = data['filled_volume']?.toString() ?? '';
+      _amountController.text = data['bill_amount']?.toString() ?? '';
+      _odometerController.text = data['odometer_reading']?.toString() ?? '';
+      _remarksController.text = data['internal_ledger_remarks']?.toString() ?? '';
+      
+      if (data['filled_at'] != null) {
+        try {
+          _selectedDate = DateTime.parse(data['filled_at']).toLocal();
+        } catch (_) {}
+      }
+    }
+
     _initializeRole();
     _fetchVehicles();
     _fetchDrivers();
@@ -94,6 +111,14 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
             }).toList();
           }
 
+          if (widget.initialFuelData != null) {
+            final bId = widget.initialFuelData!['fuel_bunk_id'] ?? widget.initialFuelData!['bunk_id'];
+            if (bId != null) {
+              final idx = fetchedBunks.indexWhere((b) => b['id'] == bId);
+              if (idx != -1) _selectedBunk = fetchedBunks[idx];
+            }
+          }
+
           setState(() {
             _bunks = fetchedBunks;
             _isLoadingBunks = false;
@@ -124,7 +149,15 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           Map<String, dynamic>? autoSelectedDriver;
           
           final role = await UserStore.getRole();
-          if (role?.toLowerCase() == 'driver') {
+          if (widget.initialFuelData != null) {
+            final dId = widget.initialFuelData!['driver_id'];
+            if (dId != null) {
+              final idx = fetchedDrivers.indexWhere((d) => d['id'] == dId);
+              if (idx != -1) {
+                autoSelectedDriver = fetchedDrivers[idx];
+              }
+            }
+          } else if (role?.toLowerCase() == 'driver') {
             final dId = await UserStore.getDriverId();
             if (dId != null) {
               final idx = fetchedDrivers.indexWhere((d) => d['id'] == dId);
@@ -161,8 +194,20 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
+          final fetchedVehicles = List<Map<String, dynamic>>.from(responseData['data']);
+          Map<String, dynamic>? preSelected;
+          
+          if (widget.initialFuelData != null) {
+            final vId = widget.initialFuelData!['vehicle_id'];
+            if (vId != null) {
+              final idx = fetchedVehicles.indexWhere((v) => v['id'] == vId);
+              if (idx != -1) preSelected = fetchedVehicles[idx];
+            }
+          }
+          
           setState(() {
-            _vehicles = List<Map<String, dynamic>>.from(responseData['data']);
+            _vehicles = fetchedVehicles;
+            _selectedVehicle = preSelected ?? _selectedVehicle;
             _isLoadingVehicles = false;
           });
         }
@@ -1059,7 +1104,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         child: _isSubmitting 
           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
           : Text(
-              _isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG",
+              widget.initialFuelData != null ? "UPDATE FUEL LOG" : (_isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG"),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
@@ -1223,7 +1268,12 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
 
     try {
       final token = await UserStore.getToken();
-      var request = http.MultipartRequest('POST', Uri.parse(ApiConstants.fuelLog));
+      final bool isEdit = widget.initialFuelData != null;
+      final uri = isEdit 
+          ? Uri.parse(ApiConstants.updateFuelLog(widget.initialFuelData!['id']))
+          : Uri.parse(ApiConstants.fuelLog);
+          
+      var request = http.MultipartRequest(isEdit ? 'PUT' : 'POST', uri);
       request.headers.addAll(ApiConstants.getHeaders(token));
       
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
@@ -1245,8 +1295,8 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       // Console log curl equivalent
       StringBuffer curl = StringBuffer();
       curl.write('curl --location ');
-      if (!_isBITBunk) curl.write('--request POST ');
-      curl.write("'${ApiConstants.fuelLog}' \\\n");
+      if (!_isBITBunk || isEdit) curl.write('--request ${isEdit ? 'PUT' : 'POST'} ');
+      curl.write("'$uri' \\\n");
       ApiConstants.getHeaders(token).forEach((k, v) => curl.write("--header '$k: $v' \\\n"));
       request.fields.forEach((k, v) => curl.write("--form '$k=\"$v\"' \\\n"));
       if (_billImage != null) curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
@@ -1263,14 +1313,23 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         if (responseData['success'] == true) {
           final instanceId = responseData['data']['instance_id'] ?? "SUCCESS";
           
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(responseData['message'] ?? "Success"),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          _showIndentPopup(instanceId);
+          if (isEdit) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Fuel order updated successfully"),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context, true); // Return true to indicate refresh needed
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(responseData['message'] ?? "Success"),
+                backgroundColor: Colors.green,
+              ),
+            );
+            _showIndentPopup(instanceId);
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

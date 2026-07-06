@@ -39,6 +39,7 @@ class ApiConstants {
   static String get fuelLog => "$baseUrl/api/vehicles/fuel-log";
   static String get driverComplete => "$baseUrl/api/vehicles/driver-complete";
   static String deleteFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id";
+  static String updateFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id";
   static String updateBunkPrice(dynamic id) => "$baseUrl/api/vehicles/fuel-bunk/$id/price";
 
   // Requests
@@ -49,8 +50,12 @@ class ApiConstants {
   static String get getRequestById => "$baseUrl/request/getth-by-id/";
   static String get getRouteById => "$baseUrl/request/get-by-id/";
   static String get getDriverAllowances => "$baseUrl/request/allowances-all";
+  static String get getAllowancePurposes => "$baseUrl/request/allowance-purposes";
+  static String get getAllowanceTypes => "$baseUrl/request/allowance-types";
   static String allowanceSeen(dynamic id) => "$baseUrl/request/allowances/$id/seen";
   static String allowanceRecheck(dynamic id) => "$baseUrl/request/allowances/$id/recheck";
+  static String updateAllowance(dynamic id) => "$baseUrl/request/allowances/$id/update";
+  static String deleteAllowance(dynamic id) => "$baseUrl/request/allowances/$id";
   static String getAllowanceReport(String start, String end, String format) => "$baseUrl/request/allowances-report?start_date=$start&end_date=$end&format=$format";
   static String get createAllowance => "$baseUrl/request/create-allowance";
   static String get startRoute => "$baseUrl/request/start-route";

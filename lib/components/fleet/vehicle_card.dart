@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tripzo/utils/api_constants.dart';
 
 class VehicleCard extends StatelessWidget {
   final dynamic vehicle;
@@ -14,6 +15,19 @@ class VehicleCard extends StatelessWidget {
     required this.subColor,
   });
 
+  String? _getVehicleImageUrl(Map<String, dynamic> veh) {
+    final keys = ['vehicle_profile_url', 'image', 'vehicle_image', 'photo', 'vehicle_photo', 'avatar', 'picture', 'file', 'image_url', 'logo', 'thumbnail', 'front_image', 'vehicle_front_image'];
+    for (var key in keys) {
+      if (veh[key] != null && veh[key].toString().isNotEmpty && veh[key].toString() != 'null') {
+        return veh[key].toString();
+      }
+    }
+    if (veh['vehicle_type'] is Map && veh['vehicle_type']['image'] != null) {
+      return veh['vehicle_type']['image'].toString();
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final String type =
@@ -24,6 +38,8 @@ class VehicleCard extends StatelessWidget {
         .toUpperCase();
     final String fuelType = vehicle['fuel_type'] ?? "N/A";
     final String odometer = vehicle['current_odometer']?.toString() ?? "0";
+    
+    final String? imageUrl = _getVehicleImageUrl(vehicle);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -48,8 +64,16 @@ class VehicleCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: _getIconColor(type).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
+              image: imageUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(ApiConstants.getImageUrl(imageUrl)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: Icon(_getIcon(type), color: _getIconColor(type), size: 28),
+            child: imageUrl == null
+                ? Icon(_getIcon(type), color: _getIconColor(type), size: 28)
+                : null,
           ),
           const SizedBox(width: 16),
           Expanded(

@@ -4,6 +4,7 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/fleet_monitor_store.dart';
 import 'package:tripzo/components/fleet/vehicle_card.dart';
 import 'package:tripzo/screens/admin/vechiles/vehicle_detail_page.dart';
+import 'package:tripzo/screens/admin/vechiles/admin_vehicle_form_screen.dart';
 
 class VehiclePage extends ConsumerStatefulWidget {
   const VehiclePage({super.key});
@@ -100,21 +101,41 @@ class _VehiclePageState extends ConsumerState<VehiclePage> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24.0, 40.0, 24.0, 24.0),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Fleet Monitor",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF6366F1),
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Fleet Monitor",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Real-time campus tracking",
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              "Real-time campus tracking",
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Color(0xFF6366F1), size: 36),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminVehicleFormScreen(),
+                  ),
+                );
+                if (result == true) {
+                  ref.read(fleetMonitorStoreProvider).fetchFleetData(forceRefresh: true);
+                }
+              },
             ),
           ],
         ),
