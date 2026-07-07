@@ -41,43 +41,34 @@ class NotificationProvider extends ChangeNotifier {
     // 1. Establish Firebase Connection
     await firebaseService.initialize(
       onNewNotification: (data) async {
-        debugPrint("🔔 Foreground direct firebase received notification: $data");
+        debugPrint("🔔 [FG] App state update received: $data");
         try {
           final eventType = data['event'];
           if (eventType != 'notification:new') return;
 
           final notification = NotificationModel.fromJson(data);
-          
+
           // Avoid duplicate if already in list
           if (notifications.any((n) => n.id == notification.id)) return;
 
+          // Update in-app state (notification list + badge counter)
           notifications.insert(0, notification);
           unreadCount += 1;
           notifyListeners();
 
-          // Show real-time local push notification on screen
-          if (notification.type.toUpperCase() == 'ALERT') {
-            await NotificationLocalService.showRouteAssignmentAlert(
-              id: notification.id,
-              title: notification.title,
-              body: notification.message,
-            );
-          } else {
-            await NotificationLocalService.showNotification(
-              id: notification.id,
-              title: notification.title,
-              body: notification.message,
-            );
-          }
+          // NOTE: The local push notification (system banner) is already shown
+          // by NotificationFirebaseService.onMessage listener directly, so we
+          // do NOT call showNotification/showRouteAssignmentAlert here again
+          // to avoid showing duplicate banners.
 
-          // Show beautifully animated top-sliding premium in-app overlay banner
+          // Show the beautiful in-app overlay slide-down banner
           showPremiumInAppNotification(
             title: notification.title,
             message: notification.message,
             type: notification.type,
           );
         } catch (e) {
-          debugPrint("Error handling new firebase notification: $e");
+          debugPrint("🔔 Error handling new firebase notification in provider: $e");
         }
       },
     );

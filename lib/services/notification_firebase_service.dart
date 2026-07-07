@@ -4,17 +4,20 @@ import 'package:flutter/material.dart';
 import 'notification_local_service.dart';
 import '../models/notification_model.dart';
 
-// Top-level background message handler
+// Top-level background message handler.
+// MUST be a top-level function (not a class method) and annotated with @pragma.
+// This runs in a SEPARATE ISOLATE when the app is in background/terminated.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Must initialize Flutter and Firebase before doing anything else
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  debugPrint("Handling a background message: ${message.messageId}");
+  debugPrint("🔔 [BG] Handling background message: ${message.messageId}");
 
   try {
     final data = message.data;
     final eventType = data['event'];
-    
+
     if (eventType == 'notification:new') {
       await NotificationLocalService.initialize();
       final notification = NotificationModel.fromJson(data);
@@ -33,7 +36,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       }
     }
   } catch (e) {
-    debugPrint("Error handling background message: $e");
+    debugPrint("🔔 [BG] Error handling background message: $e");
   }
 }
 
@@ -46,8 +49,9 @@ class NotificationFirebaseService {
   }) async {
     this.onNewNotification = onNewNotification;
 
-    // Request permissions (especially for iOS)
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
+    // ── Step 1: Request permissions (critical for iOS) ──────────────────────
+    final NotificationSettings settings =
+        await _firebaseMessaging.requestPermission(
       alert: true,
       announcement: false,
       badge: true,
@@ -57,42 +61,93 @@ class NotificationFirebaseService {
       sound: true,
     );
 
-    // Ensure foreground notifications appear on iOS natively
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    debugPrint(
+        '🔔 iOS notification permission: ${settings.authorizationStatus}');
+
+    // ── Step 2: iOS foreground presentation options ──────────────────────────
+    // This tells Firebase to show the system notification banner/sound/badge
+    // even when the app is in the FOREGROUND (like WhatsApp).
+    // On iOS, FCM suppresses the visual notification by default when the app
+    // is open — this overrides that behaviour.
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    debugPrint('User granted permission: ${settings.authorizationStatus}');
+    // ── Step 3: NOTE — background handler is already registered in main() ───
+    // Do NOT register it again here — double registration can cause issues.
+    // FirebaseMessaging.onBackgroundMessage() is already called in main.dart.
 
-    // Set background handler
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    // ── Step 4: Foreground message listener ─────────────────────────────────
+    // onMessage fires when a push arrives while the app is in the FOREGROUND.
+    // On Android, we must show a local notification manually (FCM won't show
+    // a system banner while the app is active on Android).
+    // On iOS, setForegroundNotificationPresentationOptions (Step 2) + the
+    // AppDelegate.willPresent delegate already handle showing the banner natively,
+    // but we still call onNewNotification so the app state updates.
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      debugPrint('🔔 [FG] Foreground message received: ${message.messageId}');
+      debugPrint('🔔 [FG] Data: ${message.data}');
 
-    // Foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('Got a message whilst in the foreground!');
-      debugPrint('Message data: ${message.data}');
+      if (message.data.isNotEmpty) {
+        // Update in-app state (notification list, badge count, overlay banner)
+        this.onNewNotification?.call(message.data);
 
-      if (message.notification != null) {
-        debugPrint('Message also contained a notification: ${message.notification}');
+        // On Android, we must show the local notification manually since FCM
+        // won't display a system banner while the app is in the foreground.
+        // On iOS the system handles it via willPresent in AppDelegate, but
+        // showing via flutter_local_notifications is harmless and gives a
+        // consistent in-app overlay experience.
+        try {
+          final data = message.data;
+          final eventType = data['event'];
+          if (eventType == 'notification:new') {
+            final notification = NotificationModel.fromJson(data);
+            if (notification.type.toUpperCase() == 'ALERT') {
+              await NotificationLocalService.showRouteAssignmentAlert(
+                id: notification.id,
+                title: notification.title,
+                body: notification.message,
+              );
+            } else {
+              await NotificationLocalService.showNotification(
+                id: notification.id,
+                title: notification.title,
+                body: notification.message,
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('🔔 [FG] Error showing local notification: $e');
+        }
       }
 
-      if (this.onNewNotification != null && message.data.isNotEmpty) {
-         this.onNewNotification!(message.data);
+      if (message.notification != null) {
+        debugPrint(
+            '🔔 [FG] Notification payload: ${message.notification?.title}');
       }
     });
 
-    // Handle messages that open the app from terminated state
-    RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null && this.onNewNotification != null && initialMessage.data.isNotEmpty) {
-      this.onNewNotification!(initialMessage.data);
+    // ── Step 5: Handle app launched from a TERMINATED state via notification ─
+    // getInitialMessage() returns the notification that caused the app to open
+    // from a fully terminated (killed) state.
+    final RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null && initialMessage.data.isNotEmpty) {
+      debugPrint(
+          '🔔 [TERMINATED] App opened from killed state via notification');
+      this.onNewNotification?.call(initialMessage.data);
     }
 
-    // Handle messages that open the app from background state
+    // ── Step 6: Handle app opened from BACKGROUND state via notification ─────
+    // onMessageOpenedApp fires when the user taps a notification while the
+    // app was in the background (not killed).
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (this.onNewNotification != null && message.data.isNotEmpty) {
-        this.onNewNotification!(message.data);
+      debugPrint('🔔 [BG→FG] App brought to foreground via notification tap');
+      if (message.data.isNotEmpty) {
+        this.onNewNotification?.call(message.data);
       }
     });
   }
