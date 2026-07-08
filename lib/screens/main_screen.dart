@@ -27,6 +27,7 @@ import 'package:tripzo/screens/student/student_bus_screen.dart';
 import '../components/custom_bottom_bar.dart';
 import 'package:tripzo/screens/security/security_dashboard_screen.dart';
 import 'package:tripzo/screens/security/security_vehicle_screen.dart';
+import 'package:tripzo/screens/security/security_bus_screen.dart';
 import 'package:tripzo/screens/security/security_qr_scanner_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -158,7 +159,7 @@ class MainScreenState extends State<MainScreen> {
         return [
           const SecurityDashboardScreen(),
           const SecurityVehicleScreen(),
-          const SecurityQrScannerScreen(),
+          const SecurityBusScreen(),
           const AdminProfileScreen(),
         ];
       case 'student':

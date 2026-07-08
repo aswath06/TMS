@@ -8,7 +8,8 @@ import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/store/user_store.dart';
 
 class SecurityQrScannerScreen extends StatefulWidget {
-  const SecurityQrScannerScreen({super.key});
+  final String defaultMode;
+  const SecurityQrScannerScreen({super.key, this.defaultMode = 'Routes'});
 
   @override
   State<SecurityQrScannerScreen> createState() => _SecurityQrScannerScreenState();
@@ -23,7 +24,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
   bool _isScanned = false;
   bool _isProcessing = false;
   bool _isSuccessState = false;
-  String _selectedMode = 'Routes';
+  late String _selectedMode;
 
   late AnimationController _laserController;
   late Animation<double> _laserAnimation;
@@ -31,6 +32,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
   @override
   void initState() {
     super.initState();
+    _selectedMode = widget.defaultMode;
     _laserController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2, milliseconds: 500),
@@ -312,6 +314,30 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
                     padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 12.0),
                     child: Row(
                       children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 14),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark 
+                                  ? Colors.white.withValues(alpha: 0.05) 
+                                  : Colors.black.withValues(alpha: 0.03),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark 
+                                    ? Colors.white.withValues(alpha: 0.1) 
+                                    : Colors.black.withValues(alpha: 0.05),
+                                width: 1,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.arrow_back_ios_new_rounded, 
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
@@ -322,7 +348,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
                           child: Icon(
                             _isSuccessState 
                                 ? Icons.verified_user_rounded 
-                                : (_isProcessing ? Icons.sync_rounded : Icons.qr_code_scanner_rounded), 
+                                : (_isProcessing ? Icons.sync_rounded : (_selectedMode == 'Bus' ? Icons.directions_bus_rounded : Icons.directions_car_rounded)), 
                             color: activeAccentColor, 
                             size: 24,
                           ),
@@ -332,9 +358,9 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                "Gate Verification",
-                                style: TextStyle(
+                              Text(
+                                _selectedMode == 'Bus' ? "Bus QR Code" : "Car QR Code Scan",
+                                style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.5,
@@ -367,62 +393,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
                   
                   const SizedBox(height: 16),
                   
-                  // Mode Toggle
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: activeAccentColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: activeAccentColor.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _selectedMode = 'Routes'),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: _selectedMode == 'Routes' ? activeAccentColor : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Routes',
-                                  style: TextStyle(
-                                    color: _selectedMode == 'Routes' ? Colors.white : activeAccentColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => setState(() => _selectedMode = 'Bus'),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: _selectedMode == 'Bus' ? activeAccentColor : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Bus',
-                                  style: TextStyle(
-                                    color: _selectedMode == 'Bus' ? Colors.white : activeAccentColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
+                  // Mode Toggle removed as requested
                   
                   // Immersive Glass Scanner Frame (Fixed Height for scrolling layout)
                   Container(

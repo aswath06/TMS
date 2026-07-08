@@ -114,7 +114,7 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    "Route Monitor",
+                    "Car Monitor",
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
@@ -123,29 +123,28 @@ class _SecurityVehicleScreenState extends ConsumerState<SecurityVehicleScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    "Track vehicles entering and leaving the campus",
+                    "Track cars entering and leaving the campus",
                     style: TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                 ],
               ),
             ),
-            if (_userRole == "super admin")
-              Container(
-                margin: const EdgeInsets.only(left: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF6366F1)),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SecurityQrScannerScreen()),
-                    );
-                  },
-                ),
+            Container(
+              margin: const EdgeInsets.only(left: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: IconButton(
+                icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF6366F1)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SecurityQrScannerScreen(defaultMode: 'Routes')),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

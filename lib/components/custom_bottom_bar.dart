@@ -142,14 +142,14 @@ class CustomBottomBar extends StatelessWidget {
         return [
           _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Dashboard'),
           _NavItem(
-            Icons.local_shipping_outlined,
-            Icons.local_shipping_rounded,
-            'Vehicle',
+            Icons.directions_car_outlined,
+            Icons.directions_car_rounded,
+            'Car',
           ),
           _NavItem(
-            Icons.qr_code_scanner_outlined,
-            Icons.qr_code_scanner_rounded,
-            'Scan QR',
+            Icons.directions_bus_outlined,
+            Icons.directions_bus_rounded,
+            'Bus',
           ),
           _NavItem(
             Icons.person_outline_rounded,

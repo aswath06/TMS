@@ -1157,19 +1157,52 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
-      final dateStr = DateTime.now().toIso8601String().substring(0, 10);
-      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStr&driver_id=$driverId&user_ID=$userId";
+      final dateStrToday = DateTime.now().toIso8601String().substring(0, 10);
+      final dateStrTomorrow = DateTime.now().add(const Duration(days: 1)).toIso8601String().substring(0, 10);
+
+      final urlToday = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStrToday&driver_id=$driverId&user_ID=$userId";
+      final urlTomorrow = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?service_date=$dateStrTomorrow&driver_id=$driverId&user_ID=$userId";
 
       final headers = ApiConstants.getHeaders(token);
-      final response = await http.get(Uri.parse(url), headers: headers);
+      
+      debugPrint("--- [DRIVER BUS RUNS] SENDING CURL (TODAY) ---");
+      debugPrint("curl --location --request GET '$urlToday' \\");
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("----------------------------------------------");
+      
+      debugPrint("--- [DRIVER BUS RUNS] SENDING CURL (TOMORROW) ---");
+      debugPrint("curl --location --request GET '$urlTomorrow' \\");
+      headers.forEach((key, value) {
+        debugPrint("--header '$key: $value' \\");
+      });
+      debugPrint("-------------------------------------------------");
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        if (decoded['success'] == true) {
-          final List<dynamic> runsData = decoded['data']?['runs'] ?? [];
-          _dailyBusRuns = runsData.map((e) => e as Map<String, dynamic>).toList();
+      final responses = await Future.wait([
+        http.get(Uri.parse(urlToday), headers: headers),
+        http.get(Uri.parse(urlTomorrow), headers: headers),
+      ]);
+
+      List<dynamic> allRuns = [];
+      
+      debugPrint("--- [DRIVER BUS RUNS] RESPONSES RECEIVED ---");
+      for (int i = 0; i < responses.length; i++) {
+        var response = responses[i];
+        String tag = i == 0 ? "TODAY" : "TOMORROW";
+        debugPrint("[$tag] Status Code: ${response.statusCode}");
+        debugPrint("[$tag] Body: ${response.body}");
+        
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          if (decoded['success'] == true) {
+            allRuns.addAll(decoded['data']?['runs'] ?? []);
+          }
         }
       }
+      debugPrint("--------------------------------------------");
+      
+      _dailyBusRuns = allRuns.map((e) => e as Map<String, dynamic>).toList();
     } catch (e) {
       debugPrint("Error fetching daily bus runs: $e");
     } finally {

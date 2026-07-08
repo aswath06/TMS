@@ -32,6 +32,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
   bool _isHaltSubmitting = false;
   String? _userRole;
 
+  int _selectedTab = 0;
+  Map<String, dynamic>? _detailedRun;
+  bool _isLoadingDetails = false;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +46,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
     _loadUserRole();
+    _fetchRunDetails();
   }
 
   Future<void> _loadUserRole() async {
@@ -59,7 +64,50 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     super.dispose();
   }
 
+  Future<void> _fetchRunDetails() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingDetails = true;
+    });
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      
+      final dynamic rawRunId = run['id'] ?? assignment['daily_bus_run_id'];
+      final int runId = rawRunId is int ? rawRunId : int.tryParse(rawRunId?.toString() ?? '0') ?? 0;
+      
+      if (runId == 0) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          if (mounted) {
+            setState(() {
+              _detailedRun = decoded['data'];
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching detailed run: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDetails = false;
+        });
+      }
+    }
+  }
+
   Future<void> _handleRefresh() async {
+    await _fetchRunDetails();
     final role = await UserStore.getRole();
     if (role == 'transport admin' || role == 'super admin') {
       final token = await UserStore.getToken();
@@ -382,38 +430,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             ),
                           ),
                         ),
-                        if (routeObj?['boarding_otp'] != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.password_rounded,
-                                  color: Colors.orange,
-                                  size: 12,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "OTP: ${routeObj!['boarding_otp']}",
-                                  style: const TextStyle(
-                                    color: Colors.orange,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+
                       ],
                     ),
                   ],
@@ -422,137 +439,25 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
 
               const SizedBox(height: 24),
 
-              // Travel Metrics
-              _buildTravelMetrics(isDark, primaryBlue, shiftCode),
+              // Tabs Toggle
+              _buildToggleSwitch(primaryBlue, surfaceColor, subColor, titleColor),
 
-              if (_userRole == 'driver') ...[
+              if (_isLoadingDetails)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_selectedTab == 0) ...[
                 const SizedBox(height: 24),
-                _buildAssignedFacultySection(isDark, primaryBlue, surfaceColor, titleColor, subColor),
-              ],
+                _buildTravelMetrics(isDark, primaryBlue, shiftCode),
 
-              if (stops.isNotEmpty) ...[
+                if (_userRole == 'driver') ...[
+                  const SizedBox(height: 24),
+                  _buildAssignedFacultySection(isDark, primaryBlue, surfaceColor, titleColor, subColor),
+                ],
+              ] else ...[
                 const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: subColor.withValues(alpha: 0.1)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Route Stops",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ...List.generate(stops.length, (index) {
-                        final stop = stops[index];
-                        final isLast = index == stops.length - 1;
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Column(
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: primaryBlue,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isDark
-                                          ? const Color(0xFF0F172A)
-                                          : const Color(0xFFF8FAFC),
-                                      width: 3,
-                                    ),
-                                  ),
-                                ),
-                                if (!isLast)
-                                  Container(
-                                    width: 2,
-                                    height: 40,
-                                    color: primaryBlue.withValues(alpha: 0.3),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      stop['stop_name'] ?? 'Unknown Stop',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: titleColor,
-                                      ),
-                                    ),
-                                    if (shiftCode == 'MORNING' &&
-                                        stop['pickup_plan_time'] != null &&
-                                        stop['pickup_plan_time']
-                                            .toString()
-                                            .isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.access_time_rounded,
-                                            color: subColor,
-                                            size: 12,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            "Plan Time: ${_formatTime(stop['pickup_plan_time']?.toString())}",
-                                            style: TextStyle(
-                                              color: subColor,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ] else if (shiftCode == 'EVENING' &&
-                                        stop['drop_plan_time'] != null &&
-                                        stop['drop_plan_time']
-                                            .toString()
-                                            .isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.access_time_rounded,
-                                            color: subColor,
-                                            size: 12,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            "Plan Time: ${_formatTime(stop['drop_plan_time']?.toString())}",
-                                            style: TextStyle(
-                                              color: subColor,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
-                    ],
-                  ),
-                ),
+                _buildDetailedStops(isDark, primaryBlue, surfaceColor, titleColor, subColor, shiftCode),
               ],
 
               const SizedBox(height: 40),
@@ -1320,49 +1225,44 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       const SizedBox(height: 20),
                     ] else ...[
-                      // Passenger Count Input
+                      // Passenger Count Display
                       Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isDark
-                                ? const Color(0xFF334155)
-                                : const Color(0xFFE2E8F0),
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                             width: 1.5,
                           ),
                         ),
-                        child: TextField(
-                          controller: passengerController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
+                        child: Row(
+                          children: [
+                            Icon(Icons.group, color: primaryBlue),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Passenger Count",
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${widget.run['campus_in_count'] ?? '0'}",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF0F172A),
-                          ),
-                          decoration: InputDecoration(
-                            hintText: "Passenger Count",
-                            hintStyle: TextStyle(
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                              fontWeight: FontWeight.w600,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.group,
-                              color: Color(0xFF6366F1),
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -2577,6 +2477,47 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // Passenger Count Display
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.group, color: primaryBlue),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Passenger Count",
+                                style: TextStyle(
+                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "${widget.run['campus_out_count'] ?? '0'}",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
                     // DA/TA Required Option (Allowance)
                     Container(
@@ -3125,6 +3066,308 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
       ),
+    );
+  }
+
+  Widget _buildToggleSwitch(Color primaryBlue, Color surfaceColor, Color subColor, Color titleColor) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 0),
+      height: 48,
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: subColor.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedTab = 0);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _selectedTab == 0 ? primaryBlue.withValues(alpha: 0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "Overview",
+                  style: TextStyle(
+                    color: _selectedTab == 0 ? primaryBlue : subColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedTab = 1);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _selectedTab == 1 ? primaryBlue.withValues(alpha: 0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "Stops",
+                  style: TextStyle(
+                    color: _selectedTab == 1 ? primaryBlue : subColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleInfoCard(bool isDark, Color primaryBlue, Color surfaceColor, Color titleColor, Color subColor) {
+    final vehicle = _detailedRun?['vehicle'];
+    if (vehicle == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: subColor.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vehicle['registration_number'] ?? 'Unknown Vehicle',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Capacity: ${vehicle['capacity'] ?? 'N/A'} • ${vehicle['type'] ?? 'Bus'}",
+                  style: TextStyle(fontSize: 13, color: subColor),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDriverInfoCard(bool isDark, Color primaryBlue, Color surfaceColor, Color titleColor, Color subColor) {
+    final driver = _detailedRun?['driver'];
+    if (driver == null) return const SizedBox.shrink();
+
+    final user = driver['user'] ?? {};
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: subColor.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryBlue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.person_rounded, color: primaryBlue, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user['name'] ?? 'Unknown Driver',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user['phone'] ?? driver['employee_code'] ?? 'No contact info',
+                  style: TextStyle(fontSize: 13, color: subColor),
+                ),
+              ],
+            ),
+          ),
+          if (user['phone'] != null)
+            IconButton(
+              icon: const Icon(Icons.call, color: Colors.green),
+              onPressed: () {
+                launchUrl(Uri.parse('tel:${user['phone']}'));
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedStops(bool isDark, Color primaryBlue, Color surfaceColor, Color titleColor, Color subColor, String shiftCode) {
+    final stops = (_detailedRun?['runStops'] as List<dynamic>?) ?? [];
+    if (stops.isEmpty) return const SizedBox.shrink();
+
+    stops.sort((a, b) {
+      final orderA = a['stop_order'] as int? ?? 0;
+      final orderB = b['stop_order'] as int? ?? 0;
+      return shiftCode == 'EVENING' ? orderB.compareTo(orderA) : orderA.compareTo(orderB);
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8.0, bottom: 24.0),
+          child: Text(
+            "Assigned Stops",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: titleColor,
+            ),
+          ),
+        ),
+        ...List.generate(stops.length, (index) {
+          final stop = stops[index];
+          final bool isFirst = index == 0;
+          final bool isLast = index == stops.length - 1;
+          final int order = stop['stop_order'] ?? (index + 1);
+          final String stopName = stop['stop_name'] ?? 'Unknown Stop';
+          
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Column(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withValues(alpha: 0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isFirst ? Icons.home_rounded : (isLast ? Icons.flag_rounded : Icons.location_on_rounded),
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                    if (!isLast)
+                      Expanded(
+                        child: Container(
+                          width: 2,
+                          color: primaryBlue.withValues(alpha: 0.3),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: primaryBlue.withValues(alpha: 0.05)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                "Stop $order",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                stopName,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (shiftCode == 'MORNING' && stop['pickup_plan_time'] != null) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(Icons.arrow_upward_rounded, size: 14, color: const Color(0xFF10B981)),
+                              const SizedBox(width: 4),
+                              Text("Pickup: ${_formatTime(stop['pickup_plan_time']?.toString())}", style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ] else if (shiftCode == 'EVENING' && stop['drop_plan_time'] != null) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(Icons.arrow_downward_rounded, size: 14, color: const Color(0xFFEF4444)),
+                              const SizedBox(width: 4),
+                              Text("Drop: ${_formatTime(stop['drop_plan_time']?.toString())}", style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

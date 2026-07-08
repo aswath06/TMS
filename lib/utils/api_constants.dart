@@ -76,6 +76,7 @@ class ApiConstants {
   static String endLeg(dynamic tripId) => "$baseUrl/request/trips/$tripId/end";
   static String endTripLeg(dynamic legId) => "$baseUrl/request/trips/$legId/end";
   static String getSecurityRoutes(int page, int limit, String type) => "$baseUrl/request/security/get-routes?page=$page&limit=$limit&type=$type";
+  static String getDailyBusRuns(String serviceDate) => "$baseUrl/daily-bus/bus-run/get-all?service_date=$serviceDate";
 
   // Trip actions
   static String getStartOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-otp";

@@ -79,6 +79,7 @@ final store = ref.watch(driverStoreProvider);
                   final assignmentsList = run['assignment'] as List? ?? [];
                   for (var a in assignmentsList) {
                     final status = run['status'];
+                    if (status?.toString().toUpperCase() == 'COMPLETED') continue;
                     
                     final startLoc = run['start_location_name'] ?? 'Start';
                     final haltLoc = run['halt_location_name'] ?? 'Halt';
@@ -96,7 +97,7 @@ final store = ref.watch(driverStoreProvider);
                 allAssignments.sort((a, b) {
                   int runA = (a['run_data']['id'] ?? 0);
                   int runB = (b['run_data']['id'] ?? 0);
-                  if (runA != runB) return runB.compareTo(runA); // Newest runs first
+                  if (runA != runB) return runA.compareTo(runB); // Oldest runs first (Today before Tomorrow)
                   
                   final status = a['run_status']?.toString().toUpperCase() ?? '';
                   final shiftA = a['shift_code']?.toString().toUpperCase() ?? '';

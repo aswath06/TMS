@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/security_vehicle_store.dart';
+import 'package:tripzo/store/security_bus_store.dart';
 // Import all existing stores
 import 'package:tripzo/store/vehicle_store.dart';
 import 'package:tripzo/store/request_store.dart';
@@ -75,4 +76,9 @@ final securityVehicleStoreProvider = ChangeNotifierProvider<SecurityVehicleStore
 /// DailyRoutinesStore Provider
 final dailyRoutinesStoreProvider = ChangeNotifierProvider<DailyRoutinesStore>((ref) {
   return DailyRoutinesStore();
+});
+
+/// SecurityBusStore Provider
+final securityBusStoreProvider = ChangeNotifierProvider<SecurityBusStore>((ref) {
+  return SecurityBusStore();
 });
