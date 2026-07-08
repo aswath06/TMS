@@ -382,6 +382,169 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     }
   }
 
+  void _showConfirmAttendancePopup() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color primaryBlue = const Color(0xFF6366F1);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                decoration: BoxDecoration(
+                  color: primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: primaryBlue.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.warning_rounded, color: primaryBlue, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        "Confirm Attendance",
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: primaryBlue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Body
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Text(
+                      "Are you sure you want to confirm the attendance?",
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: Colors.amber.shade700, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "When you confirm the attendance, students can't enter their attendance anymore.",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.amber.shade700,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Footer
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          side: BorderSide(color: subTextColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: subTextColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _confirmAttendance();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          "Confirm",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmAttendance() async {
     setState(() => _isLoadingAction = true);
     try {
@@ -635,6 +798,348 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         });
       }
     }
+  }
+
+  Future<void> _markPassengerAbsent(String type, int targetUserId) async {
+    final String key = "${type.toUpperCase()}_$targetUserId";
+    setState(() {
+      _loadingPresentKeys.add(key);
+    });
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _showSnackBar("Session expired. Please log in again.", Colors.red);
+        return;
+      }
+
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/mark-absent";
+      final bodyData = {
+        "type": type,
+        "targetId": targetUserId,
+      };
+
+      // Console log request curl
+      final String curlCmd = "curl -X PATCH '$url' \\\n"
+          "  -H 'accept: */*' \\\n"
+          "  -H 'authorization: TMS $token' \\\n"
+          "  -H 'content-type: application/json' \\\n"
+          "  --data-raw '${json.encode(bodyData)}'";
+      debugPrint("---- [HTTP REQUEST CURL] ----\n$curlCmd\n----------------------------");
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(bodyData),
+      );
+
+      // Console log HTTP response
+      debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          _showSnackBar("Passenger marked absent successfully.", Colors.green);
+          await _refreshDetails();
+        } else {
+          _showSnackBar(data['message'] ?? "Failed to mark absent", Colors.red);
+        }
+      } else {
+        String errorMsg = "An unexpected error occurred.";
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+            errorMsg = data['message'].toString();
+          } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+            errorMsg = data['error'].toString();
+          }
+        } catch (_) {}
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar("Connection error: $e", Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingPresentKeys.remove(key);
+        });
+      }
+    }
+  }
+
+  void _showAttendancePopup({
+    required String name,
+    required String typeLabel,
+    required String type,
+    required String rollOrCode,
+    required String dept,
+    required String sessionStatus,
+    required int targetUserId,
+  }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color primaryBlue = const Color(0xFF6366F1);
+    
+    final bool isStudent = typeLabel == 'Student';
+    final IconData typeIcon = isStudent ? Icons.person_rounded : Icons.badge_rounded;
+    final Color typeColor = isStudent ? primaryBlue : Colors.purple;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: typeColor.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(typeIcon, color: typeColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        isStudent ? "Student Details" : "Faculty Details",
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: typeColor,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.close_rounded, size: 18, color: textColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Body
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name
+                    Text(
+                      name,
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Info Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildInfoCard(
+                            isStudent ? Icons.pin_rounded : Icons.tag_rounded, 
+                            isStudent ? "Roll/Reg No" : "Emp Code", 
+                            rollOrCode,
+                            bgColor,
+                            subTextColor,
+                            textColor,
+                            isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildInfoCard(
+                            Icons.business_rounded, 
+                            "Department", 
+                            dept.isNotEmpty ? dept : "N/A",
+                            bgColor,
+                            subTextColor,
+                            textColor,
+                            isDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Status
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: sessionStatus == 'PRESENT' 
+                            ? Colors.green.withValues(alpha: 0.1) 
+                            : sessionStatus == 'LEAVE'
+                                ? Colors.orange.withValues(alpha: 0.1)
+                                : Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: sessionStatus == 'PRESENT' 
+                              ? Colors.green.withValues(alpha: 0.3) 
+                              : sessionStatus == 'LEAVE'
+                                  ? Colors.orange.withValues(alpha: 0.3)
+                                  : Colors.red.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Current Status",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: sessionStatus == 'PRESENT' 
+                                  ? Colors.green.shade700 
+                                  : sessionStatus == 'LEAVE'
+                                      ? Colors.orange.shade700
+                                      : Colors.red.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            sessionStatus == 'PRESENT' ? "PRESENT" : sessionStatus == 'LEAVE' ? "LEAVE" : "ABSENT",
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: sessionStatus == 'PRESENT' 
+                                  ? Colors.green 
+                                  : sessionStatus == 'LEAVE'
+                                      ? Colors.orange
+                                      : Colors.red,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Footer
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      if (sessionStatus == 'PRESENT') {
+                        _markPassengerAbsent(type, targetUserId);
+                      } else {
+                        _markPassengerPresent(type, targetUserId);
+                      }
+                    },
+                    icon: Icon(
+                      sessionStatus == 'PRESENT' ? Icons.person_off_rounded : Icons.how_to_reg_rounded,
+                      size: 20,
+                    ),
+                    label: Text(
+                      sessionStatus == 'PRESENT' ? "MARK AS ABSENT" : "MARK AS PRESENT",
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: sessionStatus == 'PRESENT' ? Colors.red : Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(IconData icon, String title, String value, Color bgColor, Color subTextColor, Color textColor, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: subTextColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: subTextColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _sendAttendanceReminders() async {
@@ -3474,197 +3979,173 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                       final isPresent = sessionStatus == 'PRESENT';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isPresent 
-                                ? Colors.green.withValues(alpha: 0.1) 
-                                : Colors.red.withValues(alpha: 0.1),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.01),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                      return GestureDetector(
+                        onTap: () {
+                          if (isSuperOrTransportAdmin || isAssignedFaculty) {
+                            final s = rec['student'] as Map?;
+                            final f = rec['faculty'] as Map?;
+                            final int? targetUserId = type == 'STUDENT'
+                                ? (s?['user_id'] ?? s?['user']?['id'] as int?)
+                                : (f?['user_id'] ?? f?['user']?['id'] as int?);
+                                
+                            if (targetUserId != null) {
+                              _showAttendancePopup(
+                                name: name,
+                                typeLabel: typeLabel,
+                                type: type,
+                                rollOrCode: type == 'STUDENT' ? roll : empCode,
+                                dept: dept,
+                                sessionStatus: sessionStatus,
+                                targetUserId: targetUserId,
+                              );
+                            } else {
+                              _showSnackBar("User ID not found", Colors.red);
+                            }
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: sessionStatus == 'PRESENT' 
+                                  ? Colors.green.withValues(alpha: 0.1) 
+                                  : sessionStatus == 'LEAVE'
+                                      ? Colors.orange.withValues(alpha: 0.1)
+                                      : Colors.red.withValues(alpha: 0.1),
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            // Left indicator icon
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: typeColor.withValues(alpha: 0.08),
-                                shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.01),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
-                              child: Icon(typeIcon, color: typeColor, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            
-                            // Center Details
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          name,
-                                          style: GoogleFonts.outfit(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                            color: titleColor,
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              // Left indicator icon
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: typeColor.withValues(alpha: 0.08),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(typeIcon, color: typeColor, size: 18),
+                              ),
+                              const SizedBox(width: 12),
+                              
+                              // Center Details
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            name,
+                                            style: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: titleColor,
+                                            ),
                                           ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: typeColor.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            typeLabel,
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              color: typeColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if (type == 'STUDENT') ...[
+                                      Text(
+                                        "Roll: $roll  •  Reg: $reg",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: subColor.withValues(alpha: 0.8),
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: typeColor.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(4),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Dept: $dept",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: subColor.withValues(alpha: 0.8),
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                        child: Text(
-                                          typeLabel,
-                                          style: TextStyle(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold,
-                                            color: typeColor,
-                                          ),
+                                      ),
+                                    ] else ...[
+                                      Text(
+                                        "Emp Code: $empCode  •  $designation",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: subColor.withValues(alpha: 0.8),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Dept: $dept",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: subColor.withValues(alpha: 0.8),
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  if (type == 'STUDENT') ...[
-                                    Text(
-                                      "Roll: $roll  •  Reg: $reg",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: subColor.withValues(alpha: 0.8),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      "Dept: $dept",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: subColor.withValues(alpha: 0.8),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    Text(
-                                      "Emp Code: $empCode  •  $designation",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: subColor.withValues(alpha: 0.8),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      "Dept: $dept",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: subColor.withValues(alpha: 0.8),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
                                   ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              // Right Attendance Status Pill
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: sessionStatus == 'PRESENT' 
+                                          ? Colors.green.withValues(alpha: 0.1) 
+                                          : sessionStatus == 'LEAVE'
+                                              ? Colors.orange.withValues(alpha: 0.1)
+                                              : Colors.red.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      sessionStatus == 'PRESENT' ? "PRESENT" : sessionStatus == 'LEAVE' ? "LEAVE" : "ABSENT",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        color: sessionStatus == 'PRESENT' 
+                                            ? Colors.green 
+                                            : sessionStatus == 'LEAVE'
+                                                ? Colors.orange
+                                                : Colors.red,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Right Attendance Status Pill
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: isPresent 
-                                        ? Colors.green.withValues(alpha: 0.1) 
-                                        : Colors.red.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    isPresent ? "PRESENT" : "ABSENT",
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      color: isPresent ? Colors.green : Colors.red,
-                                    ),
-                                  ),
-                                ),
-                                if (!isPresent) ...[
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () {
-                                      final s = rec['student'] as Map?;
-                                      final f = rec['faculty'] as Map?;
-                                      final int? targetUserId = type == 'STUDENT'
-                                          ? (s?['user_id'] ?? s?['user']?['id'] as int?)
-                                          : (f?['user_id'] ?? f?['user']?['id'] as int?);
-                                      if (targetUserId != null) {
-                                        _markPassengerPresent(type, targetUserId);
-                                      } else {
-                                        _showSnackBar("User ID not found", Colors.red);
-                                      }
-                                    },
-                                    child: Builder(
-                                      builder: (context) {
-                                        final s = rec['student'] as Map?;
-                                        final f = rec['faculty'] as Map?;
-                                        final int? targetUserId = type == 'STUDENT'
-                                            ? (s?['user_id'] ?? s?['user']?['id'] as int?)
-                                            : (f?['user_id'] ?? f?['user']?['id'] as int?);
-                                        final String key = "${type.toUpperCase()}_$targetUserId";
-                                        final isLoading = _loadingPresentKeys.contains(key);
-
-                                        return Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.green.withValues(alpha: 0.3),
-                                                blurRadius: 4,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: isLoading
-                                              ? const SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child: CircularProgressIndicator(
-                                                    color: Colors.white,
-                                                    strokeWidth: 2,
-                                                  ),
-                                                )
-                                              : const Icon(
-                                                  Icons.check_rounded,
-                                                  color: Colors.white,
-                                                  size: 14,
-                                                ),
-                                        );
-                                      }
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -4947,11 +5428,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     final bool isAttendanceConfirmed = isAn ? isEveningConfirmed : isMorningConfirmed;
 
-    final bool showConfirmAttendance = isAssignedFaculty && 
+    final bool oldConfirmAttendanceCondition = isAssignedFaculty && 
         (assignedFacultyUserId == 421 || true) &&
         isPresent && 
         !isAttendanceConfirmed && 
         !_localAttendanceConfirmed;
+
+    final bool showConfirmAttendance = isAn 
+        ? oldConfirmAttendanceCondition
+        : (oldConfirmAttendanceCondition && (s == 'DEPARTED_CAMPUS' || s == 'ARRIVED_CAMPUS'));
 
     final bool showOnlyHeaderAndAttendance = _userRole != null &&
         ((_userRole!.toLowerCase() == 'faculty' && !isAssignedFaculty) ||
@@ -5035,7 +5520,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         Icons.check_circle_outline_rounded,
         Colors.green,
         isDark,
-        _isLoadingAction ? null : _confirmAttendance,
+        _isLoadingAction ? null : _showConfirmAttendancePopup,
       );
     }
 

@@ -8,6 +8,7 @@ import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> assignment;
@@ -438,6 +439,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               ),
 
               const SizedBox(height: 24),
+              
+              // Merged Vehicle Card
+              _buildMergedVehicleCard(surfaceColor, primaryBlue),
 
               // Tabs Toggle
               _buildToggleSwitch(primaryBlue, surfaceColor, subColor, titleColor),
@@ -449,7 +453,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                 )
               else if (_selectedTab == 0) ...[
                 const SizedBox(height: 24),
-                _buildTravelMetrics(isDark, primaryBlue, shiftCode),
+                if (statusStr == 'MERGED_HALTED')
+                  _buildMergedHaltedMetrics(isDark, primaryBlue)
+                else
+                  _buildTravelMetrics(isDark, primaryBlue, shiftCode),
 
                 if (_userRole == 'driver') ...[
                   const SizedBox(height: 24),
@@ -753,9 +760,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
+          builder: (BuildContext stateContext, StateSetter setState) {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
@@ -954,17 +961,14 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       if (result['success'] == true) {
                                         if (mounted) {
                                           setState(() => isSubmitting = false);
-                                          Navigator.pop(context); // Close sheet
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                result['message'] ?? 'Success',
-                                              ),
+                                          Navigator.pop(sheetContext); // Close sheet
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Run started successfully"),
                                               backgroundColor: Colors.green,
                                             ),
                                           );
+                                          
                                           await _handleRefresh(); // Reload page
                                         }
                                       } else {
@@ -1515,16 +1519,41 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       if (mounted) {
                                         setState(() => isSubmitting = false);
                                         Navigator.pop(context);
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              result['message'] ?? 'Success',
+                                        
+                                        // Get count from result or passCount
+                                        int campusInCount = 0;
+                                        if (result['data'] != null && result['data']['campus_in_count'] != null) {
+                                          campusInCount = result['data']['campus_in_count'];
+                                        } else if (result['campus_in_count'] != null) {
+                                          campusInCount = result['campus_in_count'];
+                                        } else {
+                                          campusInCount = passCount ?? 0;
+                                        }
+                                        
+                                        // Show Alert with count for non-drivers
+                                        if (_userRole != 'driver') {
+                                          showDialog(
+                                            context: this.context, 
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text("Run Ended"),
+                                              content: Text("Successfully ended run.\nCampus In Count: $campusInCount"),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(ctx),
+                                                  child: const Text("OK"),
+                                                ),
+                                              ],
                                             ),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(this.context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Run ended successfully."),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+
                                         await _handleRefresh();
                                       }
                                     } else {
@@ -1728,6 +1757,115 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMergedHaltedMetrics(bool isDark, Color primaryBlue) {
+    final runData = _detailedRun ?? widget.run;
+    final targetMerges = runData['targetMerges'] as List<dynamic>?;
+    
+    if (targetMerges == null || targetMerges.isEmpty) {
+       return const SizedBox.shrink();
+    }
+
+    final merge = targetMerges.firstWhere((m) => m['status'] == 'ACTIVE', orElse: () => targetMerges.first);
+    
+    String mergedAt = 'N/A';
+    if (merge['merged_at'] != null) {
+      try {
+        final dt = DateTime.parse(merge['merged_at'].toString()).toLocal();
+        mergedAt = "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year} ${dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour)}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+      } catch (e) {
+        mergedAt = merge['merged_at'].toString();
+      }
+    }
+
+    final String mergeStopName = merge['mergeStop']?['stop_name']?.toString() ?? 'Unknown Stop';
+    
+    final targetRun = merge['targetRun'];
+    final String runName = targetRun?['run_name']?.toString() ?? 'Unknown Route';
+    
+    String vehicleNumber = 'Unknown Vehicle';
+    String driverName = 'Unknown Driver';
+    
+    if (targetRun != null && targetRun['assignment'] != null && (targetRun['assignment'] as List).isNotEmpty) {
+      final assignment = targetRun['assignment'][0];
+      vehicleNumber = assignment['vehicle']?['vehicle_number']?.toString() ?? 'Unknown Vehicle';
+      driverName = assignment['driver']?['user']?['name']?.toString() ?? 'Unknown Driver';
+    }
+
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cancel_presentation_rounded, color: Colors.red.shade700, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                "Run Halted & Merged",
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildMetricRow(Icons.access_time_rounded, "Merged At", mergedAt, textColor, subColor),
+          const SizedBox(height: 12),
+          _buildMetricRow(Icons.place_rounded, "Merge Stop", mergeStopName, textColor, subColor),
+          const SizedBox(height: 12),
+          _buildMetricRow(Icons.directions_bus_rounded, "Target Vehicle", "$vehicleNumber - $driverName", textColor, subColor),
+          const SizedBox(height: 12),
+          _buildMetricRow(Icons.route_rounded, "Target Route", runName, textColor, subColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricRow(IconData icon, String label, String value, Color textColor, Color subColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: subColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: subColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: textColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -2062,9 +2200,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
+          builder: (BuildContext stateContext, StateSetter setState) {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
@@ -2293,19 +2431,46 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                         );
 
                                     if (result['success']) {
-                                      setState(() => isSubmitting = false);
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            result['message'] ?? 'Success',
-                                          ),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                      await _handleRefresh();
+                                      if (mounted) {
+                                        setState(() => isSubmitting = false);
+                                        Navigator.pop(sheetContext);
+                                        
+                                        // Get count from result or passCount
+                                        int campusOutCount = 0;
+                                        if (result['data'] != null && result['data']['campus_out_count'] != null) {
+                                          campusOutCount = result['data']['campus_out_count'];
+                                        } else if (result['campus_out_count'] != null) {
+                                          campusOutCount = result['campus_out_count'];
+                                        } else {
+                                          campusOutCount = passCount;
+                                        }
+                                        
+                                        // Show Alert with count for non-drivers
+                                        if (_userRole != 'driver') {
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text("Evening Run Started"),
+                                              content: Text("Successfully started evening run.\nCampus Out Count: $campusOutCount"),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(ctx),
+                                                  child: const Text("OK"),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Evening run started successfully."),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+                                        
+                                        await _handleRefresh();
+                                      }
                                     } else {
                                       setState(() => isSubmitting = false);
                                       ScaffoldMessenger.of(
@@ -2746,16 +2911,41 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       if (mounted) {
                                         setState(() => isSubmitting = false);
                                         Navigator.pop(context);
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              result['message'] ?? 'Success',
+                                        
+                                        // Get count from result or passCount
+                                        int campusOutCount = 0;
+                                        if (result['data'] != null && result['data']['campus_out_count'] != null) {
+                                          campusOutCount = result['data']['campus_out_count'];
+                                        } else if (result['campus_out_count'] != null) {
+                                          campusOutCount = result['campus_out_count'];
+                                        } else {
+                                          campusOutCount = 0;
+                                        }
+                                        
+                                        // Show Alert with count for non-drivers
+                                        if (_userRole != 'driver') {
+                                          showDialog(
+                                            context: this.context, 
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text("Run Ended"),
+                                              content: Text("Successfully ended run.\nCampus Out Count: $campusOutCount"),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(ctx),
+                                                  child: const Text("OK"),
+                                                ),
+                                              ],
                                             ),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(this.context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Run ended successfully."),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+
                                         await _handleRefresh();
                                       }
                                     } else {
@@ -2981,6 +3171,138 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     return parts.join(" ");
   }
 
+  List<Map<String, String>> _getMergedVehiclesData() {
+    List<Map<String, String>> mergedData = [];
+    
+    // Fallback to widget.run if _detailedRun is null or empty
+    final runData = _detailedRun ?? widget.run;
+
+    void addData(dynamic runObj) {
+      if (runObj == null) return;
+      final runName = runObj['run_name']?.toString() ?? 'Unknown Run';
+      final assignments = runObj['assignment'] as List<dynamic>?;
+      if (assignments != null && assignments.isNotEmpty) {
+        final vehicle = assignments[0]['vehicle'];
+        final driver = assignments[0]['driver'];
+        final vehicleNum = vehicle?['vehicle_number']?.toString() ?? 'Unknown Vehicle';
+        final driverName = driver?['user']?['name']?.toString() ?? 'Unknown Driver';
+        
+        // Prevent duplicates based on vehicle number
+        if (!mergedData.any((m) => m['vehicle'] == vehicleNum)) {
+           mergedData.add({
+             'vehicle': vehicleNum,
+             'driver': driverName,
+             'run_name': runName,
+           });
+        }
+      }
+    }
+
+    // Check targetMerges
+    final targetMerges = runData['targetMerges'] as List<dynamic>?;
+    if (targetMerges != null && targetMerges.isNotEmpty) {
+      for (var merge in targetMerges) {
+        addData(merge['sourceRun']);
+      }
+    }
+
+    // Check sourceMerges
+    final sourceMerges = runData['sourceMerges'] as List<dynamic>?;
+    if (sourceMerges != null && sourceMerges.isNotEmpty) {
+      for (var merge in sourceMerges) {
+        addData(merge['targetRun']);
+      }
+    }
+    
+    return mergedData;
+  }
+
+  Widget _buildMergedVehicleCard(Color surfaceColor, Color primaryBlue) {
+    final List<Map<String, String>> mergedVehicles = _getMergedVehiclesData();
+    if (mergedVehicles.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Icon(Icons.call_merge_rounded, color: Colors.orange.shade700, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Merged Vehicle Details",
+                  style: TextStyle(
+                    color: Colors.orange.shade800,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...mergedVehicles.map((data) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.directions_bus_rounded, size: 14, color: Colors.orange.shade900),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "${data['vehicle']} - ${data['driver']}",
+                              style: TextStyle(
+                                color: Colors.orange.shade900,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(Icons.route_rounded, size: 14, color: Colors.orange.shade700),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "${data['run_name']}",
+                              style: TextStyle(
+                                color: Colors.orange.shade800,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatusBadgeWidget(String status) {
     final String s = status.toUpperCase();
     Color bgColor;
@@ -3019,7 +3341,6 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         borderColor = const Color(0xFFA7F3D0);
         break;
       case "RESUMED_MIDWAY":
-      case "MERGED_HALTED":
       case "DEPARTED_CAMPUS":
         bgColor = const Color(0xFFFEF3C7);
         textColor = const Color(0xFFB45309);
@@ -3032,6 +3353,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         break;
       case "COMPLETED":
       case "FINISHED":
+      case "MERGED_HALTED":
         bgColor = const Color(0xFFD1FAE5);
         textColor = const Color(0xFF047857);
         borderColor = const Color(0xFFA7F3D0);
@@ -3056,7 +3378,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         border: Border.all(color: borderColor, width: 1),
       ),
       child: Text(
-        status.replaceAll('_', ' ').toUpperCase(),
+        s == "MERGED_HALTED" ? "ENDED" : status.replaceAll('_', ' ').toUpperCase(),
         style: TextStyle(
           color: textColor,
           fontSize: 11,

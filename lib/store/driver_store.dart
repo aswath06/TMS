@@ -934,6 +934,30 @@ class DriverStore extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> fetchBusRunCount(int runId) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return {"success": false, "message": "Session expired"};
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId/count";
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return {"success": true, "data": decoded};
+      }
+      
+      return {"success": false, "message": "Failed to fetch run count"};
+    } catch (e) {
+      debugPrint("Fetch Run Count Exception: $e");
+      return {"success": false, "message": "Network error: $e"};
+    }
+  }
+
   Future<Map<String, dynamic>> setCampusInPassengerCount({
     required int runId,
     required int passengerCount,

@@ -930,7 +930,7 @@ final store = ref.watch(driverStoreProvider);
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
           decoration: BoxDecoration(
@@ -959,7 +959,7 @@ final store = ref.watch(driverStoreProvider);
                         ),
                       ),
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(dialogContext),
                         icon: const Icon(Icons.close_rounded),
                       ),
                     ],
@@ -1002,12 +1002,12 @@ final store = ref.watch(driverStoreProvider);
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
+                          Navigator.pop(dialogContext);
                           final success = await useStudentLeaveStore.revokeLeave(id);
                           if (success) {
-                            showTopToast(context, isTamil ? "ரத்து செய்யப்பட்டது" : "Leave Revoked Successfully");
-                          }
-                          if (mounted) {
-                            Navigator.pop(context);
+                            if (mounted) {
+                              showTopToast(context, isTamil ? "ரத்து செய்யப்பட்டது" : "Leave Revoked Successfully");
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -1023,7 +1023,7 @@ final store = ref.watch(driverStoreProvider);
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(dialogContext),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6366F1),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
