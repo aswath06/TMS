@@ -23,6 +23,7 @@ import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart'
 import 'package:geolocator/geolocator.dart';
 import 'package:tripzo/services/location_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/app_lifecycle_provider.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/models/notification_model.dart';
@@ -102,14 +103,21 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat();
-
-    // Start loading data and route after first frame
+    )..repeat(reverse: true);
+    
+    _loadUserRoleSynchronously();
+    _fetchMissionDetails();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchMissionDetails();
-      _fetchUserRole();
       _setupNotificationListener();
     });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _notificationProvider?.removeListener(_handleNotificationUpdate);
+    super.dispose();
   }
 
   void _setupNotificationListener() {
@@ -161,15 +169,13 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     }
   }
 
-  Future<void> _fetchUserRole() async {
-    final role = await UserStore.getRole();
-    final driverId = await UserStore.getDriverId();
-    if (mounted) {
-      setState(() {
-        _userRole = role;
-        _driverId = driverId;
-      });
-    }
+  // Removed _fetchUserRole since UserStore now loads synchronously into memory at app launch.
+  // We can just grab the values instantly from memory.
+  void _loadUserRoleSynchronously() {
+    setState(() {
+      _userRole = UserStore.role;
+      _driverId = UserStore.driverId;
+    });
   }
 
   void _showTopToast(String message, Color color) {
@@ -198,17 +204,26 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     overlay.insert(overlayEntry);
   }
 
-  /// Pull-to-refresh handler — re-fetches all data in parallel.
+  /// Pull-to-refresh handler
   Future<void> _refreshData() async {
-    await Future.wait([
-      _fetchMissionDetails(),
-      _fetchUserRole(),
-    ]);
+    await _fetchMissionDetails();
   }
 
 
+  bool _isApiFetching = false;
+
   Future<void> _fetchMissionDetails() async {
-    setState(() => _isFetchingDetails = true);
+    if (_isApiFetching) {
+      debugPrint("DEBUG: _fetchMissionDetails already in progress, skipping duplicate request.");
+      return;
+    }
+    _isApiFetching = true;
+    
+    // Only call setState if we aren't already showing the loading spinner, to avoid unnecessary rebuilds
+    if (!_isFetchingDetails) {
+      setState(() => _isFetchingDetails = true);
+    }
+    
     try {
       final token = await UserStore.getToken();
       final url = "${ApiConstants.getRouteById}${widget.requestId}";
@@ -217,19 +232,22 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         headers: ApiConstants.getHeaders(token),
       );
 
-      // Console the curl and response as requested
       debugPrint("DEBUG: Mission Details Fetch: ID=${widget.requestId}");
-      // debugPrint("curl -X GET '$url' -H 'Authorization: TMS $token' -H 'Content-Type: application/json'");
       debugPrint("DEBUG: Mission Details Response Status: ${response.statusCode}");
-      debugPrint("DEBUG: Mission Details Response Body: ${response.body}");
-
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          setState(() {
-            _missionData = data['data'];
-          });
-          _updateMapFromMissionData();
+          final newData = data['data'];
+          // Optimize: Only trigger heavy map updates if data actually changed
+          if (jsonEncode(_missionData) != jsonEncode(newData)) {
+            setState(() {
+              _missionData = newData;
+            });
+            _updateMapFromMissionData();
+          } else {
+            debugPrint("DEBUG: Mission data identical, skipping heavy map rebuilds.");
+          }
         }
       }
     } catch (e) {
@@ -237,6 +255,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       // Fallback to basic geocoding if details fetch fails
       _loadMapData();
     } finally {
+      _isApiFetching = false;
       if (mounted) setState(() => _isFetchingDetails = false);
     }
   }
@@ -1616,66 +1635,83 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
   }
 
 
+  bool _isLongPollingActive = false;
+
   void _startQrPolling(String title) {
     _stopQrPolling();
-    debugPrint("[QR POLL] Starting periodic status polling for: $title");
-    _qrPollTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      await _pollMissionStatus(title);
-    });
+    _isLongPollingActive = true;
+    debugPrint("[QR POLL] Starting HTTP Long Polling for: $title");
+    _longPollMissionStatus(title);
   }
 
   void _stopQrPolling() {
+    _isLongPollingActive = false;
     if (_qrPollTimer != null) {
-      debugPrint("[QR POLL] Stopping periodic status polling.");
       _qrPollTimer?.cancel();
       _qrPollTimer = null;
     }
   }
 
-  Future<void> _pollMissionStatus(String title) async {
-    try {
-      final token = await UserStore.getToken();
-      final url = "${ApiConstants.getRouteById}${widget.requestId}";
-      final response = await http.get(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token),
-      ).timeout(const Duration(seconds: 4));
+  Future<void> _longPollMissionStatus(String title) async {
+    while (_isLongPollingActive && _isQrCodeOpen && mounted) {
+      try {
+        final token = await UserStore.getToken();
+        final url = "${ApiConstants.getRouteById}${widget.requestId}";
+        
+        final startTime = DateTime.now();
+        
+        // Long poll request with a large timeout (30 seconds)
+        final response = await http.get(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token),
+        ).timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final freshData = data['data'];
-          final String statusString = (freshData?['status'] ?? freshData?['travel_info']?['status'] ?? "").toString().toUpperCase();
-          final currentStatus = freshData?['route_status'];
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['success'] == true) {
+            final freshData = data['data'];
+            final String statusString = (freshData?['status'] ?? freshData?['travel_info']?['status'] ?? "").toString().toUpperCase();
+            final currentStatus = freshData?['route_status'];
 
-          debugPrint("[QR POLL] Current Poll status: $statusString, currentStatus: $currentStatus, modal: $title");
+            debugPrint("[QR POLL] Status received: $statusString, currentStatus: $currentStatus, modal: $title");
 
-          bool shouldDismiss = false;
-          if (title.toUpperCase().contains("START")) {
-            // Looking for STARTED/ONGOING
-            if (statusString == 'STARTED' || statusString == 'ONGOING' || currentStatus == 7 || currentStatus == 4) {
-              shouldDismiss = true;
+            bool shouldDismiss = false;
+            if (title.toUpperCase().contains("START")) {
+              // Looking for STARTED/ONGOING
+              if (statusString == 'STARTED' || statusString == 'ONGOING' || currentStatus == 7 || currentStatus == 4) {
+                shouldDismiss = true;
+              }
+            } else if (title.toUpperCase().contains("END")) {
+              // Looking for COMPLETED
+              if (statusString == 'COMPLETED' || currentStatus == 8) {
+                shouldDismiss = true;
+              }
             }
-          } else if (title.toUpperCase().contains("END")) {
-            // Looking for COMPLETED
-            if (statusString == 'COMPLETED' || currentStatus == 8) {
-              shouldDismiss = true;
-            }
-          }
 
-          if (shouldDismiss) {
-            debugPrint("[QR POLL] Target status matched! Automatically dismissing QR modal...");
-            _stopQrPolling();
-            if (_isQrCodeOpen && mounted) {
-              _isQrCodeOpen = false;
-              Navigator.of(context).pop();
+            if (shouldDismiss) {
+              debugPrint("[QR POLL] Target status matched! Automatically dismissing QR modal...");
+              _stopQrPolling();
+              if (_isQrCodeOpen && mounted) {
+                _isQrCodeOpen = false;
+                Navigator.of(context).pop();
+              }
+              _fetchMissionDetails();
+              break; // exit loop
             }
-            _fetchMissionDetails();
           }
         }
+        
+        // Fallback: If backend is not holding the connection (normal REST response),
+        // we add a 3-second delay to prevent spamming the server.
+        final duration = DateTime.now().difference(startTime);
+        if (duration.inSeconds < 2) {
+          await Future.delayed(const Duration(seconds: 3));
+        }
+      } catch (e) {
+        debugPrint("[QR POLL] Error in long polling (or timeout): $e");
+        // On error or timeout, wait briefly before retrying
+        await Future.delayed(const Duration(seconds: 2));
       }
-    } catch (e) {
-      debugPrint("[QR POLL] Error polling mission status: $e");
     }
   }
 
@@ -1862,6 +1898,13 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AppLifecycleState>(appLifecycleProvider, (previous, next) {
+      if (next == AppLifecycleState.resumed) {
+        debugPrint("[LIFECYCLE] Global Provider: App resumed. Auto-refreshing mission details.");
+        _fetchMissionDetails();
+      }
+    });
+
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)

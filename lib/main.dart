@@ -7,6 +7,7 @@ import 'package:tripzo/utils/toast_utils.dart';
 // Stores
 import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/istamil.dart';
+import 'package:tripzo/store/user_store.dart';
 
 // Utils
 import 'utils/routes.dart';
@@ -17,6 +18,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:tripzo/services/notification_firebase_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:tripzo/store/app_lifecycle_provider.dart';
 
 class BlockInterceptorClient extends http.BaseClient {
   final http.Client _inner = http.Client();
@@ -80,8 +82,9 @@ void main() {
     // Load theme and other persistent data
     await themeStore.loadTheme();
     await languageStore.loadLanguage();
-
-
+    
+    // Initialize global in-memory static cache for user data
+    await UserStore.init();
 
     // FORCE PORTRAIT MODE ONLY
     await SystemChrome.setPreferredOrientations([
@@ -91,7 +94,9 @@ void main() {
 
     runApp(
       const ProviderScope(
-        child: MyApp(),
+        child: AppLifecycleObserver(
+          child: MyApp(),
+        ),
       ),
     );
   }, () => BlockInterceptorClient());
