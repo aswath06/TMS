@@ -1974,8 +1974,14 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
              } else {
                 isEligibleForEndInfo = true;
              }
+          } else {
+            isEligibleForEndInfo = true;
           }
+        } else {
+          isEligibleForEndInfo = true;
         }
+      } else {
+        isEligibleForEndInfo = true;
       }
     }
 
@@ -2397,7 +2403,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                         ),
                       ),
                     ),
-                  if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING' || statusString == 'COMPLETED' || currentStatus == 7 || currentStatus == 8) && isEligibleForEndInfo && !hasEndOdometer && endedAt != null)
+                  if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING' || statusString == 'COMPLETED' || currentStatus == 7 || currentStatus == 8) && endedAt != null && !hasEndOdometer)
                     _EndButtonWithTimer(
                       endedAtStr: endedAt.toString(),
                       onPressed: _showEndInformationPopup,
@@ -2406,7 +2412,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                   if (!_isTransportOrSuperAdmin &&
                       (!isDriver || 
                       (isDriver && statusString == 'APPROVED' && hasStartOdometer) || 
-                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && (!isEligibleForEndInfo || endedAt == null))))
+                      (isDriver && (statusString == 'STARTED' || statusString == 'ONGOING') && endedAt == null)))
                     _SwipeToConfirm(
                       label: actionLabel.toUpperCase(),
                       onConfirm: () {
@@ -5880,14 +5886,13 @@ class _EndButtonWithTimerState extends ConsumerState<_EndButtonWithTimer> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.isAdmin && _remainingSeconds <= 0) {
-      return const SizedBox.shrink();
-    }
+    final bool isEndedAtNull = widget.endedAtStr == 'null';
+    final bool isDisabled = !widget.isAdmin && _remainingSeconds <= 0 && !isEndedAtNull;
 
     final minutes = _remainingSeconds ~/ 60;
     final seconds = _remainingSeconds % 60;
     final timeFormatted = "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
-    final bool showTimer = _remainingSeconds > 0;
+    final bool showTimer = _remainingSeconds > 0 && !isEndedAtNull;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -5936,7 +5941,7 @@ class _EndButtonWithTimerState extends ConsumerState<_EndButtonWithTimer> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: widget.onPressed,
+              onPressed: isDisabled ? null : widget.onPressed,
               icon: const Icon(Icons.info_outline_rounded, size: 20),
               label: const Text(
                 "END",
