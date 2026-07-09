@@ -16,49 +16,85 @@ import 'package:tripzo/store/providers.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:tripzo/services/notification_firebase_service.dart';
-void main() async {
-  // Ensure Flutter framework is initialized before running code
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
-  await Firebase.initializeApp();
-  
-  // Set Firebase background messaging handler early
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+import 'package:http/http.dart' as http;
 
-  // Initialize Background Location Service (Non-blocking)
-  LocationService().initializeService().catchError((e) {
-    debugPrint("Background Service Init Error: $e");
-  });
+class BlockInterceptorClient extends http.BaseClient {
+  final http.Client _inner = http.Client();
+  static bool _isNavigatingToBlocked = false;
 
-  // Initialize Local Notification Service
-  await NotificationLocalService.initialize();
-
-  // INITIALIZE DATE FORMATTING
-  try {
-    await initializeDateFormatting('ta', null);
-    await initializeDateFormatting('en', null);
-  } catch (e) {
-    debugPrint("Locale initialization error: $e");
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final response = await _inner.send(request);
+    
+    if (response.statusCode == 403 && response.headers['x-account-blocked'] == 'true') {
+      if (!_isNavigatingToBlocked) {
+        _isNavigatingToBlocked = true;
+        Future.microtask(() {
+          if (AppRoutes.navigatorKey.currentContext != null) {
+            final currentRoute = ModalRoute.of(AppRoutes.navigatorKey.currentContext!)?.settings.name;
+            if (currentRoute != AppRoutes.accountBlocked) {
+              AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+                AppRoutes.accountBlocked,
+                (route) => false,
+              );
+            }
+          }
+          // Reset the flag after a short delay to allow future interceptions if needed
+          Future.delayed(const Duration(seconds: 2), () {
+            _isNavigatingToBlocked = false;
+          });
+        });
+      }
+    }
+    return response;
   }
+}
 
-  // Load theme and other persistent data
-  await themeStore.loadTheme();
-  await languageStore.loadLanguage();
+void main() {
+  http.runWithClient(() async {
+    // Ensure Flutter framework is initialized before running code
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Initialize Firebase
+    await Firebase.initializeApp();
+    
+    // Set Firebase background messaging handler early
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+    // Initialize Background Location Service (Non-blocking)
+    LocationService().initializeService().catchError((e) {
+      debugPrint("Background Service Init Error: $e");
+    });
+
+    // Initialize Local Notification Service
+    await NotificationLocalService.initialize();
+
+    // INITIALIZE DATE FORMATTING
+    try {
+      await initializeDateFormatting('ta', null);
+      await initializeDateFormatting('en', null);
+    } catch (e) {
+      debugPrint("Locale initialization error: $e");
+    }
+
+    // Load theme and other persistent data
+    await themeStore.loadTheme();
+    await languageStore.loadLanguage();
 
 
 
-  // FORCE PORTRAIT MODE ONLY
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // FORCE PORTRAIT MODE ONLY
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+    runApp(
+      const ProviderScope(
+        child: MyApp(),
+      ),
+    );
+  }, () => BlockInterceptorClient());
 }
 
 class MyApp extends ConsumerWidget {

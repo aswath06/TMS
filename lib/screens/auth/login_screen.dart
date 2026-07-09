@@ -4,6 +4,7 @@ import 'package:http/io_client.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:tripzo/components/custom_button.dart';
 import 'package:tripzo/components/custom_input.dart';
@@ -42,6 +43,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     scopes: <String>['email', 'profile', 'openid'],
     hostedDomain: 'bitsathy.ac.in',
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBlockedAlert();
+  }
+
+  Future<void> _checkBlockedAlert() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('showBlockedAlert') == true) {
+      await prefs.remove('showBlockedAlert');
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.block, color: Colors.red),
+                const SizedBox(width: 8),
+                Text('Account Blocked', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+            content: const Text('Your account has been blocked by the administrator. Please contact support.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
 
   // ✅ Bypass SSL certificate verification for DevTunnels (dev only)
   IOClient _createHttpClient() {

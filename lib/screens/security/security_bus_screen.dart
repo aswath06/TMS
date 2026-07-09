@@ -47,6 +47,30 @@ class _SecurityBusScreenState extends ConsumerState<SecurityBusScreen> {
     });
   }
 
+  List<Map<String, dynamic>> _getFilteredData(SecurityBusStore store) {
+    final now = DateTime.now();
+    final isFN = now.hour >= 0 && now.hour < 11;
+    final isAN = now.hour >= 11;
+
+    return store.currentData.where((d) {
+      final campusInVerifiedBy = d['campusInVerifiedBy'];
+      final campusOutVerifiedBy = d['campusOutVerifiedBy'];
+
+      bool shouldHide = false;
+      if (isFN) {
+        if (campusInVerifiedBy != null) {
+          shouldHide = true;
+        }
+      } else if (isAN) {
+        if (campusOutVerifiedBy != null) {
+          shouldHide = true;
+        }
+      }
+
+      return !shouldHide;
+    }).toList();
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -233,7 +257,8 @@ class _SecurityBusScreenState extends ConsumerState<SecurityBusScreen> {
   
   Widget _buildChips(SecurityBusStore store, bool isDark, Color subColor) {
     Set<String> uniqueBuses = {};
-    for (var d in store.currentData) {
+    final activeData = _getFilteredData(store);
+    for (var d in activeData) {
       final assignments = d['assignments'] as List? ?? [];
       for (var a in assignments) {
         final vehicle = a['vehicle'] ?? {};
@@ -337,8 +362,9 @@ class _SecurityBusScreenState extends ConsumerState<SecurityBusScreen> {
     }
 
     final query = _searchQuery.toLowerCase();
+    final activeData = _getFilteredData(store);
     
-    final filteredData = store.currentData.where((d) {
+    final filteredData = activeData.where((d) {
       bool matchesSearch = query.isEmpty;
       bool matchesChip = _selectedChip.isEmpty;
       

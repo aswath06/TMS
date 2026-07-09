@@ -89,13 +89,19 @@ class UserStore {
   }
 
   // Force logout and redirect to login
-  static Future<void> forceLogout() async {
+  static Future<void> forceLogout({bool isBlocked = false}) async {
     try {
       await LocationService().stopTracking();
     } catch (e) {
       debugPrint("Error stopping background service on logout: $e");
     }
     await clear();
+    
+    if (isBlocked) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('showBlockedAlert', true);
+    }
+    
     AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
       AppRoutes.login,
       (route) => false,

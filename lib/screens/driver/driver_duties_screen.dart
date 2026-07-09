@@ -117,8 +117,10 @@ final store = ref.watch(driverStoreProvider);
                   final dtStr = m['start_datetime'];
                   if (dtStr == null) return false;
                   try {
-                    final dt = DateTime.parse(dtStr);
-                    return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+                    final dt = DateTime.parse(dtStr).toLocal();
+                    final backendStatus = (m['status'] ?? "UNKNOWN").toString().toUpperCase();
+                    final isStarted = backendStatus == 'STARTED' || backendStatus == 'ON_TRIP' || backendStatus == 'ONGOING';
+                    return (dt.year == now.year && dt.month == now.month && dt.day == now.day) || isStarted;
                   } catch (_) {
                     return false;
                   }

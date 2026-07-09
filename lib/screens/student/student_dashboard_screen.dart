@@ -7,6 +7,7 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/notification_card.dart';
 import 'package:tripzo/utils/tab_notification.dart';
 import 'package:tripzo/store/faculty_store.dart';
+import 'package:tripzo/store/user_store.dart';
 
 class StudentDashboardScreen extends ConsumerStatefulWidget {
   const StudentDashboardScreen({super.key});
@@ -22,6 +23,22 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
     if (useFacultyStore.profileData.value == null) {
       useFacultyStore.fetchProfile();
     }
+    useFacultyStore.errorMessage.addListener(_handleAuthError);
+  }
+
+  void _handleAuthError() async {
+    if (useFacultyStore.errorMessage.value == "SESSION_EXPIRED") {
+       useFacultyStore.errorMessage.removeListener(_handleAuthError);
+       await UserStore.clear();
+       if (!mounted) return;
+       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
+  @override
+  void dispose() {
+    useFacultyStore.errorMessage.removeListener(_handleAuthError);
+    super.dispose();
   }
 
   // Mock Data

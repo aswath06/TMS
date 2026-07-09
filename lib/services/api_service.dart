@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/routes.dart';
 import 'package:flutter/foundation.dart';
 
 class ApiService {
@@ -32,6 +33,15 @@ class ApiService {
           errorMessage = decoded['message'];
         }
       } catch (_) {}
+      
+      if (response.statusCode == 403 && errorMessage == 'ACCOUNT_BLOCKED') {
+        AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          AppRoutes.accountBlocked,
+          (route) => false,
+        );
+        throw Exception('ACCOUNT_BLOCKED');
+      }
+      
       throw Exception(errorMessage);
     }
   }

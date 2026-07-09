@@ -7,6 +7,7 @@ import '../screens/auth/setup_permissions_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/auth/lock_screen.dart';
 import '../screens/notification/notification_list_screen.dart';
+import '../screens/auth/account_blocked_screen.dart';
 
 class AppRoutes {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String getStarted = '/get-started';
   static const String setupPermissions = '/setup-permissions';
   static const String notifications = '/notifications';
+  static const String accountBlocked = '/account-blocked';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -47,6 +49,9 @@ class AppRoutes {
 
       case setupPermissions:
         return MaterialPageRoute(builder: (_) => const SetupPermissionsScreen());
+
+      case accountBlocked:
+        return MaterialPageRoute(builder: (_) => const AccountBlockedScreen());
 
       case dashboard:
         final role = settings.arguments as String? ?? 'faculty';
