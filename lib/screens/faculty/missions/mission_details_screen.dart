@@ -113,13 +113,6 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     });
   }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    _notificationProvider?.removeListener(_handleNotificationUpdate);
-    super.dispose();
-  }
-
   void _setupNotificationListener() {
     try {
       _notificationProvider = ref.read(notificationProviderFamily);
@@ -1166,6 +1159,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
           targetId = firstTrip['id'].toString();
         }
 
+        if (!mounted) return;
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -1741,6 +1735,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     });
   }
 
+  // ignore: unused_element
   void _showStopStatusModal(int tripId, int stopId) {
     String selectedAction = "ARRIVED";
     bool isSubmitting = false;
@@ -1795,7 +1790,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                         setModalState(() => isSubmitting = true);
                         try {
                           await _updateStopStatus(tripId, stopId, selectedAction);
-                          if (mounted) Navigator.pop(context);
+                          if (context.mounted) Navigator.pop(context);
                         } catch (e) {
                           setModalState(() => isSubmitting = false);
                           if (mounted) {
@@ -1859,7 +1854,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
           permission = await Geolocator.requestPermission();
         }
         if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-          position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+          position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
         }
       }
     } catch (e) {
@@ -1937,6 +1932,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     bool showAutoStart = false;
     bool showAutoEnd = false;
     int? tripIdToEnd;
+    // ignore: unused_local_variable
     int? legIdToEnd;
 
     if ((isDriver || _isTransportOrSuperAdmin) && (statusString == 'STARTED' || statusString == 'ONGOING')) {
@@ -2211,7 +2207,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                   final String? role = await UserStore.getRole();
                                   final bool isAdmin = role?.toLowerCase() == 'admin';
 
-                                  if (!mounted) return;
+                                  if (!context.mounted) return;
                                   final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => ReassignGuestScreen(
@@ -2569,7 +2565,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                 Duration? dur;
                 if (startDt != null && endDt != null) {
                   dur = endDt.difference(startDt);
-                } else if (startDt != null && endedAt == null) dur = DateTime.now().difference(startDt);
+                } else if (startDt != null && endedAt == null) {
+                  dur = DateTime.now().difference(startDt);
+                }
                 
                 final bool isOngoing = startedAt != null && endedAt == null;
                 final String label = dur != null ? _formatDuration(dur) : (isOngoing ? "Calculating..." : "N/A");
@@ -2887,6 +2885,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
   Widget _buildHeroCard(Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    // ignore: unused_local_variable
     final bool isDriver = _userRole?.toLowerCase() == 'driver';
     final travelInfo = _missionData?['travel_info'];
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
@@ -3390,8 +3389,10 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     final Color blueIcon = const Color(0xFF6366F1);
     
     // Handle isDriver role locally
+    // ignore: unused_local_variable
     final bool isDriver = _userRole?.toLowerCase() == 'driver' || _isTransportOrSuperAdmin;
 
+    // ignore: unused_local_variable
     Color statusColor = Colors.grey;
     if (status == 'ARRIVED' || status == 'COMPLETED') statusColor = Colors.green;
     if (status == 'SKIPPED') statusColor = Colors.orange;
@@ -3485,6 +3486,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     }
   }
 
+  // ignore: unused_element
   String _formatDateTimeString(String timeStr, {bool showDate = false}) {
      if (timeStr.contains('T') || timeStr.contains('-')) {
         try {
@@ -3531,6 +3533,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
   Widget _buildTimeDurationSection(dynamic startedAt, dynamic endedAt, String? startedBy, String? endedBy, Color primaryColor, bool isDark) {
     final startDt = _parseTimestamp(startedAt);
     final endDt = _parseTimestamp(endedAt);
+    // ignore: unused_local_variable
     Duration? duration;
     if (startDt != null && endDt != null) {
       duration = endDt.difference(startDt);
@@ -3614,6 +3617,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildDurationBadge(Duration? duration, Color primaryColor, bool isOngoing) {
     final String label = duration != null ? _formatDuration(duration) : (isOngoing ? "Calculating..." : "N/A");
     
@@ -4420,6 +4424,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                if (_missionData?['trip_instances'] != null && (_missionData?['trip_instances'] as List).isNotEmpty)
                  ...(_missionData?['trip_instances'] as List).map((trip) {
                     final notes = trip['notes'];
+                    // ignore: unused_local_variable
                     final status = trip['status'];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -4444,6 +4449,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildTripMetrics(Color cardColor, Color blue, Color sub) {
     if (_missionData == null || _missionData!['route_details'] == null) return const SizedBox.shrink();
     
@@ -4768,6 +4774,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     List<dynamic> allAllowances = [];
     final tripInstances = _missionData?['trip_instances'] as List?;
     
+    // ignore: unused_local_variable
     int? firstTripId;
     List<Map<String, dynamic>> allDrivers = [];
 
