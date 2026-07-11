@@ -268,7 +268,23 @@ class _SecurityBusScreenState extends ConsumerState<SecurityBusScreen> {
         }
       }
     }
-    List<String> sortedBuses = uniqueBuses.toList()..sort();
+    
+    List<String> sortedBuses = uniqueBuses.toList()..sort((a, b) {
+      String format(String s) => s.replaceAll(RegExp(r'^BUS\s+NO\s+', caseSensitive: false), '').trim();
+      final formA = format(a);
+      final formB = format(b);
+      final numA = int.tryParse(formA);
+      final numB = int.tryParse(formB);
+      
+      if (numA != null && numB != null) {
+        int cmp = numA.compareTo(numB);
+        if (cmp != 0) return cmp;
+        return formA.compareTo(formB);
+      }
+      if (numA != null) return -1;
+      if (numB != null) return 1;
+      return formA.compareTo(formB);
+    });
     
     if (sortedBuses.isEmpty) return const SizedBox.shrink();
 
@@ -291,8 +307,9 @@ class _SecurityBusScreenState extends ConsumerState<SecurityBusScreen> {
           ),
           ...sortedBuses.map((bus) {
             final isSelected = _selectedChip == bus;
+            String displayLabel = bus.replaceAll(RegExp(r'^BUS\s+NO\s+', caseSensitive: false), '').trim();
             return _buildCustomChip(
-              label: bus,
+              label: displayLabel,
               isSelected: isSelected,
               onTap: () {
                 setState(() {
@@ -362,7 +379,7 @@ class _SecurityBusScreenState extends ConsumerState<SecurityBusScreen> {
     }
 
     final query = _searchQuery.toLowerCase();
-    final activeData = _getFilteredData(store);
+    final activeData = store.currentData;
     
     final filteredData = activeData.where((d) {
       bool matchesSearch = query.isEmpty;

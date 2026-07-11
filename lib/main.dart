@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -19,6 +20,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:tripzo/services/notification_firebase_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/app_lifecycle_provider.dart';
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
 
 class BlockInterceptorClient extends http.BaseClient {
   final http.Client _inner = http.Client();
@@ -53,6 +63,7 @@ class BlockInterceptorClient extends http.BaseClient {
 }
 
 void main() {
+  HttpOverrides.global = MyHttpOverrides();
   http.runWithClient(() async {
     // Ensure Flutter framework is initialized before running code
     WidgetsFlutterBinding.ensureInitialized();

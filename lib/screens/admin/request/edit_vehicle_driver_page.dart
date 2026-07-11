@@ -41,10 +41,10 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
   void _initializeSelections() {
     final status = (widget.run['status'] ?? '').toString().toUpperCase();
-    final bool isPlanned = status == 'PLANNED';
+    final bool isPlannedOrReady = status == 'PLANNED' || status == 'READY';
     
-    // If status is READY and above, default shift is EVENING
-    _selectedShift = isPlanned ? 'BOTH' : 'EVENING';
+    // If status is PLANNED or READY, default shift is BOTH. Otherwise EVENING
+    _selectedShift = isPlannedOrReady ? 'BOTH' : 'EVENING';
 
     final assignments = widget.run['assignment'] as List? ?? [];
     if (assignments.isNotEmpty) {
@@ -505,7 +505,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
     final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
 
     final status = (widget.run['status'] ?? '').toString().toUpperCase();
-    final bool isPlanned = status == 'PLANNED';
+    final bool isPlannedOrReady = status == 'PLANNED' || status == 'READY';
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -598,12 +598,12 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                         ),
                         child: Row(
                           children: [
-                            if (isPlanned) ...[
+                            if (isPlannedOrReady) ...[
                               _buildShiftToggle('MORNING', 'MORNING', primaryBlue, subColor),
                               _buildShiftToggle('EVENING', 'EVENING', primaryBlue, subColor),
                               _buildShiftToggle('BOTH', 'BOTH', primaryBlue, subColor),
                             ] else ...[
-                              // Hides MORNING and BOTH options if status is READY and above
+                              // Hides MORNING and BOTH options if status is STARTED and above
                               _buildShiftToggle('EVENING', 'EVENING ONLY', primaryBlue, subColor, fillWidth: true),
                             ],
                           ],

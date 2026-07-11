@@ -1142,7 +1142,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     );
   }
 
-  Future<void> _sendAttendanceReminders() async {
+  Future<void> _sendAttendanceReminders(String note) async {
     setState(() => _isLoadingAction = true);
     try {
       final String? token = await UserStore.getToken();
@@ -1156,9 +1156,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
       final url = "${ApiConstants.baseUrl}/daily-bus/bus-runs/$runId/send-attendance-reminders";
 
+      final body = {
+        if (note.isNotEmpty) "note": note,
+        "is_alert": true,
+      };
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
+        body: json.encode(body),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -1229,15 +1235,38 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  "It will make the absent student and faculty phone to ring as a reminder.",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                    height: 1.4,
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF451A03) : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF78350F) : const Color(0xFFFDE68A),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "This will make the absent student and faculty phone to ring as a reminder continuously until they turn it off.",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 28),
                 Row(
@@ -1264,7 +1293,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _sendAttendanceReminders();
+                          _sendAttendanceReminders("");
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6366F1),
@@ -3663,24 +3692,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     return Column(
       children: [
-        if (showFindButton)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _showFindPopup,
-                icon: const Icon(Icons.ring_volume_rounded, size: 18),
-                label: const Text("Find"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-              ),
-            ),
-          ),
         // Horizontal Session Selector Toggle & Search Bar
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -3846,7 +3857,32 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  if (showFindButton) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _showFindPopup,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.02),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.ring_volume_rounded,
+                          color: primaryBlue,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => _showAttendanceFilterBottomSheet(attendanceList),
                     child: Container(
@@ -4672,7 +4708,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-  void _showVerifyOtpBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark, {String defaultType = 'FN'}) {
+  void _showDirectGatePassPopup(Color primaryBlue, Color titleColor, Color subColor, bool isDark, {String defaultType = 'FN'}) {
     String autoOtp = '';
     final assignments = _run['assignment'] as List? ?? [];
     if (assignments.isNotEmpty) {
@@ -4682,139 +4718,109 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       }
     }
 
-    final TextEditingController otpController = TextEditingController(text: autoOtp);
-    String selectedType = defaultType;
+    final String title = defaultType == 'AN' ? "Direct Gate Out Pass" : "Direct Gate In Pass";
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 24),
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           child: Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 30,
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
               ],
             ),
-            child: StatefulBuilder(
-              builder: (context, setModalState) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.security_rounded,
+                    color: primaryBlue,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Are you sure you want to give the direct gate pass?",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: subColor,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                Row(
                   children: [
-                    Text(
-                      "Verify Campus In OTP",
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: titleColor,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Enter verification OTP to confirm campus arrival.",
-                      style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // OTP Text Field
-                    TextField(
-                      controller: otpController,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        labelText: "OTP Code",
-                        labelStyle: TextStyle(color: subColor),
-                        hintText: "Enter OTP code",
-                        prefixIcon: Icon(Icons.vpn_key_rounded, color: primaryBlue),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue, width: 2),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: subColor,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Shift Type Selection Segment
-                    Text(
-                      "Shift Type",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: subColor),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: ['FN', 'AN'].map((type) {
-                        final bool isSelected = selectedType == type;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setModalState(() => selectedType = type);
-                            },
-                            child: Container(
-                              margin: EdgeInsets.only(
-                                right: type == 'FN' ? 8.0 : 0.0,
-                                left: type == 'AN' ? 8.0 : 0.0,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? primaryBlue : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: isSelected ? primaryBlue : Colors.transparent),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  type == 'FN' ? "FN (Morning)" : "AN (Evening)",
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.white : subColor,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          final String otp = otpController.text.trim();
-                          if (otp.isEmpty) {
-                            _showSnackBar("Please enter the OTP", Colors.orange);
-                            return;
-                          }
-                          Navigator.pop(context);
-                          _verifyCampusInOtp(otp, selectedType);
+                          Navigator.of(context).pop();
+                          _verifyCampusInOtp(autoOtp, defaultType);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryBlue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: Text(
-                          "Verify OTP",
-                          style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900),
+                        child: const Text(
+                          "Confirm",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                   ],
-                );
-              }
+                ),
+              ],
             ),
           ),
         );
@@ -5453,13 +5459,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         bottomBar = _buildBottomButton("Mark Run Ready", Icons.check_circle_rounded, primaryBlue, isDark, _isLoadingAction ? null : _markRunReady);
       } else if (isStarted) {
         bottomBar = _buildBottomButton(
-          "Verify Campus In OTP",
+          s == 'AN_STARTED' ? "Direct Gate Out Verification" : "Direct Gate In Verification",
           Icons.vpn_key_rounded,
           primaryBlue,
           isDark,
           _isLoadingAction
               ? null
-              : () => _showVerifyOtpBottomSheet(
+              : () => _showDirectGatePassPopup(
                     primaryBlue,
                     titleColor,
                     subColor,
