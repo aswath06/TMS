@@ -300,15 +300,19 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
           final Map<String, dynamic> freshRun = Map<String, dynamic>.from(data['data']);
-          setState(() {
-            _run = freshRun;
-          });
+          if (mounted) {
+            setState(() {
+              _run = freshRun;
+            });
+          }
         }
       }
     } catch (e) {
       debugPrint("Error refreshing details: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -4712,7 +4716,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     String autoOtp = '';
     final assignments = _run['assignment'] as List? ?? [];
     if (assignments.isNotEmpty) {
-      final firstV = assignments.firstWhere((a) => a['vehicle']?['vehicle_otp'] != null, orElse: () => null);
+      final String targetShift = defaultType == 'AN' ? 'EVENING' : 'MORNING';
+      final firstV = assignments.firstWhere((a) => a['shift_code'] == targetShift && a['vehicle']?['vehicle_otp'] != null, orElse: () => null);
       if (firstV != null) {
         autoOtp = firstV['vehicle']['vehicle_otp']?.toString() ?? '';
       }
@@ -4828,8 +4833,466 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     );
   }
 
+
+  Future<void> _startMorningRun(int startOdometer) async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return;
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/start";
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: json.encode({
+          "start_odometer": startOdometer,
+          "latitude": 0.0,
+          "longitude": 0.0,
+          "image_url": null,
+        }),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar("Morning run started successfully", Colors.green);
+        await _refreshDetails();
+      } else {
+        try {
+          final decoded = json.decode(response.body);
+          final msg = decoded['message'] ?? decoded['error'] ?? "Failed to start run";
+          _showSnackBar(msg.toString(), Colors.red);
+        } catch (_) {
+          _showSnackBar("Failed to start run", Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackBar("Error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
+    }
+  }
+
+  Future<void> _submitEveningStart(int startOdometer, int passengerCount) async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return;
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/campus-out-details";
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: json.encode({
+          "start_odometer": startOdometer,
+          "passenger_count": passengerCount,
+          "latitude": null,
+          "longitude": null,
+          "image_url": null,
+        }),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar("Evening run started successfully", Colors.green);
+        await _refreshDetails();
+      } else {
+        try {
+          final decoded = json.decode(response.body);
+          final msg = decoded['message'] ?? decoded['error'] ?? "Failed to start evening run";
+          _showSnackBar(msg.toString(), Colors.red);
+        } catch (_) {
+          _showSnackBar("Failed to start evening run", Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackBar("Error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
+    }
+  }
+
+  Future<void> _submitEveningOdometer(int endOdometer, bool allowanceNeeded) async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return;
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/evening-odometer";
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+        body: json.encode({
+          "end_odometer": endOdometer,
+          "allowance_needed": allowanceNeeded,
+          "latitude": null,
+          "longitude": null,
+          "image_url": null,
+        }),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar("Evening odometer updated", Colors.green);
+        await _refreshDetails();
+      } else {
+        try {
+          final decoded = json.decode(response.body);
+          final msg = decoded['message'] ?? decoded['error'] ?? "Failed to update evening odometer";
+          _showSnackBar(msg.toString(), Colors.red);
+        } catch (_) {
+          _showSnackBar("Failed to update evening odometer", Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackBar("Error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
+    }
+  }
+
+  Future<void> _haltEveningBusRun() async {
+    setState(() => _isLoadingAction = true);
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return;
+      final String runId = _run['id']?.toString() ?? '';
+      if (runId.isEmpty) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/halt";
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar("Bus run halted successfully", Colors.green);
+        await _refreshDetails();
+      } else {
+        try {
+          final decoded = json.decode(response.body);
+          final msg = decoded['message'] ?? decoded['error'] ?? "Failed to halt run";
+          _showSnackBar(msg.toString(), Colors.red);
+        } catch (_) {
+          _showSnackBar("Failed to halt run", Colors.red);
+        }
+      }
+    } catch (e) {
+      _showSnackBar("Error: $e", Colors.red);
+    } finally {
+      setState(() => _isLoadingAction = false);
+    }
+  }
+
+  void _showStartMorningBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    final TextEditingController odometerController = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Direct start (FN)", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: titleColor)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: odometerController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: titleColor),
+                decoration: InputDecoration(
+                  labelText: "Start Odometer",
+                  labelStyle: TextStyle(color: subColor),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final int? odo = int.tryParse(odometerController.text);
+                    if (odo != null) {
+                      Navigator.pop(ctx);
+                      _startMorningRun(odo);
+                    } else {
+                      _showSnackBar("Invalid odometer", Colors.red);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryBlue, padding: const EdgeInsets.symmetric(vertical: 16)),
+                  child: const Text("Start Run", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showStartEveningBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    final TextEditingController odometerController = TextEditingController();
+    final String campusOutCount = _run['campus_out_count']?.toString() ?? '0';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Direct start AN", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: titleColor)),
+              const SizedBox(height: 6),
+              Text(
+                "Submit details to start the evening run.",
+                style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: odometerController,
+                keyboardType: TextInputType.number,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  labelText: "Start Odometer Reading",
+                  labelStyle: TextStyle(color: subColor),
+                  hintText: "Enter odometer value",
+                  prefixIcon: Icon(Icons.speed_rounded, color: primaryBlue),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: primaryBlue, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded, color: primaryBlue, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Passenger Count",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      campusOutCount,
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final int? odo = int.tryParse(odometerController.text);
+                    if (odo != null) {
+                      Navigator.pop(ctx);
+                      _submitEveningStart(odo, 0); // Passenger count is not required for evening start
+                    } else {
+                      _showSnackBar("Invalid odometer reading", Colors.orange);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Text("Start Evening Run", style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEndEveningBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    final TextEditingController odometerController = TextEditingController();
+    bool allowanceNeeded = false;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Direct end AN", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: titleColor)),
+                const SizedBox(height: 6),
+                Text(
+                  "Submit final shift details for evening routine.",
+                  style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: odometerController,
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    labelText: "End Odometer Reading",
+                    labelStyle: TextStyle(color: subColor),
+                    hintText: "Enter odometer value",
+                    prefixIcon: Icon(Icons.speed_rounded, color: primaryBlue),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: primaryBlue, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Allowance Needed",
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: titleColor),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Select if driver allowance is needed",
+                          style: TextStyle(fontSize: 10, color: subColor, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => setModalState(() => allowanceNeeded = true),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: allowanceNeeded ? const Color(0xFF10B981) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              "Yes",
+                              style: TextStyle(
+                                color: allowanceNeeded ? Colors.white : subColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => setModalState(() => allowanceNeeded = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: !allowanceNeeded ? const Color(0xFFEF4444) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              "No",
+                              style: TextStyle(
+                                color: !allowanceNeeded ? Colors.white : subColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final int? odo = int.tryParse(odometerController.text);
+                      if (odo != null) {
+                        Navigator.pop(ctx);
+                        _submitEveningOdometer(odo, allowanceNeeded);
+                      } else {
+                        _showSnackBar("Invalid numeric values", Colors.orange);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: Text("Submit End Details", style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showEndMorningBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
     final TextEditingController odometerController = TextEditingController();
+    final String campusInCount = _run['campus_in_count']?.toString() ?? '0';
     bool allowanceNeeded = false;
 
     showModalBottomSheet(
@@ -4890,7 +5353,38 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.people_alt_rounded, color: primaryBlue, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Passenger Count",
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            campusInCount,
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: primaryBlue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
 
                     // Allowance needed segment
                     Row(
@@ -4968,12 +5462,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             return;
                           }
                           final int? odometerVal = int.tryParse(oStr);
+                          final int? paxVal = int.tryParse(campusInCount);
                           if (odometerVal == null) {
                             _showSnackBar("Invalid numeric values", Colors.orange);
                             return;
                           }
                           Navigator.pop(context);
-                          _submitMorningOdometer(odometerVal, null, allowanceNeeded);
+                          _submitMorningOdometer(odometerVal, paxVal, allowanceNeeded);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryBlue,
@@ -4995,6 +5490,82 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDualBottomButtonColumn(
+    String text1, IconData icon1, Color color1, VoidCallback? onPressed1,
+    String text2, IconData icon2, Color color2, VoidCallback? onPressed2,
+    bool isDark
+  ) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomPadding),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildInnerButton(text1, icon1, color1, onPressed1),
+          const SizedBox(height: 12),
+          _buildInnerButton(text2, icon2, color2, onPressed2),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInnerButton(String text, IconData icon, Color primaryBlue, VoidCallback? onPressed) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (onPressed != null)
+            BoxShadow(
+              color: primaryBlue.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryBlue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+        ),
+        child: _isLoadingAction
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    text,
+                    style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -5061,7 +5632,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   Future<void> _deleteTrip(BuildContext context) async {
     try {
       final token = await UserStore.getToken();
-      final url = Uri.parse('${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/${_run['id']}');
+      final url = Uri.parse('${ApiConstants.baseUrl}/daily-bus/delete-runs/${_run['id']}');
       
       final response = await http.delete(
         url,
@@ -5434,9 +6005,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     final bool isAttendanceConfirmed = isAn ? isEveningConfirmed : isMorningConfirmed;
 
-    final bool oldConfirmAttendanceCondition = isAssignedFaculty && 
-        (assignedFacultyUserId == 421 || true) &&
-        isPresent && 
+    final bool oldConfirmAttendanceCondition = (isSuperOrTransportAdmin || (isAssignedFaculty && isPresent)) && 
         !isAttendanceConfirmed && 
         !_localAttendanceConfirmed;
 
@@ -5457,6 +6026,32 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     if (isSuperOrTransportAdmin) {
       if (isPlanned) {
         bottomBar = _buildBottomButton("Mark Run Ready", Icons.check_circle_rounded, primaryBlue, isDark, _isLoadingAction ? null : _markRunReady);
+      } else if (s == 'READY') {
+        bottomBar = _buildBottomButton("Direct start (FN)", Icons.play_circle_fill_rounded, primaryBlue, isDark, _isLoadingAction ? null : () => _showStartMorningBottomSheet(primaryBlue, titleColor, subColor, isDark));
+      } else if (s == 'ARRIVED_CAMPUS') {
+        if (showConfirmAttendance) {
+          bottomBar = _buildDualBottomButtonColumn(
+            "Confirm Attendance", Icons.check_circle_rounded, Colors.green, _isLoadingAction ? null : _showConfirmAttendancePopup,
+            "Direct end (FN)", Icons.stop_circle_rounded, primaryBlue, _isLoadingAction ? null : () => _showEndMorningBottomSheet(primaryBlue, titleColor, subColor, isDark),
+            isDark
+          );
+        } else {
+          bottomBar = _buildBottomButton("Direct end button (FN)", Icons.stop_circle_rounded, primaryBlue, isDark, _isLoadingAction ? null : () => _showEndMorningBottomSheet(primaryBlue, titleColor, subColor, isDark));
+        }
+      } else if (s == 'FN_COMPLETED') {
+        if (showConfirmAttendance) {
+          bottomBar = _buildDualBottomButtonColumn(
+            "Confirm Attendance", Icons.check_circle_rounded, Colors.green, _isLoadingAction ? null : _showConfirmAttendancePopup,
+            "Direct start AN", Icons.play_circle_fill_rounded, primaryBlue, _isLoadingAction ? null : () => _showStartEveningBottomSheet(primaryBlue, titleColor, subColor, isDark),
+            isDark
+          );
+        } else {
+          bottomBar = _buildBottomButton("Direct start AN", Icons.play_circle_fill_rounded, primaryBlue, isDark, _isLoadingAction ? null : () => _showStartEveningBottomSheet(primaryBlue, titleColor, subColor, isDark));
+        }
+      } else if (s == 'DEPARTED_CAMPUS') {
+        bottomBar = _buildBottomButton("Halt", Icons.pan_tool_rounded, Colors.orange, isDark, _isLoadingAction ? null : _haltEveningBusRun);
+      } else if (s == 'HALTED') {
+        bottomBar = _buildBottomButton("Direct end AN", Icons.stop_circle_rounded, primaryBlue, isDark, _isLoadingAction ? null : () => _showEndEveningBottomSheet(primaryBlue, titleColor, subColor, isDark));
       } else if (isStarted) {
         bottomBar = _buildBottomButton(
           s == 'AN_STARTED' ? "Direct Gate Out Verification" : "Direct Gate In Verification",

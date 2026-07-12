@@ -987,11 +987,11 @@ final store = ref.watch(driverStoreProvider);
     Color titleColor,
     bool isTamil,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
+    return Material(
+      color: surfaceColor,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
+        side: BorderSide(
           color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
         ),
       ),

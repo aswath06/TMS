@@ -9,6 +9,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DailyRoutinesListPage extends ConsumerStatefulWidget {
   const DailyRoutinesListPage({super.key});
@@ -24,6 +25,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
   String _selectedDateFilter = '';
   String _selectedFilter = 'ALL';
   final Map<String, bool> _loadingRuns = {};
+  bool _isListView = false;
 
   Future<void> _markRunReadyFromList(Map<String, dynamic> run, Color primaryBlue) async {
     final String runId = run['id']?.toString() ?? '';
@@ -338,7 +340,17 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
   @override
   void initState() {
     super.initState();
+    _loadViewPreference();
     _checkAuthorization();
+  }
+
+  Future<void> _loadViewPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _isListView = prefs.getBool('daily_routines_is_list_view') ?? false;
+      });
+    }
   }
 
   Future<void> _checkAuthorization() async {
@@ -687,6 +699,37 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     );
   }
 
+  Widget _buildViewToggleButton(Color p, Color t, bool d) {
+    return GestureDetector(
+      onTap: () async {
+        final prefs = await SharedPreferences.getInstance();
+        setState(() {
+          _isListView = !_isListView;
+        });
+        await prefs.setBool('daily_routines_is_list_view', _isListView);
+      },
+      child: Container(
+        height: 54,
+        width: 54,
+        decoration: BoxDecoration(
+          color: d ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(
+            color: d ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Icon(_isListView ? Icons.view_agenda_rounded : Icons.view_list_rounded, color: p, size: 24),
+      ),
+    );
+  }
+
   Widget _buildFilterButton(Color p, Color t, bool d) {
     return GestureDetector(
       onTap: () => _showFilterBottomSheet(p, t, d),
@@ -789,6 +832,225 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
           ),
         );
       },
+    );
+  }
+
+  Widget _buildListCard(
+    BuildContext context,
+    Map<String, dynamic> run,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue,
+  ) {
+    final String runName = run['run_name'] ?? 'Bus Run';
+    final String status = run['status'] ?? 'PENDING';
+    
+    final bool isMorningConfirmed = run['is_morning_attendance_confirmed'] == true ||
+        run['is_morning_attendance_confirmed']?.toString() == 'true' ||
+        run['morning_attendance_confirmed'] == true ||
+        run['morning_attendance_confirmed']?.toString() == 'true';
+
+    final bool isEveningConfirmed = run['is_evening_attendance_confirmed'] == true ||
+        run['is_evening_attendance_confirmed']?.toString() == 'true' ||
+        run['evening_attendance_confirmed'] == true ||
+        run['evening_attendance_confirmed']?.toString() == 'true';
+    
+    final assignments = run['assignment'] as List? ?? [];
+    
+    List<Widget> vehicleWidgets = [];
+    if (assignments.isEmpty) {
+      vehicleWidgets.add(
+        Text(
+          "No Vehicle Assigned",
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: titleColor,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    } else {
+      final Map<int, Map<String, dynamic>> uniqueAssignments = {};
+      for (var a in assignments) {
+        if (a['vehicle'] != null && a['vehicle']['id'] != null) {
+          uniqueAssignments[a['vehicle']['id']] = a;
+        }
+      }
+      
+      for (var a in uniqueAssignments.values) {
+        var v = a['vehicle'];
+        var d = a['driver'];
+        String vNo = v['vehicle_number'] ?? "Unknown";
+        String bNo = v['bus_number']?.toString() ?? "";
+        if (bNo.isNotEmpty && !bNo.toUpperCase().startsWith("BUS NO")) {
+          bNo = "BUS NO $bNo";
+        }
+        String dName = d != null && d['user'] != null && d['user']['name'] != null ? d['user']['name'] : "Unassigned";
+        
+        vehicleWidgets.add(
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: primaryBlue.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.directions_bus_rounded, size: 14, color: primaryBlue),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        vNo,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: titleColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                if (bNo.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, top: 2),
+                    child: Text(
+                      bNo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: subColor,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.person_rounded, size: 14, color: subColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        dName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: subColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        if (context.mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DailyBusRunDetailsPage(runData: run),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: titleColor.withValues(alpha: 0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    runName.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: titleColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildStatusBadge(status),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...vehicleWidgets,
+            if (isMorningConfirmed || isEveningConfirmed)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    if (isMorningConfirmed)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.green, size: 10),
+                            SizedBox(width: 4),
+                            Text("FN Confirmed", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    if (isEveningConfirmed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.green, size: 10),
+                            SizedBox(width: 4),
+                            Text("AN Confirmed", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              )
+          ],
+        ),
+      ),
     );
   }
 
@@ -1408,6 +1670,8 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                     children: [
                       Expanded(child: _buildSearchBar(isDark, primaryBlue, subColor)),
                       const SizedBox(width: 12),
+                      _buildViewToggleButton(primaryBlue, titleColor, isDark),
+                      const SizedBox(width: 12),
                       _buildFilterButton(primaryBlue, titleColor, isDark),
                     ],
                   ),
@@ -1554,7 +1818,9 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                                   );
                                 }
                                 final run = runs[index];
-                                return _buildRoutineCard(context, run, cardColor, titleColor, subColor, primaryBlue);
+                                return _isListView 
+                                    ? _buildListCard(context, run, cardColor, titleColor, subColor, primaryBlue)
+                                    : _buildRoutineCard(context, run, cardColor, titleColor, subColor, primaryBlue);
                               },
                             ),
                     ),

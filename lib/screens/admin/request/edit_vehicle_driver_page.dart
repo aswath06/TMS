@@ -153,7 +153,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
         final res = await http.patch(Uri.parse(url), headers: headers, body: json.encode(body));
         debugPrint("---- [HTTP RESPONSE STATUS (VEHICLE): ${res.statusCode}] ----\n${res.body}\n----------------------------");
 
-        if (res.statusCode == 200) {
+        if (res.statusCode == 200 || res.statusCode == 201) {
           final resData = json.decode(res.body);
           if (resData['success'] != true) {
             vSuccess = false;
@@ -161,7 +161,12 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
           }
         } else {
           vSuccess = false;
-          errorMsg = "Server error updating vehicle: ${res.statusCode}";
+          try {
+            final decoded = json.decode(res.body);
+            errorMsg = decoded['message'] ?? decoded['error'] ?? "Server error updating vehicle: ${res.statusCode}";
+          } catch (_) {
+            errorMsg = "Server error updating vehicle: ${res.statusCode}";
+          }
         }
       }
 
@@ -185,7 +190,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
         final res = await http.patch(Uri.parse(url), headers: headers, body: json.encode(body));
         debugPrint("---- [HTTP RESPONSE STATUS (DRIVER): ${res.statusCode}] ----\n${res.body}\n----------------------------");
 
-        if (res.statusCode == 200) {
+        if (res.statusCode == 200 || res.statusCode == 201) {
           final resData = json.decode(res.body);
           if (resData['success'] != true) {
             dSuccess = false;
@@ -197,7 +202,13 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
           }
         } else {
           dSuccess = false;
-          final err = "Server error updating driver: ${res.statusCode}";
+          String err;
+          try {
+            final decoded = json.decode(res.body);
+            err = decoded['message'] ?? decoded['error'] ?? "Server error updating driver: ${res.statusCode}";
+          } catch (_) {
+            err = "Server error updating driver: ${res.statusCode}";
+          }
           errorMsg = errorMsg == null ? err : "$errorMsg | $err";
         }
       }

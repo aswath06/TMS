@@ -265,16 +265,17 @@ class _LocationSelectorState extends State<LocationSelector> {
             return Container(
               key: ValueKey(_stops[i].id),
               margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
+              child: Material(
                 color: widget.cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: hasValue ? widget.accentColor.withValues(alpha: 0.35) : Colors.transparent,
-                  width: 1.5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: hasValue ? widget.accentColor.withValues(alpha: 0.35) : Colors.transparent,
+                    width: 1.5,
+                  ),
                 ),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 leading: ReorderableDragStartListener(
                   index: i,
                   child: Icon(
@@ -336,6 +337,7 @@ class _LocationSelectorState extends State<LocationSelector> {
                       ),
                   ],
                 ),
+              ),
               ),
             );
           },
