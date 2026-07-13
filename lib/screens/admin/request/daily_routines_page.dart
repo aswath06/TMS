@@ -793,7 +793,20 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                     return Wrap(
                       spacing: 8,
                       runSpacing: 12,
-                      children: ['ALL', 'PENDING', 'ONGOING', 'COMPLETED'].map((label) {
+                      children: [
+                        'ALL',
+                        'PLANNED',
+                        'READY',
+                        'STARTED',
+                        'ARRIVED CAMPUS',
+                        'FN COMPLETED',
+                        'AN STARTED',
+                        'DEPARTED CAMPUS',
+                        'HALT',
+                        'COMPLETED',
+                        'MERGED MIDWAY',
+                        'RESUMED MIDWAY'
+                      ].map((label) {
                         bool isS = _selectedFilter == label;
                         return GestureDetector(
                           onTap: () {
@@ -1595,15 +1608,17 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     final runs = store.runs.where((run) {
       final String s = (run['status'] ?? "").toString().toUpperCase();
       if (_selectedFilter == 'ALL') return true;
-      if (_selectedFilter == 'PENDING') {
-        return s.contains('PENDING') || s == 'CREATED';
-      }
-      if (_selectedFilter == 'ONGOING') {
-        return s.contains('ONGOING') || s.contains('START') || s.contains('RUN');
-      }
-      if (_selectedFilter == 'COMPLETED') {
-        return s.contains('COMPLETED');
-      }
+      if (_selectedFilter == 'PLANNED') return s == 'PLANNED';
+      if (_selectedFilter == 'READY') return s == 'READY';
+      if (_selectedFilter == 'STARTED') return s == 'STARTED';
+      if (_selectedFilter == 'ARRIVED CAMPUS') return s == 'ARRIVED_CAMPUS';
+      if (_selectedFilter == 'FN COMPLETED') return s == 'FN_COMPLETED';
+      if (_selectedFilter == 'AN STARTED') return s == 'AN_STARTED';
+      if (_selectedFilter == 'DEPARTED CAMPUS') return s == 'DEPARTED_CAMPUS';
+      if (_selectedFilter == 'HALT') return s == 'HALTED';
+      if (_selectedFilter == 'COMPLETED') return s == 'COMPLETED';
+      if (_selectedFilter == 'MERGED MIDWAY') return s == 'MERGED_HALTED';
+      if (_selectedFilter == 'RESUMED MIDWAY') return s == 'RESUMED_MIDWAY';
       return true;
     }).toList();
 

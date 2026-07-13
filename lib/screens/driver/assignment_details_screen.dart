@@ -94,6 +94,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           if (mounted) {
             setState(() {
               _detailedRun = decoded['data'];
+              run = decoded['data'];
             });
           }
         }
@@ -1256,19 +1257,16 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: (run['campus_in_count'] == null)
-                                    ? Colors.orange.withOpacity( 0.1)
-                                    : primaryBlue.withOpacity( 0.1),
+                                color: primaryBlue.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: primaryBlue.withOpacity(0.3)),
                               ),
                               child: Text(
-                                run['campus_in_count']?.toString() ?? "null",
+                                run['campus_in_count']?.toString() ?? "0",
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: (run['campus_in_count'] == null)
-                                      ? Colors.orange
-                                      : primaryBlue,
+                                  color: primaryBlue,
                                 ),
                               ),
                             ),

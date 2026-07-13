@@ -115,9 +115,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     if (!mounted) return;
     // Fetch Daily Bus Routes for the selected date
     final dailyStore = ref.read(dailyRoutinesStoreProvider);
-    if (dailyStore.selectedDate != _selectedDateFilter || dailyStore.runs.isEmpty) {
-      await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
-    }
+    await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
   }
 
   @override
