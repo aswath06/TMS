@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:tripzo/components/assigned_faculty_cards.dart';
+
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/screens/driver/split_vehicle_screen.dart';
@@ -103,6 +105,28 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         setState(() {
           _isLoadingDetails = false;
         });
+      }
+    }
+  }
+
+  Future<void> _makePhoneCall(String phone) async {
+    if (phone.isEmpty) return;
+    final Uri url = Uri.parse("tel:${phone.trim()}");
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint("Could not launch phone call: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Could not initiate call. Please call $phone manually."),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     }
   }
@@ -283,7 +307,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                 icon: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withValues(alpha: 0.1),
+                    color: primaryBlue.withOpacity( 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.merge_rounded, color: primaryBlue, size: 20),
@@ -313,7 +337,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                 icon: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withValues(alpha: 0.1),
+                    color: primaryBlue.withOpacity( 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.call_split_rounded, color: primaryBlue, size: 20),
@@ -356,7 +380,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                   borderRadius: BorderRadius.circular(32),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: Colors.black.withOpacity( 0.04),
                       blurRadius: 25,
                       offset: const Offset(0, 12),
                     ),
@@ -418,7 +442,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: primaryBlue.withValues(alpha: 0.1),
+                            color: primaryBlue.withOpacity( 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -460,7 +484,31 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
 
                 if (_userRole == 'driver') ...[
                   const SizedBox(height: 24),
-                  _buildAssignedFacultySection(isDark, primaryBlue, surfaceColor, titleColor, subColor),
+                  ShiftFacultySection(
+                    faculty: run['morningAssignedFaculty'],
+                    isDark: isDark,
+                    primaryColor: primaryBlue,
+                    surfaceColor: surfaceColor,
+                    titleColor: titleColor,
+                    subColor: subColor,
+                    shiftName: 'Morning Shift',
+                    icon: Icons.wb_sunny_rounded,
+                    accentColor: Colors.orange,
+                    onCall: () => _makePhoneCall(run['morningAssignedFaculty']?['phone']?.toString() ?? ''),
+                  ),
+                  const SizedBox(height: 16),
+                  ShiftFacultySection(
+                    faculty: run['eveningAssignedFaculty'],
+                    isDark: isDark,
+                    primaryColor: primaryBlue,
+                    surfaceColor: surfaceColor,
+                    titleColor: titleColor,
+                    subColor: subColor,
+                    shiftName: 'Evening Shift',
+                    icon: Icons.nights_stay_rounded,
+                    accentColor: Colors.deepPurpleAccent,
+                    onCall: () => _makePhoneCall(run['eveningAssignedFaculty']?['phone']?.toString() ?? ''),
+                  ),
                 ],
               ] else ...[
                 const SizedBox(height: 24),
@@ -529,7 +577,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                 borderRadius: BorderRadius.circular(16),
               ),
               elevation: 4,
-              shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              shadowColor: const Color(0xFF6366F1).withOpacity( 0.3),
             ),
           ),
         ),
@@ -609,7 +657,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                 borderRadius: BorderRadius.circular(16),
               ),
               elevation: 4,
-              shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              shadowColor: const Color(0xFF6366F1).withOpacity( 0.3),
             ),
           ),
         ),
@@ -708,7 +756,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           color: surfaceColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity( 0.05),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),
@@ -793,7 +841,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         width: 40,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
+                          color: Colors.grey.withOpacity( 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -831,7 +879,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
+                            color: Colors.black.withOpacity( 0.03),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -1090,7 +1138,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         width: 40,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
+                          color: Colors.grey.withOpacity( 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -1209,8 +1257,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                               ),
                               decoration: BoxDecoration(
                                 color: (run['campus_in_count'] == null)
-                                    ? Colors.orange.withValues(alpha: 0.1)
-                                    : primaryBlue.withValues(alpha: 0.1),
+                                    ? Colors.orange.withOpacity( 0.1)
+                                    : primaryBlue.withOpacity( 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -1248,7 +1296,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Passenger Count",
+                                  "Campus In Count",
                                   style: TextStyle(
                                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                     fontSize: 12,
@@ -1667,10 +1715,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.1)),
+        border: Border.all(color: primaryColor.withOpacity( 0.1)),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withValues(alpha: 0.05),
+            color: primaryColor.withOpacity( 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -1698,7 +1746,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: primaryColor.withValues(alpha: 0.1),
+                backgroundColor: primaryColor.withOpacity( 0.1),
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : 'F',
                   style: TextStyle(
@@ -1749,7 +1797,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                   icon: const Icon(Icons.call_rounded),
                   color: Colors.green,
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.green.withValues(alpha: 0.1),
+                    backgroundColor: Colors.green.withOpacity( 0.1),
                     padding: const EdgeInsets.all(12),
                   ),
                 ),
@@ -1801,9 +1849,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.05),
+        color: Colors.red.withOpacity( 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.red.withOpacity( 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1951,10 +1999,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.1)),
+        border: Border.all(color: primaryColor.withOpacity( 0.1)),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withValues(alpha: 0.05),
+            color: primaryColor.withOpacity( 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -1992,7 +2040,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
             thickness: 1,
             color: isDark
                 ? Colors.white10
-                : Colors.black.withValues(alpha: 0.05),
+                : Colors.black.withOpacity( 0.05),
           ),
           const SizedBox(height: 24),
           Row(
@@ -2149,7 +2197,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           Container(
             height: 2,
             width: 32,
-            color: activeColor.withValues(alpha: 0.2),
+            color: activeColor.withOpacity( 0.2),
           ),
           ScaleTransition(
             scale: Tween<double>(begin: 0.8, end: 1.2).animate(
@@ -2233,7 +2281,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         width: 40,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
+                          color: Colors.grey.withOpacity( 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -2325,7 +2373,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Passenger Count",
+                                "Campus Out Count",
                                 style: TextStyle(
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                   fontSize: 12,
@@ -2572,7 +2620,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         width: 40,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
+                          color: Colors.grey.withOpacity( 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -2661,7 +2709,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Passenger Count",
+                                "Campus Out Count",
                                 style: TextStyle(
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                   fontSize: 12,
@@ -3018,7 +3066,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         ? Colors.white60
         : const Color(0xFF64748B);
     final Color cardBg = isDark
-        ? Colors.white.withValues(alpha: 0.02)
+        ? Colors.white.withOpacity( 0.02)
         : Colors.grey.shade50;
 
     return Container(
@@ -3028,8 +3076,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.03),
+              ? Colors.white.withOpacity( 0.05)
+              : Colors.black.withOpacity( 0.03),
           width: 1,
         ),
       ),
@@ -3080,10 +3128,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: iconColor.withValues(alpha: 0.2), width: 1.5),
+        border: Border.all(color: iconColor.withOpacity( 0.2), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: iconColor.withValues(alpha: 0.08),
+            color: iconColor.withOpacity( 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -3096,7 +3144,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
+              color: iconColor.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: iconColor, size: 20),
@@ -3225,9 +3273,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
+        color: Colors.orange.withOpacity( 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.orange.withOpacity( 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3398,7 +3446,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: subColor.withValues(alpha: 0.1)),
+        border: Border.all(color: subColor.withOpacity( 0.1)),
       ),
       child: Row(
         children: [
@@ -3409,7 +3457,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: _selectedTab == 0 ? primaryBlue.withValues(alpha: 0.1) : Colors.transparent,
+                  color: _selectedTab == 0 ? primaryBlue.withOpacity( 0.1) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
@@ -3430,7 +3478,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: _selectedTab == 1 ? primaryBlue.withValues(alpha: 0.1) : Colors.transparent,
+                  color: _selectedTab == 1 ? primaryBlue.withOpacity( 0.1) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
@@ -3458,14 +3506,14 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: subColor.withValues(alpha: 0.1)),
+        border: Border.all(color: subColor.withOpacity( 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: primaryBlue.withValues(alpha: 0.1),
+              color: primaryBlue.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.directions_bus_rounded, color: primaryBlue, size: 28),
@@ -3502,14 +3550,14 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: subColor.withValues(alpha: 0.1)),
+        border: Border.all(color: subColor.withOpacity( 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: primaryBlue.withValues(alpha: 0.1),
+              color: primaryBlue.withOpacity( 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.person_rounded, color: primaryBlue, size: 28),
@@ -3589,7 +3637,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withValues(alpha: 0.3),
+                            color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withOpacity( 0.3),
                             blurRadius: 6,
                             offset: const Offset(0, 3),
                           ),
@@ -3607,7 +3655,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       Expanded(
                         child: Container(
                           width: 2,
-                          color: primaryBlue.withValues(alpha: 0.3),
+                          color: primaryBlue.withOpacity( 0.3),
                         ),
                       ),
                   ],
@@ -3620,10 +3668,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: primaryBlue.withValues(alpha: 0.05)),
+                      border: Border.all(color: primaryBlue.withOpacity( 0.05)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
+                          color: Colors.black.withOpacity( 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -3637,7 +3685,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withValues(alpha: 0.1),
+                                color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withOpacity( 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(

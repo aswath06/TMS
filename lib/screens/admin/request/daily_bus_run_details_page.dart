@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:tripzo/components/assigned_faculty_cards.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
@@ -69,9 +71,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.06),
+        color: accentColor.withOpacity( 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withValues(alpha: 0.12)),
+        border: Border.all(color: accentColor.withOpacity( 0.12)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -90,7 +92,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           const SizedBox(height: 2),
           Text(
             subText,
-            style: TextStyle(fontSize: 9, color: subColor.withValues(alpha: 0.7), fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 9, color: subColor.withOpacity( 0.7), fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
         ],
@@ -101,10 +103,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   Widget _buildOdoTile(String label, double? odoVal, bool isDark, Color titleColor, Color subColor, {bool isHighlight = false, Color? highlightColor}) {
     final displayVal = odoVal != null && odoVal > 0 ? "${odoVal.toStringAsFixed(1)} km" : "N/A";
     final Color bgColor = isHighlight 
-        ? (highlightColor?.withValues(alpha: 0.08) ?? Colors.transparent)
+        ? (highlightColor?.withOpacity( 0.08) ?? Colors.transparent)
         : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC));
     final Color borderColor = isHighlight
-        ? (highlightColor?.withValues(alpha: 0.2) ?? Colors.transparent)
+        ? (highlightColor?.withOpacity( 0.2) ?? Colors.transparent)
         : Colors.transparent;
 
     return Container(
@@ -148,7 +150,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         ),
         child: Row(
           children: [
-            Icon(Icons.verified_user_rounded, color: subColor.withValues(alpha: 0.3), size: 20),
+            Icon(Icons.verified_user_rounded, color: subColor.withOpacity( 0.3), size: 20),
             const SizedBox(width: 10),
             Text(
               "Not Verified Yet",
@@ -174,16 +176,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.06),
+        color: Colors.green.withOpacity( 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.green.withOpacity( 0.12)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.15),
+              color: Colors.green.withOpacity( 0.15),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.verified_user_rounded, color: Colors.green, size: 16),
@@ -209,7 +211,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.15),
+              color: Colors.green.withOpacity( 0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -405,7 +407,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity( 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -418,7 +420,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withValues(alpha: 0.1),
+                  color: primaryBlue.withOpacity( 0.1),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Row(
@@ -426,7 +428,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: primaryBlue.withValues(alpha: 0.2),
+                        color: primaryBlue.withOpacity( 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.warning_rounded, color: primaryBlue, size: 24),
@@ -464,10 +466,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.1),
+                        color: Colors.amber.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.amber.withValues(alpha: 0.3),
+                          color: Colors.amber.withOpacity( 0.3),
                         ),
                       ),
                       child: Row(
@@ -504,7 +506,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          side: BorderSide(color: subTextColor.withValues(alpha: 0.3)),
+                          side: BorderSide(color: subTextColor.withOpacity( 0.3)),
                         ),
                         child: Text(
                           "Cancel",
@@ -904,7 +906,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity( 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -917,7 +919,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: typeColor.withValues(alpha: 0.1),
+                  color: typeColor.withOpacity( 0.1),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Row(
@@ -925,7 +927,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: typeColor.withValues(alpha: 0.2),
+                        color: typeColor.withOpacity( 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(typeIcon, color: typeColor, size: 20),
@@ -946,7 +948,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withOpacity( 0.05),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.close_rounded, size: 18, color: textColor),
@@ -1009,17 +1011,17 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
                         color: sessionStatus == 'PRESENT' 
-                            ? Colors.green.withValues(alpha: 0.1) 
+                            ? Colors.green.withOpacity( 0.1) 
                             : sessionStatus == 'LEAVE'
-                                ? Colors.orange.withValues(alpha: 0.1)
-                                : Colors.red.withValues(alpha: 0.1),
+                                ? Colors.orange.withOpacity( 0.1)
+                                : Colors.red.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: sessionStatus == 'PRESENT' 
-                              ? Colors.green.withValues(alpha: 0.3) 
+                              ? Colors.green.withOpacity( 0.3) 
                               : sessionStatus == 'LEAVE'
-                                  ? Colors.orange.withValues(alpha: 0.3)
-                                  : Colors.red.withValues(alpha: 0.3),
+                                  ? Colors.orange.withOpacity( 0.3)
+                                  : Colors.red.withOpacity( 0.3),
                           width: 1,
                         ),
                       ),
@@ -1208,7 +1210,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Colors.black.withOpacity( 0.2),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1220,7 +1222,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    color: const Color(0xFF6366F1).withOpacity( 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -1495,7 +1497,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.assignment_ind_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+              Icon(Icons.assignment_ind_rounded, size: 48, color: subColor.withOpacity( 0.2)),
               const SizedBox(height: 12),
               Text("No assignments active for this run", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
             ],
@@ -1526,10 +1528,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+            border: Border.all(color: primaryBlue.withOpacity( 0.1)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: Colors.black.withOpacity( 0.03),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
@@ -1542,7 +1544,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withValues(alpha: 0.06),
+                  color: primaryBlue.withOpacity( 0.06),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
@@ -1554,7 +1556,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: primaryBlue.withValues(alpha: 0.1),
+                        color: primaryBlue.withOpacity( 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1572,7 +1574,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: titleColor.withValues(alpha: 0.8),
+                        color: titleColor.withOpacity( 0.8),
                       ),
                     ),
                   ],
@@ -1645,7 +1647,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     // Divider between Vehicle and Driver
                     Container(
                       height: 1,
-                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                      color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
                     ),
                     const SizedBox(height: 20),
 
@@ -1666,9 +1668,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.04),
+                          color: Colors.orange.withOpacity( 0.04),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.orange.withValues(alpha: 0.08)),
+                          border: Border.all(color: Colors.orange.withOpacity( 0.08)),
                         ),
                         child: Column(
                           children: [
@@ -1676,7 +1678,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               children: [
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                                  backgroundColor: Colors.orange.withOpacity( 0.1),
                                   child: const Icon(Icons.person_rounded, color: Colors.orange, size: 20),
                                 ),
                                 const SizedBox(width: 12),
@@ -1701,7 +1703,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     onPressed: () => _makePhoneCall(phone),
                                     icon: const Icon(Icons.call_rounded, color: Colors.green, size: 16),
                                     style: IconButton.styleFrom(
-                                      backgroundColor: Colors.green.withValues(alpha: 0.08),
+                                      backgroundColor: Colors.green.withOpacity( 0.08),
                                       padding: const EdgeInsets.all(8),
                                     ),
                                   ),
@@ -1731,7 +1733,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: Colors.orange.withValues(alpha: 0.1),
+                                    color: Colors.orange.withOpacity( 0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -1749,6 +1751,48 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text("No driver details assigned", style: TextStyle(color: subColor, fontSize: 13)),
                       ),
+                    ],
+
+                    // Assigned Faculty for this shift
+                    if (_run['morningAssignedFaculty'] != null || _run['eveningAssignedFaculty'] != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        height: 1,
+                        color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          const Icon(Icons.supervisor_account_rounded, color: Colors.purple, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Assigned Faculty",
+                            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (shiftCode.contains('MORNING') && _run['morningAssignedFaculty'] != null)
+                        AssignmentFacultyMiniCard(
+                          faculty: _run['morningAssignedFaculty'],
+                          accentColor: Colors.orange,
+                          titleColor: titleColor,
+                          subColor: subColor,
+                          onCall: () => _makePhoneCall(_run['morningAssignedFaculty']['phone']?.toString() ?? ''),
+                        )
+                      else if (shiftCode.contains('EVENING') && _run['eveningAssignedFaculty'] != null)
+                        AssignmentFacultyMiniCard(
+                          faculty: _run['eveningAssignedFaculty'],
+                          accentColor: Colors.deepPurpleAccent,
+                          titleColor: titleColor,
+                          subColor: subColor,
+                          onCall: () => _makePhoneCall(_run['eveningAssignedFaculty']['phone']?.toString() ?? ''),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text("No faculty assigned for this shift", style: TextStyle(color: subColor, fontSize: 13)),
+                        ),
                     ],
                   ],
                 ),
@@ -1799,12 +1843,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+          color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withOpacity( 0.02),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1818,7 +1862,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.08),
+                  color: iconColor.withOpacity( 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
@@ -1829,7 +1873,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 style: GoogleFonts.outfit(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
-                  color: titleColor.withValues(alpha: 0.9),
+                  color: titleColor.withOpacity( 0.9),
                   letterSpacing: 0.5,
                 ),
               ),
@@ -1841,7 +1885,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
-                child: Icon(Icons.location_on_rounded, color: titleColor.withValues(alpha: 0.6), size: 22),
+                child: Icon(Icons.location_on_rounded, color: titleColor.withOpacity( 0.6), size: 22),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1863,10 +1907,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50,
+                    color: isDark ? Colors.white.withOpacity( 0.02) : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity( 0.04),
                     ),
                   ),
                   child: Row(
@@ -1907,15 +1951,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50,
+                    color: isDark ? Colors.white.withOpacity( 0.02) : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity( 0.04),
                     ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.tag_rounded, size: 16, color: titleColor.withValues(alpha: 0.5)),
+                      Icon(Icons.tag_rounded, size: 16, color: titleColor.withOpacity( 0.5)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -1958,10 +2002,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     final boardingStop = myDetails?['boardingStop'] as Map<String, dynamic>?;
     final dropStop = myDetails?['dropStop'] as Map<String, dynamic>?;
 
-    final assignedFaculty = _run['assignedFaculty'] ?? 
-                            _run['assigned_faculty'] ?? 
-                            myDetails?['assignedFaculty'] ?? 
-                            myDetails?['assigned_faculty'];
+    final morningFaculty = _run['morningAssignedFaculty'] ?? myDetails?['morningAssignedFaculty'];
+    final eveningFaculty = _run['eveningAssignedFaculty'] ?? myDetails?['eveningAssignedFaculty'];
 
     final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
         ? int.tryParse(_run['assigned_faculty_user_id'].toString())
@@ -2016,12 +2058,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               color: cardColor,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
+                  color: Colors.black.withOpacity( 0.02),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -2041,7 +2083,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 Container(
                   width: 1,
                   height: 50,
-                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                  color: isDark ? Colors.white10 : Colors.black.withOpacity( 0.06),
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                 ),
                 Expanded(
@@ -2057,10 +2099,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             ),
           ),
 
-          if (assignedFaculty != null) ...[
+          if (morningFaculty != null || eveningFaculty != null) ...[
               const SizedBox(height: 28),
               Text(
-                "Assigned Faculty",
+                "Assigned Faculties",
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
@@ -2068,69 +2110,32 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 ),
               ),
               const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+              if (morningFaculty != null)
+                AssignedFacultyCard(
+                  faculty: morningFaculty,
+                  shiftName: "Morning Shift",
+                  icon: Icons.wb_sunny_rounded,
+                  iconColor: Colors.orange,
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  titleColor: titleColor,
+                  subColor: subColor,
+                  onCall: () => _makePhoneCall(morningFaculty['phone']?.toString() ?? ''),
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-                      child: Icon(Icons.supervisor_account_rounded, color: titleColor.withValues(alpha: 0.7), size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            assignedFaculty['name']?.toString() ?? 'N/A',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: titleColor,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            assignedFaculty['phone']?.toString() ?? 'N/A',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: subColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (assignedFaculty['phone'] != null &&
-                        assignedFaculty['phone'].toString().isNotEmpty &&
-                        assignedFaculty['phone'].toString() != 'null')
-                      IconButton(
-                        onPressed: () => _makePhoneCall(assignedFaculty['phone'].toString()),
-                        icon: const Icon(Icons.call_rounded, color: Colors.green, size: 18),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.green.withValues(alpha: 0.08),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                  ],
+              if (morningFaculty != null && eveningFaculty != null)
+                const SizedBox(height: 12),
+              if (eveningFaculty != null)
+                AssignedFacultyCard(
+                  faculty: eveningFaculty,
+                  shiftName: "Evening Shift",
+                  icon: Icons.nights_stay_rounded,
+                  iconColor: Colors.deepPurpleAccent,
+                  isDark: isDark,
+                  cardColor: cardColor,
+                  titleColor: titleColor,
+                  subColor: subColor,
+                  onCall: () => _makePhoneCall(eveningFaculty['phone']?.toString() ?? ''),
                 ),
-              ),
             ],
             if (driverName != null) ...[
               const SizedBox(height: 28),
@@ -2149,12 +2154,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                   color: cardColor,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                    color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
                     width: 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
+                      color: Colors.black.withOpacity( 0.02),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -2164,8 +2169,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                   children: [
                     CircleAvatar(
                       radius: 22,
-                      backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-                      child: Icon(Icons.person_rounded, color: titleColor.withValues(alpha: 0.7), size: 22),
+                      backgroundColor: isDark ? Colors.white.withOpacity( 0.05) : Colors.grey.shade100,
+                      child: Icon(Icons.person_rounded, color: titleColor.withOpacity( 0.7), size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -2298,7 +2303,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
+                  color: statusColor.withOpacity( 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -2381,12 +2386,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                   color: cardColor,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                    color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
                     width: 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
+                      color: Colors.black.withOpacity( 0.02),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -2399,14 +2404,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50,
+                        color: isDark ? Colors.white.withOpacity( 0.02) : Colors.grey.shade50,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(24),
                           topRight: Radius.circular(24),
                         ),
                         border: Border(
                           bottom: BorderSide(
-                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                            color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
                             width: 1,
                           ),
                         ),
@@ -2417,7 +2422,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: primaryBlue.withValues(alpha: 0.08),
+                              color: primaryBlue.withOpacity( 0.08),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -2435,7 +2440,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: titleColor.withValues(alpha: 0.8),
+                              color: titleColor.withOpacity( 0.8),
                             ),
                           ),
                         ],
@@ -2494,7 +2499,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           // Divider between Vehicle and Driver
                           Container(
                             height: 1,
-                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                            color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06),
                           ),
                           const SizedBox(height: 20),
 
@@ -2515,15 +2520,15 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade50,
+                                color: isDark ? Colors.white.withOpacity( 0.02) : Colors.grey.shade50,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)),
+                                border: Border.all(color: isDark ? Colors.white.withOpacity( 0.08) : Colors.black.withOpacity( 0.06)),
                               ),
                               child: Row(
                                 children: [
                                   CircleAvatar(
                                     radius: 20,
-                                    backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                                    backgroundColor: Colors.orange.withOpacity( 0.1),
                                     child: const Icon(Icons.person_rounded, color: Colors.orange, size: 20),
                                   ),
                                   const SizedBox(width: 12),
@@ -2641,10 +2646,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+                border: Border.all(color: primaryBlue.withOpacity( 0.1)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
+                    color: Colors.black.withOpacity( 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -2664,7 +2669,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: primaryBlue.withValues(alpha: 0.1),
+                                color: primaryBlue.withOpacity( 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(Icons.wb_sunny_rounded, color: primaryBlue, size: 16),
@@ -2684,7 +2689,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: primaryBlue.withValues(alpha: 0.08),
+                              color: primaryBlue.withOpacity( 0.08),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -2794,10 +2799,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
+                border: Border.all(color: Colors.orange.withOpacity( 0.1)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
+                    color: Colors.black.withOpacity( 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -2817,7 +2822,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.1),
+                                color: Colors.orange.withOpacity( 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(Icons.nights_stay_rounded, color: Colors.orange, size: 16),
@@ -2837,7 +2842,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.08),
+                              color: Colors.orange.withOpacity( 0.08),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -2957,7 +2962,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.map_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+              Icon(Icons.map_rounded, size: 48, color: subColor.withOpacity( 0.2)),
               const SizedBox(height: 12),
               Text("No stops mapped for this routine", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
             ],
@@ -3001,7 +3006,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       border: Border.all(color: Colors.white, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withValues(alpha: 0.3),
+                          color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withOpacity( 0.3),
                           blurRadius: 6,
                           offset: const Offset(0, 3),
                         ),
@@ -3019,7 +3024,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     Expanded(
                       child: Container(
                         width: 2,
-                        color: primaryBlue.withValues(alpha: 0.3),
+                        color: primaryBlue.withOpacity( 0.3),
                       ),
                     ),
                 ],
@@ -3032,10 +3037,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: primaryBlue.withValues(alpha: 0.05)),
+                    border: Border.all(color: primaryBlue.withOpacity( 0.05)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
+                        color: Colors.black.withOpacity( 0.02),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -3049,7 +3054,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withValues(alpha: 0.1),
+                              color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withOpacity( 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -3110,7 +3115,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.people_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+              Icon(Icons.people_rounded, size: 48, color: subColor.withOpacity( 0.2)),
               const SizedBox(height: 12),
               Text("No passengers assigned", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
             ],
@@ -3197,7 +3202,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryBlue.withValues(alpha: 0.25),
+                                  color: primaryBlue.withOpacity( 0.25),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2),
                                 ),
@@ -3288,7 +3293,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: Colors.black.withOpacity( 0.02),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -3299,7 +3304,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
                         decoration: InputDecoration(
                           hintText: "Search passengers...",
-                          hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w500),
+                          hintStyle: TextStyle(color: subColor.withOpacity( 0.5), fontSize: 13, fontWeight: FontWeight.w500),
                           prefixIcon: Icon(Icons.search_rounded, size: 18, color: subColor),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -3319,7 +3324,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 05.02),
+                            color: Colors.black.withOpacity( 05.02),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -3431,10 +3436,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         decoration: BoxDecoration(
                           color: cardColor,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: primaryBlue.withValues(alpha: 0.04)),
+                          border: Border.all(color: primaryBlue.withOpacity( 0.04)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
+                              color: Colors.black.withOpacity( 0.02),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -3447,7 +3452,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               children: [
                                 CircleAvatar(
                                   radius: 18,
-                                  backgroundColor: primaryBlue.withValues(alpha: 0.1),
+                                  backgroundColor: primaryBlue.withOpacity( 0.1),
                                   child: Text(
                                     initial,
                                     style: GoogleFonts.outfit(
@@ -3478,7 +3483,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     onPressed: () => _makePhoneCall(phone),
                                     icon: const Icon(Icons.call_rounded, color: Colors.green, size: 14),
                                     style: IconButton.styleFrom(
-                                      backgroundColor: Colors.green.withValues(alpha: 0.08),
+                                      backgroundColor: Colors.green.withOpacity( 0.08),
                                       padding: const EdgeInsets.all(6),
                                     ),
                                   )
@@ -3500,9 +3505,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: primaryBlue.withValues(alpha: 0.05),
+                                  color: primaryBlue.withOpacity( 0.05),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: primaryBlue.withValues(alpha: 0.1), width: 1),
+                                  border: Border.all(color: primaryBlue.withOpacity( 0.1), width: 1),
                                 ),
                                 child: Row(
                                   children: [
@@ -3537,7 +3542,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                           "Boarding: $boardingStop",
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(fontSize: 11, color: titleColor.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
+                                          style: TextStyle(fontSize: 11, color: titleColor.withOpacity( 0.8), fontWeight: FontWeight.bold),
                                         ),
                                       ),
                                       if (boardingOtp.isNotEmpty && boardingOtp != 'null') ...[
@@ -3545,9 +3550,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: Colors.green.withValues(alpha: 0.08),
+                                            color: Colors.green.withOpacity( 0.08),
                                             borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.green.withValues(alpha: 0.15)),
+                                            border: Border.all(color: Colors.green.withOpacity( 0.15)),
                                           ),
                                           child: Text(
                                             "OTP: $boardingOtp",
@@ -3574,7 +3579,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     "Drop: $dropStop",
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 11, color: titleColor.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
+                                    style: TextStyle(fontSize: 11, color: titleColor.withOpacity( 0.8), fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               ],
@@ -3610,7 +3615,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.rule_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+              Icon(Icons.rule_rounded, size: 48, color: subColor.withOpacity( 0.2)),
               const SizedBox(height: 12),
               Text("No attendance records found", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
             ],
@@ -3685,13 +3690,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
          _userRole!.toLowerCase() == 'super admin' ||
          _userRole!.toLowerCase() == 'transport admin' ||
             _userRole!.toLowerCase() == 'transport_admin');
-    final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
-        ? int.tryParse(_run['assigned_faculty_user_id'].toString())
+    final int? morningFacultyUserId = _run['morning_assigned_faculty_id'] != null
+        ? int.tryParse(_run['morning_assigned_faculty_id'].toString())
+        : null;
+    final int? eveningFacultyUserId = _run['evening_assigned_faculty_id'] != null
+        ? int.tryParse(_run['evening_assigned_faculty_id'].toString())
         : null;
     final bool isAssignedFaculty = _userRole != null &&
         _userRole!.toLowerCase() == 'faculty' &&
-        assignedFacultyUserId != null &&
-        assignedFacultyUserId == _loggedInUserId;
+        ((morningFacultyUserId != null && morningFacultyUserId == _loggedInUserId) ||
+         (eveningFacultyUserId != null && eveningFacultyUserId == _loggedInUserId));
     final bool showFindButton = isSuperOrTransportAdmin || isAssignedFaculty;
 
     return Column(
@@ -3729,7 +3737,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryBlue.withValues(alpha: 0.25),
+                                  color: primaryBlue.withOpacity( 0.25),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2),
                                 ),
@@ -3835,10 +3843,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF1E293B) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: primaryBlue.withValues(alpha: 0.05)),
+                        border: Border.all(color: primaryBlue.withOpacity( 0.05)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: Colors.black.withOpacity( 0.02),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -3853,7 +3861,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
                         decoration: InputDecoration(
                           hintText: "Search by name, roll, dept...",
-                          hintStyle: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w500),
+                          hintStyle: TextStyle(color: subColor.withOpacity( 0.5), fontSize: 13, fontWeight: FontWeight.w500),
                           prefixIcon: Icon(Icons.search_rounded, size: 18, color: subColor),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -3872,7 +3880,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
+                              color: Colors.black.withOpacity( 0.02),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -3898,7 +3906,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: Colors.black.withOpacity( 0.02),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -3930,7 +3938,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.08),
+                          color: Colors.green.withOpacity( 0.08),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -3942,7 +3950,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.08),
+                          color: Colors.red.withOpacity( 0.08),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -4051,14 +4059,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: sessionStatus == 'PRESENT' 
-                                  ? Colors.green.withValues(alpha: 0.1) 
+                                  ? Colors.green.withOpacity( 0.1) 
                                   : sessionStatus == 'LEAVE'
-                                      ? Colors.orange.withValues(alpha: 0.1)
-                                      : Colors.red.withValues(alpha: 0.1),
+                                      ? Colors.orange.withOpacity( 0.1)
+                                      : Colors.red.withOpacity( 0.1),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.01),
+                                color: Colors.black.withOpacity( 0.01),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -4070,7 +4078,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: typeColor.withValues(alpha: 0.08),
+                                  color: typeColor.withOpacity( 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(typeIcon, color: typeColor, size: 18),
@@ -4098,7 +4106,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: typeColor.withValues(alpha: 0.1),
+                                            color: typeColor.withOpacity( 0.1),
                                             borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
@@ -4118,7 +4126,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         "Roll: $roll  •  Reg: $reg",
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: subColor.withValues(alpha: 0.8),
+                                          color: subColor.withOpacity( 0.8),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -4127,7 +4135,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         "Dept: $dept",
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: subColor.withValues(alpha: 0.8),
+                                          color: subColor.withOpacity( 0.8),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -4136,7 +4144,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         "Emp Code: $empCode  •  $designation",
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: subColor.withValues(alpha: 0.8),
+                                          color: subColor.withOpacity( 0.8),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -4145,7 +4153,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         "Dept: $dept",
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: subColor.withValues(alpha: 0.8),
+                                          color: subColor.withOpacity( 0.8),
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -4163,10 +4171,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
                                       color: sessionStatus == 'PRESENT' 
-                                          ? Colors.green.withValues(alpha: 0.1) 
+                                          ? Colors.green.withOpacity( 0.1) 
                                           : sessionStatus == 'LEAVE'
-                                              ? Colors.orange.withValues(alpha: 0.1)
-                                              : Colors.red.withValues(alpha: 0.1),
+                                              ? Colors.orange.withOpacity( 0.1)
+                                              : Colors.red.withOpacity( 0.1),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
@@ -4199,9 +4207,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity( 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
+        border: Border.all(color: color.withOpacity( 0.15), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -4272,7 +4280,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.3),
+                        color: Colors.grey.withOpacity( 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -4334,7 +4342,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             });
                             setState(() {});
                           },
-                          selectedColor: primaryBlue.withValues(alpha: 0.15),
+                          selectedColor: primaryBlue.withOpacity( 0.15),
                           labelStyle: TextStyle(
                             color: isSelected ? primaryBlue : t,
                             fontWeight: FontWeight.bold,
@@ -4369,7 +4377,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             });
                             setState(() {});
                           },
-                          selectedColor: primaryBlue.withValues(alpha: 0.15),
+                          selectedColor: primaryBlue.withOpacity( 0.15),
                           labelStyle: TextStyle(
                             color: isSelected ? primaryBlue : t,
                             fontWeight: FontWeight.bold,
@@ -4407,7 +4415,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                 });
                                 setState(() {});
                               },
-                              selectedColor: primaryBlue.withValues(alpha: 0.15),
+                              selectedColor: primaryBlue.withOpacity( 0.15),
                               labelStyle: TextStyle(
                                 color: isSelected ? primaryBlue : t,
                                 fontWeight: FontWeight.bold,
@@ -4498,7 +4506,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.3),
+                        color: Colors.grey.withOpacity( 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -4560,7 +4568,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           });
                           setState(() {});
                         },
-                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        selectedColor: primaryBlue.withOpacity( 0.15),
                         labelStyle: TextStyle(
                           color: _selectedAttendanceTypeFilter == 'STUDENT' ? primaryBlue : t,
                           fontWeight: FontWeight.bold,
@@ -4576,7 +4584,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           });
                           setState(() {});
                         },
-                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        selectedColor: primaryBlue.withOpacity( 0.15),
                         labelStyle: TextStyle(
                           color: _selectedAttendanceTypeFilter == 'FACULTY' ? primaryBlue : t,
                           fontWeight: FontWeight.bold,
@@ -4610,7 +4618,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           });
                           setState(() {});
                         },
-                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        selectedColor: primaryBlue.withOpacity( 0.15),
                         labelStyle: TextStyle(
                           color: _selectedAttendanceStatusFilter == 'PRESENT' ? primaryBlue : t,
                           fontWeight: FontWeight.bold,
@@ -4626,7 +4634,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           });
                           setState(() {});
                         },
-                        selectedColor: primaryBlue.withValues(alpha: 0.15),
+                        selectedColor: primaryBlue.withOpacity( 0.15),
                         labelStyle: TextStyle(
                           color: _selectedAttendanceStatusFilter == 'ABSENT' ? primaryBlue : t,
                           fontWeight: FontWeight.bold,
@@ -4665,7 +4673,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                 });
                                 setState(() {});
                               },
-                              selectedColor: primaryBlue.withValues(alpha: 0.15),
+                              selectedColor: primaryBlue.withOpacity( 0.15),
                               labelStyle: TextStyle(
                                 color: isSelected ? primaryBlue : t,
                                 fontWeight: FontWeight.bold,
@@ -4739,7 +4747,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Colors.black.withOpacity( 0.2),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -4751,7 +4759,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: primaryBlue.withValues(alpha: 0.1),
+                    color: primaryBlue.withOpacity( 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -4984,32 +4992,84 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
   void _showStartMorningBottomSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
     final TextEditingController odometerController = TextEditingController();
+    final String campusInCount = _run['campus_in_count']?.toString() ?? '0';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(ctx).viewInsets.bottom + 24),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity( 0.15),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Direct start (FN)", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: titleColor)),
-              const SizedBox(height: 16),
+              Text("Direct start (FN)", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: titleColor)),
+              const SizedBox(height: 6),
+              Text(
+                "Submit details to start the morning run.",
+                style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 20),
               TextField(
                 controller: odometerController,
                 keyboardType: TextInputType.number,
-                style: TextStyle(color: titleColor),
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
-                  labelText: "Start Odometer",
+                  labelText: "Start Odometer Reading",
                   labelStyle: TextStyle(color: subColor),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintText: "Enter odometer value",
+                  prefixIcon: Icon(Icons.speed_rounded, color: primaryBlue),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: primaryBlue, width: 2),
+                  ),
                 ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded, color: primaryBlue, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Passenger Count",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withOpacity( 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      campusInCount,
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -5021,11 +5081,17 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       Navigator.pop(ctx);
                       _startMorningRun(odo);
                     } else {
-                      _showSnackBar("Invalid odometer", Colors.red);
+                      _showSnackBar("Invalid numeric values", Colors.orange);
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryBlue, padding: const EdgeInsets.symmetric(vertical: 16)),
-                  child: const Text("Start Run", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Text("Start Morning Run", style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900)),
                 ),
               ),
             ],
@@ -5052,7 +5118,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Colors.black.withOpacity( 0.15),
                 blurRadius: 30,
                 offset: const Offset(0, 10),
               ),
@@ -5102,7 +5168,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: primaryBlue.withValues(alpha: 0.1),
+                      color: primaryBlue.withOpacity( 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -5163,7 +5229,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
+                  color: Colors.black.withOpacity( 0.15),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -5309,7 +5375,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
+                  color: Colors.black.withOpacity( 0.15),
                   blurRadius: 30,
                   offset: const Offset(0, 10),
                 ),
@@ -5370,7 +5436,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: primaryBlue.withValues(alpha: 0.1),
+                            color: primaryBlue.withOpacity( 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -5505,7 +5571,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity( 0.05),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -5530,7 +5596,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         boxShadow: [
           if (onPressed != null)
             BoxShadow(
-              color: primaryBlue.withValues(alpha: 0.3),
+              color: primaryBlue.withOpacity( 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -5577,7 +5643,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity( 0.05),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -5589,7 +5655,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           boxShadow: [
             if (onPressed != null)
               BoxShadow(
-                color: primaryBlue.withValues(alpha: 0.3),
+                color: primaryBlue.withOpacity( 0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -5681,7 +5747,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Colors.black.withOpacity( 0.2),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -5693,7 +5759,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
+                    color: Colors.red.withOpacity( 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -5776,8 +5842,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   }
 
   Widget _buildSkeletonLoading(bool isDark, Color cardColor, Color bgColor, Color titleColor, Color subColor) {
-    final shimmerBase = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200;
-    final shimmerHighlight = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.grey.shade100;
+    final shimmerBase = isDark ? Colors.white.withOpacity( 0.05) : Colors.grey.shade200;
+    final shimmerHighlight = isDark ? Colors.white.withOpacity( 0.15) : Colors.grey.shade100;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -5940,13 +6006,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
          _userRole!.toLowerCase() == 'transport admin' ||
             _userRole!.toLowerCase() == 'transport_admin');
 
-    final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
-        ? int.tryParse(_run['assigned_faculty_user_id'].toString())
+    final int? morningFacultyUserId = _run['morning_assigned_faculty_id'] != null
+        ? int.tryParse(_run['morning_assigned_faculty_id'].toString())
+        : null;
+    final int? eveningFacultyUserId = _run['evening_assigned_faculty_id'] != null
+        ? int.tryParse(_run['evening_assigned_faculty_id'].toString())
         : null;
     final bool isAssignedFaculty = _userRole != null &&
         _userRole!.toLowerCase() == 'faculty' &&
-        assignedFacultyUserId != null &&
-        assignedFacultyUserId == _loggedInUserId;
+        ((morningFacultyUserId != null && morningFacultyUserId == _loggedInUserId) ||
+         (eveningFacultyUserId != null && eveningFacultyUserId == _loggedInUserId));
     final bool showQrCodeButton = (isSuperOrTransportAdmin || isAssignedFaculty) &&
         (s == 'STARTED' ||
          s == 'ARRIVED_CAMPUS' ||
@@ -5989,7 +6058,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     final bool showScanOtpButton = isAssignedFaculty && (isMorningScanEligible || isEveningScanEligible);
 
     // Active status based on shift
-    final bool isAn = s.contains('AN') || s == 'FN_COMPLETED';
+    final bool isAn = s.contains('AN') || s == 'FN_COMPLETED' || s == 'DEPARTED_CAMPUS' || s == 'HALTED';
     final String activeStatus = isAn ? eveningStatus : morningStatus;
     final bool isPresent = activeStatus == 'PRESENT';
 
@@ -6003,15 +6072,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         _run['evening_attendance_confirmed'] == true ||
         _run['evening_attendance_confirmed']?.toString() == 'true';
 
-    final bool isAttendanceConfirmed = isAn ? isEveningConfirmed : isMorningConfirmed;
-
-    final bool oldConfirmAttendanceCondition = (isSuperOrTransportAdmin || (isAssignedFaculty && isPresent)) && 
-        !isAttendanceConfirmed && 
-        !_localAttendanceConfirmed;
-
-    final bool showConfirmAttendance = isAn 
-        ? oldConfirmAttendanceCondition
-        : (oldConfirmAttendanceCondition && (s == 'DEPARTED_CAMPUS' || s == 'ARRIVED_CAMPUS'));
+    final bool canConfirm = isSuperOrTransportAdmin || (isAssignedFaculty && isPresent);
+    
+    final bool checkMorningConfirm = (s == 'ARRIVED_CAMPUS') && !isMorningConfirmed;
+    final bool checkEveningConfirm = (s == 'FN_COMPLETED' || s == 'AN_STARTED' || s == 'DEPARTED_CAMPUS' || s == 'HALTED') && !isEveningConfirmed;
+    
+    final bool showConfirmAttendance = canConfirm && (checkMorningConfirm || checkEveningConfirm) && !_localAttendanceConfirmed;
 
     final bool showOnlyHeaderAndAttendance = _userRole != null &&
         ((_userRole!.toLowerCase() == 'faculty' && !isAssignedFaculty) ||
@@ -6180,11 +6246,11 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           color: cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: statusColor.withValues(alpha: 0.15),
+            color: statusColor.withOpacity( 0.15),
           ),
           boxShadow: [
             BoxShadow(
-              color: statusColor.withValues(alpha: 0.03),
+              color: statusColor.withOpacity( 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -6196,7 +6262,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.05),
+                color: statusColor.withOpacity( 0.05),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
@@ -6236,7 +6302,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: subColor.withValues(alpha: 0.8),
+                      color: subColor.withOpacity( 0.8),
                     ),
                   ),
                 ],
@@ -6255,7 +6321,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       style: GoogleFonts.outfit(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: subColor.withValues(alpha: 0.6),
+                        color: subColor.withOpacity( 0.6),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -6462,10 +6528,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF1E293B) : Colors.white,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: primaryBlue.withValues(alpha: 0.08)),
+                            border: Border.all(color: primaryBlue.withOpacity( 0.08)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
+                                color: Colors.black.withOpacity( 0.02),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -6480,7 +6546,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryBlue.withValues(alpha: 0.25),
+                                  color: primaryBlue.withOpacity( 0.25),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -6515,9 +6581,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.04),
+        color: accentColor.withOpacity( 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withValues(alpha: 0.08)),
+        border: Border.all(color: accentColor.withOpacity( 0.08)),
       ),
       child: Row(
         children: [
@@ -6550,9 +6616,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.08),
+        color: accentColor.withOpacity( 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withValues(alpha: 0.15)),
+        border: Border.all(color: accentColor.withOpacity( 0.15)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -6592,13 +6658,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     required Color subColor,
     required bool isDark,
   }) {
-    final Color activeColor = isActive ? primaryBlue : subColor.withValues(alpha: 0.4);
+    final Color activeColor = isActive ? primaryBlue : subColor.withOpacity( 0.4);
     final Color bgValues = isActive
-        ? primaryBlue.withValues(alpha: 0.05)
-        : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01));
+        ? primaryBlue.withOpacity( 0.05)
+        : (isDark ? Colors.white.withOpacity( 0.02) : Colors.black.withOpacity( 0.01));
     final Color borderValues = isActive
-        ? primaryBlue.withValues(alpha: 0.2)
-        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04));
+        ? primaryBlue.withOpacity( 0.2)
+        : (isDark ? Colors.white.withOpacity( 0.05) : Colors.black.withOpacity( 0.04));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -6637,7 +6703,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
-                  color: isActive ? textColor : subColor.withValues(alpha: 0.6),
+                  color: isActive ? textColor : subColor.withOpacity( 0.6),
                   letterSpacing: 1.0,
                 ),
               ),
@@ -6649,7 +6715,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 child: Icon(
                   Icons.copy_all_rounded,
                   size: 14,
-                  color: isActive ? primaryBlue : subColor.withValues(alpha: 0.4),
+                  color: isActive ? primaryBlue : subColor.withOpacity( 0.4),
                 ),
               ),
             ],
@@ -6767,7 +6833,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                       height: 80,
                                       width: 80,
                                       decoration: BoxDecoration(
-                                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                                        color: isDark ? Colors.white10 : Colors.black.withOpacity( 0.05),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(Icons.qr_code_scanner_rounded, color: subColor),
@@ -6974,7 +7040,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     
     showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: Colors.black.withOpacity( 0.6),
       builder: (ctx) {
         return _BoardingPassDialog(
           isDark: isDark,
@@ -7125,7 +7191,7 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withOpacity( 0.05),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.close, size: 20, color: Colors.black54),
@@ -7144,7 +7210,7 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                        color: Colors.black.withOpacity( isDark ? 0.4 : 0.12),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -7168,7 +7234,7 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.12),
+                                  color: Colors.white.withOpacity( 0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -7185,7 +7251,7 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
                                     Text(
                                       'TRIPZO TRANSIT',
                                       style: GoogleFonts.outfit(
-                                        color: Colors.white.withValues(alpha: 0.6),
+                                        color: Colors.white.withOpacity( 0.6),
                                         fontSize: 9,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 1.8,
@@ -7210,7 +7276,7 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: shiftAccent.withValues(alpha: 0.85),
+                                  color: shiftAccent.withOpacity( 0.85),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
@@ -7505,8 +7571,8 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
                                   height: 190,
                                   decoration: BoxDecoration(
                                     color: isDark
-                                        ? Colors.white.withValues(alpha: 0.04)
-                                        : Colors.black.withValues(alpha: 0.02),
+                                        ? Colors.white.withOpacity( 0.04)
+                                        : Colors.black.withOpacity( 0.02),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       color: divider,

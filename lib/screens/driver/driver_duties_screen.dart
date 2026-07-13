@@ -462,7 +462,15 @@ final store = ref.watch(driverStoreProvider);
     final statusStr = assignment['run_status'] ?? 'UNKNOWN';
 
     final routeCode = assignment['run_data']?['dailyBusRoute']?['route_code'] ?? '';
-    final routeName = assignment['run_data']?['dailyBusRoute']?['route_name'] ?? 'Bus Route';
+    final String? runName = assignment['run_data']?['run_name']?.toString();
+    final String? runCode = assignment['run_data']?['run_code']?.toString();
+    
+    String routeName = "Unnamed Route";
+    if (runName != null && runName.trim().isNotEmpty && runName != 'null') {
+      routeName = runName;
+    } else if (runCode != null && runCode.trim().isNotEmpty && runCode != 'null') {
+      routeName = runCode;
+    }
 
     String startLoc = assignment['start_location_name'] ?? 'Start';
     String haltLoc = assignment['halt_location_name'] ?? 'Halt';
