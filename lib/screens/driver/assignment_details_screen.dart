@@ -276,7 +276,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     }
 
     final routeObj = run['dailyBusRoute'] as Map<String, dynamic>?;
-    final routeName = routeObj?['route_name'] ?? 'Unknown Route';
+    final routeName = run['run_name']?.toString() ?? routeObj?['route_name'] ?? 'Unknown Run';
     final routeCode = routeObj?['route_code'] ?? '';
     final stops = (routeObj?['stops'] as List<dynamic>?) ?? [];
     stops.sort((a, b) {
@@ -293,8 +293,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
           : const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(
-          "Daily Bus Route",
+          routeName,
           style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
