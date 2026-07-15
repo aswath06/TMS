@@ -10,6 +10,7 @@ import 'package:tripzo/store/isdark.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/admin_allowance_store.dart';
 import 'package:tripzo/store/fleet_monitor_store.dart';
+import 'package:tripzo/store/attendance_dashboard_store.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/services/notification_api_service.dart';
 import 'package:tripzo/services/notification_firebase_service.dart';
@@ -77,6 +78,12 @@ final securityVehicleStoreProvider = ChangeNotifierProvider<SecurityVehicleStore
 final dailyRoutinesStoreProvider = ChangeNotifierProvider<DailyRoutinesStore>((ref) {
   return DailyRoutinesStore();
 });
+
+/// Attendance Dashboard Store Provider
+final attendanceDashboardStoreProvider = ChangeNotifierProvider<AttendanceDashboardStore>((ref) {
+  return AttendanceDashboardStore();
+});
+
 
 /// SecurityBusStore Provider
 final securityBusStoreProvider = ChangeNotifierProvider<SecurityBusStore>((ref) {

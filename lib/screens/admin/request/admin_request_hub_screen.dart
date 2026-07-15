@@ -17,6 +17,7 @@ class AdminRequestHubScreen extends ConsumerStatefulWidget {
 
 class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _vehicleSearchController = TextEditingController();
   String _activeVehicleFilter = 'Total'; // 'Total', 'Student', 'Faculty'
 
   late List<Map<String, dynamic>> _cardsData;
@@ -35,6 +36,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       ref.read(fleetMonitorStoreProvider).fetchFleetData();
       ref.read(driverStoreProvider).fetchPendingFuelEntries();
       ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
+      ref.read(attendanceDashboardStoreProvider).refresh();
       UIConfig().load();
     });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
@@ -79,6 +81,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     _swipeController.dispose();
     _reEntryController.dispose();
     _searchController.dispose();
+    _vehicleSearchController.dispose();
     super.dispose();
   }
 
@@ -479,11 +482,15 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       backgroundColor: bgColor,
       body: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await ref.read(attendanceDashboardStoreProvider.notifier).refresh();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
                 child: Row(
@@ -544,6 +551,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               const SizedBox(height: 100),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -820,93 +828,85 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   }
 
   Widget _buildRoutineStats(bool isDark, Color primaryBlue) {
-    final tiles = [
-      _buildStatTile("Total Bus", "45", Icons.directions_bus_rounded, primaryBlue, isDark),
-      _buildStatTile("Running", "4", Icons.speed_rounded, const Color(0xFFEF4444), isDark),
-      _buildStatTile("In Service", "42", Icons.build_circle_rounded, const Color(0xFF10B981), isDark),
-    ];
+    final attendanceStore = ref.watch(attendanceDashboardStoreProvider);
+    
+    if (attendanceStore.isLoading) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
 
-    // Dummy Vehicles Data (with student and faculty stats mapped)
-    final List<Map<String, String>> vehicles = List.generate(5, (index) => {
-      "veh": "TN36Z123$index",
-      "fn": "${50 + index * 5}",
-      "an": "${45 + index * 5}",
-      "fac_fn": "${10 + index * 2}",
-      "fac_an": "${8 + index * 2}"
-    });
+    if (attendanceStore.error.isNotEmpty) {
+      return Center(child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Text(attendanceStore.error, style: const TextStyle(color: Colors.red)),
+      ));
+    }
 
-    int totalFn = 0;
-    int totalAn = 0;
-    int totalFacFn = 0;
-    int totalFacAn = 0;
-    for (var v in vehicles) {
-      totalFn += int.parse(v['fn']!);
-      totalAn += int.parse(v['an']!);
-      totalFacFn += int.parse(v['fac_fn']!);
-      totalFacAn += int.parse(v['fac_an']!);
+    final overallStats = attendanceStore.overallStats;
+    List<dynamic> vehicleStats = List.from(attendanceStore.vehicleStats ?? []);
+    
+    final vehicleSearchQuery = _vehicleSearchController.text.toLowerCase().trim();
+    if (vehicleSearchQuery.isNotEmpty) {
+      vehicleStats = vehicleStats.where((v) {
+        final vNo = (v['vehicle_number'] ?? '').toString().toLowerCase();
+        final bNo = (v['bus_number'] ?? '').toString().toLowerCase();
+        return vNo.contains(vehicleSearchQuery) || bNo.contains(vehicleSearchQuery);
+      }).toList();
+    }
+
+    if (overallStats == null || attendanceStore.vehicleStats == null || attendanceStore.vehicleStats!.isEmpty) {
+       return const Center(child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Text("No attendance data available"),
+      ));
+    }
+
+    // Extract Overall Stats
+    final fnStats = overallStats['morning_fn'] ?? {};
+    final anStats = overallStats['evening_an'] ?? {};
+
+    Widget buildDetailedSessionRow(Map<String, dynamic> stats) {
+      final mapped = stats['total_mapped'] ?? 0;
+      final present = stats['present'] ?? 0;
+      final absent = stats['absent'] ?? 0;
+      final leave = stats['leave'] ?? 0;
+      
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        clipBehavior: Clip.none,
+        child: Row(
+          children: [
+            SizedBox(width: 135, child: _buildSessionSummaryCard("Mapped", "$mapped", Icons.groups_rounded, primaryBlue, isDark)),
+            const SizedBox(width: 12),
+            SizedBox(width: 135, child: _buildSessionSummaryCard("Present", "$present", Icons.check_circle_rounded, const Color(0xFF10B981), isDark)),
+            const SizedBox(width: 12),
+            SizedBox(width: 135, child: _buildSessionSummaryCard("Absent", "$absent", Icons.cancel_rounded, const Color(0xFFEF4444), isDark)),
+            const SizedBox(width: 12),
+            SizedBox(width: 135, child: _buildSessionSummaryCard("Leave", "$leave", Icons.event_busy_rounded, const Color(0xFFF59E0B), isDark)),
+          ],
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Daily Bus Routines", isDark, hasPagination: true),
-        const SizedBox(height: 8),
-        _buildPaginatedStats(tiles, isDark),
-        const SizedBox(height: 16),
-        
-        // Student Sessions Section
-        _buildSectionHeader("Student Sessions", isDark),
+        // Overall Sessions Section
+        _buildSectionHeader("Morning Sessions (FN)", isDark),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildSessionSummaryCard(
-                  "Total", "${totalFn + totalAn}", Icons.groups_rounded, primaryBlue, isDark
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSessionSummaryCard(
-                  "FN", "$totalFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSessionSummaryCard(
-                  "AN", "$totalAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          child: buildDetailedSessionRow(fnStats),
         ),
-
-        // Faculty Sessions Section (Matches student session cards format exactly)
-        _buildSectionHeader("Faculty Sessions", isDark),
+        const SizedBox(height: 12),
+        _buildSectionHeader("Evening Sessions (AN)", isDark),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildSessionSummaryCard(
-                  "Total", "${totalFacFn + totalFacAn}", Icons.groups_rounded, primaryBlue, isDark
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSessionSummaryCard(
-                  "FN", "$totalFacFn", Icons.wb_sunny_rounded, const Color(0xFF10B981), isDark
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSessionSummaryCard(
-                  "AN", "$totalFacAn", Icons.nights_stay_rounded, const Color(0xFFF59E0B), isDark
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          child: buildDetailedSessionRow(anStats),
         ),
+        const SizedBox(height: 12),
         
         // Vehicle Assignment Section
         Padding(
@@ -936,20 +936,87 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                 ],
               ),
               const SizedBox(height: 12),
+              
+              // Vehicle Search Bar
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.2)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _vehicleSearchController,
+                  onChanged: (val) => setState(() {}),
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14),
+                  decoration: InputDecoration(
+                    icon: Icon(Icons.search_rounded, color: isDark ? Colors.grey[400] : Colors.grey[500], size: 20),
+                    hintText: "Search by vehicle or bus number...",
+                    hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400], fontSize: 13),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    suffixIcon: _vehicleSearchController.text.isNotEmpty 
+                        ? IconButton(
+                            icon: Icon(Icons.close_rounded, size: 18, color: isDark ? Colors.grey[400] : Colors.grey[500]),
+                            onPressed: () {
+                              _vehicleSearchController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Vehicle List Cards (dynamic badges based on role selection filter)
-              ...vehicles.map((v) {
-                String fnCount = "";
-                String anCount = "";
+              ...vehicleStats.map((v) {
+                int fnCount = 0;
+                int anCount = 0;
+                int fnPresentCount = 0;
+                int anPresentCount = 0;
+
+                final morningStudent = v['morning_fn']?['role_breakdown']?['Student']?['total_mapped'] ?? 0;
+                final eveningStudent = v['evening_an']?['role_breakdown']?['Student']?['total_mapped'] ?? 0;
+                final morningStudentPresent = v['morning_fn']?['role_breakdown']?['Student']?['present'] ?? 0;
+                final eveningStudentPresent = v['evening_an']?['role_breakdown']?['Student']?['present'] ?? 0;
+                
+                final morningFac = v['morning_fn']?['role_breakdown']?['Faculty']?['total_mapped'] ?? 0;
+                final morningNonT = v['morning_fn']?['role_breakdown']?['Non-Teaching']?['total_mapped'] ?? 0;
+                final morningIntern = v['morning_fn']?['role_breakdown']?['Intern']?['total_mapped'] ?? 0;
+                final morningFaculty = morningFac + morningNonT + morningIntern;
+
+                final morningFacPresent = v['morning_fn']?['role_breakdown']?['Faculty']?['present'] ?? 0;
+                final morningNonTPresent = v['morning_fn']?['role_breakdown']?['Non-Teaching']?['present'] ?? 0;
+                final morningInternPresent = v['morning_fn']?['role_breakdown']?['Intern']?['present'] ?? 0;
+                final morningFacultyPresent = morningFacPresent + morningNonTPresent + morningInternPresent;
+
+                final eveningFac = v['evening_an']?['role_breakdown']?['Faculty']?['total_mapped'] ?? 0;
+                final eveningNonT = v['evening_an']?['role_breakdown']?['Non-Teaching']?['total_mapped'] ?? 0;
+                final eveningIntern = v['evening_an']?['role_breakdown']?['Intern']?['total_mapped'] ?? 0;
+                final eveningFaculty = eveningFac + eveningNonT + eveningIntern;
+
+                final eveningFacPresent = v['evening_an']?['role_breakdown']?['Faculty']?['present'] ?? 0;
+                final eveningNonTPresent = v['evening_an']?['role_breakdown']?['Non-Teaching']?['present'] ?? 0;
+                final eveningInternPresent = v['evening_an']?['role_breakdown']?['Intern']?['present'] ?? 0;
+                final eveningFacultyPresent = eveningFacPresent + eveningNonTPresent + eveningInternPresent;
+
                 if (_activeVehicleFilter == 'Student') {
-                  fnCount = v['fn']!;
-                  anCount = v['an']!;
+                  fnCount = morningStudent;
+                  anCount = eveningStudent;
+                  fnPresentCount = morningStudentPresent;
+                  anPresentCount = eveningStudentPresent;
                 } else if (_activeVehicleFilter == 'Faculty') {
-                  fnCount = v['fac_fn']!;
-                  anCount = v['fac_an']!;
+                  fnCount = morningFaculty;
+                  anCount = eveningFaculty;
+                  fnPresentCount = morningFacultyPresent;
+                  anPresentCount = eveningFacultyPresent;
                 } else {
-                  fnCount = "${int.parse(v['fn']!) + int.parse(v['fac_fn']!)}";
-                  anCount = "${int.parse(v['an']!) + int.parse(v['fac_an']!)}";
+                  fnCount = morningStudent + morningFaculty;
+                  anCount = eveningStudent + eveningFaculty;
+                  fnPresentCount = morningStudentPresent + morningFacultyPresent;
+                  anPresentCount = eveningStudentPresent + eveningFacultyPresent;
                 }
 
                 return Container(
@@ -984,15 +1051,30 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(v['veh']!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
+                            Text(v['vehicle_number'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
                             const SizedBox(height: 4),
-                            Text("Active Route", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[500] : Colors.grey[500])),
+                            Text(v['bus_number'] ?? 'Active Route', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[500] : Colors.grey[500])),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.people_alt_rounded, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Mapped: FN $fnCount | AN $anCount",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
-                      _buildSessionBadge("FN", fnCount, const Color(0xFF10B981)),
+                      _buildSessionBadge("FN", "$fnPresentCount", const Color(0xFF10B981)),
                       const SizedBox(width: 8),
-                      _buildSessionBadge("AN", anCount, const Color(0xFFF59E0B)),
+                      _buildSessionBadge("AN", "$anPresentCount", const Color(0xFFF59E0B)),
                     ],
                   ),
                 );
@@ -1005,20 +1087,49 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   }
 
   Widget _buildSessionSummaryCard(String title, String value, IconData icon, Color color, bool isDark) {
+    final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 2),
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: int.tryParse(value) ?? 0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, val, child) {
+              return Text(
+                val.toString(), 
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              );
+            },
+          ),
+          const SizedBox(height: 4),
+          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.grey[400] : Colors.grey[600])),
         ],
       ),
     );

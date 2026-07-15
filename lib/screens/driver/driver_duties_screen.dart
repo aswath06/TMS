@@ -218,42 +218,90 @@ final store = ref.watch(driverStoreProvider);
   }
 
   Widget _buildBackgroundDecor(bool isDark, Color primaryBlue) {
-    return Positioned(
-      top: -50,
-      right: -50,
-      child: Container(
-        width: 250,
-        height: 250,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: primaryBlue.withValues(alpha: isDark ? 0.1 : 0.05),
+    return Stack(
+      children: [
+        Positioned(
+          top: -60,
+          right: -40,
+          child: Container(
+            width: 300,
+            height: 300,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  primaryBlue.withValues(alpha: isDark ? 0.15 : 0.1),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
+        Positioned(
+          top: 100,
+          left: -80,
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.orangeAccent.withValues(alpha: isDark ? 0.08 : 0.05),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildHeader(String name, String? profilePhoto, Color titleColor, Color subColor, double width, Color primary, bool isTamil) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.1),
+                  gradient: LinearGradient(
+                    colors: [primary, primary.withOpacity(0.8)],
+                  ),
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
                 ),
-                child: Text(
-                  isTamil ? "நிலை: பணியில்" : "STATUS: Active Duty",
-                  style: TextStyle(fontSize: 10, color: primary, fontWeight: FontWeight.w900, letterSpacing: 1.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.verified_user_rounded, color: Colors.white, size: 12),
+                    const SizedBox(width: 4),
+                    Text(
+                      "STATUS: Active Duty",
+                      style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.0),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
-                isTamil ? "வணக்கம், $name" : "Hello, $name",
-                style: TextStyle(fontSize: width * 0.07, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -1.2),
+                "Hi, $name 👋",
+                style: TextStyle(fontSize: width * 0.08, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -1.0, height: 1.1),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Ready for your next trip? 🚐",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: subColor, letterSpacing: 0.2),
               ),
             ],
           ),
@@ -345,14 +393,21 @@ final store = ref.watch(driverStoreProvider);
     return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: surface,
+          gradient: LinearGradient(
+            colors: [
+              surface,
+              isDark ? const Color(0xFF1E293B).withOpacity(0.8) : Colors.white,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
           boxShadow: [
             BoxShadow(
-              color: accentColor.withValues(alpha: isDark ? 0.05 : 0.03),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: accentColor.withOpacity(isDark ? 0.15 : 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
@@ -363,29 +418,36 @@ final store = ref.watch(driverStoreProvider);
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [accentColor.withValues(alpha: 0.2), accentColor.withValues(alpha: 0.05)],
+                      colors: [accentColor.withOpacity(0.2), accentColor.withOpacity(0.05)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentColor.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: Icon(icon, color: accentColor, size: 20),
+                  child: Icon(icon, color: accentColor, size: 22),
                 ),
                 if (statusLabel != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: (statusColor ?? accentColor).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: (statusColor ?? accentColor).withValues(alpha: 0.2)),
                     ),
                     child: Text(
                       statusLabel,
                       style: TextStyle(
-                        fontSize: 8,
+                        fontSize: 9,
                         fontWeight: FontWeight.w900,
                         color: statusColor ?? accentColor,
                         letterSpacing: 0.5,
@@ -394,7 +456,7 @@ final store = ref.watch(driverStoreProvider);
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             if (animatedValue != null)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: animatedValue),
@@ -404,7 +466,7 @@ final store = ref.watch(driverStoreProvider);
                   return Text(
                     val.toInt().toString().padLeft(2, '0'),
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 26,
                       fontWeight: FontWeight.w900,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                       letterSpacing: -0.5,
@@ -416,7 +478,7 @@ final store = ref.watch(driverStoreProvider);
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 26,
                   fontWeight: FontWeight.w900,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                 ),
@@ -425,9 +487,9 @@ final store = ref.watch(driverStoreProvider);
             Text(
               label,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: Colors.grey,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 letterSpacing: 0.2,
               ),
             ),
