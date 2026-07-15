@@ -281,9 +281,9 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
     final primaryBlue = const Color(0xFF6366F1);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       appBar: AppBar(
-        title: Text(isEditMode ? "Edit Allowance" : "Assign Allowance Breakdown", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+        title: Text(isEditMode ? "Edit Allowance" : "Assign Allowance Breakdown", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 18)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -318,7 +318,7 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
                       const SizedBox(height: 20),
                       _buildMultiSelectTypes(),
                       const SizedBox(height: 24),
-                      const Text("DRIVER DISBURSEMENTS MATRIX", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      Text("DRIVER DISBURSEMENTS MATRIX", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0)),
                       const SizedBox(height: 12),
                       ..._driverDisbursements.map((d) => _buildDriverDisbursementItem(d, isDark)).toList(),
                       const SizedBox(height: 16),
@@ -357,11 +357,13 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
                     onPressed: _isSubmitting ? null : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
+                      elevation: 4,
+                      shadowColor: primaryBlue.withValues(alpha: 0.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     child: _isSubmitting 
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(isEditMode ? "Save Changes" : "Create Allowances", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                        : Text(isEditMode ? "Save Changes" : "Create Allowances", style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                   ),
                 ),
               ),
@@ -390,7 +392,7 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
             ),
@@ -454,8 +456,9 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -513,41 +516,263 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
     );
   }
 
+  void _showRejectDialog(int routeRequestId) {
+    final TextEditingController reasonController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text("Reject Route Request", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 18)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Please provide a reason for rejecting this route request.", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade500)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: "Rejection Reason...",
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting ? null : () async {
+                    if (reasonController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reason is required")));
+                      return;
+                    }
+                    setDialogState(() => isSubmitting = true);
+                    final success = await AdminAllowanceStore().rejectRouteRequest(routeRequestId, reasonController.text);
+                    if (success) {
+                      if (context.mounted) {
+                        Navigator.pop(context); // close dialog
+                        Navigator.pop(context); // close modal
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Rejected successfully")));
+                      }
+                    } else {
+                      if (context.mounted) {
+                        setDialogState(() => isSubmitting = false);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to reject")));
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("Reject", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildRouteInfo(bool isDark) {
     final pending = widget.pendingCreation!;
-    final routeRequest = pending['routeRequest'] ?? {};
+    final routeRequest = pending['routeRequest'] ?? pending['route_request'] ?? {};
     final routeName = routeRequest['route_name'] ?? 'Unknown Route';
     
+    String startLocation = routeRequest['start_location_name'] ?? routeRequest['start_location'] ?? pending['route']?['start_location_name'] ?? pending['start_location_name'] ?? pending['start_location'] ?? 'Unknown Start';
+    String endLocation = routeRequest['destination_location_name'] ?? routeRequest['destination_location'] ?? routeRequest['destination'] ?? pending['route']?['destination_location_name'] ?? pending['destination_location_name'] ?? pending['destination_location'] ?? pending['destination'] ?? 'Unknown Destination';
+    
+    String vehicleNum = routeRequest['vehicle']?['vehicle_number'] ?? routeRequest['vehicle']?['bus_number'] ?? routeRequest['vehicle_number'] ?? 'N/A';
+    
+    final tripLegs = pending['tripLegs'] as List<dynamic>?;
+    if (tripLegs != null && tripLegs.isNotEmpty) {
+      if (startLocation == 'Unknown Start') {
+        startLocation = tripLegs.first['start_location_name'] ?? tripLegs.first['start_location'] ?? 'Unknown Start';
+      }
+      if (endLocation == 'Unknown Destination') {
+        endLocation = tripLegs.last['destination_location_name'] ?? tripLegs.last['end_location_name'] ?? tripLegs.last['destination'] ?? 'Unknown Destination';
+      }
+      final assignments = tripLegs[0]['assignments'] as List<dynamic>?;
+      if (assignments != null && assignments.isNotEmpty) {
+        if (startLocation == 'Unknown Start') {
+          startLocation = assignments[0]['start_location_name'] ?? 'Unknown Start';
+        }
+        if (endLocation == 'Unknown Destination') {
+          endLocation = assignments.last['destination_location_name'] ?? assignments.last['end_location_name'] ?? 'Unknown Destination';
+        }
+        if (vehicleNum == 'N/A') {
+          final vehicle = assignments[0]['vehicle'];
+          if (vehicle != null) {
+            vehicleNum = vehicle['vehicle_number'] ?? vehicle['bus_number'] ?? 'N/A';
+          }
+        }
+      }
+    }
+    
+    String startTime = "Not Started";
+    final startTimeRaw = routeRequest['trip_start_time'] ?? pending['started_at'];
+    if (startTimeRaw != null) {
+      startTime = DateFormat('dd/MM/yyyy - hh:mm a').format(DateTime.parse(startTimeRaw).toLocal());
+    }
+    
+    String endTime = "Not Ended";
+    final endTimeRaw = routeRequest['trip_end_time'] ?? pending['ended_at'];
+    if (endTimeRaw != null) {
+      endTime = DateFormat('dd/MM/yyyy - hh:mm a').format(DateTime.parse(endTimeRaw).toLocal());
+    }
+
+    int? routeRequestId = routeRequest['id'];
+    
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1), width: 1.5),
-        boxShadow: [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5))],
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row with wrapping to prevent overflow
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("ROUTE NAME", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.2)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                child: Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.check_circle_rounded, size: 12, color: Colors.green),
-                    const SizedBox(width: 4),
-                    Text("COMPLETED", style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.green)),
+                    Text(
+                      "ROUTE",
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade500),
+                    ),
+                    Text(
+                      routeName,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text("COMPLETED", style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+                  ),
+                  if (routeRequestId != null)
+                    GestureDetector(
+                      onTap: () => _showRejectDialog(routeRequestId),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(8)),
+                        child: Text("Reject", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1),
+          ),
+          
+          // Simplified Location & Time Details
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Start Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: Colors.green),
+                        const SizedBox(width: 4),
+                        Text("START", style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(startLocation, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule, size: 12, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(startTime, style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600))),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Divider / Vehicle info
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.grey.shade400),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                      child: Text(vehicleNum, style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF6366F1))),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // End Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text("END", style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade500)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.location_on, size: 14, color: Colors.redAccent),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(endLocation, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(Icons.schedule, size: 12, color: Colors.grey.shade500),
+                        const SizedBox(width: 4),
+                        Flexible(child: Text(endTime, style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey.shade600), textAlign: TextAlign.right)),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(routeName, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900)),
         ],
       ),
     );
@@ -571,9 +796,9 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
           style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             hintText: "Enter ${label.toLowerCase()}...",
@@ -830,6 +1055,7 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
   }
 
   Widget _buildMultiSelectTypes() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -858,8 +1084,12 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
                   }
                 });
               },
-              selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
-              checkmarkColor: const Color(0xFF6366F1),
+                selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                checkmarkColor: const Color(0xFF6366F1),
+                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade300)),
+                labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13, color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade600),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             );
           }).toList(),
         ),

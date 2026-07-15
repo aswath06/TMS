@@ -106,7 +106,17 @@ class ApiConstants {
   static String get pendingAdminApprovalFuelLogs => "$baseUrl/api/vehicles/fuel-log?fuel_entry_status=PENDING_DRIVER_FILL&page=1&limit=50&sortBy=filled_at&sortOrder=DESC&status=PENDING_ADMIN_APPROVAL";
   static String approveFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id/approve";
   static String get pendingRoutesToComplete => "$baseUrl/request/driver/pending-routes-to-complete";
-  static String getFuelReport(String start, String end, String format) => "$baseUrl/api/vehicles/fuel-reports/date-wise?start_date=$start&end_date=$end&format=$format";
+  static String rejectRouteRequest(dynamic id) => "$baseUrl/route-requests/$id/reject";
+  static String getFuelReport(String start, String end, String format, String exportType, String vehicles, String bunks) {
+    String url = "$baseUrl/api/vehicles/fuel-reports/date-wise?start_date=$start&end_date=$end&format=$format&export_type=$exportType";
+    if (vehicles.isNotEmpty) {
+      url += "&vehicles=$vehicles";
+    }
+    if (bunks.isNotEmpty) {
+      url += "&bunks=$bunks";
+    }
+    return url;
+  }
 
   // Maintenance
   static String get fuelEntry => "$baseUrl/api/maintenance/fuel-entry";

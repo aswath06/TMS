@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 
@@ -50,6 +51,25 @@ class AdminAllowanceStore extends ChangeNotifier {
     if (driverId != null) _selectedDriverId = driverId == -1 ? null : driverId; // -1 for clear
     if (date != null) _selectedDate = date == "clear" ? null : date;
     fetchAllowances(isRefresh: true);
+  }
+
+  Future<bool> rejectRouteRequest(int routeRequestId, String reason) async {
+    try {
+      final token = await UserStore.getToken();
+      final res = await http.post(
+        Uri.parse(ApiConstants.rejectRouteRequest(routeRequestId)),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode({"rejection_reason": reason}),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        // Optionally refetch pending routes
+        fetchPendingAllowanceCreations();
+        return true;
+      }
+    } catch (e) {
+      debugPrint("Error rejecting route request: \$e");
+    }
+    return false;
   }
 
   Future<void> fetchAllowances({bool isRefresh = false}) async {
@@ -134,6 +154,11 @@ class AdminAllowanceStore extends ChangeNotifier {
         if (decoded['success'] == true) {
           final List<dynamic> items = decoded['data'] ?? [];
           _pendingCreations = items.map((e) => e as Map<String, dynamic>).toList();
+          if (_pendingCreations.isNotEmpty) {
+            try {
+              File('C:/Tripzo/TMS/scratch.json').writeAsStringSync(jsonEncode(_pendingCreations.first));
+            } catch (_) {}
+          }
         }
       }
     } catch (e) {
