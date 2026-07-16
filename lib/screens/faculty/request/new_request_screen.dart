@@ -104,12 +104,16 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   final PageStorageKey _scrollKey = const PageStorageKey("request_scroll");
   int _visibleGuestSlots = 1;
 
+  List<Map<String, String>> _dynamicPurposeOptions = [];
+  bool _isLoadingPurposes = false;
+
   @override
   void initState() {
     super.initState();
     _checkRole();
     _passengerCountController.addListener(_syncGuests);
     _fetchDepartments();
+    _fetchPurposes();
   }
 
   void _syncGuests() {
@@ -149,6 +153,61 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   // --- Logic Helpers ---
+
+  Future<void> _fetchPurposes() async {
+    setState(() {
+      _isLoadingPurposes = true;
+    });
+    try {
+      final token = await UserStore.getToken();
+      final url = ApiConstants.getRequestPurposes;
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          final List<dynamic> purposes = data['data'] ?? [];
+          setState(() {
+            _dynamicPurposeOptions = purposes.map((p) => {
+              "key": p['name'].toString(),
+              "label": p['name'].toString()
+            }).toList();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching purposes: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPurposes = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _createNewPurpose(String name) async {
+    if (name.trim().isEmpty) return;
+    try {
+      final token = await UserStore.getToken();
+      final url = ApiConstants.createRequestPurpose;
+      final body = jsonEncode({"name": name.trim()});
+      final response = await http.post(
+        Uri.parse(url), 
+        headers: ApiConstants.getHeaders(token),
+        body: body,
+      );
+      
+      if (response.statusCode == 201) {
+        await _fetchPurposes();
+        setState(() {
+          _purposeController.text = name.trim();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error creating purpose: $e");
+    }
+  }
 
   Future<void> _fetchAvailableVehicles() async {
     if (_startDate == null) return;
@@ -539,13 +598,6 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     Color c = d ? const Color(0xFF1E293B) : Colors.white;
     Color t = d ? Colors.white : const Color(0xFF0F172A);
 
-    final List<Map<String, String>> purposeOptions = [
-      {"key": "Branding Activity", "label": "Branding Activity"},
-      {"key": "Guest PickUp & Drop", "label": "Guest PickUp & Drop"},
-      {"key": "Student Visit", "label": "Student Visit"},
-      {"key": "Faculty Visit", "label": "Faculty Visit"},
-    ];
-
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -596,32 +648,72 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                       color: t,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: p.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      "${purposeOptions.length} OPTIONS",
-                      style: GoogleFonts.montserrat(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: p,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: p.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "${_dynamicPurposeOptions.length} OPTIONS",
+                          style: GoogleFonts.montserrat(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: p,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showAddPurposeDialog(p, d, c, t);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: p,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            "+ Add New",
+                            style: GoogleFonts.montserrat(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: purposeOptions.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = purposeOptions[index];
-                  final isSelected = _purposeController.text == item['key'];
+              if (_isLoadingPurposes)
+                const Center(child: CircularProgressIndicator())
+              else if (_dynamicPurposeOptions.isEmpty)
+                Center(
+                  child: Text(
+                    "No purposes found. Add one!",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      color: t.withValues(alpha: 0.5),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _dynamicPurposeOptions.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final item = _dynamicPurposeOptions[index];
+                    final isSelected = _purposeController.text == item['key'];
 
                   return GestureDetector(
                     onTap: () {
@@ -691,6 +783,108 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showAddPurposeDialog(Color p, bool d, Color c, Color t) {
+    final TextEditingController newPurposeCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: c.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: t.withValues(alpha: 0.1)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Add New Purpose",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: t,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: newPurposeCtrl,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: t,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "Enter purpose name",
+                      hintStyle: GoogleFonts.montserrat(
+                        color: t.withValues(alpha: 0.4),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      filled: true,
+                      fillColor: t.withValues(alpha: 0.04),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          "Cancel",
+                          style: GoogleFonts.montserrat(
+                            color: t.withValues(alpha: 0.6),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final name = newPurposeCtrl.text.trim();
+                          if (name.isNotEmpty) {
+                            Navigator.pop(ctx);
+                            await _createNewPurpose(name);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: p,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text(
+                          "Add",
+                          style: GoogleFonts.montserrat(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

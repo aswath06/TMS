@@ -50,6 +50,8 @@ class ApiConstants {
   static String get updateStatus => "$baseUrl/request/update-status";
   static String get getRequestById => "$baseUrl/request/getth-by-id/";
   static String get getRouteById => "$baseUrl/request/get-by-id/";
+  static String get getRequestPurposes => "$baseUrl/request/request-purposes";
+  static String get createRequestPurpose => "$baseUrl/request/request-purposes";
   static String get getDriverAllowances => "$baseUrl/request/allowances-all";
   static String get getAllowancePurposes => "$baseUrl/request/allowance-purposes";
   static String get getAllowanceTypes => "$baseUrl/request/allowance-types";
