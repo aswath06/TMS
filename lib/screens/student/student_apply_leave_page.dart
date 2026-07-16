@@ -101,18 +101,30 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
+                              gradient: LinearGradient(
+                                colors: [Colors.redAccent.withValues(alpha: 0.1), Colors.redAccent.withValues(alpha: 0.02)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.2),
+                                color: Colors.redAccent.withValues(alpha: 0.3),
+                                width: 1.5,
                               ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: Colors.redAccent,
-                                  size: 20,
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.redAccent,
+                                    size: 20,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -120,8 +132,8 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                                     useStudentLeaveStore.leavesError!,
                                     style: const TextStyle(
                                       color: Colors.redAccent,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
@@ -150,24 +162,27 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
       onTap: _pickDate,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: card,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: primaryBlue.withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
             color: primaryBlue.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: primaryBlue.withValues(alpha: 0.15),
+              width: 1.5,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -209,31 +224,61 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
           ),
         ],
       ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
+      child: Row(
         children: shifts.map((shift) {
           final isSelected = _selectedShift == shift;
-          return ChoiceChip(
-            label: Text(
-              shift,
-              style: TextStyle(
-                color: isSelected ? Colors.white : txt,
-                fontWeight: FontWeight.bold,
+          IconData iconData;
+          if (shift == 'MORNING') iconData = Icons.wb_sunny_rounded;
+          else if (shift == 'EVENING') iconData = Icons.nights_stay_rounded;
+          else iconData = Icons.timelapse_rounded;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedShift = isSelected ? null : shift;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: isSelected ? primaryBlue : primaryBlue.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: primaryBlue.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
+                        ]
+                      : [],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      iconData,
+                      color: isSelected ? Colors.white : primaryBlue.withValues(alpha: 0.6),
+                      size: 22,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      shift,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : txt.withValues(alpha: 0.7),
+                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            selected: isSelected,
-            selectedColor: primaryBlue,
-            backgroundColor: primaryBlue.withValues(alpha: 0.05),
-            onSelected: (bool selected) {
-              setState(() {
-                if (selected) {
-                  _selectedShift = shift;
-                } else {
-                  _selectedShift = null;
-                }
-              });
-            },
           );
         }).toList(),
       ),
@@ -533,30 +578,56 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                     }
                   },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-              padding: const EdgeInsets.symmetric(vertical: 18),
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: EdgeInsets.zero,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
-              elevation: 0,
             ),
-            child: useStudentLeaveStore.isApplying
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    isTamil ? "விண்ணப்பிக்கவும்" : "SUBMIT APPLICATION",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: useStudentLeaveStore.isApplying
+                      ? [Colors.grey, Colors.grey]
+                      : [primaryBlue, const Color(0xFF818CF8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: useStudentLeaveStore.isApplying
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: primaryBlue.withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+              ),
+              child: Center(
+                child: useStudentLeaveStore.isApplying
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Text(
+                        isTamil ? "விண்ணப்பிக்கவும்" : "SUBMIT APPLICATION",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+              ),
+            ),
           ),
         );
       },

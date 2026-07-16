@@ -133,6 +133,11 @@ class CustomBottomBar extends StatelessWidget {
             'Bus',
           ),
           _NavItem(
+            Icons.event_busy_outlined,
+            Icons.event_busy_rounded,
+            'Leave',
+          ),
+          _NavItem(
             Icons.person_outline_rounded,
             Icons.person_rounded,
             'Profile',

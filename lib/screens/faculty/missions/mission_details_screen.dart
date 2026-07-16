@@ -4818,7 +4818,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
-                child: _buildSectionTitle("Allowances & BATA", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
+                child: _buildSectionTitle("Allowances", blue, Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0F172A)),
               ),
             ],
           ),

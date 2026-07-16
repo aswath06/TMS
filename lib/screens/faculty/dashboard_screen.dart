@@ -230,41 +230,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         NotificationBell(iconColor: titleColor),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: () async {
-            final role = await UserStore.getRole() ?? 'faculty';
-            if (context.mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ApplyLeavePage(userRole: role),
-                ),
-              );
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.edit_calendar_rounded, size: 16, color: primary),
-                const SizedBox(width: 4),
-                Text(
-                  "Leave",
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
         const SizedBox(width: 12),
         GestureDetector(
           onTap: () {

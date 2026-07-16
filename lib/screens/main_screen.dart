@@ -153,6 +153,7 @@ class MainScreenState extends State<MainScreen> {
           const DashboardScreen(),
           const MissionsScreen(),
           const FacultyBusScreen(),
+          const DriverLeaveScreen(userRole: 'student'),
           const ProfileScreen(),
         ];
       case 'security':

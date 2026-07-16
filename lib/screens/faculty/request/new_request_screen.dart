@@ -169,6 +169,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           final List<dynamic> purposes = data['data'] ?? [];
           setState(() {
             _dynamicPurposeOptions = purposes.map((p) => {
+              "id": p['id'].toString(),
               "key": p['name'].toString(),
               "label": p['name'].toString()
             }).toList();
@@ -208,6 +209,29 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
       debugPrint("Error creating purpose: $e");
     }
   }
+
+  Future<void> _deletePurpose(String id) async {
+    try {
+      final token = await UserStore.getToken();
+      final url = ApiConstants.deleteRequestPurpose(id);
+      final response = await http.delete(
+        Uri.parse(url), 
+        headers: ApiConstants.getHeaders(token),
+      );
+      
+      if (response.statusCode == 200) {
+        if (_purposeController.text == _dynamicPurposeOptions.firstWhere((element) => element['id'] == id, orElse: () => {})['key']) {
+          setState(() {
+            _purposeController.text = "";
+          });
+        }
+        await _fetchPurposes();
+      }
+    } catch (e) {
+      debugPrint("Error deleting purpose: $e");
+    }
+  }
+
 
   Future<void> _fetchAvailableVehicles() async {
     if (_startDate == null) return;
@@ -714,6 +738,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   itemBuilder: (context, index) {
                     final item = _dynamicPurposeOptions[index];
                     final isSelected = _purposeController.text == item['key'];
+                    final isSuperAdmin = _userRole.toLowerCase() == 'super admin';
 
                   return GestureDetector(
                     onTap: () {
@@ -764,6 +789,21 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                               ),
                             ),
                           ),
+                          if (isSuperAdmin)
+                            GestureDetector(
+                              onTap: () {
+                                _deletePurpose(item['id']!);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                margin: EdgeInsets.only(right: isSelected ? 8 : 0),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                              ),
+                            ),
                           if (isSelected)
                             Container(
                               padding: const EdgeInsets.all(3),

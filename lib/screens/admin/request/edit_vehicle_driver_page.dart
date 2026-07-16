@@ -955,74 +955,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (isFaculty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          onSelect(null);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: selectedId == null
-                                ? Colors.red.withValues(alpha: 0.1)
-                                : t.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: selectedId == null ? Colors.red : Colors.transparent,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: (selectedId == null ? Colors.red : t).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(
-                                  Icons.remove_circle_outline_rounded,
-                                  size: 20,
-                                  color: selectedId == null ? Colors.red : t.withValues(alpha: 0.5),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Unassign Faculty",
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: selectedId == null ? Colors.red : t,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Remove current assigned faculty coordinator",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: t.withValues(alpha: 0.4),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (selectedId == null)
-                                const Icon(Icons.check_circle_rounded, color: Colors.red, size: 20),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+
                   Expanded(
                     child: currentFilteredList.isEmpty
                         ? Center(

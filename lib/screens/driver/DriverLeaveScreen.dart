@@ -576,26 +576,34 @@ final store = ref.watch(driverStoreProvider);
             ),
           ),
           Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  widget.userRole == 'student' ? Icons.directions_bus_rounded : Icons.add_task_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  widget.userRole == 'student'
-                      ? (isTamil ? "போக்குவரத்து இருப்பை மாற்று" : "UPDATE TRANSPORT AVAILABILITY")
-                      : (isTamil ? "விடுப்பு விண்ணப்பிக்க" : "APPLY NEW LEAVE"),
-                  style: const TextStyle(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.userRole == 'student' ? Icons.directions_bus_rounded : Icons.add_task_rounded,
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    size: 28,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      widget.userRole == 'student'
+                          ? (isTamil ? "போக்குவரத்து இருப்பை மாற்று" : "UPDATE TRANSPORT AVAILABILITY")
+                          : (isTamil ? "விடுப்பு விண்ணப்பிக்க" : "APPLY NEW LEAVE"),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -857,25 +865,37 @@ final store = ref.watch(driverStoreProvider);
     return GestureDetector(
       onTap: () => _showStudentLeaveDetailsPopup(context, leave, isTamil, isDark),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black26 : const Color(0xFF6366F1).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(color: isDark ? Colors.white10 : Colors.white),
         ),
         child: Row(
           children: [
             Container(
-              height: 45,
-              width: 45,
+              height: 50,
+              width: 50,
               decoration: BoxDecoration(
-                color: Colors.blueAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF6366F1).withValues(alpha: 0.15), const Color(0xFF6366F1).withValues(alpha: 0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(
-                Icons.calendar_month_outlined,
-                color: Colors.blueAccent,
-                size: 22,
+                Icons.calendar_month_rounded,
+                color: Color(0xFF6366F1),
+                size: 24,
               ),
             ),
             const SizedBox(width: 16),
@@ -886,31 +906,39 @@ final store = ref.watch(driverStoreProvider);
                   Text(
                     leaveType,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                       fontSize: 16,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "$dateStr • $shiftType",
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.event_note_rounded, size: 14, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        "$dateStr • $shiftType",
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
             if (canRevoke)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: Colors.redAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   isTamil ? "ரத்து செய்" : "Cancel",
                   style: const TextStyle(
-                    color: Colors.orange,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -948,23 +976,33 @@ final store = ref.watch(driverStoreProvider);
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.blueAccent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          (isTamil ? "மாணவர் விடுப்பு" : "Student Leave").toUpperCase(),
-                          style: const TextStyle(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                          (isTamil 
+                              ? (widget.userRole == 'student' ? "போக்குவரத்து இருப்பு" : "விடுப்பு விவரம்") 
+                              : (widget.userRole == 'student' ? "Transport Availability" : "Leave Details")).toUpperCase(),
+                          style: const TextStyle(color: Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.0),
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(dialogContext),
-                        icon: const Icon(Icons.close_rounded),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Text(
                     type,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
@@ -1000,7 +1038,7 @@ final store = ref.watch(driverStoreProvider);
                   if (canRevoke) ...[
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: TextButton(
                         onPressed: () async {
                           Navigator.pop(dialogContext);
                           final success = await useStudentLeaveStore.revokeLeave(id);
@@ -1010,12 +1048,18 @@ final store = ref.watch(driverStoreProvider);
                             }
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5), width: 1.5),
+                          ),
+                          backgroundColor: Colors.redAccent.withValues(alpha: 0.05),
                         ),
-                        child: Text(isTamil ? "ரத்து செய்" : "CANCEL LEAVE", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          isTamil ? "ரத்து செய்" : "CANCEL LEAVE", 
+                          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 1.0)
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1026,10 +1070,15 @@ final store = ref.watch(driverStoreProvider);
                       onPressed: () => Navigator.pop(dialogContext),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6366F1),
+                        shadowColor: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                        elevation: 8,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: Text(isTamil ? "சரி" : "CLOSE", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        isTamil ? "சரி" : "CLOSE", 
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.0)
+                      ),
                     ),
                   ),
                 ],
