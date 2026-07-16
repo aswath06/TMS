@@ -605,19 +605,23 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
       String url = "${ApiConstants.baseUrl}/daily-bus/bus-run-id/$runId";
-
       if (userId != null) {
-
         url += "?user_id=$userId";
-
       }
 
+      final String curlCmd = "curl --request GET \\\n"
+          "  --url '$url' \\\n"
+          "  --header 'Authorization: TMS $token' \\\n"
+          "  --header 'Content-Type: application/json'";
+          
+      debugPrint("\n🌟🌟🌟 [GET BY ID: FETCHING ROUTE DETAILS] 🌟🌟🌟\n"
+          "====================================================\n"
+          "$curlCmd\n"
+          "====================================================\n");
+
       final response = await http.get(
-
         Uri.parse(url),
-
         headers: ApiConstants.getHeaders(token),
-
       );
 
 
@@ -13260,7 +13264,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         ),
 
         bottomNavigationBar: bottomBar,
-
+        floatingActionButton: showOnlyHeaderAndAttendance 
+            ? FloatingActionButton(
+                onPressed: _showBusChangeRequestModal,
+                backgroundColor: primaryBlue,
+                child: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
+              )
+            : null,
       ),
 
     );
@@ -14229,6 +14239,20 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
   }
 
+  void _showBusChangeRequestModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _BusChangeRequestModal(
+          currentRunId: int.tryParse(_run['id'].toString()) ?? 0,
+          serviceDate: _run['service_date']?.toString() ?? '',
+          onSuccess: _refreshDetails,
+        );
+      },
+    );
+  }
 }
 
 
@@ -15372,7 +15396,6 @@ class _BoardingPassDialogState extends State<_BoardingPassDialog> {
       ),
 
     );
-
   }
 
 }
@@ -15534,10 +15557,429 @@ class _PerforatedCutLine extends StatelessWidget {
       ),
 
     );
-
   }
-
 }
 
+class _BusChangeRequestModal extends StatefulWidget {
+  final int currentRunId;
+  final String serviceDate;
+  final VoidCallback onSuccess;
 
+  const _BusChangeRequestModal({
+    super.key,
+    required this.currentRunId,
+    required this.serviceDate,
+    required this.onSuccess,
+  });
 
+  @override
+  State<_BusChangeRequestModal> createState() => _BusChangeRequestModalState();
+}
+
+class _BusChangeRequestModalState extends State<_BusChangeRequestModal> {
+  String _selectedShift = 'MORNING';
+  List<dynamic> _availableRoutes = [];
+  int? _selectedTargetRunId;
+  final TextEditingController _remarksController = TextEditingController();
+  bool _isLoading = false;
+  bool _isFetchingRoutes = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRoutes();
+  }
+
+  Future<void> _fetchRoutes() async {
+    setState(() {
+      _isFetchingRoutes = true;
+      _availableRoutes = [];
+      _selectedTargetRunId = null;
+    });
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+      
+      final String url;
+      if (_selectedShift == 'BOTH') {
+        url = "${ApiConstants.baseUrl}/daily-bus/transfer-requests/search-runs?service_date=${widget.serviceDate}";
+      } else {
+        final shiftParam = _selectedShift == 'MORNING' ? 'Morning' : 'Evening';
+        url = "${ApiConstants.baseUrl}/daily-bus/transfer-requests/search-runs?shift=$shiftParam&service_date=${widget.serviceDate}";
+      }
+      
+      final String curlCmd = "curl --request GET \\\n"
+          "  --url '$url' \\\n"
+          "  --header 'Authorization: TMS $token' \\\n"
+          "  --header 'Content-Type: application/json'";
+          
+      debugPrint("\n🌟🌟🌟 [GET ROUTES: FETCHING AVAILABLE ROUTES] 🌟🌟🌟\n"
+          "====================================================\n"
+          "$curlCmd\n"
+          "====================================================\n");
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          setState(() {
+            _availableRoutes = data;
+          });
+        } else if (data['data'] is List) {
+          setState(() {
+            _availableRoutes = data['data'];
+          });
+        }
+      } else {
+        String errMsg = 'Failed to fetch routes';
+        try {
+          final errData = json.decode(response.body);
+          if (errData['message'] != null) errMsg = errData['message'];
+        } catch (_) {}
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errMsg, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      print(e);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching routes: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isFetchingRoutes = false);
+    }
+  }
+
+  String _getSelectedRouteName() {
+    if (_selectedTargetRunId == null) return 'Select a route';
+    final route = _availableRoutes.firstWhere(
+      (r) => (r['id'] as int?) == _selectedTargetRunId,
+      orElse: () => <String, dynamic>{},
+    );
+    if (route.isEmpty) return 'Select a route';
+    return (route['run_name']?.toString() ?? route['name']?.toString() ?? 'Route $_selectedTargetRunId').toUpperCase();
+  }
+
+  void _showRouteSelectionBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (BuildContext context) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final filteredRoutes = _availableRoutes.where((route) {
+              final String routeName = (route['run_name']?.toString() ?? route['name']?.toString() ?? '').toLowerCase();
+              return routeName.contains(searchQuery.toLowerCase());
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              padding: const EdgeInsets.only(top: 16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Select Target Route', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search route...',
+                        prefixIcon: const Icon(Icons.search),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2)),
+                        filled: true,
+                        fillColor: Colors.grey.withOpacity(0.05),
+                      ),
+                      onChanged: (value) {
+                        setModalState(() {
+                          searchQuery = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: filteredRoutes.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final route = filteredRoutes[index];
+                        final int routeId = route['id'] ?? 0;
+                        final String routeName = (route['run_name']?.toString() ?? route['name']?.toString() ?? 'Route $routeId').toUpperCase();
+                        
+                        String busNumber = 'N/A';
+                        final assignList = route['assignment'] as List?;
+                        if (assignList != null && assignList.isNotEmpty) {
+                          final vehicle = assignList[0]['vehicle'];
+                          if (vehicle is Map) {
+                            busNumber = vehicle['bus_number']?.toString() ?? 'N/A';
+                          }
+                        }
+                        
+                        String inchargeName = 'N/A';
+                        final facList = route['faculties'] as List?;
+                        if (facList != null && facList.isNotEmpty) {
+                          inchargeName = facList[0]['name']?.toString() ?? 'N/A';
+                        }
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          title: Text(routeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text('Bus: $busNumber • Incharge: $inchargeName', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _selectedTargetRunId = routeId;
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submitRequest() async {
+    if (_selectedTargetRunId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a target route', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      return;
+    }
+    if (_remarksController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Remarks are required', style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/transfer-requests";
+      final body = {
+        "original_run_id": widget.currentRunId,
+        "target_run_id": _selectedTargetRunId,
+        "shift_requested": _selectedShift,
+        "remarks": _remarksController.text.trim()
+      };
+
+      final String curlCmd = "curl --request POST \\\n"
+          "  --url '$url' \\\n"
+          "  --header 'Authorization: TMS $token' \\\n"
+          "  --header 'Content-Type: application/json' \\\n"
+          "  --data '${json.encode(body)}'";
+      debugPrint("---- [HTTP REQUEST CURL] ----\n$curlCmd\n----------------------------");
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(body),
+      );
+      
+      debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transfer request submitted successfully', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+          widget.onSuccess();
+        }
+      } else {
+        String errMsg = 'Failed to submit request';
+        try {
+          final errData = json.decode(response.body);
+          if (errData['message'] != null) errMsg = errData['message'];
+        } catch (_) {}
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errMsg, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      print(e);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error submitting request: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 20,
+        right: 20,
+        top: 24,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Bus Change Request',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              )
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Select Shift', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_selectedShift != 'MORNING') {
+                        setState(() => _selectedShift = 'MORNING');
+                        _fetchRoutes();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _selectedShift == 'MORNING' ? const Color(0xFF5352ED) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Morning', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _selectedShift == 'MORNING' ? Colors.white : Colors.grey[600])),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_selectedShift != 'EVENING') {
+                        setState(() => _selectedShift = 'EVENING');
+                        _fetchRoutes();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _selectedShift == 'EVENING' ? const Color(0xFF5352ED) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Evening', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _selectedShift == 'EVENING' ? Colors.white : Colors.grey[600])),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_selectedShift != 'BOTH') {
+                        setState(() => _selectedShift = 'BOTH');
+                        _fetchRoutes();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _selectedShift == 'BOTH' ? const Color(0xFF5352ED) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Both', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _selectedShift == 'BOTH' ? Colors.white : Colors.grey[600])),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Select Target Route', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          _isFetchingRoutes
+              ? const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()))
+              : InkWell(
+                  onTap: () => _showRouteSelectionBottomSheet(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      filled: true,
+                      fillColor: Colors.white,
+                      suffixIcon: const Icon(Icons.arrow_drop_down, color: Colors.black87),
+                    ),
+                    child: Text(
+                      _getSelectedRouteName(),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: _selectedTargetRunId == null ? Colors.grey[500] : const Color(0xFF1B233A),
+                      ),
+                    ),
+                  ),
+                ),
+          const SizedBox(height: 16),
+          const Text('Remarks *', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _remarksController,
+            decoration: InputDecoration(
+              hintText: 'Reason for changing bus...',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _submitRequest,
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: Theme.of(context).primaryColor,
+              ),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Request', style: TextStyle(fontSize: 16, color: Colors.white)),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
