@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class AdminVehicleFormScreen extends StatefulWidget {
   final Map<String, dynamic>? vehicleData; // If null, it's Add mode. If provided, Edit mode.
@@ -161,7 +162,7 @@ class _AdminVehicleFormScreenState extends State<AdminVehicleFormScreen> {
       String method = 'POST';
       
       if (isEditMode) {
-        url = "${ApiConstants.baseUrl}/api/vehicles/${widget.vehicleData!['id']}";
+        url = "${ApiConstants.baseUrl}/api/vehicles/update/${widget.vehicleData!['id']}";
         method = 'PUT'; // Using PUT for updates generically
       }
 
@@ -177,8 +178,17 @@ class _AdminVehicleFormScreenState extends State<AdminVehicleFormScreen> {
           Navigator.pop(context, true); // true indicates success
         }
       } else {
+        String errorMsg = ApiErrorParser.parse(response, fallback: "Failed to save");
+        try {
+          final errData = json.decode(response.body);
+          if (errData['message'] != null) {
+            errorMsg = errData['message'];
+          } else if (errData['error'] != null) {
+            errorMsg = errData['error'];
+          }
+        } catch (_) {}
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to save: ${response.statusCode}"), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg), backgroundColor: Colors.red));
         }
       }
     } catch (e) {
@@ -200,6 +210,178 @@ class _AdminVehicleFormScreenState extends State<AdminVehicleFormScreen> {
       setState(() => onSelected(selectedDate));
     }
   }
+
+  void _showResetOdometerDialog() {
+    final readingCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool isResetting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateModal) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final Color bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+            final Color primaryBlue = const Color(0xFF6366F1);
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: bg,
+              elevation: 10,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Reset Odometer",
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Are you sure you want to force reset the base odometer? This action requires a password.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: readingCtrl,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        labelText: "New Odometer Reading",
+                        labelStyle: TextStyle(color: primaryBlue),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue.withOpacity(0.5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: passwordCtrl,
+                      obscureText: true,
+                      style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        labelText: "Password",
+                        labelStyle: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isResetting ? null : () => Navigator.pop(ctx),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: TextStyle(
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: isResetting ? null : () async {
+                            final reading = readingCtrl.text.trim();
+                            final pass = passwordCtrl.text.trim();
+                            if (reading.isEmpty || pass.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields"), backgroundColor: Colors.orange));
+                              return;
+                            }
+                            
+                            setStateModal(() => isResetting = true);
+                            try {
+                              final token = await UserStore.getToken();
+                              final response = await http.patch(
+                                Uri.parse(ApiConstants.resetOdometer(widget.vehicleData!['id'])),
+                                headers: ApiConstants.getHeaders(token),
+                                body: json.encode({
+                                  "reading": num.tryParse(reading) ?? 0,
+                                  "password": pass,
+                                }),
+                              );
+                              
+                              if (response.statusCode == 200 || response.statusCode == 201) {
+                                if (mounted) {
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Odometer reset successfully!"), backgroundColor: Colors.green));
+                                }
+                              } else {
+                                final data = json.decode(response.body);
+                                final err = data['message'] ?? "Failed to reset odometer";
+                                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: Colors.red));
+                              }
+                            } catch (e) {
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
+                            } finally {
+                              if (mounted) setStateModal(() => isResetting = false);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFEF4444), // Tailwind Red 500
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: isResetting
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text("Force Reset", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -292,6 +474,23 @@ class _AdminVehicleFormScreenState extends State<AdminVehicleFormScreen> {
                     _buildSectionTitle("Driver Assignment", isDark),
                     const SizedBox(height: 16),
                     _buildDriverDropdown(isDark),
+                    if (isEditMode) ...[
+                      const SizedBox(height: 32),
+                      _buildSectionTitle("Danger Zone", isDark),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: _showResetOdometerDialog,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text("Reset Odometer", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 40),
                   ],
                 ),

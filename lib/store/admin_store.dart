@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class AdminStore {
   // Singleton pattern to access the same store everywhere
@@ -31,7 +32,7 @@ class AdminStore {
         final decodedData = json.decode(response.body);
         adminData.value = decodedData['data'];
       } else {
-        errorMessage.value = "Error: ${response.statusCode}";
+        errorMessage.value = ApiErrorParser.parse(response, fallback: "Error");
       }
     } catch (e) {
       errorMessage.value = "Network Connection Failed";

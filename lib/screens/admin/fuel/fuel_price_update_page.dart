@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../../utils/api_constants.dart';
 import '../../../store/user_store.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class FuelPriceUpdatePage extends StatefulWidget {
   const FuelPriceUpdatePage({super.key});
@@ -71,7 +72,7 @@ class _FuelPriceUpdatePageState extends State<FuelPriceUpdatePage> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Server error: ${response.statusCode}"), backgroundColor: Colors.red),
+          SnackBar(content: Text(ApiErrorParser.parse(response, fallback: "Server error")), backgroundColor: Colors.red),
         );
       }
     } catch (e) {

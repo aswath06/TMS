@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 /// Store for Admin Dashboard statistics.
 /// Provides reactive ValueNotifiers that the UI can listen to.
@@ -62,7 +63,7 @@ class AdminDashboardStore {
         totalKilometers.value = 4523.7;
       } else {
         debugPrint(
-          "AdminDashboardStore FetchStats failed: ${response.statusCode}",
+          ApiErrorParser.parse(response, fallback: "AdminDashboardStore FetchStats failed"),
         );
       }
     } catch (e) {
@@ -98,7 +99,7 @@ class AdminDashboardStore {
           debugPrint("TodayDriverCount failed in body: ${data['message']}");
         }
       } else {
-        debugPrint("TodayDriverCount API error: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "TodayDriverCount API error"));
         debugPrint("Body: ${response.body}");
       }
     } catch (e) {

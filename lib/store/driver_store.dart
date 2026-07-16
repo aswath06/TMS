@@ -6,6 +6,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/services/location_service.dart';
 import 'package:tripzo/services/api_service.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 final useDriverStore = DriverStore();
 
@@ -22,7 +23,9 @@ class DriverStore extends ChangeNotifier {
 
   // List state
   final List<Map<String, dynamic>> _drivers = [];
+  List<Map<String, dynamic>> _allDrivers = [];
   List<Map<String, dynamic>> get drivers => _drivers;
+  List<Map<String, dynamic>> get allDrivers => _allDrivers;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -189,7 +192,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("--- [DEBUG] PENDING ALLOWANCE COUNT RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("----------------------------------------------");
 
@@ -253,7 +256,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("--- [DEBUG] FETCH ALLOWANCES RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("-----------------------------------------");
 
@@ -315,7 +318,7 @@ class DriverStore extends ChangeNotifier {
       final response = await http.patch(uri, headers: headers);
 
       debugPrint("--- [DEBUG] ALLOWANCE CONFIRM RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("------------------------------------------");
 
@@ -406,6 +409,16 @@ class DriverStore extends ChangeNotifier {
   int _totalDrivers = 0;
   int get totalDrivers => _totalDrivers;
 
+  String _selectedRole = 'Driver';
+  String get selectedRole => _selectedRole;
+
+  void setSelectedRole(String role) {
+    if (_selectedRole == role) return;
+    _selectedRole = role;
+    notifyListeners();
+    fetchDrivers(forceRefresh: true);
+  }
+
   Future<void> fetchDrivers({bool forceRefresh = false}) async {
     if (forceRefresh) {
       _currentPage = 1;
@@ -432,6 +445,9 @@ class DriverStore extends ChangeNotifier {
       if (_driverSearchQuery.isNotEmpty) {
         url += "&search=${Uri.encodeComponent(_driverSearchQuery)}";
       }
+      if (_selectedRole.isNotEmpty && _selectedRole != 'Driver') {
+        url += "&role_name=${Uri.encodeComponent(_selectedRole)}";
+      }
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
@@ -444,7 +460,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("================= API DEBUG =================");
       debugPrint("CURL:\n$curl");
-      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE STATUS"));
       // Truncate response body if it's too huge, or print fully. Let's print fully since user asked.
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("===========================================");
@@ -485,6 +501,32 @@ class DriverStore extends ChangeNotifier {
     await fetchDrivers();
   }
 
+  Future<void> fetchAllDriversWithoutPagination() async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+
+      final url = "${ApiConstants.baseUrl}/api/drivers/get-all-without-pagination";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> data = decoded['data'] ?? [];
+        _allDrivers = data.map((item) => item as Map<String, dynamic>).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error fetching all drivers without pagination: $e");
+    }
+  }
+
+  void _formatAndAddDriver(Map<String, dynamic> item) {
+    _drivers.add(item);
+  }
+
   Future<Map<String, dynamic>?> fetchDriverById(int id) async {
     try {
       final token = await UserStore.getToken();
@@ -503,7 +545,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("================= API DEBUG (Driver Details) =================");
       debugPrint("CURL:\n$curl");
-      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE STATUS"));
       debugPrint("RESPONSE BODY:");
       final pattern = RegExp('.{1,800}');
       for (var match in pattern.allMatches(response.body)) {
@@ -550,7 +592,7 @@ class DriverStore extends ChangeNotifier {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        debugPrint("License check failed: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "License check failed"));
         debugPrint("Body: ${response.body}");
         return null;
       }
@@ -580,7 +622,7 @@ class DriverStore extends ChangeNotifier {
         body: json.encode(driverData),
       );
 
-      debugPrint("Response Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Response Code"));
       debugPrint("Response Body: ${response.body}");
 
       Map<String, dynamic> decoded = {};
@@ -713,7 +755,7 @@ class DriverStore extends ChangeNotifier {
       }
       debugPrint("================= API DEBUG =================");
       debugPrint("CURL:\n$curl");
-      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE STATUS"));
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("===========================================");
       // ---------------------
@@ -790,7 +832,7 @@ class DriverStore extends ChangeNotifier {
       });
       debugPrint("================= API DEBUG =================");
       debugPrint("CURL:\n$curl");
-      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE STATUS"));
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("===========================================");
       // ---------------------
@@ -917,7 +959,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("================= API RESPONSE (Start Run) ==============");
-      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "STATUS CODE"));
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("=========================================================");
 
@@ -987,7 +1029,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("================= API RESPONSE (Campus In Count) ==============");
-      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "STATUS CODE"));
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("=========================================================");
 
@@ -1149,7 +1191,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("================= API RESPONSE (End Run) ==============");
-      debugPrint("STATUS CODE: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "STATUS CODE"));
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("=========================================================");
 
@@ -1214,7 +1256,7 @@ class DriverStore extends ChangeNotifier {
       for (int i = 0; i < responses.length; i++) {
         var response = responses[i];
         String tag = i == 0 ? "TODAY" : "TOMORROW";
-        debugPrint("[$tag] Status Code: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "[$tag] Status Code"));
         debugPrint("[$tag] Body: ${response.body}");
         
         if (response.statusCode == 200) {
@@ -1265,7 +1307,7 @@ class DriverStore extends ChangeNotifier {
         headers: ApiConstants.getHeaders(token),
       );
 
-      debugPrint("Response Status: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Response Status"));
       debugPrint("Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
@@ -1280,7 +1322,7 @@ class DriverStore extends ChangeNotifier {
         await UserStore.forceLogout();
         _leavesError = "Session expired. Please login again.";
       } else {
-        _leavesError = "Server error: ${response.statusCode}";
+        _leavesError = ApiErrorParser.parse(response, fallback: "Server error");
       }
     } catch (e) {
       _leavesError = "Connection error: $e";
@@ -1423,7 +1465,7 @@ class DriverStore extends ChangeNotifier {
       final response = await http.get(Uri.parse(url), headers: headers);
 
       debugPrint("--- [DEBUG] FETCH REWARD POINTS RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("---------------------------------------");
 
@@ -1443,7 +1485,7 @@ class DriverStore extends ChangeNotifier {
         await UserStore.forceLogout();
         _rewardError = "Session expired. Please login again.";
       } else {
-        _rewardError = "Server error: ${response.statusCode}";
+        _rewardError = ApiErrorParser.parse(response, fallback: "Server error");
       }
     } catch (e) {
       _rewardError = "Connection error: $e";
@@ -1486,7 +1528,7 @@ class DriverStore extends ChangeNotifier {
         body: json.encode(payload),
       );
 
-      debugPrint("API Response Status: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "API Response Status"));
       debugPrint("API Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -1502,9 +1544,9 @@ class DriverStore extends ChangeNotifier {
         try {
           final decoded = json.decode(response.body);
           _leavesError =
-              decoded['message'] ?? "Server Error: ${response.statusCode}";
+              decoded['message'] ?? ApiErrorParser.parse(response, fallback: "Server Error");
         } catch (_) {
-          _leavesError = "Server Error: ${response.statusCode}";
+          _leavesError = ApiErrorParser.parse(response, fallback: "Server Error");
         }
         return false;
       }
@@ -1571,7 +1613,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("--- [DEBUG] OTP VERIFICATION RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Response Body: ${response.body}");
       debugPrint("------------------------------------------");
 
@@ -1808,7 +1850,7 @@ class DriverStore extends ChangeNotifier {
       final response = await http.get(Uri.parse(url), headers: headers);
 
       debugPrint("--- [DEBUG] FETCH PENDING FUEL ENTRIES RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("--------------------------------------------------");
 
@@ -1885,7 +1927,7 @@ class DriverStore extends ChangeNotifier {
       final response = await http.Response.fromStream(streamedResponse);
 
       debugPrint("--- [DEBUG] COMPLETE FUEL ENTRY RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("-------------------------------------------");
 
@@ -1928,7 +1970,7 @@ class DriverStore extends ChangeNotifier {
       );
 
       debugPrint("--- [DEBUG] FETCH ACTIVE ROUTES TO COMPLETE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("-----------------------------------------------");
 

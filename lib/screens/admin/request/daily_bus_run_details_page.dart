@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 import 'package:tripzo/components/assigned_faculty_cards.dart';
 
@@ -11485,13 +11486,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         if (mounted) {
 
           ScaffoldMessenger.of(context).showSnackBar(
-
-            SnackBar(content: Text('Failed to delete trip: ${response.statusCode}', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
-
+            SnackBar(content: Text(ApiErrorParser.parse(response, fallback: 'Failed to delete trip'), style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
           );
-
         }
-
       }
 
     } catch (e) {

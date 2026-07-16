@@ -9,6 +9,7 @@ import 'package:tripzo/components/location_selector.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class NewRequestScreen extends StatefulWidget {
   const NewRequestScreen({super.key});
@@ -277,7 +278,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
       );
-      debugPrint("Departments Response [${response.statusCode}]: ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Departments Response ["));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {

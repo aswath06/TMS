@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class SecurityQrScannerScreen extends StatefulWidget {
   final String defaultMode;
@@ -112,7 +113,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
         );
 
         debugPrint("\n--- [QR SCANNER BUS] RESPONSE RECEIVED ---");
-        debugPrint("Status Code: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
         debugPrint("Body: ${response.body}");
         debugPrint("--------------------------------------\n");
 
@@ -155,7 +156,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
           );
         } else {
           final error = jsonDecode(response.body);
-          throw error['message'] ?? "Action failed (${response.statusCode})";
+          throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Action failed");
         }
         return;
       }
@@ -214,7 +215,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
       );
 
       debugPrint("\n--- [QR SCANNER] RESPONSE RECEIVED ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("--------------------------------------\n");
 
@@ -237,7 +238,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
         );
       } else {
         final error = jsonDecode(response.body);
-        throw error['message'] ?? "Action failed (${response.statusCode})";
+        throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Action failed");
       }
     } catch (e) {
       debugPrint("[QR SCANNER] Error during verification: $e");

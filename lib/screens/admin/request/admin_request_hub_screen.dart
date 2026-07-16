@@ -1059,12 +1059,16 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                               children: [
                                 Icon(Icons.people_alt_rounded, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                                 const SizedBox(width: 4),
-                                Text(
-                                  "Mapped: FN $fnCount | AN $anCount",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                Expanded(
+                                  child: Text(
+                                    "Mapped: FN $fnCount | AN $anCount",
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                    ),
                                   ),
                                 ),
                               ],

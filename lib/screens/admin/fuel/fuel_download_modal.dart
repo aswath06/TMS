@@ -12,6 +12,7 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 void showFuelDownloadModal(BuildContext context, Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
   DateTime fromDate = DateTime.now();
@@ -490,7 +491,7 @@ void showFuelDownloadModal(BuildContext context, Color primaryBlue, Color titleC
                                 
                                 await OpenFilex.open(file.path);
                               } else {
-                                if (context.mounted) showTopToast(context, "Failed to download report. (Error: ${response.statusCode})", isError: true);
+                                if (context.mounted) showTopToast(context, ApiErrorParser.parse(response, fallback: "Failed to download report. (Error"), isError: true);
                               }
                             } catch (e) {
                               debugPrint("Download Error: $e");

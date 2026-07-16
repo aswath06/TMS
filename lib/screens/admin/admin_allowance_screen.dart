@@ -17,6 +17,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class AdminAllowanceScreen extends ConsumerStatefulWidget {
   const AdminAllowanceScreen({super.key});
@@ -731,7 +732,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                     );
 
                                     debugPrint("====== RESPONSE ======");
-                                    debugPrint("Status Code: ${response.statusCode}");
+                                    debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
                                     if (response.headers['content-type']?.contains('application/json') ?? false) {
                                       debugPrint("Body: ${response.body}");
                                     } else {

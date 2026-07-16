@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class AdminFinalizeRequestScreen extends ConsumerStatefulWidget {
   final String requestId;
@@ -479,7 +480,7 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
         body: json.encode(body),
       );
 
-      debugPrint("📥 [SERVER RESPONSE] (${response.statusCode}): ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "📥 [SERVER RESPONSE]"));
 
       final respData = json.decode(response.body);
       if (response.statusCode == 200 && respData['success'] == true) {

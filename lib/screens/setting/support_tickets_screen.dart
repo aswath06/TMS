@@ -1,5 +1,8 @@
+import 'package:tripzo/utils/api_error_parser.dart';
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
@@ -43,7 +46,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
           _showError("Failed to load tickets: \${data['message']}");
         }
       } else {
-        _showError("Server error: \${response.statusCode}");
+        _showError(ApiErrorParser.parse(response, fallback: "Server error"));
       }
     } catch (e) {
       _showError("Network error: \$e");
@@ -71,7 +74,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
           _showError("Failed to update: \${data['message']}");
         }
       } else {
-        _showError("Server error: \${response.statusCode}");
+        _showError(ApiErrorParser.parse(response, fallback: "Server error"));
       }
     } catch (e) {
       _showError("Error: \$e");

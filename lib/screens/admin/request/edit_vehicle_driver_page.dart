@@ -65,7 +65,12 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
   int? _initialEveningFacultyId;
 
   String? _morningFacultyRemarks;
+
   String? _eveningFacultyRemarks;
+
+  bool _morningFacultyMarkLeave = false;
+
+  bool _eveningFacultyMarkLeave = false;
 
   @override
   void initState() {
@@ -223,11 +228,11 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
       List<dynamic> fetchedFaculties = [];
       final String serviceDate = widget.run['service_date']?.toString() ?? '';
-      final int? routeId = widget.run['daily_bus_route_id'] != null
-          ? int.tryParse(widget.run['daily_bus_route_id'].toString())
+      final int? runId = widget.run['id'] != null
+          ? int.tryParse(widget.run['id'].toString())
           : null;
 
-      if (serviceDate.isNotEmpty && routeId != null) {
+      if (serviceDate.isNotEmpty && runId != null) {
         final fUrl = "${ApiConstants.baseUrl}/daily-bus/bus-runs/assignable-faculties";
         try {
           final fRes = await http.post(
@@ -235,7 +240,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
             headers: headers,
             body: json.encode({
               "service_date": serviceDate,
-              "routeIds": [routeId],
+              "runIds": [runId],
             }),
           );
           if (fRes.statusCode == 200) {
@@ -465,62 +470,177 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
         }
       }
 
-      // 3. Faculty changes API call (via update-runs PUT route)
       // 3. Faculty changes API call (via operations/change-faculty PATCH route)
       if (isMorningFacultyChanged || isEveningFacultyChanged) {
+
         final String facultyUrl = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/change-faculty";
-        
-        if (isMorningFacultyChanged && _selectedMorningFacultyId != null) {
+
+        if (isMorningFacultyChanged && isEveningFacultyChanged && _selectedMorningFacultyId == _selectedEveningFacultyId && _selectedShift == 'BOTH') {
+
           final Map<String, dynamic> body = {
-            "trip_type": "MORNING",
-            "remarks": _morningFacultyRemarks ?? "Changed morning faculty from UI",
+
+            "trip_type": "BOTH",
+
+            "remarks": _morningFacultyRemarks ?? "Changed faculty from UI",
+
           };
+
           if (_selectedMorningFacultyId == -1) {
+
             body["is_admin_handover"] = true;
+
           } else {
+
+            body["is_admin_handover"] = false;
+
             body["assigned_faculty_user_id"] = _selectedMorningFacultyId;
+
+            if (_morningFacultyMarkLeave) body["mark_previous_faculty_leave"] = true;
+
           }
+
           
+
           final res = await http.patch(Uri.parse(facultyUrl), headers: headers, body: json.encode(body));
-          debugPrint("---- [HTTP RESPONSE (MORNING FACULTY): ${res.statusCode}] ----\\n${res.body}\\n----------------------------");
+
+          debugPrint("---- [HTTP RESPONSE (BOTH FACULTY): ${res.statusCode}] ----\n${res.body}\n----------------------------");
+
           
+
           if (res.statusCode != 200 && res.statusCode != 201) {
+
             fSuccess = false;
+
             try {
+
               final dec = json.decode(res.body);
+
               final err = dec['detail'] ?? dec['message'] ?? dec['error'] ?? res.body;
+
               errorMsg = errorMsg == null ? err : "$errorMsg | $err";
+
             } catch (_) {
+
               errorMsg = errorMsg == null ? res.body : "$errorMsg | ${res.body}";
+
             }
+
           }
-        }
-        
-        if (isEveningFacultyChanged && _selectedEveningFacultyId != null) {
-          final Map<String, dynamic> body = {
-            "trip_type": "EVENING",
-            "remarks": _eveningFacultyRemarks ?? "Changed evening faculty from UI",
-          };
-          if (_selectedEveningFacultyId == -1) {
-            body["is_admin_handover"] = true;
-          } else {
-            body["assigned_faculty_user_id"] = _selectedEveningFacultyId;
-          }
-          
-          final res = await http.patch(Uri.parse(facultyUrl), headers: headers, body: json.encode(body));
-          debugPrint("---- [HTTP RESPONSE (EVENING FACULTY): ${res.statusCode}] ----\\n${res.body}\\n----------------------------");
-          
-          if (res.statusCode != 200 && res.statusCode != 201) {
-            fSuccess = false;
-            try {
-              final dec = json.decode(res.body);
-              final err = dec['detail'] ?? dec['message'] ?? dec['error'] ?? res.body;
-              errorMsg = errorMsg == null ? err : "$errorMsg | $err";
-            } catch (_) {
-              errorMsg = errorMsg == null ? res.body : "$errorMsg | ${res.body}";
+
+        } else {
+
+          if (isMorningFacultyChanged && _selectedMorningFacultyId != null) {
+
+            final Map<String, dynamic> body = {
+
+              "trip_type": "MORNING",
+
+              "remarks": _morningFacultyRemarks ?? "Changed morning faculty from UI",
+
+            };
+
+            if (_selectedMorningFacultyId == -1) {
+
+              body["is_admin_handover"] = true;
+
+            } else {
+
+              body["is_admin_handover"] = false;
+
+              body["assigned_faculty_user_id"] = _selectedMorningFacultyId;
+
+              if (_morningFacultyMarkLeave) body["mark_previous_faculty_leave"] = true;
+
             }
+
+            
+
+            final res = await http.patch(Uri.parse(facultyUrl), headers: headers, body: json.encode(body));
+
+            debugPrint("---- [HTTP RESPONSE (MORNING FACULTY): ${res.statusCode}] ----\n${res.body}\n----------------------------");
+
+            
+
+            if (res.statusCode != 200 && res.statusCode != 201) {
+
+              fSuccess = false;
+
+              try {
+
+                final dec = json.decode(res.body);
+
+                final err = dec['detail'] ?? dec['message'] ?? dec['error'] ?? res.body;
+
+                errorMsg = errorMsg == null ? err : "$errorMsg | $err";
+
+              } catch (_) {
+
+                errorMsg = errorMsg == null ? res.body : "$errorMsg | ${res.body}";
+
+              }
+
+            }
+
           }
+
+          
+
+          if (isEveningFacultyChanged && _selectedEveningFacultyId != null) {
+
+            final Map<String, dynamic> body = {
+
+              "trip_type": "EVENING",
+
+              "remarks": _eveningFacultyRemarks ?? "Changed evening faculty from UI",
+
+            };
+
+            if (_selectedEveningFacultyId == -1) {
+
+              body["is_admin_handover"] = true;
+
+            } else {
+
+              body["is_admin_handover"] = false;
+
+              body["assigned_faculty_user_id"] = _selectedEveningFacultyId;
+
+              if (_eveningFacultyMarkLeave) body["mark_previous_faculty_leave"] = true;
+
+            }
+
+            
+
+            final res = await http.patch(Uri.parse(facultyUrl), headers: headers, body: json.encode(body));
+
+            debugPrint("---- [HTTP RESPONSE (EVENING FACULTY): ${res.statusCode}] ----\n${res.body}\n----------------------------");
+
+            
+
+            if (res.statusCode != 200 && res.statusCode != 201) {
+
+              fSuccess = false;
+
+              try {
+
+                final dec = json.decode(res.body);
+
+                final err = dec['detail'] ?? dec['message'] ?? dec['error'] ?? res.body;
+
+                errorMsg = errorMsg == null ? err : "$errorMsg | $err";
+
+              } catch (_) {
+
+                errorMsg = errorMsg == null ? res.body : "$errorMsg | ${res.body}";
+
+              }
+
+            }
+
+          }
+
         }
+
       }
 
       if (vSuccess && dSuccess && fSuccess) {
@@ -553,125 +673,157 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
   void _showRemarksBottomSheet(dynamic f) {
     if (f == null) return;
     final TextEditingController remarksController = TextEditingController();
+    bool localMarkLeave = false;
+    final bool isAdminHandover = f['user_id'] == -1;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final Color bg = isDark ? const Color(0xFF1E293B) : Colors.white;
-        final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-        final Color primaryBlue = const Color(0xFF6366F1);
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
+            final Color bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+            final Color primaryBlue = const Color(0xFF6366F1);
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Enter Remarks",
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: titleColor,
-                  ),
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  "Please provide a reason for changing the assigned faculty.",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: remarksController,
-                  maxLines: 3,
-                  style: TextStyle(color: titleColor),
-                  decoration: InputDecoration(
-                    hintText: "Enter your remarks here...",
-                    hintStyle: TextStyle(color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: primaryBlue),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final remarks = remarksController.text.trim();
-                      if (remarks.isEmpty) {
-                        _showSnackBar("Remarks cannot be empty", Colors.orange);
-                        return;
-                      }
-                      Navigator.pop(ctx);
-                      
-                      setState(() {
-                        final int userId = f['user_id'];
-                        final String name = f['name'] ?? 'N/A';
-                        _selectedFacultyId = userId;
-                        _selectedFacultyName = name;
-
-                        if (_selectedShift == 'BOTH') {
-                          _selectedMorningFacultyId = userId;
-                          _selectedMorningFacultyName = name;
-                          _morningFacultyRemarks = remarks;
-                          _selectedEveningFacultyId = userId;
-                          _selectedEveningFacultyName = name;
-                          _eveningFacultyRemarks = remarks;
-                        } else if (_selectedShift == 'MORNING') {
-                          _selectedMorningFacultyId = userId;
-                          _selectedMorningFacultyName = name;
-                          _morningFacultyRemarks = remarks;
-                        } else {
-                          _selectedEveningFacultyId = userId;
-                          _selectedEveningFacultyName = name;
-                          _eveningFacultyRemarks = remarks;
-                        }
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      "Save Faculty",
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Enter Remarks",
                       style: GoogleFonts.outfit(
-                        fontSize: 16,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: titleColor,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Please provide a reason for changing the assigned faculty.",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: remarksController,
+                      maxLines: 3,
+                      style: TextStyle(color: titleColor),
+                      decoration: InputDecoration(
+                        hintText: "Enter your remarks here...",
+                        hintStyle: TextStyle(color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue),
+                        ),
+                      ),
+                    ),
+                    if (!isAdminHandover) ...[
+                      const SizedBox(height: 16),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: primaryBlue,
+                        title: Text(
+                          "Mark previous faculty as leave?",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: titleColor,
+                          ),
+                        ),
+                        value: localMarkLeave,
+                        onChanged: (val) {
+                          setModalState(() {
+                            localMarkLeave = val ?? false;
+                          });
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final remarks = remarksController.text.trim();
+                          if (remarks.isEmpty) {
+                            _showSnackBar("Remarks cannot be empty", Colors.orange);
+                            return;
+                          }
+                          Navigator.pop(ctx);
+                          
+                          setState(() {
+                            final int userId = f['user_id'];
+                            final String name = f['name'] ?? 'N/A';
+                            _selectedFacultyId = userId;
+                            _selectedFacultyName = name;
+
+                            if (_selectedShift == 'BOTH') {
+                              _selectedMorningFacultyId = userId;
+                              _selectedMorningFacultyName = name;
+                              _morningFacultyRemarks = remarks;
+                              _morningFacultyMarkLeave = localMarkLeave;
+                              _selectedEveningFacultyId = userId;
+                              _selectedEveningFacultyName = name;
+                              _eveningFacultyRemarks = remarks;
+                              _eveningFacultyMarkLeave = localMarkLeave;
+                            } else if (_selectedShift == 'MORNING') {
+                              _selectedMorningFacultyId = userId;
+                              _selectedMorningFacultyName = name;
+                              _morningFacultyRemarks = remarks;
+                              _morningFacultyMarkLeave = localMarkLeave;
+                            } else {
+                              _selectedEveningFacultyId = userId;
+                              _selectedEveningFacultyName = name;
+                              _eveningFacultyRemarks = remarks;
+                              _eveningFacultyMarkLeave = localMarkLeave;
+                            }
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryBlue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          "Confirm",
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

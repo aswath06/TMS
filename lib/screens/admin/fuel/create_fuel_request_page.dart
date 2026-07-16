@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../components/common/custom_date_time_picker.dart';
 import '../../../utils/api_constants.dart';
 import '../../../store/user_store.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class CreateFuelRequestPage extends StatefulWidget {
   final Map<String, dynamic>? initialFuelData;
@@ -126,7 +127,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         }
       } else {
         setState(() => _isLoadingBunks = false);
-        debugPrint("Failed to load bunks: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "Failed to load bunks"));
       }
     } catch (e) {
       setState(() => _isLoadingBunks = false);
@@ -175,7 +176,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         }
       } else {
         setState(() => _isLoadingDrivers = false);
-        debugPrint("Failed to load drivers: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "Failed to load drivers"));
       }
     } catch (e) {
       setState(() => _isLoadingDrivers = false);
@@ -213,7 +214,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         }
       } else {
         setState(() => _isLoadingVehicles = false);
-        debugPrint("Failed to load vehicles: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "Failed to load vehicles"));
       }
     } catch (e) {
       setState(() => _isLoadingVehicles = false);
@@ -1305,7 +1306,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      log("\n--- RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
+      log(ApiErrorParser.parse(response, fallback: "\n--- RESPONSE ---\nStatus"));
       if (!mounted) return;
 
       if (response.statusCode == 201 || response.statusCode == 200) {

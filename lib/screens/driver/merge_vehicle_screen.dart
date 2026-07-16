@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class MergeVehicleScreen extends StatefulWidget {
   final int currentRunId;
@@ -68,7 +69,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
         headers: ApiConstants.getHeaders(token),
       );
 
-      debugPrint("---- [MERGE: ROUTES RESPONSE ${response.statusCode}] ----\n${response.body}\n----------------------------");
+      debugPrint(ApiErrorParser.parse(response, fallback: "---- [MERGE: ROUTES RESPONSE"));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -188,7 +189,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
         body: json.encode(body),
       );
 
-      debugPrint("---- [MERGE: SUBMIT RESPONSE ${response.statusCode}] ----\n${response.body}\n----------------------------");
+      debugPrint(ApiErrorParser.parse(response, fallback: "---- [MERGE: SUBMIT RESPONSE"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {

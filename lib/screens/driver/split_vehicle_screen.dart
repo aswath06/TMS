@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class SplitVehicleScreen extends StatefulWidget {
   final int runId;
@@ -56,7 +57,7 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
         body: json.encode(body),
       );
 
-      debugPrint("---- [SPLIT VEHICLE: SUBMIT RESPONSE ${response.statusCode}] ----\n${response.body}\n----------------------------");
+      debugPrint(ApiErrorParser.parse(response, fallback: "---- [SPLIT VEHICLE: SUBMIT RESPONSE"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {

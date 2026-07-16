@@ -7,6 +7,7 @@ import 'package:tripzo/store/istamil.dart'; // Import Language Store
 import 'package:tripzo/store/isdark.dart'; // Import Theme Store
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 
 class ScannerPage extends StatefulWidget {
@@ -76,8 +77,8 @@ class _ScannerPageState extends State<ScannerPage>
       } else {
         _handleError(
           isTamil
-              ? "சர்வர் பிழை: ${response.statusCode}"
-              : "Server Error: ${response.statusCode}",
+              ? ApiErrorParser.parse(response, fallback: "சர்வர் பிழை")
+              : ApiErrorParser.parse(response, fallback: "Server Error"),
         );
       }
     } catch (e) {

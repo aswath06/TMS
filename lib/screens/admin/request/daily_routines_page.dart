@@ -10,6 +10,8 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
+import 'package:tripzo/screens/admin/request/daily_bus_run_download_modal.dart';
 
 class DailyRoutinesListPage extends ConsumerStatefulWidget {
   const DailyRoutinesListPage({super.key});
@@ -62,7 +64,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
       );
 
       // Console log HTTP response
-      debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
+      debugPrint(ApiErrorParser.parse(response, fallback: "---- [HTTP RESPONSE STATUS"));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -131,7 +133,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
       );
 
       // Console log HTTP response
-      debugPrint("---- [HTTP RESPONSE STATUS: ${response.statusCode}] ----\n${response.body}\n----------------------------");
+      debugPrint(ApiErrorParser.parse(response, fallback: "---- [HTTP RESPONSE STATUS"));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -1665,6 +1667,19 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                             ),
                           ),
                         ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          showDailyBusRunDownloadModal(context, primaryBlue, titleColor, subColor, isDark);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.download_rounded, color: primaryBlue, size: 22),
+                        ),
                       ),
                     ],
                   ),

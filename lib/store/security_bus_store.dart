@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:intl/intl.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class SecurityBusStore extends ChangeNotifier {
   List<Map<String, dynamic>> _data = [];
@@ -49,7 +50,7 @@ class SecurityBusStore extends ChangeNotifier {
       final response = await http.get(Uri.parse(url), headers: requestHeaders);
       
       debugPrint("\n--- [SECURITY BUS STORE] RESPONSE RECEIVED ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("--------------------------------------\n");
       
@@ -122,7 +123,7 @@ class SecurityBusStore extends ChangeNotifier {
       );
 
       debugPrint("\n--- [SECURITY BUS STORE] GATE PASS RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("--------------------------------------\n");
 
@@ -158,7 +159,7 @@ class SecurityBusStore extends ChangeNotifier {
         fetchBusRuns(force: true);
       } else {
         final error = jsonDecode(response.body);
-        throw error['message'] ?? "Action failed (${response.statusCode})";
+        throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Action failed");
       }
     } catch (e) {
       debugPrint("Error in triggerGatePass: $e");

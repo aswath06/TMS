@@ -5,6 +5,7 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/leave_card.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 
 class ViewAllLeavesPage extends ConsumerStatefulWidget {
@@ -18,11 +19,33 @@ class ViewAllLeavesPage extends ConsumerStatefulWidget {
 
 class _ViewAllLeavesPageState extends ConsumerState<ViewAllLeavesPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _selectedFilter = 'All'; // All, Pending, Approved, Rejected
+  String _selectedRole = 'Driver';
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(requestStoreProvider).fetchLeaves(role: _selectedRole, reset: true);
+    });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final store = ref.read(requestStoreProvider);
+      if (!store.isLoadingLeaves && store.hasMoreLeaves) {
+        store.fetchLeaves(role: _selectedRole);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
 
@@ -97,18 +120,68 @@ final store = ref.watch(requestStoreProvider);
 
           return RefreshIndicator(
             onRefresh: () async {
-              await store.fetchLeaves(page: 1, limit: 100);
+              await store.fetchLeaves(role: _selectedRole, reset: true);
               // Also refresh dashboard stats to keep counts accurate
               await useAdminDashboardStore.fetchTodayDriverCount();
             },
             color: primaryBlue,
             child: Column(
               children: [
+                // Role Toggle
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    children: ['Driver', 'Student', 'Faculty', 'Non Teaching', 'Intern'].map((role) {
+                      final isSelected = _selectedRole == role;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedRole = role;
+                            });
+                            store.fetchLeaves(role: _selectedRole, reset: true);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSelected ? primaryBlue : cardColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? primaryBlue : primaryBlue.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: primaryBlue.withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Text(
+                              role,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : titleColor,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
                 // Search Bar
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
-                    vertical: 10,
+                    vertical: 5,
                   ),
                   child: Row(
                     children: [
@@ -240,16 +313,26 @@ final store = ref.watch(requestStoreProvider);
                 // Leaves List
                 Expanded(
                   child: filtered.isEmpty
-                      ? _buildEmptyState(titleColor)
+                      ? (store.isLoadingLeaves
+                          ? const Center(child: CircularProgressIndicator())
+                          : _buildEmptyState(titleColor))
                       : ListView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 10,
                           ),
-                          physics:
-                              const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
-                          itemCount: filtered.length,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: filtered.length + (store.hasMoreLeaves ? 1 : 0),
                           itemBuilder: (context, index) {
+                            if (index == filtered.length) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                child: Center(
+                                  child: CircularProgressIndicator(color: primaryBlue),
+                                ),
+                              );
+                            }
                             return LeaveCard(
                               leaf: filtered[index],
                               isDark: isDark,
@@ -464,10 +547,7 @@ class _ApplyLeaveBottomSheet extends ConsumerStatefulWidget {
 
 class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> {
   final _reasonController = TextEditingController();
-  DateTime? _startDate;
-  DateTime? _endDate;
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
+  DateTime? _selectedDate;
   int? _selectedLeaveType;
   Map<String, dynamic>? _selectedDriver;
   List<Map<String, dynamic>> _filteredDrivers = [];
@@ -476,8 +556,24 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
   @override
   void initState() {
     super.initState();
-    final driverStore = ref.read(driverStoreProvider);
-    _filteredDrivers = driverStore.drivers;
+    
+    // Fetch dynamic leave types and all drivers
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final driverStore = ref.read(driverStoreProvider);
+      if (driverStore.allDrivers.isEmpty) {
+        driverStore.fetchAllDriversWithoutPagination().then((_) {
+          if (mounted) {
+            setState(() {
+              _filteredDrivers = driverStore.allDrivers;
+            });
+          }
+        });
+      } else {
+        setState(() {
+          _filteredDrivers = driverStore.allDrivers;
+        });
+      }
+    });
 
     // Fetch dynamic leave types
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -596,17 +692,17 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
               ),
             ),
             const SizedBox(height: 24),
-            _buildSectionTitle("Select Date Range"),
+            _buildSectionTitle("Select Date"),
             const SizedBox(height: 12),
             GestureDetector(
-              onTap: _pickDateRange,
+              onTap: _pickDate,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
                   color: widget.cardColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: _startDate != null
+                    color: _selectedDate != null
                         ? widget.primaryBlue
                         : Colors.grey.withValues(alpha: 0.2),
                   ),
@@ -615,17 +711,17 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
                   children: [
                     Icon(
                       Icons.date_range_rounded,
-                      color: _startDate != null ? widget.primaryBlue : Colors.grey,
+                      color: _selectedDate != null ? widget.primaryBlue : Colors.grey,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _startDate != null && _endDate != null
-                            ? "${DateFormat('dd MMM').format(_startDate!)} - ${DateFormat('dd MMM').format(_endDate!)}"
-                            : "Choose dates...",
+                        _selectedDate != null
+                            ? DateFormat('dd MMM yyyy').format(_selectedDate!)
+                            : "Choose a date...",
                         style: TextStyle(
-                          color: _startDate != null ? titleColor : Colors.grey,
-                          fontWeight: _startDate != null ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedDate != null ? titleColor : Colors.grey,
+                          fontWeight: _selectedDate != null ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -635,32 +731,7 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionTitle("Start Time"),
-                      const SizedBox(height: 12),
-                      _buildTimePicker(true),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionTitle("End Time"),
-                      const SizedBox(height: 12),
-                      _buildTimePicker(false),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+
             _buildSectionTitle("Leave Type"),
             const SizedBox(height: 12),
             Consumer(
@@ -788,89 +859,19 @@ final requestStore = ref.watch(requestStoreProvider);
     );
   }
 
-  Widget _buildTimePicker(bool isStart) {
-    final time = isStart ? _startTime : _endTime;
-    return GestureDetector(
-      onTap: () => _pickTime(isStart),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: widget.cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.access_time_rounded,
-              size: 16,
-              color: widget.primaryBlue,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              time == null ? "Select" : time.format(context),
-              style: TextStyle(
-                fontWeight: time == null ? FontWeight.normal : FontWeight.bold,
-                color: widget.isDark ? Colors.white : Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _pickTime(bool isStart) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
+  void _pickDate() async {
+    final picked = await CustomDateTimePicker.show(
+      context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      minDate: DateTime.now(),
+      maxDate: DateTime.now().add(const Duration(days: 365)),
+      showTime: false,
+      accent: widget.primaryBlue,
+      cardColor: widget.cardColor,
     );
     if (picked != null) {
       setState(() {
-        if (isStart) {
-          _startTime = picked;
-        } else {
-          _endTime = picked;
-        }
-      });
-    }
-  }
-
-  void _pickDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
-      builder: (context, child) {
-        return Theme(
-          data: widget.isDark
-              ? ThemeData.dark().copyWith(
-                  colorScheme: ColorScheme.dark(
-                    primary: widget.primaryBlue,
-                    onPrimary: Colors.white,
-                    surface: widget.cardColor,
-                    onSurface: Colors.white,
-                  ),
-                )
-              : ThemeData.light().copyWith(
-                  colorScheme: ColorScheme.light(
-                    primary: widget.primaryBlue,
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: Colors.black,
-                  ),
-                ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
+        _selectedDate = picked;
       });
     }
   }
@@ -886,25 +887,67 @@ final requestStore = ref.watch(requestStoreProvider);
             final titleColor = widget.isDark
                 ? Colors.white
                 : const Color(0xFF1E293B);
+            final subColor = widget.isDark 
+                ? const Color(0xFF94A3B8) 
+                : const Color(0xFF64748B);
+
             return Container(
-              height: MediaQuery.of(context).size.height * 0.5,
-              padding: const EdgeInsets.all(24),
+              height: MediaQuery.of(context).size.height * 0.65,
+              padding: EdgeInsets.only(
+                top: 16,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
+                color: widget.isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(32),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "Select Driver",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Search and select a driver from the list below",
+                    style: TextStyle(fontSize: 14, color: subColor, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 20),
                   TextField(
                     onChanged: (val) {
                       setModalState(() {
                         final driverStore = ref.read(driverStoreProvider);
                         if (val.isEmpty) {
-                          _filteredDrivers = driverStore.drivers;
+                          _filteredDrivers = driverStore.allDrivers;
                         } else {
-                          _filteredDrivers = driverStore.drivers
+                          _filteredDrivers = driverStore.allDrivers
                               .where(
                                 (d) => (d['name'] ?? "").toLowerCase().contains(
                                   val.toLowerCase(),
@@ -914,39 +957,117 @@ final requestStore = ref.watch(requestStoreProvider);
                         }
                       });
                     },
+                    style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
-                      hintText: "Search driver...",
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      hintText: "Search by name...",
+                      hintStyle: TextStyle(color: subColor, fontWeight: FontWeight.normal),
+                      prefixIcon: Icon(Icons.search_rounded, color: widget.primaryBlue),
                       filled: true,
-                      fillColor: widget.cardColor,
+                      fillColor: widget.isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: _filteredDrivers.length,
-                      itemBuilder: (context, index) {
-                        final d = _filteredDrivers[index];
-                        return ListTile(
-                          title: Text(
-                            d['name'] ?? "Unknown",
-                            style: TextStyle(color: titleColor),
+                    child: _filteredDrivers.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.person_off_rounded, size: 48, color: subColor.withValues(alpha: 0.3)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  "No drivers found",
+                                  style: TextStyle(color: subColor, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: _filteredDrivers.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final d = _filteredDrivers[index];
+                              final bool isSelected = _selectedDriver != null && _selectedDriver!['id'] == d['id'];
+                              
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() => _selectedDriver = d);
+                                  Navigator.pop(context);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isSelected 
+                                        ? widget.primaryBlue.withValues(alpha: 0.1)
+                                        : (widget.isDark ? const Color(0xFF0F172A) : Colors.white),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected 
+                                          ? widget.primaryBlue
+                                          : Colors.grey.withValues(alpha: 0.2),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: widget.primaryBlue.withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            (d['name'] ?? "U")[0].toUpperCase(),
+                                            style: TextStyle(
+                                              color: widget.primaryBlue,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              d['name'] ?? "Unknown",
+                                              style: TextStyle(
+                                                color: titleColor,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              d['phone'] ?? "No Phone Number",
+                                              style: TextStyle(
+                                                color: subColor,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        Icon(Icons.check_circle_rounded, color: widget.primaryBlue, size: 28),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          subtitle: Text(
-                            d['phone'] ?? "",
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          onTap: () {
-                            setState(() => _selectedDriver = d);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -959,15 +1080,12 @@ final requestStore = ref.watch(requestStoreProvider);
 
   void _submitLeave() async {
     if (_selectedDriver == null ||
-        _startDate == null ||
-        _endDate == null ||
-        _startTime == null ||
-        _endTime == null ||
+        _selectedDate == null ||
         _selectedLeaveType == null ||
         _reasonController.text.isEmpty) {
       showTopToast(
         context,
-        "Please fill all fields including leave type",
+        "Please fill all fields",
         isError: true,
       );
       return;
@@ -978,12 +1096,10 @@ final requestStore = ref.watch(requestStoreProvider);
     final navigator = Navigator.of(context);
     final requestStore = ref.read(requestStoreProvider);
 
-    // Build ISO datetime strings: "2026-04-16T10:00:00"
-    String pad(int n) => n.toString().padLeft(2, '0');
-    final String fromDatetime =
-        "${DateFormat('yyyy-MM-dd').format(_startDate!)}T${pad(_startTime!.hour)}:${pad(_startTime!.minute)}:00";
-    final String toDatetime =
-        "${DateFormat('yyyy-MM-dd').format(_endDate!)}T${pad(_endTime!.hour)}:${pad(_endTime!.minute)}:00";
+    // Build ISO datetime strings for a full day (00:00:00 to 00:00:00)
+    final String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+    final String fromDatetime = "${dateStr}T00:00:00";
+    final String toDatetime = "${dateStr}T00:00:00";
 
     final success = await requestStore.createLeave(
       driverId: _selectedDriver!['id'],

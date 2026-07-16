@@ -27,6 +27,7 @@ import 'package:tripzo/store/app_lifecycle_provider.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/models/notification_model.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 
 class MissionDetailsScreen extends ConsumerStatefulWidget {
@@ -226,7 +227,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       );
 
       debugPrint("DEBUG: Mission Details Fetch: ID=${widget.requestId}");
-      debugPrint("DEBUG: Mission Details Response Status: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: Mission Details Response Status"));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -789,7 +790,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         body: "", 
       );
 
-      debugPrint("DEBUG: Generate QR Response: ${response.statusCode} - ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: Generate QR Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -813,7 +814,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         _showOtpModal(encryptedOtp, "START OTP", qrPayload: qrPayload);
       } else {
         final error = jsonDecode(response.body);
-        throw error['message'] ?? "Failed to generate Start QR (${response.statusCode})";
+        throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Failed to generate Start QR");
       }
     } catch (e) {
       if (!mounted) return;
@@ -841,7 +842,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         body: "", 
       );
 
-      debugPrint("DEBUG: Generate End QR Response: ${response.statusCode} - ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: Generate End QR Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -865,7 +866,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         _showOtpModal(encryptedOtp, "END OTP", qrPayload: qrPayload);
       } else {
         final error = jsonDecode(response.body);
-        throw error['message'] ?? "Failed to generate End QR (${response.statusCode})";
+        throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Failed to generate End QR");
       }
     } catch (e) {
       if (!mounted) return;
@@ -898,7 +899,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         body: jsonEncode(body),
       );
 
-      debugPrint("DEBUG: Start Register Response: ${response.statusCode} - ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: Start Register Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
@@ -947,7 +948,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         body: jsonEncode(body),
       );
 
-      debugPrint("DEBUG: End Register Response: ${response.statusCode} - ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: End Register Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
@@ -1205,7 +1206,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       );
 
       debugPrint("--- [DEBUG] OTP GENERATION RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("---------------------------------------");
 
@@ -1238,7 +1239,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         _showOtpModal(displayOtp, isStart ? "Start OTP" : "End OTP");
       } else {
         final error = jsonDecode(response.body);
-        throw error['message'] ?? "Failed to generate OTP (${response.statusCode})";
+        throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Failed to generate OTP");
       }
     } catch (e) {
       if (mounted) {
@@ -1275,7 +1276,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         body: jsonEncode(body),
       );
 
-      debugPrint("DEBUG: Auto End Leg Response: ${response.statusCode} - ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: Auto End Leg Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showTopToast("Trip leg ended successfully!", Colors.green);
@@ -1318,7 +1319,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         debugPrint("Direct Start API Error!");
-        debugPrint("Response Status: ${response.statusCode}");
+        debugPrint(ApiErrorParser.parse(response, fallback: "Response Status"));
         debugPrint("Response Body: ${response.body}");
       }
 
@@ -1382,7 +1383,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         headers: ApiConstants.getHeaders(token),
       );
 
-      debugPrint("DEBUG: Delete Route Response: ${response.statusCode} - ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: Delete Route Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
@@ -1434,7 +1435,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       );
 
       debugPrint("--- [DEBUG] AUTO START TRIP RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("---------------------------------------");
 
@@ -1877,7 +1878,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       body: jsonEncode(body),
     );
 
-    debugPrint("DEBUG: PATCH Stop Status Response: ${response.statusCode} - ${response.body}");
+    debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: PATCH Stop Status Response"));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       if (mounted) {

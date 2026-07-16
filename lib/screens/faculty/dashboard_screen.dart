@@ -11,6 +11,7 @@ import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
 import '../../utils/api_constants.dart';
 import 'package:tripzo/utils/tab_notification.dart';
+import 'package:tripzo/screens/driver/apply_leave_page.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -106,6 +107,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           builder: (context, snapshot) {
                             final String displayName = data?['name'] ?? snapshot.data ?? "Faculty";
                             return _buildHeader(
+                              context,
                               displayName,
                               data?['profile_photo'],
                               titleColor,
@@ -181,6 +183,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildHeader(
+    BuildContext context,
     String name,
     String? profilePhoto,
     Color titleColor,
@@ -228,6 +231,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         NotificationBell(iconColor: titleColor),
         const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () async {
+            final role = await UserStore.getRole() ?? 'faculty';
+            if (context.mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ApplyLeavePage(userRole: role),
+                ),
+              );
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.edit_calendar_rounded, size: 16, color: primary),
+                const SizedBox(width: 4),
+                Text(
+                  "Leave",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
         GestureDetector(
           onTap: () {
             const ChangeTabNotification(-1).dispatch(context);

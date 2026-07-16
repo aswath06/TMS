@@ -15,6 +15,7 @@ import '../../../utils/toast_utils.dart';
 import 'create_fuel_request_page.dart';
 import 'fuel_price_update_page.dart';
 import 'fuel_download_modal.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class FuelPage extends StatefulWidget {
   const FuelPage({super.key});
@@ -123,7 +124,7 @@ class _FuelPageState extends State<FuelPage> {
       );
 
       debugPrint("\n--- FETCH FUEL LOGS RESPONSE ---");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("--------------------------------\n");
 
@@ -188,7 +189,7 @@ class _FuelPageState extends State<FuelPage> {
         headers: ApiConstants.getHeaders(token),
       );
 
-      debugPrint("\n--- DELETE RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n----------------\n");
+      debugPrint(ApiErrorParser.parse(response, fallback: "\n--- DELETE RESPONSE ---\nStatus"));
 
       if (!mounted) return;
 
@@ -801,7 +802,7 @@ class _FuelPageState extends State<FuelPage> {
         );
       }
       
-      debugPrint("\n📥 [APPROVE FUEL LOG RESPONSE] (${response.statusCode}): ${response.body}\n");
+      debugPrint(ApiErrorParser.parse(response, fallback: "\n📥 [APPROVE FUEL LOG RESPONSE]"));
 
       if (mounted) Navigator.pop(context); // close loader
 

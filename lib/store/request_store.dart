@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 final useRequestStore = RequestStore();
 
@@ -23,6 +24,8 @@ class RequestStore extends ChangeNotifier {
 
   String? _errorMessage;
   String? _leavesErrorMessage;
+  int _leavesCurrentPage = 1;
+  bool _hasMoreLeaves = true;
   String _currentSearch = "";
   String _currentStatuses = "";
   String _currentRouteDate = "";
@@ -38,6 +41,8 @@ class RequestStore extends ChangeNotifier {
   List<Map<String, dynamic>> get leaveTypes => _leaveTypes;
   bool get hasMore => _hasMore;
   int get currentPage => _currentPage;
+  int get leavesCurrentPage => _leavesCurrentPage;
+  bool get hasMoreLeaves => _hasMoreLeaves;
   String? get errorMessage => _errorMessage;
   String? get leavesErrorMessage => _leavesErrorMessage;
   String get currentRouteDate => _currentRouteDate;
@@ -125,7 +130,7 @@ class RequestStore extends ChangeNotifier {
         await UserStore.forceLogout();
         _errorMessage = "Session expired. Please login again.";
       } else {
-        _errorMessage = "Server Error: ${response.statusCode}";
+        _errorMessage = ApiErrorParser.parse(response, fallback: "Server Error");
       }
     } catch (e) {
       _errorMessage = "Connection failed.";
@@ -171,7 +176,7 @@ class RequestStore extends ChangeNotifier {
         await UserStore.forceLogout();
         _errorMessage = "Session expired.";
       } else {
-        _errorMessage = "Server Error: ${response.statusCode}";
+        _errorMessage = ApiErrorParser.parse(response, fallback: "Server Error");
       }
     } catch (e) {
       _errorMessage = "Connection error.";
@@ -286,8 +291,16 @@ class RequestStore extends ChangeNotifier {
     }
   }
 
-  /// Fetches all leaves with optional pagination
-  Future<void> fetchLeaves({int page = 1, int limit = 10}) async {
+  /// Fetches all leaves with optional pagination and role filtering
+  Future<void> fetchLeaves({String? role, bool reset = false}) async {
+    if (reset) {
+      _leavesCurrentPage = 1;
+      _hasMoreLeaves = true;
+      _leaves.clear();
+    }
+    
+    if (!_hasMoreLeaves || _isLoadingLeaves) return;
+
     _isLoadingLeaves = true;
     _leavesErrorMessage = null;
     notifyListeners();
@@ -303,7 +316,11 @@ class RequestStore extends ChangeNotifier {
       }
 
       String url =
-          "${ApiConstants.baseUrl}/api/leaves/get-all?page=$page&limit=$limit";
+          "${ApiConstants.baseUrl}/api/leaves/get-all?page=$_leavesCurrentPage&limit=15";
+          
+      if (role != null && role.isNotEmpty && role != 'All') {
+        url += "&role=${Uri.encodeComponent(role)}";
+      }
 
       final response = await http.get(
         Uri.parse(url),
@@ -315,7 +332,14 @@ class RequestStore extends ChangeNotifier {
 
         if (data['success'] == true) {
           final List<dynamic> items = data['data'] ?? [];
-          _leaves = items.map((leave) => _formatLeave(leave)).toList();
+          final newLeaves = items.map((leave) => _formatLeave(leave)).toList();
+          
+          if (newLeaves.isEmpty || newLeaves.length < 15) {
+            _hasMoreLeaves = false;
+          }
+          
+          _leaves.addAll(newLeaves);
+          _leavesCurrentPage++;
         } else {
           _leavesErrorMessage = "Failed to fetch leaves.";
         }
@@ -323,7 +347,7 @@ class RequestStore extends ChangeNotifier {
         await UserStore.forceLogout();
         _leavesErrorMessage = "Session expired. Please login again.";
       } else {
-        _leavesErrorMessage = "Server Error: ${response.statusCode}";
+        _leavesErrorMessage = ApiErrorParser.parse(response, fallback: "Server Error");
       }
     } catch (e) {
       _leavesErrorMessage = "Connection failed. Please check your network.";
@@ -366,6 +390,7 @@ class RequestStore extends ChangeNotifier {
   /// Formats raw API leave data into the UI-friendly Map used by LeaveCard
   Map<String, dynamic> _formatLeave(dynamic leave) {
     String status = 'Pending';
+    int days = int.tryParse(leave['total_days']?.toString() ?? '0') ?? 0;
     if (leave['status'] is int) {
       switch (leave['status']) {
         case 1:
@@ -384,19 +409,24 @@ class RequestStore extends ChangeNotifier {
 
     return {
       'id': leave['id'],
-      'driver': leave['user']?['name'] ?? 'Unknown Driver',
-      'driver_full': leave['user'], // Full user/driver object (id, name, email, phone)
-      'from': _formatLeaveDate(leave['from_date']),
-      'to': _formatLeaveDate(leave['to_date']),
+      'driver': leave['user']?['name'] ?? 'Unknown',
+      'role': leave['user']?['role']?['name'] ?? 'Driver',
+      'email': leave['user']?['email'] ?? '',
+      'roll_number': leave['user']?['roll_number'] ?? '',
+      'department': leave['user']?['department'] ?? '',
+      'from': _formatDate(leave['from_date']),
+      'to': _formatDate(leave['to_date']),
       'from_raw': leave['from_date'],
       'to_raw': leave['to_date'],
-      'days': leave['total_days']?.toString() ?? '0',
+      'duration': '$days ${days == 1 ? "day" : "days"}',
+      'days': days.toString(),
       'status': status,
       'rawStatus': leave['status'],
-      'reason': leave['reason'] ?? '',
-      'leave_type': leave['leave_type_id'],   // API returns leave_type_id
+      'reason': leave['reason'] ?? 'No reason provided',
+      'type': leave['leaveType']?['name'] ?? 'Unknown',
+      'leave_type': leave['leave_type_id'],
       'driver_details': leave['driver_details'],
-      'approver': leave['approvedBy'], // API returns approvedBy (id, name)
+      'approver': leave['approvedBy'],
       'approved_at': leave['approved_at'],
       'created_at': leave['created_at'],
       'current_assignment': leave['current_assignment'],
@@ -480,7 +510,7 @@ class RequestStore extends ChangeNotifier {
 
       // ── RESPONSE LOG ──────────────────────────────────────────────────────
       debugPrint("━━━━━━━━━━━━ [createLeave] RESPONSE ━━━━━━━━━━━");
-      debugPrint("Status: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status"));
       debugPrint("Body:   ${response.body}");
       debugPrint("────────────────────────────────────────────────");
 
@@ -501,11 +531,11 @@ class RequestStore extends ChangeNotifier {
         final errBody = response.body;
         try {
           final errData = json.decode(errBody);
-          _leavesErrorMessage = errData['message'] ?? "Server error: ${response.statusCode}";
+          _leavesErrorMessage = errData['message'] ?? ApiErrorParser.parse(response, fallback: "Server error");
         } catch (_) {
-          _leavesErrorMessage = "Server error: ${response.statusCode}";
+          _leavesErrorMessage = ApiErrorParser.parse(response, fallback: "Server error");
         }
-        debugPrint("[createLeave] Non-2xx: ${response.statusCode} – $errBody");
+        debugPrint(ApiErrorParser.parse(response, fallback: "[createLeave] Non-2xx"));
       }
     } catch (e) {
       _leavesErrorMessage = "Connection error.";
@@ -559,7 +589,7 @@ class RequestStore extends ChangeNotifier {
         await UserStore.forceLogout();
         _leavesErrorMessage = "Session expired. Please login again.";
       } else {
-        _leavesErrorMessage = "Server error: ${response.statusCode}";
+        _leavesErrorMessage = ApiErrorParser.parse(response, fallback: "Server error");
       }
     } catch (e) {
       _leavesErrorMessage = "Connection error.";

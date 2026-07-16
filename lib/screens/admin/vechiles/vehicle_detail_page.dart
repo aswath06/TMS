@@ -12,6 +12,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io' as io;
 import 'package:open_filex/open_filex.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   final dynamic vehicleId;
@@ -66,7 +67,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
       });
       debugPrint("================= API DEBUG =================");
       debugPrint("CURL:\n$curl");
-      debugPrint("RESPONSE STATUS: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE STATUS"));
       debugPrint("RESPONSE BODY: ${response.body}");
       debugPrint("===========================================");
       // ---------------------
@@ -87,7 +88,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         }
       } else {
         setState(() {
-          _errorMessage = "Error: ${response.statusCode}";
+          _errorMessage = ApiErrorParser.parse(response, fallback: "Error");
           _isLoading = false;
         });
       }
@@ -1630,12 +1631,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     }
 
     return Column(
-      children: routes.map((r) {
+      children: routes.asMap().entries.map((entry) {
+        final int index = entry.key;
+        final dynamic r = entry.value;
+        final bool isTopRecord = index == 0;
+
         final tripLeg = r['tripLeg'] ?? {};
         final tripInstance = tripLeg['tripInstance'] ?? {};
         final routeReq = tripInstance['routeRequest'] ?? {};
 
-        final String routeName = routeReq['route_name'] ?? 'Unknown Route';
+        final String routeName = r['route_name'] ?? 'Regular Route Run';
 
         final String startTimeStr = tripLeg['planned_start_at'] ?? '';
         final String endTimeStr = tripLeg['planned_end_at'] ?? '';
@@ -1652,10 +1657,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             : '';
         final String startTimeFormatted = startDt != null
             ? DateFormat('HH:mm').format(startDt)
-            : '';
+            : '00:00';
         final String endMonthDay = endDt != null
             ? DateFormat('d MMM').format(endDt)
-            : '';
+            : 'TBD';
 
         final String headerDate = startMonthDay;
 
@@ -1664,6 +1669,21 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
             'ROUND TRIP';
         final String distance = "${routeReq['approx_distance_km'] ?? 0} KM";
         final String status = r['status'] ?? 'COMPLETED';
+
+        final List<dynamic> stopsList = tripLeg['stops'] ?? [];
+        stopsList.sort((a, b) => (a['stop_order'] ?? 0).compareTo(b['stop_order'] ?? 0));
+
+        String fromPlace = "BIT Campus";
+        String toPlace = "Destination Point";
+
+        if (stopsList.isNotEmpty) {
+          fromPlace = stopsList.first['stop_name'] ?? fromPlace;
+          toPlace = stopsList.last['stop_name'] ?? toPlace;
+        } else if (routeReq['route_name'] != null) {
+          final parts = routeReq['route_name'].toString().split('&');
+          fromPlace = parts[0].trim();
+          toPlace = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+        }
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -1745,7 +1765,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            routeName,
+                            fromPlace,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: isDark
@@ -1780,7 +1800,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            routeName,
+                            toPlace,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: isDark
@@ -1826,32 +1846,207 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                     color: Colors.grey.shade500,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    startTimeFormatted,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          startTimeFormatted,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          " until ",
+                          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                        ),
+                        Text(
+                          endMonthDay,
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontStyle: FontStyle.italic,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    " until ",
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                  ),
-                  Text(
-                    endMonthDay,
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 12,
+                  if (isTopRecord)
+                    InkWell(
+                      onTap: () {
+                        final tripId = tripInstance['id'] ?? r['id'];
+                        _showAdjustOdometerDialog(tripId, routeName, startTimeFormatted, endMonthDay);
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          "Adjust Odometer",
+                          style: TextStyle(
+                            color: Color(0xFF6366F1),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
           ),
         );
       }).toList(),
+    );
+  }
+
+  void _showAdjustOdometerDialog(dynamic tripId, String routeName, String startedAt, String endedAt) {
+    final readingCtrl = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateModal) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final primaryBlue = const Color(0xFF6366F1);
+            final titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Correct End Odometer",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Route: $routeName",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.black12 : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Started - Ended:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                          const SizedBox(height: 4),
+                          Text("$startedAt - $endedAt", style: TextStyle(fontSize: 12, color: titleColor)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: readingCtrl,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        labelText: "Closing End Odometer Reading (KM) *",
+                        labelStyle: TextStyle(color: primaryBlue, fontSize: 12),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue.withValues(alpha: 0.5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: primaryBlue, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                          child: Text("Cancel", style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: isSubmitting ? null : () async {
+                            final reading = readingCtrl.text.trim();
+                            if (reading.isEmpty) return;
+
+                            setStateModal(() => isSubmitting = true);
+                            try {
+                              final token = await UserStore.getToken();
+                              final response = await http.patch(
+                                Uri.parse("${ApiConstants.baseUrl}/api/request/trip/$tripId/end-odometer"),
+                                headers: ApiConstants.getHeaders(token),
+                                body: json.encode({"end_odometer": num.tryParse(reading) ?? 0}),
+                              );
+
+                              if (response.statusCode == 200 || response.statusCode == 201) {
+                                if (mounted) {
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Odometer corrected successfully!"), backgroundColor: Colors.green));
+                                  _fetchVehicleDetails();
+                                }
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiErrorParser.parse(response, fallback: "Failed to correct odometer")), backgroundColor: Colors.red));
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
+                            } finally {
+                              if (mounted) setStateModal(() => isSubmitting = false);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryBlue,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: isSubmitting
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text("Apply Correction", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

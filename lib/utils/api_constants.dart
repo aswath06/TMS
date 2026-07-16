@@ -41,6 +41,7 @@ class ApiConstants {
   static String deleteFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id";
   static String updateFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id";
   static String updateBunkPrice(dynamic id) => "$baseUrl/api/vehicles/fuel-bunk/$id/price";
+  static String resetOdometer(dynamic id) => "$baseUrl/api/vehicles/$id/reset-odometer";
 
   // Requests
   static String get getAllRequests => "$baseUrl/request/get-all";

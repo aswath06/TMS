@@ -590,33 +590,42 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
     final pending = widget.pendingCreation!;
     final routeRequest = pending['routeRequest'] ?? pending['route_request'] ?? {};
     final routeName = routeRequest['route_name'] ?? 'Unknown Route';
+    String startLocation = pending['start_destination'] ?? 'Unknown Start';
+    String endLocation = pending['end_destination'] ?? 'Unknown Destination';
+
+    final tripLegs = pending['tripLegs'] as List<dynamic>?;
     
-    String startLocation = routeRequest['start_location_name'] ?? routeRequest['start_location'] ?? pending['route']?['start_location_name'] ?? pending['start_location_name'] ?? pending['start_location'] ?? 'Unknown Start';
-    String endLocation = routeRequest['destination_location_name'] ?? routeRequest['destination_location'] ?? routeRequest['destination'] ?? pending['route']?['destination_location_name'] ?? pending['destination_location_name'] ?? pending['destination_location'] ?? pending['destination'] ?? 'Unknown Destination';
-    
+    if (startLocation == 'Unknown Start' && tripLegs != null && tripLegs.isNotEmpty) {
+      final firstLegStops = tripLegs.first['stops'] as List<dynamic>?;
+      if (firstLegStops != null && firstLegStops.isNotEmpty) {
+        firstLegStops.sort((a, b) => (a['stop_order'] ?? 0).compareTo(b['stop_order'] ?? 0));
+        startLocation = firstLegStops.first['location_name'] ?? firstLegStops.first['stop_name'] ?? 'Unknown Start';
+      }
+    }
+
+    if (endLocation == 'Unknown Destination' && tripLegs != null && tripLegs.isNotEmpty) {
+      final lastLegStops = tripLegs.last['stops'] as List<dynamic>?;
+      if (lastLegStops != null && lastLegStops.isNotEmpty) {
+        lastLegStops.sort((a, b) => (a['stop_order'] ?? 0).compareTo(b['stop_order'] ?? 0));
+        endLocation = lastLegStops.last['location_name'] ?? lastLegStops.last['stop_name'] ?? 'Unknown Destination';
+      }
+    }
+
+    if (startLocation == 'Unknown Start') {
+      startLocation = routeRequest['start_location_name'] ?? routeRequest['start_location'] ?? pending['route']?['start_location_name'] ?? pending['start_location_name'] ?? pending['start_location'] ?? 'Unknown Start';
+    }
+    if (endLocation == 'Unknown Destination') {
+      endLocation = routeRequest['destination_location_name'] ?? routeRequest['destination_location'] ?? routeRequest['destination'] ?? pending['route']?['destination_location_name'] ?? pending['destination_location_name'] ?? pending['destination_location'] ?? pending['destination'] ?? 'Unknown Destination';
+    }
+
     String vehicleNum = routeRequest['vehicle']?['vehicle_number'] ?? routeRequest['vehicle']?['bus_number'] ?? routeRequest['vehicle_number'] ?? 'N/A';
     
-    final tripLegs = pending['tripLegs'] as List<dynamic>?;
-    if (tripLegs != null && tripLegs.isNotEmpty) {
-      if (startLocation == 'Unknown Start') {
-        startLocation = tripLegs.first['start_location_name'] ?? tripLegs.first['start_location'] ?? 'Unknown Start';
-      }
-      if (endLocation == 'Unknown Destination') {
-        endLocation = tripLegs.last['destination_location_name'] ?? tripLegs.last['end_location_name'] ?? tripLegs.last['destination'] ?? 'Unknown Destination';
-      }
-      final assignments = tripLegs[0]['assignments'] as List<dynamic>?;
+    if (vehicleNum == 'N/A' && tripLegs != null && tripLegs.isNotEmpty) {
+      final assignments = tripLegs.first['assignments'] as List<dynamic>?;
       if (assignments != null && assignments.isNotEmpty) {
-        if (startLocation == 'Unknown Start') {
-          startLocation = assignments[0]['start_location_name'] ?? 'Unknown Start';
-        }
-        if (endLocation == 'Unknown Destination') {
-          endLocation = assignments.last['destination_location_name'] ?? assignments.last['end_location_name'] ?? 'Unknown Destination';
-        }
-        if (vehicleNum == 'N/A') {
-          final vehicle = assignments[0]['vehicle'];
-          if (vehicle != null) {
-            vehicleNum = vehicle['vehicle_number'] ?? vehicle['bus_number'] ?? 'N/A';
-          }
+        final vehicle = assignments.first['vehicle'];
+        if (vehicle != null) {
+          vehicleNum = vehicle['vehicle_number'] ?? vehicle['bus_number'] ?? 'N/A';
         }
       }
     }

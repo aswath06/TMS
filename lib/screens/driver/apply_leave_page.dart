@@ -89,7 +89,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   Widget build(BuildContext context) {
     final bool isTamil = LanguageStore.isTamil;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final bool isStudent = widget.userRole.toLowerCase() == 'student';
+    final bool isNonDriver = widget.userRole.toLowerCase() != 'driver';
 
     final Color bgColor = isDark
         ? const Color(0xFF0F172A)
@@ -131,7 +131,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         isTamil,
                       ),
 
-                      if (!isStudent) ...[
+                      if (!isNonDriver) ...[
                         const SizedBox(height: 32),
                         _buildSectionTitle(
                           isTamil ? "விடுப்பு வகை" : "Leave Type",
@@ -658,7 +658,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Widget _buildSubmitButton(bool isTamil) {
-    final bool isStudent = widget.userRole.toLowerCase() == 'student';
+    final bool isNonDriver = widget.userRole.toLowerCase() != 'driver';
     return ListenableBuilder(
       listenable: useDriverStore,
       builder: (context, child) {
@@ -671,7 +671,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                      if (_formKey.currentState!.validate() &&
                         _startDate != null &&
                         _endDate != null &&
-                        (isStudent || _selectedLeaveType != null)) {
+                        (isNonDriver || _selectedLeaveType != null)) {
 
                       if (!_endDate!.isAfter(_startDate!)) {
                         showTopToast(
@@ -697,7 +697,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                       final success = await useDriverStore.createLeave(
                         fromDate: fromDate,
                         toDate: toDate,
-                        leaveType: isStudent ? 1 : _selectedLeaveType!,
+                        leaveType: isNonDriver ? 1 : _selectedLeaveType!,
                         reason: _reasonController.text,
                       );
 

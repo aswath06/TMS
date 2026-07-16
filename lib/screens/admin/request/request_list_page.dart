@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class RequestListPage extends ConsumerStatefulWidget {
   const RequestListPage({super.key});
@@ -1453,7 +1454,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                                         );
                                       }
                                     } else {
-                                      debugPrint("Report Download Error: ${response.statusCode}");
+                                      debugPrint(ApiErrorParser.parse(response, fallback: "Report Download Error"));
                                       debugPrint("Body: ${response.body}");
                                       String message = "Failed to generate report";
                                       try {

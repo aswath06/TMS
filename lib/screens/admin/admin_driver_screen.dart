@@ -2,10 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
-import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/store/driver_store.dart';
-// Import Add Driver Page
 import 'package:tripzo/screens/admin/request/view_all_leaves_page.dart';
 import 'package:tripzo/screens/admin/admin_driver_detail_screen.dart';
 import 'package:tripzo/components/leave_card.dart';
@@ -22,13 +20,9 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
   String _sortType = 'A to Z'; // Default sorting
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  final String _searchText = '';
 
   // Driver search and filter variables
   final TextEditingController _driverSearchController = TextEditingController();
-  String _driverFilter = 'All'; // All, Available, Assigned, On Trip, On Leave
-  DateTime? _selectedDriverDate;
-  final bool _isDriverSearchVisible = false; // Visibility state for search bar
   Timer? _searchDebounce;
 
   // Helper to parse 'kilometers' string to double for sorting
@@ -222,242 +216,6 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
     );
   }
 
-  Future<void> _selectDriverDate(BuildContext context) async {
-    final DateTime? picked = await CustomDateTimePicker.show(
-      context,
-      initialDate: _selectedDriverDate ?? DateTime.now(),
-      minDate: DateTime(2000),
-      showTime: false,
-    );
-    if (picked != null && picked != _selectedDriverDate) {
-      setState(() {
-        _selectedDriverDate = picked;
-      });
-    }
-  }
-
-  void _showDriverFilterModal(BuildContext context, bool isDark) {
-    final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final primaryBlue = const Color(0xFF6366F1);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Allow dynamic height
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Filter Drivers",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 20),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _buildDriverFilterChip(
-                          "All",
-                          Icons.group_outlined,
-                          setModalState,
-                          primaryBlue,
-                          surfaceColor,
-                        ),
-                        _buildDriverFilterChip(
-                          "Available",
-                          useDriverStore.getStatusIcon(1),
-                          setModalState,
-                          primaryBlue,
-                          surfaceColor,
-                        ),
-                        _buildDriverFilterChip(
-                          "Assigned",
-                          useDriverStore.getStatusIcon(2),
-                          setModalState,
-                          primaryBlue,
-                          surfaceColor,
-                        ),
-                        _buildDriverFilterChip(
-                          "On Trip",
-                          useDriverStore.getStatusIcon(3),
-                          setModalState,
-                          primaryBlue,
-                          surfaceColor,
-                        ),
-                        _buildDriverFilterChip(
-                          "On Leave",
-                          useDriverStore.getStatusIcon(4),
-                          setModalState,
-                          primaryBlue,
-                          surfaceColor,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    const Text(
-                      "Today's Overview",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildModalStat(
-                            "Present Today",
-                            AdminDashboardStore().driversPresent.value.toString(),
-                            Icons.check_circle_rounded,
-                            const Color(0xFF10B981),
-                            surfaceColor,
-                            isDark,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildModalStat(
-                            "On Leave",
-                            AdminDashboardStore().driversOnLeave.value.toString(),
-                            Icons.cancel_rounded,
-                            const Color(0xFFEF4444),
-                            surfaceColor,
-                            isDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildModalStat(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-    Color surfaceColor,
-    bool isDark,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDriverFilterChip(
-    String title,
-    IconData icon,
-    StateSetter setModalState,
-    Color primaryBlue,
-    Color surfaceColor,
-  ) {
-    final isSelected = _driverFilter == title;
-    return GestureDetector(
-      onTap: () {
-        setModalState(() {
-          _driverFilter = title;
-        });
-        setState(() {});
-        Navigator.pop(context);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? primaryBlue : surfaceColor,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: isSelected ? primaryBlue : Colors.grey.shade300,
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected
-                  ? Colors.white
-                  : (Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white70
-                        : Colors.black54),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected
-                    ? Colors.white
-                    : (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black87),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   void initState() {
@@ -474,7 +232,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
       }
 
       if (requestStore.leaves.isEmpty) {
-        requestStore.fetchLeaves(page: 1, limit: 10);
+        requestStore.fetchLeaves(reset: true);
       }
     });
 
@@ -521,7 +279,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
           onRefresh: () async {
             await AdminDashboardStore().fetchStats();
             await ref.read(driverStoreProvider).fetchDrivers(forceRefresh: true);
-            await ref.read(requestStoreProvider).fetchLeaves(page: 1, limit: 10);
+            await ref.read(requestStoreProvider).fetchLeaves(reset: true);
           },
           color: primaryBlue,
           child: CustomScrollView(
@@ -558,7 +316,9 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
     );
   }
 
+
   Widget _buildAnimatedHeader(Color titleColor, Color primaryBlue) {
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24.0, 40.0, 24.0, 24.0),
@@ -581,7 +341,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                   builder: (context, ref, child) {
                     final store = ref.watch(driverStoreProvider);
                     return Text(
-                      "Managing ${store.totalDrivers} personnel",
+                      "Managing ${store.totalDrivers} drivers",
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
                     );
                   },
@@ -658,7 +418,7 @@ class _AdminDriverScreenState extends ConsumerState<AdminDriverScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            "$total Drivers",
+                            store.selectedRole == "Driver" ? "$total Drivers" : "$total ${store.selectedRole}s",
                             style: const TextStyle(
                               color: Color(0xFF6366F1),
                               fontWeight: FontWeight.w900,
@@ -778,20 +538,6 @@ final store = ref.watch(requestStoreProvider);
     );
   }
 
-  Widget _buildSectionTitle(String title, Color titleColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: titleColor,
-          fontWeight: FontWeight.w800,
-          fontSize: 20,
-        ),
-      ),
-    );
-  }
-
   Widget _buildLeaveList(bool isDark, Color primaryBlue) {
     return Consumer(
 builder: (context, ref, child) {
@@ -829,10 +575,21 @@ final store = ref.watch(requestStoreProvider);
           );
         }
 
-        // Filter for pending leaves only
-        final pendingLeaves = store.leaves
-            .where((leave) => leave['status'] == 'Pending')
-            .toList();
+        // Filter for pending leaves by role
+        final driverStore = ref.watch(driverStoreProvider);
+        final selectedRole = driverStore.selectedRole;
+        final pendingLeaves = store.leaves.where((leave) {
+          if (leave['status'] != 'Pending') return false;
+          
+          final roleName = leave['driver_full']?['role']?['name'];
+          if (selectedRole == 'Driver') {
+            return roleName == 'Driver' || leave['driver_details'] != null;
+          }
+          if (selectedRole == 'Non Teaching') {
+            return roleName == 'Non Teaching' || roleName == 'Non Teaching Staff';
+          }
+          return roleName == selectedRole;
+        }).toList();
 
         if (pendingLeaves.isEmpty) {
           return Center(
@@ -1001,7 +758,6 @@ final store = ref.watch(driverStoreProvider);
 
     final dp = driver['driverProfile'] ?? driver;
     final String kmDisplay = "${dp['total_kilometer_drive'] ?? dp['total_kilometer_drived'] ?? 0} km";
-    final String employeeCode = dp['employee_code'] ?? 'N/A';
     final int experience = _calculateExperience(dp);
     final int routes = int.tryParse(dp['total_routes']?.toString() ?? '0') ?? 0;
     final String bloodGroup = dp['blood_group'] ?? 'N/A';

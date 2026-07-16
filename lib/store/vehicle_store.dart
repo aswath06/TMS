@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class VehicleStore extends ChangeNotifier {
   List<dynamic> _allVehicles = [];
@@ -105,7 +106,7 @@ class VehicleStore extends ChangeNotifier {
       );
 
       debugPrint("---- API RESPONSE ----");
-      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "Status Code"));
       debugPrint("Body: ${response.body}");
       debugPrint("----------------------");
 

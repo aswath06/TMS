@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 final useStudentLeaveStore = StudentLeaveStore();
 
@@ -50,7 +51,7 @@ class StudentLeaveStore extends ChangeNotifier {
           _leavesError = "Failed to load leaves";
         }
       } else {
-        _leavesError = "Error: ${response.statusCode}";
+        _leavesError = ApiErrorParser.parse(response, fallback: "Error");
       }
     } catch (e) {
       _leavesError = "Network error: $e";
@@ -102,9 +103,9 @@ class StudentLeaveStore extends ChangeNotifier {
       } else {
         try {
           final decoded = json.decode(response.body);
-          _leavesError = decoded['message'] ?? "Failed with status ${response.statusCode}";
+          _leavesError = decoded['message'] ?? ApiErrorParser.parse(response, fallback: "Failed with status");
         } catch (_) {
-          _leavesError = "Failed with status ${response.statusCode}";
+          _leavesError = ApiErrorParser.parse(response, fallback: "Failed with status");
         }
       }
     } catch (e) {

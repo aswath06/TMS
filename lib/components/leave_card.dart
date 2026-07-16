@@ -61,16 +61,30 @@ class LeaveCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    leaf['driver'] ?? 'Unknown Driver',
+                    leaf['driver'] ?? 'Unknown User',
                     style: TextStyle(
                       color: titleColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  if ((leaf['roll_number'] ?? "").isNotEmpty || (leaf['department'] ?? "").isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if ((leaf['roll_number'] ?? "").isNotEmpty) "ID: ${leaf['roll_number']}",
+                        if ((leaf['department'] ?? "").isNotEmpty) leaf['department'],
+                      ].join(" • "),
+                      style: TextStyle(
+                        color: subColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
                   Text(
-                    "${leaf['from']} - ${leaf['to']} (${leaf['days']} Days)",
+                    "${leaf['from']} - ${leaf['to']} (${leaf['duration']})",
                     style: TextStyle(
                       color: subColor,
                       fontSize: 12,
@@ -234,7 +248,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.leaf['driver'] ?? 'Unknown Driver',
+                        widget.leaf['driver'] ?? 'Unknown User',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -242,12 +256,33 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
                         ),
                       ),
                       Text(
-                        widget.leaf['driver_full']?['email'] ?? 'No email available',
+                        "${widget.leaf['role'] ?? 'Role N/A'} ${((widget.leaf['department'] ?? "").isNotEmpty) ? '• ${widget.leaf['department']}' : ''}",
                         style: TextStyle(
                           fontSize: 13,
                           color: subColor,
                         ),
                       ),
+                      if ((widget.leaf['roll_number'] ?? "").isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          "ID / Roll No: ${widget.leaf['roll_number']}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: subColor.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      if ((widget.leaf['email'] ?? "").isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.leaf['email'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: subColor.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -257,9 +292,17 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
           const SizedBox(height: 24),
 
           // Details Grid
-          _buildInfoRow(Icons.calendar_today_rounded, "Duration", "${widget.leaf['from']} - ${widget.leaf['to']} (${widget.leaf['days']} Days)", titleColor, subColor),
+          _buildInfoRow(Icons.calendar_today_rounded, "Duration", "${widget.leaf['from']} - ${widget.leaf['to']} (${widget.leaf['duration']})", titleColor, subColor),
           const SizedBox(height: 16),
-          _buildInfoRow(Icons.category_rounded, "Leave Type", _getLeaveTypeName(widget.leaf['leave_type']), titleColor, subColor),
+          _buildInfoRow(
+            Icons.category_rounded, 
+            (widget.leaf['role']?.toString().toLowerCase() ?? 'driver') == 'driver' ? "Leave Type" : "Shift", 
+            (widget.leaf['role']?.toString().toLowerCase() ?? 'driver') == 'driver' 
+                ? _getLeaveTypeName(widget.leaf['leave_type'])
+                : (widget.leaf['type']?.toString().replaceAll('Shift: ', '') ?? "Regular"),
+            titleColor, 
+            subColor
+          ),
           const SizedBox(height: 16),
           _buildInfoRow(Icons.comment_rounded, "Reason", widget.leaf['reason'] ?? 'No reason provided', titleColor, subColor),
           const SizedBox(height: 24),

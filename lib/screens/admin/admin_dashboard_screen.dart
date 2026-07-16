@@ -19,6 +19,7 @@ import 'admin_allowance_screen.dart';
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/utils/tab_notification.dart';
 import 'package:tripzo/screens/admin/live_bus_routes_screen.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
 class AdminDashboardScreen extends ConsumerStatefulWidget {
@@ -237,7 +238,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       
       final response = await http.get(Uri.parse(url), headers: headers);
       
-      debugPrint("RESPONSE (${response.statusCode}): ${response.body}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE"));
       debugPrint("--------------------------------");
       
       if (response.statusCode == 200) {

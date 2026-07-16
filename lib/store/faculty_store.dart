@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class FacultyStore {
   // Singleton
@@ -46,7 +47,7 @@ class FacultyStore {
       } else if (response.statusCode == 401) {
         errorMessage.value = "SESSION_EXPIRED";
       } else {
-        errorMessage.value = "Error: ${response.statusCode}";
+        errorMessage.value = ApiErrorParser.parse(response, fallback: "Error");
       }
     } catch (e) {
       errorMessage.value = "Network connection failed.";

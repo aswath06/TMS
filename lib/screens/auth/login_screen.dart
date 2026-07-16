@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import '../main_screen.dart' show MainScreen;
+import 'package:tripzo/utils/api_error_parser.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -129,7 +130,7 @@ curl -X POST "$url"
       );
 
       // ✅ PRINT RESPONSE
-      debugPrint("✅ STATUS CODE: ${response.statusCode}");
+      debugPrint(ApiErrorParser.parse(response, fallback: "✅ STATUS CODE"));
       debugPrint("📦 RESPONSE BODY: ${response.body}");
 
       if (response.body.isEmpty) {
