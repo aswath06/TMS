@@ -495,7 +495,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
             body["assigned_faculty_user_id"] = _selectedMorningFacultyId;
 
-            if (_morningFacultyMarkLeave) body["mark_previous_faculty_leave"] = true;
+            if (_morningFacultyMarkLeave && !widget.editFacultyOnly) body["mark_previous_faculty_leave"] = true;
 
           }
 
@@ -549,7 +549,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
               body["assigned_faculty_user_id"] = _selectedMorningFacultyId;
 
-              if (_morningFacultyMarkLeave) body["mark_previous_faculty_leave"] = true;
+              if (_morningFacultyMarkLeave && !widget.editFacultyOnly) body["mark_previous_faculty_leave"] = true;
 
             }
 
@@ -605,7 +605,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
               body["assigned_faculty_user_id"] = _selectedEveningFacultyId;
 
-              if (_eveningFacultyMarkLeave) body["mark_previous_faculty_leave"] = true;
+              if (_eveningFacultyMarkLeave && !widget.editFacultyOnly) body["mark_previous_faculty_leave"] = true;
 
             }
 
@@ -740,26 +740,29 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                         ),
                       ),
                     ),
-                    if (!isAdminHandover) ...[
+                    if (!isAdminHandover && !widget.editFacultyOnly) ...[
                       const SizedBox(height: 16),
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        activeColor: primaryBlue,
-                        title: Text(
-                          "Mark previous faculty as leave?",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: titleColor,
+                      Material(
+                        color: Colors.transparent,
+                        child: CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: primaryBlue,
+                          title: Text(
+                            "Mark previous faculty as leave?",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: titleColor,
+                            ),
                           ),
+                          value: localMarkLeave,
+                          onChanged: (val) {
+                            setModalState(() {
+                              localMarkLeave = val ?? false;
+                            });
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
                         ),
-                        value: localMarkLeave,
-                        onChanged: (val) {
-                          setModalState(() {
-                            localMarkLeave = val ?? false;
-                          });
-                        },
-                        controlAffinity: ListTileControlAffinity.leading,
                       ),
                     ],
                     const SizedBox(height: 24),

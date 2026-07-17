@@ -57,6 +57,32 @@ class DailyBusRunDetailsPage extends StatefulWidget {
 
 
 class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with TickerProviderStateMixin {
+  String _getAcademicYear(String? joiningYear) {
+    if (joiningYear == null || joiningYear.isEmpty) return "Unknown";
+    final year = int.tryParse(joiningYear);
+    if (year == null) return "Unknown";
+
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final currentMonth = now.month; // 1 = Jan, 6 = Jun
+
+    // Academic year starts in June
+    final academicBaseYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+    final currentAcademicYear = academicBaseYear - year + 1;
+
+    switch (currentAcademicYear) {
+      case 1:
+        return "I Year";
+      case 2:
+        return "II Year";
+      case 3:
+        return "III Year";
+      case 4:
+        return "IV Year";
+      default:
+        return currentAcademicYear > 4 ? "Passed Out" : "Unknown";
+    }
+  }
 
   late Map<String, dynamic> _run;
 
@@ -76,7 +102,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
   String _attendanceSearchQuery = '';
 
-  int _attendanceSessionIndex = 0;
+  int _attendanceSessionIndex = DateTime.now().hour < 12 ? 0 : 1;
 
   int _passengerTypeIndex = 0;
 
@@ -6264,48 +6290,43 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   Widget _buildPassengersTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
 
     final studentsList = _run['students'] as List? ?? [];
-
     final facultiesList = _run['faculties'] as List? ?? [];
+    final nonTeachingList = _run['nonTeachingStaffs'] as List? ?? [];
+    final internsList = _run['interns'] as List? ?? [];
 
-
-
-    if (studentsList.isEmpty && facultiesList.isEmpty) {
-
+    if (studentsList.isEmpty && facultiesList.isEmpty && nonTeachingList.isEmpty && internsList.isEmpty) {
       return SingleChildScrollView(
-
         physics: const AlwaysScrollableScrollPhysics(),
-
         child: Container(
-
           height: MediaQuery.of(context).size.height * 0.5,
-
           alignment: Alignment.center,
-
           child: Column(
-
             mainAxisSize: MainAxisSize.min,
-
             children: [
-
               Icon(Icons.people_rounded, size: 48, color: subColor.withOpacity( 0.2)),
-
               const SizedBox(height: 12),
-
               Text("No passengers assigned", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
-
             ],
-
           ),
-
         ),
-
       );
-
     }
 
+    final List<Map<String, dynamic>> availableGroups = [];
+    if (studentsList.isNotEmpty) availableGroups.add({'type': 0, 'title': 'Students', 'icon': Icons.school_rounded, 'list': studentsList});
+    if (facultiesList.isNotEmpty) availableGroups.add({'type': 1, 'title': 'Faculties', 'icon': Icons.badge_rounded, 'list': facultiesList});
+    if (nonTeachingList.isNotEmpty) availableGroups.add({'type': 2, 'title': 'Non-Teaching', 'icon': Icons.engineering_rounded, 'list': nonTeachingList});
+    if (internsList.isNotEmpty) availableGroups.add({'type': 3, 'title': 'Interns', 'icon': Icons.assignment_ind_rounded, 'list': internsList});
 
+    _passengerTypeIndex = _passengerTypeIndex.clamp(0, availableGroups.length - 1);
+    final currentGroup = availableGroups[_passengerTypeIndex];
+    final int actualType = currentGroup['type'];
 
-    final filteredPassengers = (_passengerTypeIndex == 0 ? studentsList : facultiesList).where((item) {
+    List<dynamic> getCurrentList() {
+      return currentGroup['list'];
+    }
+
+    final filteredPassengers = getCurrentList().where((item) {
 
       String name = '';
 
@@ -6313,7 +6334,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
       String dept = '';
 
-      if (_passengerTypeIndex == 0) {
+      if (actualType == 0) {
 
         final s = item['student'] as Map?;
 
@@ -6323,7 +6344,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
         dept = s?['department']?.toString() ?? '';
 
-      } else {
+      } else if (actualType == 1) {
 
         final f = item['faculty'] as Map?;
 
@@ -6333,9 +6354,22 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
         dept = f?['department']?.toString() ?? '';
 
+      } else if (actualType == 2) {
+        final n = item['nonTeachingStaff'] as Map? ?? item['non_teaching_staff'] as Map? ?? item['nonTeaching'] as Map? ?? item['staff'] as Map? ?? item['non_teaching'] as Map?;
+        name = n?['user']?['name']?.toString() ?? '';
+        code = n?['employee_code']?.toString() ?? '';
+        dept = n?['department']?.toString() ?? '';
+      } else {
+
+        final i = item['intern'] as Map?;
+
+        name = i?['user']?['name']?.toString() ?? '';
+
+        code = i?['roll_number']?.toString() ?? i?['employee_code']?.toString() ?? '';
+
+        dept = i?['department']?.toString() ?? '';
+
       }
-
-
 
       final String query = _studentSearchQuery.toLowerCase();
 
@@ -6347,9 +6381,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
           dept.toLowerCase().contains(query);
 
-
-
-      if (_passengerTypeIndex == 0) {
+      if (actualType == 0) {
 
         final s = item['student'] as Map?;
 
@@ -6357,29 +6389,43 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
             s?['gender']?.toString().toUpperCase() == _selectedGenderFilter;
 
-
-
         final bool matchesBatch = _selectedBatchFilter == null ||
 
             s?['academic_year']?.toString() == _selectedBatchFilter;
-
-
 
         final bool matchesDept = _selectedDeptFilter == null ||
 
             s?['department']?.toString() == _selectedDeptFilter;
 
-
-
         return matchesText && matchesGender && matchesBatch && matchesDept;
 
-      } else {
+      } else if (actualType == 1) {
 
         final f = item['faculty'] as Map?;
 
         final bool matchesDept = _selectedDeptFilter == null ||
 
             f?['department']?.toString() == _selectedDeptFilter;
+
+        return matchesText && matchesDept;
+
+      } else if (actualType == 2) {
+
+        final n = item['nonTeachingStaff'] as Map? ?? item['non_teaching_staff'] as Map?;
+
+        final bool matchesDept = _selectedDeptFilter == null ||
+
+            n?['department']?.toString() == _selectedDeptFilter;
+
+        return matchesText && matchesDept;
+
+      } else {
+
+        final i = item['intern'] as Map?;
+
+        final bool matchesDept = _selectedDeptFilter == null ||
+
+            i?['department']?.toString() == _selectedDeptFilter;
 
 
 
@@ -6413,208 +6459,82 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                   final double toggleWidth = constraints.maxWidth;
 
-                  final double pillWidth = (toggleWidth - 8) / 2;
+                  final double pillWidth = (toggleWidth - 8) / availableGroups.length;
 
                   return Container(
-
                     height: 40,
-
                     padding: const EdgeInsets.all(4),
-
                     decoration: BoxDecoration(
-
                       color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-
                       borderRadius: BorderRadius.circular(12),
-
                     ),
-
                     child: Stack(
-
                       children: [
-
-                        // Sliding Pill
-
                         AnimatedPositioned(
-
                           duration: const Duration(milliseconds: 200),
-
                           curve: Curves.easeOutCubic,
-
                           left: _passengerTypeIndex * pillWidth,
-
                           top: 0,
-
                           bottom: 0,
-
                           width: pillWidth,
-
                           child: Container(
-
                             decoration: BoxDecoration(
-
                               color: primaryBlue,
-
                               borderRadius: BorderRadius.circular(8),
-
                               boxShadow: [
-
                                 BoxShadow(
-
                                   color: primaryBlue.withOpacity( 0.25),
-
                                   blurRadius: 6,
-
                                   offset: const Offset(0, 2),
-
                                 ),
-
                               ],
-
                             ),
-
                           ),
-
                         ),
-
-                        // Interactive labels
-
                         Row(
-
-                          children: [
-
-                            Expanded(
-
+                          children: availableGroups.asMap().entries.map((entry) {
+                            final int index = entry.key;
+                            final Map<String, dynamic> group = entry.value;
+                            final bool isSelected = _passengerTypeIndex == index;
+                            
+                            return Expanded(
                               child: GestureDetector(
-
                                 onTap: () {
-
                                   setState(() {
-
-                                    _passengerTypeIndex = 0;
-
+                                    _passengerTypeIndex = index;
                                   });
-
                                 },
-
                                 behavior: HitTestBehavior.opaque,
-
                                 child: Center(
-
                                   child: Row(
-
                                     mainAxisSize: MainAxisSize.min,
-
                                     children: [
-
                                       Icon(
-
-                                        Icons.school_rounded,
-
+                                        group['icon'] as IconData,
                                         size: 14,
-
-                                        color: _passengerTypeIndex == 0 ? Colors.white : subColor,
-
+                                        color: isSelected ? Colors.white : subColor,
                                       ),
-
-                                      const SizedBox(width: 6),
-
-                                      Text(
-
-                                        "Students",
-
-                                        style: GoogleFonts.outfit(
-
-                                          fontWeight: FontWeight.bold,
-
-                                          fontSize: 13,
-
-                                          color: _passengerTypeIndex == 0 ? Colors.white : subColor,
-
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          group['title'] as String,
+                                          style: GoogleFonts.outfit(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: isSelected ? Colors.white : subColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-
                                       ),
-
                                     ],
-
                                   ),
-
                                 ),
-
                               ),
-
-                            ),
-
-                            Expanded(
-
-                              child: GestureDetector(
-
-                                onTap: () {
-
-                                  setState(() {
-
-                                    _passengerTypeIndex = 1;
-
-                                  });
-
-                                },
-
-                                behavior: HitTestBehavior.opaque,
-
-                                child: Center(
-
-                                  child: Row(
-
-                                    mainAxisSize: MainAxisSize.min,
-
-                                    children: [
-
-                                      Icon(
-
-                                        Icons.badge_rounded,
-
-                                        size: 14,
-
-                                        color: _passengerTypeIndex == 1 ? Colors.white : subColor,
-
-                                      ),
-
-                                      const SizedBox(width: 6),
-
-                                      Text(
-
-                                        "Faculties",
-
-                                        style: GoogleFonts.outfit(
-
-                                          fontWeight: FontWeight.bold,
-
-                                          fontSize: 13,
-
-                                          color: _passengerTypeIndex == 1 ? Colors.white : subColor,
-
-                                        ),
-
-                                      ),
-
-                                    ],
-
-                                  ),
-
-                                ),
-
-                              ),
-
-                            ),
-
-                          ],
-
+                            );
+                          }).toList(),
                         ),
-
                       ],
-
                     ),
-
                   );
 
                 },
@@ -6685,7 +6605,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                   GestureDetector(
 
-                    onTap: () => _showPassengerFilterBottomSheet(_passengerTypeIndex == 0 ? studentsList : facultiesList),
+                    onTap: () => _showPassengerFilterBottomSheet(getCurrentList()),
 
                     child: Container(
 
@@ -6799,13 +6719,11 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                       String boardingOtp = item['boarding_otp']?.toString() ?? '';
 
-                      
-
                       List<Widget> badges = [];
 
 
 
-                      if (_passengerTypeIndex == 0) {
+                      if (actualType == 0) {
 
                         final s = item['student'] as Map?;
 
@@ -6871,7 +6789,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                         }
 
-                      } else {
+                      } else if (actualType == 1) {
 
                         final f = item['faculty'] as Map?;
 
@@ -6913,6 +6831,46 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                         }
 
+                      } else if (actualType == 2) {
+                        final n = item['nonTeachingStaff'] as Map? ?? item['non_teaching_staff'] as Map? ?? item['nonTeaching'] as Map? ?? item['staff'] as Map? ?? item['non_teaching'] as Map?;
+                        final user = n?['user'] as Map?;
+                        
+                        if (user != null) {
+                          name = user['name'] ?? 'Non-Teaching';
+                          phone = user['phone'] ?? '';
+                          email = user['email'] ?? '';
+                          initial = name.isNotEmpty ? name[0].toUpperCase() : 'N';
+                        } else {
+                          name = 'Keys: ${item.keys.join(', ')}';
+                          phone = '';
+                          email = '';
+                          initial = 'N';
+                        }
+
+                        final String employeeCode = n?['employee_code'] ?? '';
+                        final String dept = n?['department'] ?? '';
+                        if (employeeCode.isNotEmpty && employeeCode != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.badge_rounded, "Emp Code: $employeeCode", Colors.purple));
+                        }
+                        if (dept.isNotEmpty && dept != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.school_rounded, dept, Colors.orange));
+                        }
+                      } else {
+                        final i = item['intern'] as Map?;
+                        final user = i?['user'] as Map?;
+                        name = user?['name'] ?? 'Intern';
+                        phone = user?['phone'] ?? '';
+                        email = user?['email'] ?? '';
+                        initial = name.isNotEmpty ? name[0].toUpperCase() : 'I';
+
+                        final String code = i?['roll_number'] ?? i?['employee_code'] ?? '';
+                        final String dept = i?['department'] ?? '';
+                        if (code.isNotEmpty && code != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.badge_rounded, "Code: $code", Colors.purple));
+                        }
+                        if (dept.isNotEmpty && dept != 'N/A') {
+                          badges.add(_buildStudentBadge(Icons.school_rounded, dept, Colors.orange));
+                        }
                       }
 
 
@@ -6992,23 +6950,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     children: [
 
                                       Text(
-
                                         name,
-
                                         style: GoogleFonts.outfit(
-
                                           fontWeight: FontWeight.w800,
-
                                           fontSize: 14,
-
                                           color: titleColor,
-
                                         ),
-
                                       ),
-
                                     ],
-
                                   ),
 
                                 ),
@@ -8042,6 +7991,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                         dept = s?['department'] ?? '';
 
+                        final String academicYearText = _getAcademicYear(s?['academic_year']?.toString());
+                        if (academicYearText != "Unknown") {
+                          if (dept.isNotEmpty) {
+                            dept = "$dept  •  $academicYearText";
+                          } else {
+                            dept = academicYearText;
+                          }
+                        }
                         
 
                         typeLabel = "Student";
@@ -8075,12 +8032,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
                       final String sessionStatus = (_attendanceSessionIndex == 0 
-
                           ? rec['morning_attendance_status'] 
-
                           : rec['evening_attendance_status'])?.toString().toUpperCase() ?? 'ABSENT';
 
-
+                      final String morningStatusRaw = (rec['morning_attendance_status']?.toString().toUpperCase() ?? 'ABSENT');
 
                       final isPresent = sessionStatus == 'PRESENT';
 
@@ -8345,11 +8300,31 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                         ),
 
                                       ),
-
                                     ],
-
+                                    if (_attendanceSessionIndex == 1) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            "Morning Status: ",
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: subColor.withOpacity(0.8),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            morningStatusRaw,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: morningStatusRaw == 'PRESENT' ? Colors.green : (morningStatusRaw == 'LEAVE' ? Colors.orange : Colors.red),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ],
-
                                 ),
 
                               ),
@@ -11445,6 +11420,388 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
+  Future<void> _approveTransferRequest(int requestId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.verified_rounded, color: Colors.blue),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  "Confirm Transfer",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            "Are you sure you want to approve this transfer request?",
+            style: TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Confirm", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final token = await UserStore.getToken();
+      final url = Uri.parse('${ApiConstants.baseUrl}/daily-bus/transfer-requests/approve');
+
+      final bool isSuperOrTransportAdmin = _userRole != null &&
+          (_userRole!.toLowerCase() == 'super admin' || _userRole!.toLowerCase() == 'transport admin');
+
+      final Map<String, dynamic> requestBody = {
+        "request_id": requestId,
+        "status": "APPROVED"
+      };
+
+      if (!isSuperOrTransportAdmin) {
+        requestBody["run_id"] = _run['id'];
+      }
+
+      final response = await http.put(
+        url,
+        headers: ApiConstants.getHeaders(token),
+        body: jsonEncode(requestBody),
+      );
+
+      Navigator.pop(context); // Close loading dialog
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar("Request approved successfully", Colors.green);
+        _refreshDetails();
+      } else {
+        _showSnackBar(ApiErrorParser.parse(response, fallback: 'Failed to approve request'), Colors.red);
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Close loading dialog on error
+      _showSnackBar("Error: $e", Colors.red);
+    }
+  }
+
+  Widget _buildRequestsTab(bool isDark, Color titleColor, Color subColor, Color primaryBlue, Color cardColor) {
+    final transferRequests = _run['transferRequests'] as Map<String, dynamic>? ?? {};
+    final pendingRequests = transferRequests['pending'] as List<dynamic>? ?? [];
+    final singleApproved = transferRequests['singleApproved'] as List<dynamic>? ?? [];
+    final completed = transferRequests['completed'] as List<dynamic>? ?? [];
+    final allRequests = [...pendingRequests, ...singleApproved, ...completed];
+
+    if (allRequests.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inbox_rounded, size: 48, color: subColor.withOpacity(0.3)),
+            const SizedBox(height: 16),
+            Text(
+              "No transfer requests",
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: subColor,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      itemCount: allRequests.length,
+      physics: const BouncingScrollPhysics(),
+      itemBuilder: (context, index) {
+        final req = allRequests[index] as Map<String, dynamic>;
+        final String passengerName = req['passenger_name']?.toString() ?? 'Unknown';
+        final String passengerUsername = req['passenger_username']?.toString() ?? '';
+        final String passengerRole = req['user_role']?.toString() ?? 'Student';
+        final String shiftRequested = req['shift_requested']?.toString() ?? '';
+        final String originalRunName = req['original_run_name']?.toString() ?? '';
+        final String targetRunName = req['target_run_name']?.toString() ?? '';
+        final String remarks = req['remarks']?.toString() ?? '';
+        final int requestId = req['id'] ?? 0;
+        
+        final origFacDetails = req['original_faculty_details'] as Map<String, dynamic>?;
+        final targFacDetails = req['target_faculty_details'] as Map<String, dynamic>?;
+        
+        final int? origFacId = req['original_run_faculty_id'];
+        final int? targFacId = req['target_run_faculty_id'];
+        final String origFacStatus = req['original_faculty_status']?.toString() ?? 'PENDING';
+        final String targFacStatus = req['target_faculty_status']?.toString() ?? 'PENDING';
+        final String overallStatus = req['overall_status']?.toString() ?? 'PENDING';
+
+        final bool isCompleted = overallStatus == 'APPROVED' || overallStatus == 'COMPLETED' || (origFacStatus == 'APPROVED' && targFacStatus == 'APPROVED');
+        final bool isSingleApproved = !isCompleted && (origFacStatus == 'APPROVED' || targFacStatus == 'APPROVED');
+
+        final bool isStudentRole = _userRole?.toUpperCase() == 'STUDENT';
+        bool showApproveButton = !isCompleted && !isStudentRole;
+        if (showApproveButton && _loggedInUserId != null) {
+          if (origFacId == _loggedInUserId && origFacStatus == 'APPROVED') {
+            showApproveButton = false;
+          }
+          if (targFacId == _loggedInUserId && targFacStatus == 'APPROVED') {
+            showApproveButton = false;
+          }
+        }
+
+
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: primaryBlue.withOpacity(0.1),
+                    child: Text(
+                      passengerName.isNotEmpty ? passengerName[0].toUpperCase() : '?',
+                      style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          passengerName,
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: titleColor,
+                          ),
+                        ),
+                        Text(
+                          "$passengerUsername • $passengerRole",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: subColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isCompleted ? Colors.green.withOpacity(0.1) : isSingleApproved ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isCompleted ? "Approved" : isSingleApproved ? "1/2 Approved" : "Pending",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isCompleted ? Colors.green : isSingleApproved ? Colors.blue : Colors.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildInfoCol("Shift", shiftRequested, subColor, titleColor),
+                  _buildInfoCol("From", originalRunName, subColor, titleColor),
+                  _buildInfoCol("To", targetRunName, subColor, titleColor),
+                ],
+              ),
+              if (origFacDetails != null) ...[
+                const SizedBox(height: 12),
+                _buildFacultyContact("Current Incharge", origFacDetails, titleColor, subColor, primaryBlue, status: origFacStatus),
+              ],
+              if (targFacDetails != null) ...[
+                const SizedBox(height: 12),
+                _buildFacultyContact("Target Incharge", targFacDetails, titleColor, subColor, primaryBlue, status: targFacStatus),
+              ],
+              if (remarks.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  "Remarks: $remarks",
+                  style: TextStyle(fontSize: 13, color: subColor, fontStyle: FontStyle.italic),
+                ),
+              ],
+              if (showApproveButton) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => _approveTransferRequest(requestId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text("Approve", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFacultyContact(String title, Map<String, dynamic>? facultyDetails, Color titleColor, Color subColor, Color primaryBlue, {String? status}) {
+    if (facultyDetails == null) return const SizedBox.shrink();
+    final String name = facultyDetails['name']?.toString() ?? 'Unknown';
+    final String phone = facultyDetails['phone']?.toString() ?? facultyDetails['role_details']?['phone_number']?.toString() ?? facultyDetails['mobile']?.toString() ?? '';
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: primaryBlue.withOpacity(0.03),
+        border: Border.all(color: primaryBlue.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, color: primaryBlue, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: primaryBlue.withOpacity(0.1),
+                child: Icon(Icons.person_rounded, color: primaryBlue, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (phone.isNotEmpty)
+                      Text(
+                        phone,
+                        style: TextStyle(fontSize: 12, color: subColor),
+                      ),
+                    if (status != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: status == 'APPROVED' ? Colors.green : (status == 'REJECTED' ? Colors.red : Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (phone.isNotEmpty)
+                InkWell(
+                  onTap: () => _makePhoneCall(phone),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.phone, color: Colors.green, size: 18),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCol(String label, String value, Color subColor, Color titleColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: subColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: titleColor,
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _deleteTrip(BuildContext context) async {
 
     try {
@@ -12209,17 +12566,30 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-    final bool canConfirm = isSuperOrTransportAdmin || (isAssignedFaculty && isPresent);
+    final int? mFacId = _run['morning_assigned_faculty_id'] != null
+        ? int.tryParse(_run['morning_assigned_faculty_id'].toString())
+        : (_run['morningAssignedFaculty']?['id'] != null ? int.tryParse(_run['morningAssignedFaculty']['id'].toString()) : null);
+    final int? eFacId = _run['evening_assigned_faculty_id'] != null
+        ? int.tryParse(_run['evening_assigned_faculty_id'].toString())
+        : (_run['eveningAssignedFaculty']?['id'] != null ? int.tryParse(_run['eveningAssignedFaculty']['id'].toString()) : null);
+    final int? genFacId = _run['assigned_faculty_user_id'] != null
+        ? int.tryParse(_run['assigned_faculty_user_id'].toString())
+        : null;
 
-    
+    final bool isMorningFaculty = _loggedInUserId != null && (mFacId == _loggedInUserId || genFacId == _loggedInUserId);
+    final bool isEveningFaculty = _loggedInUserId != null && (eFacId == _loggedInUserId || genFacId == _loggedInUserId);
 
     final bool checkMorningConfirm = (s == 'ARRIVED_CAMPUS') && !isMorningConfirmed;
-
     final bool checkEveningConfirm = (s == 'FN_COMPLETED' || s == 'AN_STARTED' || s == 'DEPARTED_CAMPUS' || s == 'HALTED') && !isEveningConfirmed;
 
-    
-
-    final bool showConfirmAttendance = canConfirm && (checkMorningConfirm || checkEveningConfirm) && !_localAttendanceConfirmed;
+    bool showConfirmAttendance = false;
+    if (!_localAttendanceConfirmed) {
+      if (checkMorningConfirm) {
+        showConfirmAttendance = isSuperOrTransportAdmin || (isMorningFaculty && morningStatus == 'PRESENT');
+      } else if (checkEveningConfirm) {
+        showConfirmAttendance = isSuperOrTransportAdmin || (isEveningFaculty && eveningStatus == 'PRESENT');
+      }
+    }
 
 
 
@@ -12780,23 +13150,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
     if (showOnlyHeaderAndAttendance) {
-
       tabsList = const [
-
         Tab(text: "My Details"),
-
         Tab(text: "Assignment"),
-
+        Tab(text: "Requests"),
       ];
-
       tabViews = [
-
         _buildMyDetailsTab(isDark, titleColor, subColor, primaryBlue, cardColor, morningStatus, eveningStatus),
-
         _buildAssignmentsTabForNormalFaculty(isDark, titleColor, subColor, primaryBlue, cardColor),
-
+        _buildRequestsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
       ];
-
     } else if (isDriver) {
 
       tabsList = const [
@@ -12833,6 +13196,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
         Tab(text: "Attendance"),
 
+        Tab(text: "Requests"),
+
       ];
 
       tabViews = [
@@ -12846,6 +13211,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
 
         _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+
+        _buildRequestsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
 
       ];
 
@@ -12861,6 +13228,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
         Tab(text: "Attendance"),
 
+        Tab(text: "Requests"),
+
       ];
 
       tabViews = [
@@ -12872,6 +13241,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
 
         _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
+
+        _buildRequestsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
 
       ];
 

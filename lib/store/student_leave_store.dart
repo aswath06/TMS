@@ -62,9 +62,11 @@ class StudentLeaveStore extends ChangeNotifier {
   }
 
   Future<bool> createLeave({
-    required String date,
-    required String shiftType,
-    required String leaveType,
+    required String fromDate,
+    required String toDate,
+    String? shiftType,
+    String? fromShiftType,
+    String? toShiftType,
     required String reason,
   }) async {
     _isApplying = true;
@@ -80,16 +82,25 @@ class StudentLeaveStore extends ChangeNotifier {
         return false;
       }
 
-      final url = "${ApiConstants.baseUrl}/transport-leaves/apply";
+      final url = "${ApiConstants.baseUrl}/leave/apply";
+      
+      final Map<String, dynamic> body = {
+        "from_date": fromDate,
+        "to_date": toDate,
+        "reason": reason,
+      };
+
+      if (fromDate == toDate && shiftType != null) {
+        body["shift_type"] = shiftType;
+      } else if (fromShiftType != null && toShiftType != null) {
+        body["from_shift_type"] = fromShiftType;
+        body["to_shift_type"] = toShiftType;
+      }
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
-        body: json.encode({
-          "leave_date": date,
-          "shift_type": shiftType,
-          "leave_type": leaveType,
-          "reason": reason
-        }),
+        body: json.encode(body),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {

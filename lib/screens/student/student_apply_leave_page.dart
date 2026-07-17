@@ -16,21 +16,25 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _reasonController = TextEditingController();
 
-  DateTime? _selectedDate;
-  String? _selectedShift;
-  String? _selectedLeaveType;
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  String? _selectedShift; // Single day
+  String? _fromShift; // Multi day
+  String? _toShift; // Multi day
+  String? _selectedLeaveType = 'General leave';
 
   final List<String> shifts = ['MORNING', 'EVENING', 'BOTH'];
+  final List<String> halfShifts = ['MORNING', 'EVENING'];
   final List<String> leaveTypes = ['Sick Leave', 'General leave'];
 
   final Color primaryBlue = const Color(0xFF6366F1);
 
-  Future<void> _pickDate() async {
+  Future<void> _pickFromDate() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final DateTime? picked = await CustomDateTimePicker.show(
       context,
-      initialDate: _selectedDate ?? today,
+      initialDate: _fromDate ?? today,
       minDate: today,
       showTime: false,
       accent: primaryBlue,
@@ -38,7 +42,29 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
 
     if (picked != null && mounted) {
       setState(() {
-        _selectedDate = picked;
+        _fromDate = picked;
+        if (_toDate != null && _toDate!.isBefore(_fromDate!)) {
+          _toDate = _fromDate;
+        }
+        useStudentLeaveStore.resetLeavesError();
+      });
+    }
+  }
+
+  Future<void> _pickToDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
+      initialDate: _toDate ?? (_fromDate ?? today),
+      minDate: _fromDate ?? today,
+      showTime: false,
+      accent: primaryBlue,
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        _toDate = picked;
         useStudentLeaveStore.resetLeavesError();
       });
     }
@@ -158,14 +184,26 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
   }
 
   Widget _buildDateSelector(Color card, Color txt, bool isTamil) {
+    return Row(
+      children: [
+        Expanded(child: _buildSingleDateSelector(card, txt, isTamil, true)),
+        const SizedBox(width: 16),
+        Expanded(child: _buildSingleDateSelector(card, txt, isTamil, false)),
+      ],
+    );
+  }
+
+  Widget _buildSingleDateSelector(Color card, Color txt, bool isTamil, bool isFrom) {
+    final date = isFrom ? _fromDate : _toDate;
+    final label = isFrom ? (isTamil ? "முதல்" : "From") : (isTamil ? "வரை" : "To");
+
     return GestureDetector(
-      onTap: _pickDate,
+      onTap: isFrom ? _pickFromDate : _pickToDate,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
           color: card,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: primaryBlue.withValues(alpha: 0.04),
@@ -173,43 +211,50 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
               offset: const Offset(0, 8),
             ),
           ],
+          border: Border.all(color: primaryBlue.withValues(alpha: 0.1), width: 1.5),
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(
-            color: primaryBlue.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: primaryBlue.withValues(alpha: 0.15),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.calendar_month_rounded, size: 20, color: primaryBlue),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  _selectedDate == null
-                      ? (isTamil ? "தேதியைத் தேர்ந்தெடுக்கவும்" : "Select Date")
-                      : DateFormat('yyyy-MM-dd').format(_selectedDate!),
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: txt,
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(fontSize: 12, color: txt.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 16, color: primaryBlue),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    date == null ? "--/--/----" : DateFormat('dd MMM yyyy').format(date),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: txt),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildShiftChips(Color card, Color txt, bool isTamil) {
+    final isMultiDay = _fromDate != null && _toDate != null && !_fromDate!.isAtSameMomentAs(_toDate!);
+
+    if (!isMultiDay) {
+      return _buildShiftRow(card, txt, isTamil, shifts, _selectedShift, (s) => setState(() => _selectedShift = s), null);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildShiftRow(card, txt, isTamil, halfShifts, _fromShift, (s) => setState(() => _fromShift = s), isTamil ? "முதல் ஷிப்ட்" : "From Shift"),
+        const SizedBox(height: 16),
+        _buildShiftRow(card, txt, isTamil, halfShifts, _toShift, (s) => setState(() => _toShift = s), isTamil ? "வரை ஷிப்ட்" : "To Shift"),
+      ],
+    );
+  }
+
+  Widget _buildShiftRow(Color card, Color txt, bool isTamil, List<String> options, String? currentValue, Function(String) onSelect, String? label) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -224,63 +269,68 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
           ),
         ],
       ),
-      child: Row(
-        children: shifts.map((shift) {
-          final isSelected = _selectedShift == shift;
-          IconData iconData;
-          if (shift == 'MORNING') iconData = Icons.wb_sunny_rounded;
-          else if (shift == 'EVENING') iconData = Icons.nights_stay_rounded;
-          else iconData = Icons.timelapse_rounded;
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label != null) ...[
+            Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: txt.withValues(alpha: 0.7))),
+            const SizedBox(height: 12),
+          ],
+          Row(
+            children: options.map((shift) {
+              final isSelected = currentValue == shift;
+              IconData iconData;
+              if (shift == 'MORNING') iconData = Icons.wb_sunny_rounded;
+              else if (shift == 'EVENING') iconData = Icons.nights_stay_rounded;
+              else iconData = Icons.timelapse_rounded;
 
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedShift = isSelected ? null : shift;
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: isSelected ? primaryBlue : primaryBlue.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: primaryBlue.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          )
-                        ]
-                      : [],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      iconData,
-                      color: isSelected ? Colors.white : primaryBlue.withValues(alpha: 0.6),
-                      size: 22,
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onSelect(shift),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryBlue : primaryBlue.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: primaryBlue.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              )
+                            ]
+                          : [],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      shift,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : txt.withValues(alpha: 0.7),
-                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                        fontSize: 12,
-                        letterSpacing: 0.5,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          iconData,
+                          color: isSelected ? Colors.white : primaryBlue.withValues(alpha: 0.6),
+                          size: 22,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          shift,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : txt.withValues(alpha: 0.7),
+                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -536,14 +586,18 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
             onPressed: useStudentLeaveStore.isApplying
                 ? null
                 : () async {
-                    if (_formKey.currentState!.validate() &&
-                        _selectedDate != null &&
-                        _selectedShift != null) {
+                    final isMultiDay = _fromDate != null && _toDate != null && !_fromDate!.isAtSameMomentAs(_toDate!);
+                    final isValidSingle = !isMultiDay && _fromDate != null && _toDate != null && _selectedShift != null;
+                    final isValidMulti = isMultiDay && _fromShift != null && _toShift != null;
+
+                    if (_formKey.currentState!.validate() && (isValidSingle || isValidMulti)) {
 
                       final success = await useStudentLeaveStore.createLeave(
-                        date: DateFormat('yyyy-MM-dd').format(_selectedDate!),
-                        shiftType: _selectedShift!,
-                        leaveType: 'General leave',
+                        fromDate: DateFormat('yyyy-MM-dd').format(_fromDate!),
+                        toDate: DateFormat('yyyy-MM-dd').format(_toDate!),
+                        shiftType: isMultiDay ? null : _selectedShift,
+                        fromShiftType: isMultiDay ? _fromShift : null,
+                        toShiftType: isMultiDay ? _toShift : null,
                         reason: 'Availability update',
                       );
 

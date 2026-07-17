@@ -18,18 +18,15 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
   bool _isLoading = true;
   Map<String, dynamic>? _detailData;
   String? _error;
-  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _fetchDetails();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -349,8 +346,36 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
 
     final List<dynamic> studentsList = data['students'] ?? [];
     final List<dynamic> facultiesList = data['faculties'] ?? [];
+    final List<dynamic> nonTeachingList = data['nonTeachingStaffs'] ?? [];
+    final List<dynamic> internsList = data['interns'] ?? [];
 
-    return Scaffold(
+    final tabs = <Widget>[
+      const Tab(text: "Timeline"),
+    ];
+    final tabViews = <Widget>[
+      _buildTimelineView(stops, primaryBlue, titleColor, subColor),
+    ];
+    
+    if (studentsList.isNotEmpty) {
+      tabs.add(Tab(text: "Students (${studentsList.length})"));
+      tabViews.add(_buildStudentsView(studentsList, cardColor, titleColor, subColor, primaryBlue));
+    }
+    if (facultiesList.isNotEmpty) {
+      tabs.add(Tab(text: "Faculty (${facultiesList.length})"));
+      tabViews.add(_buildFacultyView(facultiesList, cardColor, titleColor, subColor, primaryBlue));
+    }
+    if (nonTeachingList.isNotEmpty) {
+      tabs.add(Tab(text: "Non-Teaching (${nonTeachingList.length})"));
+      tabViews.add(_buildNonTeachingView(nonTeachingList, cardColor, titleColor, subColor, primaryBlue));
+    }
+    if (internsList.isNotEmpty) {
+      tabs.add(Tab(text: "Interns (${internsList.length})"));
+      tabViews.add(_buildInternsView(internsList, cardColor, titleColor, subColor, primaryBlue));
+    }
+
+    return DefaultTabController(
+      length: tabs.length,
+      child: Scaffold(
       backgroundColor: scaffoldBg,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -516,7 +541,6 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: TabBar(
-                      controller: _tabController,
                       indicatorColor: primaryBlue,
                       labelColor: primaryBlue,
                       unselectedLabelColor: subColor,
@@ -525,11 +549,7 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
                         borderSide: const BorderSide(width: 3.0, color: primaryBlue),
                         borderRadius: BorderRadius.circular(3),
                       ),
-                      tabs: [
-                        const Tab(text: "Timeline"),
-                        Tab(text: "Students (${studentsList.length})"),
-                        Tab(text: "Faculty (${facultiesList.length})"),
-                      ],
+                      tabs: tabs,
                     ),
                   ),
                 ],
@@ -540,14 +560,10 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
         body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildTimelineView(stops, primaryBlue, titleColor, subColor),
-              _buildStudentsView(studentsList, cardColor, titleColor, subColor, primaryBlue),
-              _buildFacultyView(facultiesList, cardColor, titleColor, subColor, primaryBlue),
-            ],
+            children: tabViews,
           ),
         ),
+      ),
       ),
     );
   }
@@ -785,6 +801,161 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
                     Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: titleColor)),
                     const SizedBox(height: 2),
                     Text("$empCode • $dept", style: TextStyle(fontSize: 12, color: subColor)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_rounded, size: 12, color: subColor),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            "Boarding: $boardingStopName",
+                            style: TextStyle(fontSize: 12, color: subColor),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  Widget _buildNonTeachingView(List<dynamic> list, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text("No non-teaching staff assigned to this route run.", style: TextStyle(color: subColor)),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 16, bottom: 80),
+      physics: const BouncingScrollPhysics(),
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        final item = list[index] as Map<String, dynamic>;
+        final nonTeaching = item['nonTeachingStaff'] as Map<String, dynamic>? ?? item['non_teaching_staff'] as Map<String, dynamic>?;
+        final user = nonTeaching?['user'] as Map<String, dynamic>?;
+        final boardingStop = item['boardingStop'] as Map<String, dynamic>?;
+
+        final name = user?['name']?.toString() ?? 'N/A';
+        final empCode = nonTeaching?['employee_code']?.toString() ?? 'N/A';
+        final dept = nonTeaching?['department']?.toString() ?? 'N/A';
+        final boardingStopName = boardingStop?['stop_name']?.toString() ?? 'N/A';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: primaryBlue.withValues(alpha: 0.08),
+                child: Icon(Icons.engineering_rounded, color: primaryBlue, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: titleColor)),
+                    const SizedBox(height: 2),
+                    Text("$empCode • $dept", style: TextStyle(fontSize: 12, color: subColor)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_rounded, size: 12, color: subColor),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            "Boarding: $boardingStopName",
+                            style: TextStyle(fontSize: 12, color: subColor),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInternsView(List<dynamic> list, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text("No interns assigned to this route run.", style: TextStyle(color: subColor)),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 16, bottom: 80),
+      physics: const BouncingScrollPhysics(),
+      itemCount: list.length,
+      itemBuilder: (context, index) {
+        final item = list[index] as Map<String, dynamic>;
+        final intern = item['intern'] as Map<String, dynamic>?;
+        final user = intern?['user'] as Map<String, dynamic>?;
+        final boardingStop = item['boardingStop'] as Map<String, dynamic>?;
+
+        final name = user?['name']?.toString() ?? 'N/A';
+        final code = intern?['roll_number']?.toString() ?? intern?['employee_code']?.toString() ?? 'N/A';
+        final dept = intern?['department']?.toString() ?? 'N/A';
+        final boardingStopName = boardingStop?['stop_name']?.toString() ?? 'N/A';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: primaryBlue.withValues(alpha: 0.08),
+                child: Icon(Icons.assignment_ind_rounded, color: primaryBlue, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: titleColor)),
+                    const SizedBox(height: 2),
+                    Text("$code • $dept", style: TextStyle(fontSize: 12, color: subColor)),
                     const SizedBox(height: 4),
                     Row(
                       children: [
