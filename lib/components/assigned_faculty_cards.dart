@@ -229,12 +229,16 @@ class ShiftFacultySection extends StatelessWidget {
                 child: Icon(icon, color: accentColor, size: 20),
               ),
               const SizedBox(width: 16),
-              Text(
-                "Assigned Faculty ($shiftName)",
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: titleColor,
+              Expanded(
+                child: Text(
+                  "Assigned Faculty ($shiftName)",
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: titleColor,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
