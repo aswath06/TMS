@@ -82,7 +82,7 @@ class StudentLeaveStore extends ChangeNotifier {
         return false;
       }
 
-      final url = "${ApiConstants.baseUrl}/leave/apply";
+      final url = "${ApiConstants.baseUrl}/transport-leaves/apply";
       
       final Map<String, dynamic> body = {
         "from_date": fromDate,

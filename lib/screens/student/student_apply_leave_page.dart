@@ -99,20 +99,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
                       _buildHeader(context, titleColor, isTamil),
                       const SizedBox(height: 32),
 
-                      _buildSectionTitle(
-                        isTamil ? "தேதி" : "Availability Date",
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDateSelector(cardColor, titleColor, isTamil),
-
-                      const SizedBox(height: 32),
-                      _buildSectionTitle(
-                        isTamil ? "ஷிப்ட் வகை" : "Shift Type",
-                        titleColor,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildShiftChips(cardColor, titleColor, isTamil),
+                      _buildDynamicLayout(cardColor, titleColor, isTamil),
 
                       ListenableBuilder(
                         listenable: useStudentLeaveStore,
@@ -183,13 +170,102 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
     );
   }
 
-  Widget _buildDateSelector(Color card, Color txt, bool isTamil) {
-    return Row(
+  Widget _buildDynamicLayout(Color cardColor, Color titleColor, bool isTamil) {
+    final isMultiDay = _fromDate != null && _toDate != null && !_fromDate!.isAtSameMomentAs(_toDate!);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _buildSingleDateSelector(card, txt, isTamil, true)),
-        const SizedBox(width: 16),
-        Expanded(child: _buildSingleDateSelector(card, txt, isTamil, false)),
+        _buildSectionTitle(
+          isTamil ? "தேதி முதல்" : "From Date",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildSingleDateSelector(cardColor, titleColor, isTamil, true),
+
+        const SizedBox(height: 32),
+        _buildSectionTitle(
+          isMultiDay ? (isTamil ? "முதல் ஷிப்ட்" : "From Shift Type") : (isTamil ? "ஷிப்ட் வகை" : "Shift Type"),
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildShiftRow(cardColor, titleColor, isTamil, isMultiDay ? halfShifts : shifts, isMultiDay ? _fromShift : _selectedShift, (s) {
+          setState(() {
+            if (isMultiDay) {
+              _fromShift = s;
+            } else {
+              _selectedShift = s;
+            }
+          });
+        }, null),
+
+        const SizedBox(height: 32),
+        _buildSectionTitle(
+          isTamil ? "தேதி வரை" : "To Date",
+          titleColor,
+        ),
+        const SizedBox(height: 16),
+        _buildSingleDateSelector(cardColor, titleColor, isTamil, false),
+
+        if (isMultiDay) ...[
+          const SizedBox(height: 32),
+          _buildSectionTitle(
+            isTamil ? "வரை ஷிப்ட்" : "To Shift Type",
+            titleColor,
+          ),
+          const SizedBox(height: 16),
+          _buildShiftRow(cardColor, titleColor, isTamil, halfShifts, _toShift, (s) => setState(() => _toShift = s), null),
+        ],
+
+        const SizedBox(height: 32),
+        _buildConfirmationText(titleColor, isTamil, isMultiDay),
       ],
+    );
+  }
+
+  Widget _buildConfirmationText(Color titleColor, bool isTamil, bool isMultiDay) {
+    if (_fromDate == null || _toDate == null) return const SizedBox.shrink();
+
+    String text = "";
+    if (isMultiDay) {
+      if (_fromShift == null || _toShift == null) return const SizedBox.shrink();
+      final fDate = DateFormat('MMM dd, yyyy').format(_fromDate!);
+      final tDate = DateFormat('MMM dd, yyyy').format(_toDate!);
+      text = isTamil
+          ? "நீங்கள் $fDate ($_fromShift) முதல் $tDate ($_toShift) வரை விடுப்பு விண்ணப்பிக்க விரும்புகிறீர்களா?"
+          : "Are you sure you want to apply for leave from $fDate ($_fromShift) to $tDate ($_toShift)?";
+    } else {
+      if (_selectedShift == null) return const SizedBox.shrink();
+      final date = DateFormat('MMM dd, yyyy').format(_fromDate!);
+      text = isTamil
+          ? "நீங்கள் $date ($_selectedShift) அன்று விடுப்பு விண்ணப்பிக்க விரும்புகிறீர்களா?"
+          : "Are you sure you want to apply for leave on $date ($_selectedShift)?";
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primaryBlue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primaryBlue.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: primaryBlue, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: titleColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -200,7 +276,8 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
     return GestureDetector(
       onTap: isFrom ? _pickFromDate : _pickToDate,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
           color: card,
           borderRadius: BorderRadius.circular(20),
@@ -213,44 +290,35 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
           ],
           border: Border.all(color: primaryBlue.withValues(alpha: 0.1), width: 1.5),
         ),
-        child: Column(
+        child: Row(
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: txt.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.calendar_today_rounded, size: 16, color: primaryBlue),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primaryBlue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.calendar_month_rounded, size: 24, color: primaryBlue),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 13, color: txt.withValues(alpha: 0.6), fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(
                     date == null ? "--/--/----" : DateFormat('dd MMM yyyy').format(date),
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: txt),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: txt),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            Icon(Icons.arrow_drop_down_circle_outlined, color: primaryBlue.withValues(alpha: 0.5), size: 24),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildShiftChips(Color card, Color txt, bool isTamil) {
-    final isMultiDay = _fromDate != null && _toDate != null && !_fromDate!.isAtSameMomentAs(_toDate!);
-
-    if (!isMultiDay) {
-      return _buildShiftRow(card, txt, isTamil, shifts, _selectedShift, (s) => setState(() => _selectedShift = s), null);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildShiftRow(card, txt, isTamil, halfShifts, _fromShift, (s) => setState(() => _fromShift = s), isTamil ? "முதல் ஷிப்ட்" : "From Shift"),
-        const SizedBox(height: 16),
-        _buildShiftRow(card, txt, isTamil, halfShifts, _toShift, (s) => setState(() => _toShift = s), isTamil ? "வரை ஷிப்ட்" : "To Shift"),
-      ],
     );
   }
 
