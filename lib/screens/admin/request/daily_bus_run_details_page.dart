@@ -12451,13 +12451,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     final String rawRunName = _run['run_name']?.toString() ?? 'Bus Run';
     String runName = rawRunName;
-    if (runName.startsWith('Daily Bus ')) {
-      runName = runName.substring('Daily Bus '.length);
-    }
-    int dashIndex = runName.indexOf(' - ');
-    if (dashIndex != -1) {
-      runName = runName.substring(0, dashIndex).trim();
-    }
 
     final String status = _run['status'] ?? 'PENDING';
 
@@ -14643,13 +14636,6 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     final String rawRunName = _run['run_name']?.toString() ?? 'Bus Run';
     String runName = rawRunName;
-    if (runName.startsWith('Daily Bus ')) {
-      runName = runName.substring('Daily Bus '.length);
-    }
-    int dashIndex = runName.indexOf(' - ');
-    if (dashIndex != -1) {
-      runName = runName.substring(0, dashIndex).trim();
-    }
 
 
 
