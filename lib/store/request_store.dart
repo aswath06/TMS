@@ -17,7 +17,6 @@ class RequestStore extends ChangeNotifier {
   bool _isLoadingLeaveTypes = false;
   List<Map<String, dynamic>> _leaveTypes = [];
   
-  
   // Pagination State
   int _currentPage = 1;
   bool _hasMore = true;
