@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ServerConfig extends ChangeNotifier {
   static const String _keyIsProduction = 'server_is_production';
 
-  static const String productionUrl = "https://tripzo.bitsathy.ac.in";
+  static const String productionUrl = "https://2s01cq2n-8055.inc1.devtunnels.ms";
   static const String devTunnelUrl = "https://18x50gz9-8055.inc1.devtunnels.ms";
 
   // Singleton131432
@@ -20,7 +20,7 @@ class ServerConfig extends ChangeNotifier {
 
   String get baseUrl => _isProduction ? productionUrl : devTunnelUrl;
 
-  /// Load persisted value on app start.
+  /// Load persisted value on app start.  
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     _isProduction = prefs.getBool(_keyIsProduction) ?? true;
