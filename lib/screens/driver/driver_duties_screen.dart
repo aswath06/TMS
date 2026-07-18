@@ -295,7 +295,7 @@ final store = ref.watch(driverStoreProvider);
               ),
               const SizedBox(height: 12),
               Text(
-                "Hi, $name 👋",
+                "Hi, $name",
                 style: TextStyle(fontSize: width * 0.08, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -1.0, height: 1.1),
               ),
               const SizedBox(height: 4),

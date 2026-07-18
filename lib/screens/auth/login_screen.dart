@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/io_client.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,6 +94,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return IOClient(httpClient);
   }
 
+  Future<String?> _getDeviceModel() async {
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        return androidInfo.model;
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        return iosInfo.utsname.machine;
+      }
+    } catch (e) {
+      debugPrint("Failed to get device info: $e");
+    }
+    return null;
+  }
+
   // ✅ UPDATED REAL LOGIN
   Future<void> _handleLogin() async {
     if (!_agreeToTerms) {
@@ -108,9 +125,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final url = ApiConstants.login;
 
+      final String? deviceModel = await _getDeviceModel();
       final body = {
         "identifier": _emailController.text.trim(),
         "password": _passwordController.text.trim(),
+        if (deviceModel != null) "device_model": deviceModel,
       };
 
       // ✅ PRINT CURL
@@ -220,11 +239,17 @@ curl -X POST "$url"
 
       final String? idToken = googleAuth.idToken;
       if (idToken == null) throw "Failed to retrieve ID Token.";
+      
+      final String? deviceModel = await _getDeviceModel();
+      final body = {
+        "idToken": idToken,
+        if (deviceModel != null) "device_model": deviceModel,
+      };
 
       final response = await client.post(
         Uri.parse(ApiConstants.googleLogin),
         headers: ApiConstants.getHeaders(null),
-        body: jsonEncode({'idToken': idToken}),
+        body: jsonEncode(body),
       );
 
       if (response.body.isEmpty) {
@@ -313,10 +338,16 @@ curl -X POST "$url"
       final String? idToken = credential.identityToken;
       if (idToken == null) throw "Failed to retrieve Apple Identity Token.";
 
+      final String? deviceModel = await _getDeviceModel();
+      final body = {
+        "idToken": idToken,
+        if (deviceModel != null) "device_model": deviceModel,
+      };
+
       final response = await client.post(
         Uri.parse(ApiConstants.appleLogin),
         headers: ApiConstants.getHeaders(null),
-        body: jsonEncode({'idToken': idToken}),
+        body: jsonEncode(body),
       );
 
       if (response.body.isEmpty) {

@@ -7977,6 +7977,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                       String designation = '';
 
+                      String userStatus = '';
+
 
 
                       if (type == 'STUDENT') {
@@ -8006,6 +8008,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         typeColor = primaryBlue;
 
                         typeIcon = Icons.person_rounded;
+                        
+                        userStatus = s?['user']?['status']?.toString().toUpperCase() ?? 'ACTIVE';
 
                       } else {
 
@@ -8026,8 +8030,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         typeColor = Colors.purple;
 
                         typeIcon = Icons.badge_rounded;
+                        
+                        userStatus = f?['user']?['status']?.toString().toUpperCase() ?? 'ACTIVE';
 
                       }
+                      
+                      final bool isBlocked = userStatus == 'BLOCKED';
 
 
 
@@ -8042,8 +8050,12 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
                       return GestureDetector(
-
                         onTap: () {
+
+                          if (isBlocked) {
+                            _showSnackBar("This user is blocked and cannot be modified.", Colors.red);
+                            return;
+                          }
 
                           if (isSuperOrTransportAdmin || isAssignedFaculty) {
 
@@ -8089,31 +8101,33 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                         },
 
-                        child: Container(
+                        child: Opacity(
+                          opacity: isBlocked ? 0.5 : 1.0,
+                          child: Container(
 
-                          margin: const EdgeInsets.only(bottom: 12),
+                            margin: const EdgeInsets.only(bottom: 12),
 
-                          padding: const EdgeInsets.all(14),
+                            padding: const EdgeInsets.all(14),
 
-                          decoration: BoxDecoration(
+                            decoration: BoxDecoration(
 
-                            color: cardColor,
+                              color: cardColor,
 
-                            borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
 
-                            border: Border.all(
+                              border: Border.all(
 
-                              color: sessionStatus == 'PRESENT' 
+                                color: sessionStatus == 'PRESENT' 
 
-                                  ? Colors.green.withOpacity( 0.1) 
+                                    ? Colors.green.withOpacity( 0.1) 
 
-                                  : sessionStatus == 'LEAVE'
+                                    : sessionStatus == 'LEAVE'
 
-                                      ? Colors.orange.withOpacity( 0.1)
+                                        ? Colors.orange.withOpacity( 0.1)
 
-                                      : Colors.red.withOpacity( 0.1),
+                                        : Colors.red.withOpacity( 0.1),
 
-                            ),
+                              ),
 
                             boxShadow: [
 
@@ -8347,7 +8361,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                                     decoration: BoxDecoration(
 
-                                      color: sessionStatus == 'PRESENT' 
+                                      color: isBlocked
+                                          ? Colors.grey.withOpacity( 0.2)
+                                          : sessionStatus == 'PRESENT' 
 
                                           ? Colors.green.withOpacity( 0.1) 
 
@@ -8363,7 +8379,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                                     child: Text(
 
-                                      sessionStatus == 'PRESENT' ? "PRESENT" : sessionStatus == 'LEAVE' ? "LEAVE" : "ABSENT",
+                                      isBlocked ? "BLOCKED" : (sessionStatus == 'PRESENT' ? "PRESENT" : sessionStatus == 'LEAVE' ? "LEAVE" : "ABSENT"),
 
                                       style: GoogleFonts.outfit(
 
@@ -8371,7 +8387,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                                         fontWeight: FontWeight.w900,
 
-                                        color: sessionStatus == 'PRESENT' 
+                                        color: isBlocked
+                                            ? Colors.grey
+                                            : sessionStatus == 'PRESENT' 
 
                                             ? Colors.green 
 
@@ -8395,6 +8413,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                           ),
 
+                        ),
                         ),
 
                       );
@@ -9972,13 +9991,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     final correctVehicle = activeAssignment?['vehicle'];
     final correctOdometer = correctVehicle?['current_odometer'] ?? 0;
     
-    final TextEditingController odometerController = TextEditingController(text: correctOdometer.toString());
+    final num odoVal = correctOdometer is num ? correctOdometer : num.tryParse(correctOdometer.toString()) ?? 0;
+    final TextEditingController odometerController = TextEditingController(
+      text: odoVal == odoVal.toInt() ? odoVal.toInt().toString() : odoVal.toString()
+    );
     final TextEditingController datetimeController = TextEditingController();
     final TextEditingController remarksController = TextEditingController();
     final String campusInCount = _run['campus_in_count']?.toString() ?? '0';
 
-    // Pre-fill datetime
-    datetimeController.text = DateTime.now().toIso8601String().substring(0, 16);
+    DateTime selectedDateTime = DateTime.now();
+    datetimeController.text = DateFormat('dd MMM yyyy, hh:mm a').format(selectedDateTime);
 
     showModalBottomSheet(
       context: context,
@@ -10030,7 +10052,17 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               TextField(
                 controller: datetimeController,
                 readOnly: true,
-                onTap: () => _pickDateTime(ctx, datetimeController),
+                onTap: () async {
+                  final DateTime? date = await CustomDateTimePicker.show(
+                    ctx,
+                    initialDate: selectedDateTime,
+                    showTime: true,
+                  );
+                  if (date != null) {
+                    selectedDateTime = date;
+                    datetimeController.text = DateFormat('dd MMM yyyy, hh:mm a').format(date);
+                  }
+                },
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
                   labelText: "Date & Time",
@@ -10097,8 +10129,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    final int? odo = int.tryParse(odometerController.text);
-                    final String dt = datetimeController.text.trim();
+                    final int? odo = double.tryParse(odometerController.text)?.toInt();
+                    final String dt = selectedDateTime.toIso8601String();
                     final String rm = remarksController.text.trim();
                     if (odo != null && dt.isNotEmpty) {
                       Navigator.pop(ctx);
@@ -10128,7 +10160,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     final TextEditingController datetimeController = TextEditingController();
     final TextEditingController remarksController = TextEditingController();
 
-    datetimeController.text = DateTime.now().toIso8601String().substring(0, 16);
+    DateTime selectedDateTime = DateTime.now();
+    datetimeController.text = DateFormat('dd MMM yyyy, hh:mm a').format(selectedDateTime);
 
     showModalBottomSheet(
       context: context,
@@ -10163,7 +10196,17 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               TextField(
                 controller: datetimeController,
                 readOnly: true,
-                onTap: () => _pickDateTime(ctx, datetimeController),
+                onTap: () async {
+                  final DateTime? date = await CustomDateTimePicker.show(
+                    ctx,
+                    initialDate: selectedDateTime,
+                    showTime: true,
+                  );
+                  if (date != null) {
+                    selectedDateTime = date;
+                    datetimeController.text = DateFormat('dd MMM yyyy, hh:mm a').format(date);
+                  }
+                },
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
                   labelText: "Date & Time",
@@ -10199,7 +10242,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    final String dt = datetimeController.text.trim();
+                    final String dt = selectedDateTime.toIso8601String();
                     final String rm = remarksController.text.trim();
                     if (dt.isNotEmpty && rm.isNotEmpty) {
                       Navigator.pop(ctx);
@@ -10234,7 +10277,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     final correctVehicle = activeAssignment?['vehicle'];
     final correctOdometer = correctVehicle?['current_odometer'] ?? 0;
 
-    final TextEditingController odometerController = TextEditingController(text: correctOdometer.toString());
+    final num odoVal = correctOdometer is num ? correctOdometer : num.tryParse(correctOdometer.toString()) ?? 0;
+    final TextEditingController odometerController = TextEditingController(
+      text: odoVal == odoVal.toInt() ? odoVal.toInt().toString() : odoVal.toString()
+    );
 
     final String campusOutCount = _run['campus_out_count']?.toString() ?? '0';
 
@@ -10404,7 +10450,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                   onPressed: () {
 
-                    final int? odo = int.tryParse(odometerController.text);
+                    final int? odo = double.tryParse(odometerController.text)?.toInt();
 
                     if (odo != null) {
 
@@ -16052,8 +16098,7 @@ class _BusChangeRequestModalState extends State<_BusChangeRequestModal> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         String searchQuery = '';
         return StatefulBuilder(
@@ -16066,28 +16111,34 @@ class _BusChangeRequestModalState extends State<_BusChangeRequestModal> {
             return Container(
               height: MediaQuery.of(context).size.height * 0.7,
               padding: const EdgeInsets.only(top: 16),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
               child: Column(
                 children: [
                   Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(3)),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('Select Target Route', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  Text('Select Target Route', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: const Color(0xFF1E293B))),
                   const SizedBox(height: 16),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: TextField(
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         hintText: 'Search route...',
-                        prefixIcon: const Icon(Icons.search),
+                        hintStyle: GoogleFonts.outfit(color: Colors.grey[500]),
+                        prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF5352ED)),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey[200]!)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey[200]!)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF5352ED), width: 2)),
                         filled: true,
-                        fillColor: Colors.grey.withOpacity(0.05),
+                        fillColor: const Color(0xFFF8FAFC),
                       ),
                       onChanged: (value) {
                         setModalState(() {
@@ -16098,9 +16149,9 @@ class _BusChangeRequestModalState extends State<_BusChangeRequestModal> {
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: ListView.separated(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 24),
                       itemCount: filteredRoutes.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final route = filteredRoutes[index];
                         final int routeId = route['id'] ?? 0;
@@ -16121,19 +16172,96 @@ class _BusChangeRequestModalState extends State<_BusChangeRequestModal> {
                           inchargeName = facList[0]['name']?.toString() ?? 'N/A';
                         }
 
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                          title: Text(routeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text('Bus: $busNumber • Incharge: $inchargeName', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        final bool isSelected = _selectedTargetRunId == routeId;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12, left: 20, right: 20),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF5352ED).withOpacity(0.08) : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF5352ED) : Colors.grey.withOpacity(0.15),
+                              width: isSelected ? 2 : 1,
+                            ),
+                            boxShadow: [
+                              if (!isSelected)
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                            ],
                           ),
-                          onTap: () {
-                            setState(() {
-                              _selectedTargetRunId = routeId;
-                            });
-                            Navigator.pop(context);
-                          },
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                setState(() {
+                                  _selectedTargetRunId = routeId;
+                                });
+                                Navigator.pop(context);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFF5352ED) : const Color(0xFF5352ED).withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.directions_bus_rounded,
+                                        color: isSelected ? Colors.white : const Color(0xFF5352ED),
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            routeName,
+                                            style: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              color: isSelected ? const Color(0xFF5352ED) : const Color(0xFF1E293B),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.numbers_rounded, size: 14, color: Colors.grey[600]),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                busNumber,
+                                                style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Icon(Icons.person_rounded, size: 14, color: Colors.grey[600]),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  inchargeName,
+                                                  style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle_rounded, color: Color(0xFF5352ED)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         );
                       },
                     ),

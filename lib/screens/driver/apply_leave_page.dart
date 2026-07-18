@@ -20,6 +20,8 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
 
   DateTime? _startDate;
   DateTime? _endDate;
+  String _startSession = 'FN';
+  String _endSession = 'AN';
   int? _selectedLeaveType; // null until types load
 
   final Color primaryBlue = const Color(0xFF6366F1);
@@ -66,7 +68,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
       context,
       initialDate: initialDate,
       minDate: isStart ? DateTime.now() : (_startDate ?? DateTime.now()),
-      showTime: true,
+      showTime: false,
       accent: primaryBlue,
     );
 
@@ -229,10 +231,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
         _splitDateTile(
           isTamil ? "தொடக்கம்" : "From Date",
           _startDate,
+          _startSession,
           () => _pickDateTime(context, true),
+          (val) {
+            if (val != null) setState(() => _startSession = val);
+          },
           card,
           txt,
           sub,
+          isTamil,
         ),
 
         if (_startDate != null && _endDate != null)
@@ -280,10 +287,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
         _splitDateTile(
           isTamil ? "முடிவு" : "To Date",
           _endDate,
+          _endSession,
           () => _pickDateTime(context, false),
+          (val) {
+            if (val != null) setState(() => _endSession = val);
+          },
           card,
           txt,
           sub,
+          isTamil,
         ),
       ],
     );
@@ -292,66 +304,91 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   Widget _splitDateTile(
     String label,
     DateTime? dateTime,
-    VoidCallback onTap,
+    String session,
+    VoidCallback onDateTap,
+    ValueChanged<String?> onSessionChanged,
     Color card,
     Color txt,
     Color sub,
+    bool isTamil,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: card,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: sub,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: sub,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  onTap: onDateTap,
                   child: _dateTimeBox(
                     Icons.calendar_month_rounded,
                     dateTime == null
-                        ? (LanguageStore.isTamil ? "தேதி" : "Date")
+                        ? (isTamil ? "தேதி" : "Date")
                         : DateFormat('dd MMM, yyyy').format(dateTime),
                     txt,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 1,
-                  child: _dateTimeBox(
-                    Icons.access_time_rounded,
-                    dateTime == null
-                        ? (LanguageStore.isTamil ? "நேரம்" : "Time")
-                        : DateFormat('hh:mm a').format(dateTime),
-                    txt,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: session,
+                      isExpanded: true,
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: primaryBlue, size: 18),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: txt,
+                      ),
+                      dropdownColor: card,
+                      onChanged: onSessionChanged,
+                      items: ['FN', 'AN'].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -686,13 +723,12 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
 
                       // Build ISO datetime strings matching the API format:
                       // "2026-04-16T10:00:00"
-                      String pad(int n) => n.toString().padLeft(2, '0');
+                      final String startTime = _startSession == 'FN' ? "09:00:00" : "14:00:00";
+                      final String endTime = _endSession == 'FN' ? "13:00:00" : "18:00:00";
                       final String fromDate =
-                          "${DateFormat('yyyy-MM-dd').format(_startDate!)}T"
-                          "${pad(_startDate!.hour)}:${pad(_startDate!.minute)}:00";
+                          "${DateFormat('yyyy-MM-dd').format(_startDate!)}T$startTime";
                       final String toDate =
-                          "${DateFormat('yyyy-MM-dd').format(_endDate!)}T"
-                          "${pad(_endDate!.hour)}:${pad(_endDate!.minute)}:00";
+                          "${DateFormat('yyyy-MM-dd').format(_endDate!)}T$endTime";
 
                       final success = await useDriverStore.createLeave(
                         fromDate: fromDate,

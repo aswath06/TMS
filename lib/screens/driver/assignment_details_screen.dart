@@ -11,6 +11,8 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tripzo/screens/driver/run_started_greeting_screen.dart';
+import 'package:tripzo/screens/driver/run_ended_greeting_screen.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> assignment;
@@ -1012,14 +1014,19 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                         if (mounted) {
                                           setState(() => isSubmitting = false);
                                           Navigator.pop(sheetContext); // Close sheet
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text("Run started successfully"),
-                                              backgroundColor: Colors.green,
+                                          
+                                          // Show the typing effect greeting screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => RunStartedGreetingScreen(
+                                                onComplete: () {
+                                                  Navigator.pop(context); // Close greeting screen
+                                                  _handleRefresh(); // Reload page
+                                                },
+                                              ),
                                             ),
                                           );
-                                          
-                                          await _handleRefresh(); // Reload page
                                         }
                                       } else {
                                         if (mounted) {
@@ -1593,15 +1600,22 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                             ),
                                           );
                                         } else {
-                                          ScaffoldMessenger.of(this.context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text("Run ended successfully."),
-                                              backgroundColor: Colors.green,
+                                          Navigator.push(
+                                            this.context,
+                                            MaterialPageRoute(
+                                              builder: (_) => RunEndedGreetingScreen(
+                                                onComplete: () {
+                                                  Navigator.pop(this.context);
+                                                  _handleRefresh();
+                                                },
+                                              ),
                                             ),
                                           );
                                         }
 
-                                        await _handleRefresh();
+                                        if (_userRole != 'driver') {
+                                          await _handleRefresh();
+                                        }
                                       }
                                     } else {
                                       if (mounted) {
@@ -2508,15 +2522,22 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                             ),
                                           );
                                         } else {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text("Evening run started successfully."),
-                                              backgroundColor: Colors.green,
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => RunStartedGreetingScreen(
+                                                onComplete: () {
+                                                  Navigator.pop(context);
+                                                  _handleRefresh();
+                                                },
+                                              ),
                                             ),
                                           );
                                         }
                                         
-                                        await _handleRefresh();
+                                        if (_userRole != 'driver') {
+                                          await _handleRefresh();
+                                        }
                                       }
                                     } else {
                                       setState(() => isSubmitting = false);
@@ -2985,15 +3006,22 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                             ),
                                           );
                                         } else {
-                                          ScaffoldMessenger.of(this.context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text("Run ended successfully."),
-                                              backgroundColor: Colors.green,
+                                          Navigator.push(
+                                            this.context,
+                                            MaterialPageRoute(
+                                              builder: (_) => RunEndedGreetingScreen(
+                                                onComplete: () {
+                                                  Navigator.pop(this.context);
+                                                  _handleRefresh();
+                                                },
+                                              ),
                                             ),
                                           );
                                         }
 
-                                        await _handleRefresh();
+                                        if (_userRole != 'driver') {
+                                          await _handleRefresh();
+                                        }
                                       }
                                     } else {
                                       if (mounted) {

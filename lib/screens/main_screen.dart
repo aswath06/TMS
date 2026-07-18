@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:tripzo/utils/tab_notification.dart';
 import 'package:tripzo/services/app_version_service.dart';
 import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/store/user_store.dart' as tripzo_user_store;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:tripzo/screens/admin/admin_dashboard_screen.dart';
@@ -66,7 +72,36 @@ class MainScreenState extends State<MainScreen> {
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppVersionService.checkAppVersion(context);
+      _syncDeviceModel();
     });
+  }
+
+  Future<void> _syncDeviceModel() async {
+    try {
+      final token = await tripzo_user_store.UserStore.getToken();
+      if (token == null || token.isEmpty) return;
+
+      final deviceInfo = DeviceInfoPlugin();
+      String? deviceModel;
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        deviceModel = androidInfo.model;
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        deviceModel = iosInfo.utsname.machine;
+      }
+
+      if (deviceModel != null) {
+        final url = Uri.parse("\${ApiConstants.baseUrl}/user/device-info");
+        await http.put(
+          url,
+          headers: ApiConstants.getHeaders(token),
+          body: jsonEncode({"device_model": deviceModel}),
+        );
+      }
+    } catch (e) {
+      debugPrint("Failed to sync device model: \$e");
+    }
   }
 
   void _startLocationMonitor() {
