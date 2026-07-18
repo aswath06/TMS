@@ -691,13 +691,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           final Map<String, dynamic> freshRun = Map<String, dynamic>.from(data['data']);
 
           if (mounted) {
-
             setState(() {
-
               _run = freshRun;
-
+              _localAttendanceConfirmed = false;
             });
-
           }
 
         }
