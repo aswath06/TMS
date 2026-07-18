@@ -8011,6 +8011,28 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                         
                         userStatus = s?['user']?['status']?.toString().toUpperCase() ?? 'ACTIVE';
 
+                      } else if (type == 'NON_TEACHING_STAFF' || type == 'NON_TEACHING' || type == 'STAFF' || type == 'NON-TEACHING') {
+                        final n = rec['nonTeachingStaff'] as Map? ?? rec['non_teaching_staff'] as Map? ?? rec['nonTeaching'] as Map? ?? rec['staff'] as Map? ?? rec['non_teaching'] as Map?;
+                        name = n?['user']?['name'] ?? 'Non-Teaching';
+                        empCode = n?['employee_code'] ?? '';
+                        dept = n?['department'] ?? '';
+                        designation = n?['designation'] ?? '';
+
+                        typeLabel = "Non-Teaching";
+                        typeColor = Colors.orange;
+                        typeIcon = Icons.engineering_rounded;
+                        userStatus = n?['user']?['status']?.toString().toUpperCase() ?? 'ACTIVE';
+                      } else if (type == 'INTERN') {
+                        final i = rec['intern'] as Map?;
+                        name = i?['user']?['name'] ?? 'Intern';
+                        empCode = i?['employee_code'] ?? i?['roll_number'] ?? '';
+                        dept = i?['department'] ?? '';
+                        designation = '';
+
+                        typeLabel = "Intern";
+                        typeColor = Colors.teal;
+                        typeIcon = Icons.badge_rounded;
+                        userStatus = i?['user']?['status']?.toString().toUpperCase() ?? 'ACTIVE';
                       } else {
 
                         final f = rec['faculty'] as Map?;
@@ -8062,12 +8084,16 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                             final s = rec['student'] as Map?;
 
                             final f = rec['faculty'] as Map?;
+                            final n = rec['nonTeachingStaff'] as Map? ?? rec['non_teaching_staff'] as Map? ?? rec['nonTeaching'] as Map? ?? rec['staff'] as Map? ?? rec['non_teaching'] as Map?;
+                            final i = rec['intern'] as Map?;
 
                             final int? targetUserId = type == 'STUDENT'
-
                                 ? (s?['user_id'] ?? s?['user']?['id'] as int?)
-
-                                : (f?['user_id'] ?? f?['user']?['id'] as int?);
+                                : (type == 'NON_TEACHING_STAFF' || type == 'NON_TEACHING' || type == 'STAFF' || type == 'NON-TEACHING')
+                                    ? (n?['user_id'] ?? n?['user']?['id'] as int?)
+                                    : (type == 'INTERN')
+                                        ? (i?['user_id'] ?? i?['user']?['id'] as int?)
+                                        : (f?['user_id'] ?? f?['user']?['id'] as int?);
 
                                 
 

@@ -2368,45 +2368,138 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     const SizedBox(height: 20),
 
                     // Passenger Count Display
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
+                    if (_userRole != 'driver') ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.group, color: primaryBlue),
-                          const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Row(
                             children: [
+                              Icon(
+                                Icons.group_rounded,
+                                color: primaryBlue,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
                               Text(
                                 "Campus Out Count",
                                 style: TextStyle(
-                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                  fontSize: 12,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "${widget.run['campus_out_count'] ?? '0'}",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
                                 ),
                               ),
                             ],
                           ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: primaryBlue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: primaryBlue.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              run['campus_out_count']?.toString() ?? "0",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: primaryBlue,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      // Passenger Controller Input Field
+                      TextFormField(
+                        controller: passengerController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        decoration: InputDecoration(
+                          labelText: "Passenger Start Count",
+                          labelStyle: TextStyle(
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          floatingLabelStyle: TextStyle(
+                            color: primaryBlue,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: primaryBlue, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          prefixIcon: Icon(Icons.people_outline, color: primaryBlue),
+                        ),
+                      ),
+                    ] else ...[
+                      // Passenger Count Display
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.group, color: primaryBlue),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Campus Out Count",
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${run['campus_out_count'] ?? '0'}",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 32),
 
                     Row(
@@ -2450,15 +2543,31 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       );
                                       return;
                                     }
+                                    if (_userRole != 'driver' &&
+                                        passengerController.text.isEmpty) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Passenger count is required",
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
                                     setState(() => isSubmitting = true);
                                     final int odo =
                                         int.tryParse(odometerController.text) ??
                                         0;
-                                    final int passCount =
-                                        int.tryParse(
-                                          widget.run['campus_out_count']?.toString() ?? '0',
-                                        ) ??
-                                        0;
+                                    final int passCount = (_userRole == 'driver')
+                                        ? (int.tryParse(
+                                            run['campus_out_count']?.toString() ?? '0',
+                                          ) ?? 0)
+                                        : (int.tryParse(
+                                            passengerController.text,
+                                          ) ?? 0);
                                     final dynamic rawRunId =
                                         widget.run['id'] ??
                                         widget.assignment['daily_bus_run_id'];

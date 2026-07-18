@@ -863,9 +863,27 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       ));
     }
 
-    // Extract Overall Stats
-    final fnStats = overallStats['morning_fn'] ?? {};
-    final anStats = overallStats['evening_an'] ?? {};
+    Map<String, dynamic> getStatsForRole(Map<String, dynamic> sessionStats, String role) {
+      if (role == 'Total') return sessionStats;
+      final rb = sessionStats['role_breakdown'] ?? {};
+      if (role == 'Student') return rb['Student'] ?? {};
+      if (role == 'Faculty') {
+        final fac = rb['Faculty'] ?? {};
+        final nonT = rb['Non-Teaching'] ?? {};
+        final intern = rb['Intern'] ?? {};
+        return {
+          'total_mapped': (fac['total_mapped'] ?? 0) + (nonT['total_mapped'] ?? 0) + (intern['total_mapped'] ?? 0),
+          'present': (fac['present'] ?? 0) + (nonT['present'] ?? 0) + (intern['present'] ?? 0),
+          'absent': (fac['absent'] ?? 0) + (nonT['absent'] ?? 0) + (intern['absent'] ?? 0),
+          'leave': (fac['leave'] ?? 0) + (nonT['leave'] ?? 0) + (intern['leave'] ?? 0),
+        };
+      }
+      return {};
+    }
+
+    // Extract Overall Stats based on active filter
+    final fnStats = getStatsForRole(overallStats['morning_fn'] ?? {}, _activeVehicleFilter);
+    final anStats = getStatsForRole(overallStats['evening_an'] ?? {}, _activeVehicleFilter);
 
     Widget buildDetailedSessionRow(Map<String, dynamic> stats) {
       final mapped = stats['total_mapped'] ?? 0;
@@ -894,6 +912,29 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Role Filter Toggle
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildRoleFilterSegment("Total", isDark, primaryBlue),
+                  _buildRoleFilterSegment("Student", isDark, primaryBlue),
+                  _buildRoleFilterSegment("Faculty", isDark, primaryBlue),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
         // Overall Sessions Section
         _buildSectionHeader("Morning Sessions (FN)", isDark),
         Padding(
@@ -912,29 +953,9 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Vehicle List Header with Role Filter Toggle
-              Row(
-                children: [
-                  Text("Vehicle Assignment", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildRoleFilterSegment("Total", isDark, primaryBlue),
-                        _buildRoleFilterSegment("Student", isDark, primaryBlue),
-                        _buildRoleFilterSegment("Faculty", isDark, primaryBlue),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              Text("Vehicle Assignment", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
               const SizedBox(height: 12),
               
               // Vehicle Search Bar

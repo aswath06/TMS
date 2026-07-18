@@ -24,14 +24,24 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
   int _currentPage = 1;
   static const int _limit = 15;
   String _searchQuery = '';
+  String _roleFilter = '';
+  String? _currentUserRole;
   Timer? _searchDebounce;
   final Set<int> _loggingOut = {};
 
   @override
   void initState() {
     super.initState();
-    _fetchUsers(isRefresh: true);
+    _initData();
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _initData() async {
+    final role = await UserStore.getRole();
+    if (mounted) {
+      setState(() => _currentUserRole = role?.toUpperCase());
+    }
+    _fetchUsers(isRefresh: true);
   }
 
   @override
@@ -70,6 +80,9 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
       String url = '${ApiConstants.baseUrl}/auth/users?page=$_currentPage&limit=$_limit';
       if (_searchQuery.isNotEmpty) {
         url += '&search=${Uri.encodeComponent(_searchQuery)}';
+      }
+      if (_roleFilter.isNotEmpty) {
+        url += '&role_name=${Uri.encodeComponent(_roleFilter)}';
       }
 
       final response = await http.get(
@@ -231,6 +244,261 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
     }
   }
 
+  Future<void> _handleBlockAction(dynamic user, bool isBlocking) async {
+    final int userId = user['id'];
+    final String name = user['name'] ?? 'this user';
+    final TextEditingController reasonCtrl = TextEditingController();
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: (isBlocking ? Colors.red : Colors.green).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isBlocking ? Icons.block : Icons.check_circle_outline,
+                    color: isBlocking ? Colors.red : Colors.green,
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  isBlocking ? 'Block User' : 'Unblock User',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isBlocking 
+                    ? 'Are you sure you want to block $name? They will be forcibly logged out and unable to login.'
+                    : 'Are you sure you want to unblock $name?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                TextField(
+                  controller: reasonCtrl,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: isBlocking ? 'Reason for blocking' : 'Reason for unblocking (optional)',
+                    labelStyle: GoogleFonts.plusJakartaSans(
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.all(18),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isBlocking ? Colors.red : Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          isBlocking ? 'Block User' : 'Unblock User',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || (isBlocking && reasonCtrl.text.isEmpty)) return;
+
+    try {
+      final token = await UserStore.getToken();
+      final endpoint = isBlocking ? 'block' : 'unblock';
+      final body = isBlocking ? {'reason': reasonCtrl.text} : {'unblock_reason': reasonCtrl.text};
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/auth/users/$userId/$endpoint'),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(body),
+      );
+
+      if (mounted) {
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('User ${isBlocking ? 'blocked' : 'unblocked'} successfully')));
+          _fetchUsers(isRefresh: true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Action failed')));
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('An error occurred')));
+    }
+  }
+
+  Future<void> _viewHistory(dynamic user) async {
+    final int userId = user['id'];
+    try {
+      final token = await UserStore.getToken();
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/auth/users/$userId/block-history'),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final history = data['data'] as List<dynamic>? ?? [];
+        _showHistoryPopup(user['name'], history);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to load history')));
+    }
+  }
+
+  void _showHistoryPopup(String name, List<dynamic> history) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          height: MediaQuery.of(ctx).size.height * 0.7,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Block History: $name', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: history.isEmpty
+                    ? Center(child: Text('No block history found.', style: TextStyle(color: Colors.grey.shade500)))
+                    : ListView.builder(
+                        itemCount: history.length,
+                        padding: const EdgeInsets.all(16),
+                        itemBuilder: (context, index) {
+                          final h = history[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                              border: Border.all(color: isDark ? const Color(0xFF334155) : Colors.grey.shade200),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Blocked', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    Text(h['blocked_at'] ?? '', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text('By: ${h['blocker_admin']?['name'] ?? 'Unknown'}', style: const TextStyle(fontSize: 13)),
+                                Text('Reason: ${h['reason'] ?? ''}', style: const TextStyle(fontSize: 13)),
+                                if (h['unblocked_at'] != null) ...[
+                                  const Divider(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('Unblocked', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                      Text(h['unblocked_at'] ?? '', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('By: ${h['unblocker_admin']?['name'] ?? 'Unknown'}', style: const TextStyle(fontSize: 13)),
+                                  Text('Reason: ${h['unblock_reason'] ?? ''}', style: const TextStyle(fontSize: 13)),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Color _roleColor(String? code) {
     switch (code?.toUpperCase()) {
       case 'SUPER_ADMIN': return const Color(0xFF8B5CF6);
@@ -333,6 +601,26 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                 ),
               ),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: PopupMenuButton<String>(
+                  icon: Icon(Icons.filter_list_rounded, color: titleColor),
+                  onSelected: (value) {
+                    setState(() => _roleFilter = value);
+                    _fetchUsers(isRefresh: true);
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: '', child: Text('All Roles')),
+                    const PopupMenuItem(value: 'SUPER_ADMIN', child: Text('Super Admin')),
+                    const PopupMenuItem(value: 'TRANSPORT_ADMIN', child: Text('Transport Admin')),
+                    const PopupMenuItem(value: 'DRIVER', child: Text('Driver')),
+                    const PopupMenuItem(value: 'FACULTY', child: Text('Faculty')),
+                    const PopupMenuItem(value: 'STUDENT', child: Text('Student')),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
         body: _isLoading
@@ -402,22 +690,31 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // Avatar
             Stack(
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: roleClr.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
+                if (user['profile_photo'] != null)
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundImage: NetworkImage(ApiConstants.getImageUrl(user['profile_photo'])),
+                  )
+                else
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: roleClr.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(_roleIcon(roleCode), color: roleClr, size: 24),
                   ),
-                  child: Icon(_roleIcon(roleCode), color: roleClr, size: 24),
-                ),
                 if (isLoggedIn)
                   Positioned(
                     right: 0,
@@ -444,14 +741,28 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          name,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: titleColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (user['username'] != null)
+                              Text(
+                                '#${user['username']}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: subColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       // Role badge
@@ -546,48 +857,6 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
                         ),
                       ],
                       const Spacer(),
-                      // Logout button only if active session
-                      if (isLoggedIn)
-                        GestureDetector(
-                          onTap: isLoggingOut ? null : () => _logoutUser(user),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isLoggingOut
-                                  ? Colors.red.withValues(alpha: 0.05)
-                                  : Colors.red.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.red.withValues(alpha: isLoggingOut ? 0.2 : 0.3),
-                              ),
-                            ),
-                            child: isLoggingOut
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.red,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.logout_rounded, size: 13, color: Colors.red),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        'Logout',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
                     ],
                   ),
                 ],
@@ -596,7 +865,57 @@ class _UserSessionManagementPageState extends State<UserSessionManagementPage> {
           ],
         ),
       ),
-    );
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextButton.icon(
+                onPressed: () => _handleBlockAction(user, user['status'] == 'ACTIVE'),
+                icon: Icon(user['status'] == 'ACTIVE' ? Icons.block : Icons.check_circle_outline, 
+                  size: 13, 
+                  color: user['status'] == 'ACTIVE' ? Colors.red : Colors.green),
+                label: Text(user['status'] == 'ACTIVE' ? 'Block' : 'Unblock', 
+                  style: TextStyle(color: user['status'] == 'ACTIVE' ? Colors.red : Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                style: TextButton.styleFrom(
+                  backgroundColor: (user['status'] == 'ACTIVE' ? Colors.red : Colors.green).withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: () => _viewHistory(user),
+                icon: const Icon(Icons.history, size: 13, color: Colors.purple),
+                label: const Text('History', style: TextStyle(color: Colors.purple, fontSize: 10, fontWeight: FontWeight.bold)),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.purple.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: (!isLoggedIn || isLoggingOut) ? null : () => _logoutUser(user),
+                icon: const Icon(Icons.logout, size: 13, color: Colors.red),
+                label: const Text('Logout', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.red.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  ),
+);
   }
 
   Widget _buildSkeletonList(bool isDark) {
