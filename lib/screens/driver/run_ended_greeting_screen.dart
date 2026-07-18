@@ -13,7 +13,7 @@ class RunEndedGreetingScreen extends StatefulWidget {
 }
 
 class _RunEndedGreetingScreenState extends State<RunEndedGreetingScreen> {
-  final String _fullText = "Trip Ended Successfully!\n\nThanks for the safe ride. The journey was wonderful and we enjoyed the ride.\n\nபயணம் வெற்றிகரமாக முடிந்தது!\n\nபாதுகாப்பான பயணத்திற்கு நன்றி. பயணம் அற்புதமாக இருந்தது, நாங்கள் பயணத்தை ரசித்தோம்.";
+  final String _fullText = "Your trip has ended successfully!\n\nThe passengers enjoyed the ride.";
   String _displayedText = "";
   int _currentIndex = 0;
   Timer? _timer;
@@ -100,7 +100,23 @@ class _RunEndedGreetingScreenState extends State<RunEndedGreetingScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 50),
+                const SizedBox(height: 30),
+                AnimatedOpacity(
+                  opacity: _currentIndex >= _fullText.length ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 500),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) => const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: Colors.amber,
+                        size: 40,
+                      ),
+                    )),
+                  ),
+                ),
+                const SizedBox(height: 40),
                 AnimatedOpacity(
                   opacity: _currentIndex >= _fullText.length ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 500),

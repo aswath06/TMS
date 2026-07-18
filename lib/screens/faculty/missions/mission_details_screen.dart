@@ -17,6 +17,8 @@ import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/screens/driver/verify_mission_screen.dart';
+import 'package:tripzo/screens/driver/run_started_greeting_screen.dart';
+import 'package:tripzo/screens/driver/run_ended_greeting_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
@@ -903,10 +905,17 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Trip start reading registered successfully"), backgroundColor: Colors.green),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RunStartedGreetingScreen(
+              onComplete: () {
+                Navigator.pop(context);
+                _fetchMissionDetails();
+              },
+            ),
+          ),
         );
-        _fetchMissionDetails();
       } else {
         final error = jsonDecode(response.body);
         throw error['message'] ?? "Failed to register start reading";
@@ -952,10 +961,17 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Trip end reading registered successfully"), backgroundColor: Colors.green),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RunEndedGreetingScreen(
+              onComplete: () {
+                Navigator.pop(context);
+                _fetchMissionDetails();
+              },
+            ),
+          ),
         );
-        _fetchMissionDetails();
       } else {
         final error = jsonDecode(response.body);
         throw error['message'] ?? "Failed to register end reading";

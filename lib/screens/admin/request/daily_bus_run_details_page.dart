@@ -8243,6 +8243,24 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                                     const SizedBox(height: 4),
 
+                                    if (isBlocked) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.lock_rounded, size: 12, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            type == 'STUDENT' ? "This student is blocked" : "This user is blocked",
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w600,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                     if (type == 'STUDENT') ...[
 
                                       Text(
@@ -8362,17 +8380,22 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                     decoration: BoxDecoration(
 
                                       color: isBlocked
-                                          ? Colors.grey.withOpacity( 0.2)
+                                          ? Colors.grey.withOpacity(0.08)
                                           : sessionStatus == 'PRESENT' 
-
-                                          ? Colors.green.withOpacity( 0.1) 
-
-                                          : sessionStatus == 'LEAVE'
-
-                                              ? Colors.orange.withOpacity( 0.1)
-
-                                              : Colors.red.withOpacity( 0.1),
-
+                                              ? Colors.green.withOpacity( 0.1) 
+                                              : sessionStatus == 'LEAVE'
+                                                  ? Colors.orange.withOpacity( 0.1)
+                                                  : Colors.red.withOpacity( 0.1),
+                                      border: Border.all(
+                                        color: isBlocked
+                                            ? Colors.grey.withOpacity(0.4)
+                                            : sessionStatus == 'PRESENT'
+                                                ? Colors.green.withOpacity(0.2)
+                                                : sessionStatus == 'LEAVE'
+                                                    ? Colors.orange.withOpacity(0.2)
+                                                    : Colors.red.withOpacity(0.2),
+                                        width: isBlocked ? 1.5 : 1,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
 
                                     ),

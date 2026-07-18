@@ -13,7 +13,7 @@ class RunStartedGreetingScreen extends StatefulWidget {
 }
 
 class _RunStartedGreetingScreenState extends State<RunStartedGreetingScreen> {
-  final String _fullText = "Trip Started Successfully!\n\nHave a safe journey and ensure students are secure.\n\nபயணம் வெற்றிகரமாக தொடங்கியது!\n\nபாதுகாப்பான பயணம் அமையட்டும், மாணவர்கள் பாதுகாப்பாக இருப்பதை உறுதி செய்யவும்.";
+  final String _fullText = "The trip has started successfully!\n\nPlease drive carefully, passengers are inside, and follow the traffic rules.";
   String _displayedText = "";
   int _currentIndex = 0;
   Timer? _timer;

@@ -1306,7 +1306,8 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      log(ApiErrorParser.parse(response, fallback: "\n--- RESPONSE ---\nStatus"));
+      log("\n--- FUEL LOG RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n-------------------\n");
+      log(ApiErrorParser.parse(response, fallback: "\n--- PARSED RESPONSE ---\nStatus"));
       if (!mounted) return;
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -1329,6 +1330,14 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 backgroundColor: Colors.green,
               ),
             );
+
+            if (_userRole != 'driver' && _selectedBunk != null) {
+              final bunkName = _selectedBunk!['name']?.toString().toLowerCase() ?? '';
+              if (!bunkName.contains('other')) {
+                await _createAdminRoute(instanceId);
+              }
+            }
+
             _showIndentPopup(instanceId);
           }
         } else {
@@ -1367,6 +1376,213 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Future<void> _createAdminRoute(String indentNumber) async {
+    try {
+      final token = await UserStore.getToken();
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+      final startTimeStr = "${DateFormat('yyyy-MM-ddTHH:mm:00').format(now)}+05:30";
+      final endTimeStr = "${DateFormat('yyyy-MM-ddTHH:mm:00').format(now.add(const Duration(hours: 2)))}+05:30";
+      final returnEndTimeStr = "${DateFormat('yyyy-MM-ddTHH:mm:00').format(now.add(const Duration(hours: 4)))}+05:30";
+      
+      final routeName = "${indentNumber}_$dateStr";
+      final bunkName = _selectedBunk!['name']?.toString() ?? "Bunk";
+      final bunkAddress = _selectedBunk!['address']?.toString() ?? bunkName;
+      final bunkLat = double.tryParse(_selectedBunk!['latitude']?.toString() ?? '11.3468483') ?? 11.3468483;
+      final bunkLng = double.tryParse(_selectedBunk!['longitude']?.toString() ?? '77.720001') ?? 77.720001;
+      
+      final vehicleId = _selectedVehicle?['id'] ?? 1;
+      final driverId = _selectedDriver?['id'] ?? 1;
+
+      final body = {
+        "route_name": routeName,
+        "trip_type": "ROUND_TRIP",
+        "requested_for_date": dateStr,
+        "start_datetime": startTimeStr,
+        "end_datetime": returnEndTimeStr,
+        "purpose": "Fuel filling",
+        "passenger_count": 1,
+        "vehicle_count": 1,
+        "suggested_vehicle_type_id": 1,
+        "luggage_details": "",
+        "special_instructions": "",
+        "approx_distance_km": 55.8553,
+        "approx_duration_minutes": 83,
+        "passengers": [
+          {
+            "passenger_name": "guest",
+            "phone": "1234567890",
+            "country_code": "+91",
+            "is_primary_contact": true
+          }
+        ],
+        "department_id": 1,
+        "stops": [
+          {
+            "stop_name": "Bannari Amman Institute of Technology",
+            "address": "Bannari Amman Institute of Technology",
+            "latitude": 11.49518076229493,
+            "longitude": 77.27954948427481,
+            "stop_order": 1,
+            "stop_type": "START"
+          },
+          {
+            "stop_name": bunkName,
+            "address": bunkAddress,
+            "latitude": bunkLat,
+            "longitude": bunkLng,
+            "stop_order": 2,
+            "stop_type": "END"
+          }
+        ],
+        "legs": [
+          {
+            "leg_code": "LEG-1",
+            "leg_type": "OUTBOUND",
+            "travel_direction": "START_TO_END",
+            "planned_start_at": startTimeStr,
+            "planned_end_at": endTimeStr,
+            "required_vehicle_count": 1,
+            "stops": [
+              {
+                "stop_name": "Bannari Amman Institute of Technology",
+                "address": "Bannari Amman Institute of Technology",
+                "latitude": 11.49518076229493,
+                "longitude": 77.27954948427481,
+                "stop_order": 1,
+                "stop_type": "START"
+              },
+              {
+                "stop_name": bunkName,
+                "address": bunkAddress,
+                "latitude": bunkLat,
+                "longitude": bunkLng,
+                "stop_order": 2,
+                "stop_type": "END"
+              }
+            ],
+            "linked_leg_index": null,
+            "allow_same_vehicle_as_linked_leg": true
+          },
+          {
+            "leg_code": "LEG-2",
+            "leg_type": "RETURN",
+            "travel_direction": "END_TO_START",
+            "planned_start_at": endTimeStr,
+            "planned_end_at": returnEndTimeStr,
+            "required_vehicle_count": 1,
+            "stops": [
+              {
+                "stop_name": bunkName,
+                "address": bunkAddress,
+                "latitude": bunkLat,
+                "longitude": bunkLng,
+                "stop_order": 1,
+                "stop_type": "START"
+              },
+              {
+                "stop_name": "Bannari Amman Institute of Technology",
+                "address": "Bannari Amman Institute of Technology",
+                "latitude": 11.49518076229493,
+                "longitude": 77.27954948427481,
+                "stop_order": 2,
+                "stop_type": "END"
+              }
+            ],
+            "linked_leg_index": 0,
+            "allow_same_vehicle_as_linked_leg": true
+          }
+        ],
+        "admin_assignments": [
+          {
+            "leg_code": "LEG-1",
+            "vehicles": [
+              {
+                "vehicle_id": vehicleId,
+                "driver_id": driverId,
+                "passenger_ids": [1]
+              }
+            ]
+          },
+          {
+            "leg_code": "LEG-2",
+            "vehicles": [
+              {
+                "vehicle_id": vehicleId,
+                "driver_id": driverId,
+                "passenger_ids": [1]
+              }
+            ]
+          }
+        ]
+      };
+
+      StringBuffer curl = StringBuffer();
+      curl.write('curl --location ');
+      curl.write("'${ApiConstants.adminCreateFull}' \\\n");
+      final headers = ApiConstants.getHeaders(token);
+      headers.forEach((k, v) => curl.write("--header '$k: $v' \\\n"));
+      if (!headers.containsKey('Content-Type')) {
+        curl.write("--header 'Content-Type: application/json' \\\n");
+      }
+      curl.write("--data '${json.encode(body)}'");
+      log("\n--- ADMIN CURL SENDING (Main Journey) ---\n${curl.toString()}\n-------------------\n");
+
+      final response = await http.post(
+        Uri.parse(ApiConstants.adminCreateFull),
+        headers: headers..addAll({'Content-Type': 'application/json'}),
+        body: json.encode(body),
+      );
+      
+      log("📥 [SERVER RESPONSE (Main Journey)] (${response.statusCode}): ${response.body}");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        try {
+          final responseData = json.decode(response.body);
+          if (responseData['success'] == false || (response.statusCode != 200 && response.statusCode != 201)) {
+            final message = responseData['message'] ?? 'Failed to create admin route';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Admin Route Error: $message"),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          } else {
+            final message = responseData['message'] ?? 'Admin Route created successfully';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        } catch (_) {
+          if (response.statusCode != 200 && response.statusCode != 201) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to create admin route'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      log("Error creating admin route: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Error creating admin route"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

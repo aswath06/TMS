@@ -360,8 +360,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       const SizedBox(height: 12),
                     ],
 
-                    // SUPER ADMIN EXCLUSIVE TILES
-                    if (_userRole.toLowerCase() == "super admin") ...[ 
+                    // TRANSPORT ADMIN & SUPER ADMIN: Support Tickets
+                    if (_userRole.toLowerCase() == "transport admin" || _userRole.toLowerCase() == "super admin") ...[
                       _settingsTile(
                         Icons.support_agent_rounded,
                         "Support Tickets",
@@ -378,6 +378,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                    ],
+
+                    // SUPER ADMIN EXCLUSIVE TILES
+                    if (_userRole.toLowerCase() == "super admin") ...[ 
                       _settingsTile(
                         Icons.storage_rounded,
                         "Database Backups",
