@@ -114,7 +114,7 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
 
       final isSuccess = response.statusCode == 200;
       String message = isSuccess ? "Attendance marked successfully." : "Verification failed.";
-      
+
       try {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
@@ -434,49 +434,28 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
     const double size = 20;
     const double thickness = 3.5;
     return [
-      Positioned(
-        top: 8,
-        left: 8,
-        child: Container(width: size, height: thickness, color: color),
-      ),
-      Positioned(
-        top: 8,
-        left: 8,
-        child: Container(width: thickness, height: size, color: color),
-      ),
-      Positioned(
-        top: 8,
-        right: 8,
-        child: Container(width: size, height: thickness, color: color),
-      ),
-      Positioned(
-        top: 8,
-        right: 8,
-        child: Container(width: thickness, height: size, color: color),
-      ),
-      Positioned(
-        bottom: 8,
-        left: 8,
-        child: Container(width: size, height: thickness, color: color),
-      ),
-      Positioned(
-        bottom: 8,
-        left: 8,
-        child: Container(width: thickness, height: size, color: color),
-      ),
-      Positioned(
-        bottom: 8,
-        right: 8,
-        child: Container(width: size, height: thickness, color: color),
-      ),
-      Positioned(
-        bottom: 8,
-        right: 8,
-        child: Container(width: thickness, height: size, color: color),
-      ),
+      Positioned(top: 8, left: 8, child: Container(width: size, height: thickness, color: color)),
+      Positioned(top: 8, left: 8, child: Container(width: thickness, height: size, color: color)),
+      Positioned(top: 8, right: 8, child: Container(width: size, height: thickness, color: color)),
+      Positioned(top: 8, right: 8, child: Container(width: thickness, height: size, color: color)),
+      Positioned(bottom: 8, left: 8, child: Container(width: size, height: thickness, color: color)),
+      Positioned(bottom: 8, left: 8, child: Container(width: thickness, height: size, color: color)),
+      Positioned(bottom: 8, right: 8, child: Container(width: size, height: thickness, color: color)),
+      Positioned(bottom: 8, right: 8, child: Container(width: thickness, height: size, color: color)),
     ];
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FacultyEnterOtpScreen — Manual OTP entry with single hidden TextField.
+//
+// WHY single hidden TextField?
+// On iOS the software number pad NEVER fires KeyDownEvent/backspace when a
+// field is already empty.  Six separate TextFields therefore break backspace
+// navigation between boxes.  One hidden TextField with a plain String solves
+// this completely: backspace always just shortens the string, and the six
+// visual boxes are pure decoration derived from that single string.
+// ─────────────────────────────────────────────────────────────────────────────
 
 class FacultyEnterOtpScreen extends StatefulWidget {
   final int runId;
@@ -490,19 +469,18 @@ class FacultyEnterOtpScreen extends StatefulWidget {
 class ShakeCurve extends Curve {
   const ShakeCurve();
   @override
-  double transformInternal(double t) {
-    return math.sin(t * 3 * math.pi * 2);
-  }
+  double transformInternal(double t) => math.sin(t * 3 * math.pi * 2);
 }
 
-class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with TickerProviderStateMixin {
-  String _otp = "";
+class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
+    with TickerProviderStateMixin {
+  // Single controller — the ONLY source of OTP text.
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
   bool _isProcessing = false;
   bool _isError = false;
   bool _isSuccess = false;
-
-  final List<TextEditingController> _controllers = [];
-  final List<FocusNode> _focusNodes = [];
 
   late AnimationController _shakeController;
   late AnimationController _mergeController;
@@ -512,37 +490,9 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
   @override
   void initState() {
     super.initState();
-    
-    for (int i = 0; i < 6; i++) {
-      _controllers.add(TextEditingController());
-      _focusNodes.add(FocusNode(
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace) {
-            if (_controllers[i].text.isEmpty && i > 0) {
-              _focusNodes[i - 1].requestFocus();
-              _controllers[i - 1].clear();
-              return KeyEventResult.handled;
-            }
-          }
-          return KeyEventResult.ignored;
-        },
-      ));
-      
-      _controllers[i].addListener(() => _onTextChanged(i));
-      
-      // Auto-select text on focus
-      _focusNodes[i].addListener(() {
-        if (mounted && _focusNodes[i].hasFocus) {
-          setState(() {}); // Redraw to update active box highlight
-          _controllers[i].selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _controllers[i].text.length,
-          );
-        } else if (mounted) {
-          setState(() {}); // Redraw to clear highlight on blur
-        }
-      });
-    }
+
+    _controller.addListener(_onTextChanged);
+    _focusNode.addListener(() { if (mounted) setState(() {}); });
 
     _shakeController = AnimationController(
       vsync: this,
@@ -556,54 +506,46 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    _mergeAnimation = CurvedAnimation(parent: _mergeController, curve: Curves.easeInOutQuad);
+    _mergeAnimation = CurvedAnimation(
+      parent: _mergeController,
+      curve: Curves.easeInOutQuad,
+    );
 
-    // Auto focus first box
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _focusNodes[0].requestFocus();
-      }
+      if (mounted) _focusNode.requestFocus();
     });
   }
 
   @override
   void dispose() {
-    for (int i = 0; i < 6; i++) {
-      _controllers[i].dispose();
-      _focusNodes[i].dispose();
-    }
+    _controller.removeListener(_onTextChanged);
+    _controller.dispose();
+    _focusNode.dispose();
     _shakeController.dispose();
     _mergeController.dispose();
     super.dispose();
   }
 
-  void _onTextChanged(int index) {
+  void _onTextChanged() {
     if (_isProcessing || _isSuccess) return;
 
-    final text = _controllers[index].text;
-    if (text.length > 1) {
-      _controllers[index].text = text.substring(text.length - 1);
-      _controllers[index].selection = TextSelection.fromPosition(
-        TextPosition(offset: _controllers[index].text.length),
+    // Strip any non-digit characters and cap at 6.
+    String cleaned = _controller.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleaned.length > 6) cleaned = cleaned.substring(0, 6);
+
+    if (_controller.text != cleaned) {
+      _controller.value = _controller.value.copyWith(
+        text: cleaned,
+        selection: TextSelection.collapsed(offset: cleaned.length),
       );
-      return;
+      return; // listener re-fires with the corrected value
     }
 
-    // Update global OTP state
-    String otp = "";
-    for (int i = 0; i < 6; i++) {
-      otp += _controllers[i].text;
-    }
-    setState(() {
-      _otp = otp;
-    });
+    setState(() {});
 
-    if (text.isNotEmpty) {
-      if (index < 5) {
-        _focusNodes[index + 1].requestFocus();
-      } else if (otp.length == 6) {
-        _submitOtp();
-      }
+    if (cleaned.length == 6) {
+      // Small delay so the last digit renders before the submit overlay appears.
+      Future.delayed(const Duration(milliseconds: 120), _submitOtp);
     }
   }
 
@@ -621,15 +563,15 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
 
   Future<void> _submitOtp() async {
     if (_isProcessing || _isSuccess) return;
+    final otp = _controller.text;
+    if (otp.length != 6) return;
+
     setState(() {
       _isProcessing = true;
       _isError = false;
     });
 
-    // Unfocus all fields to dismiss keyboard
-    for (var node in _focusNodes) {
-      node.unfocus();
-    }
+    _focusNode.unfocus();
 
     try {
       final token = await UserStore.getToken();
@@ -640,24 +582,23 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
           showTopToast(context, "Session expired. Please log in again.", isError: true);
         }
         setState(() => _isProcessing = false);
-        _focusNodes[0].requestFocus();
+        _focusNode.requestFocus();
         return;
       }
 
-      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/verify-boarding-otp";
+      final url =
+          "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/verify-boarding-otp";
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({
-          "otp_code": _otp,
-        }),
+        body: jsonEncode({"otp_code": otp}),
       );
 
       if (!mounted) return;
 
       final isSuccess = response.statusCode == 200;
-      
-      String message = isSuccess ? "Attendance marked successfully" : "Invalid OTP check the QR code";
+      String message =
+          isSuccess ? "Attendance marked successfully" : "Invalid OTP check the QR code";
       try {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
@@ -668,67 +609,43 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
       } catch (_) {}
 
       if (isSuccess) {
-        setState(() {
-          _isSuccess = true;
-        });
-        
-        // Vibrate to signal success
+        setState(() => _isSuccess = true);
         HapticFeedback.mediumImpact();
-        
-        // Trigger the beautiful merge animation
         await _mergeController.forward();
-        
         if (mounted) {
           _showSnackBar(message, Colors.green);
-          if (context.mounted) {
-            showTopToast(context, message);
-          }
+          if (context.mounted) showTopToast(context, message);
         }
         await Future.delayed(const Duration(milliseconds: 1200));
-        
-        if (mounted) {
-          Navigator.pop(context, true);
-        }
+        if (mounted) Navigator.pop(context, true);
       } else {
         setState(() {
           _isError = true;
           _isProcessing = false;
         });
         _showSnackBar(message, Colors.red);
-        if (context.mounted) {
-          showTopToast(context, message, isError: true);
-        }
-        
-        // Shake animation
+        if (context.mounted) showTopToast(context, message, isError: true);
+
         await _shakeController.forward(from: 0.0);
         await Future.delayed(const Duration(milliseconds: 200));
-        
+
         if (mounted) {
-          setState(() {
-            _otp = "";
-            for (var controller in _controllers) {
-              controller.clear();
-            }
-            _isError = false;
-          });
-          _focusNodes[0].requestFocus();
+          _controller.clear();
+          _mergeController.reset();
+          setState(() => _isError = false);
+          _focusNode.requestFocus();
         }
       }
     } catch (e) {
       if (!mounted) return;
       _showSnackBar("Connection error: $e", Colors.red);
-      if (context.mounted) {
-        showTopToast(context, "Connection error: $e", isError: true);
-      }
+      if (context.mounted) showTopToast(context, "Connection error: $e", isError: true);
+      _controller.clear();
       setState(() {
-        _otp = "";
-        for (var controller in _controllers) {
-          controller.clear();
-        }
         _isProcessing = false;
         _isError = false;
       });
-      _focusNodes[0].requestFocus();
+      _focusNode.requestFocus();
     }
   }
 
@@ -736,7 +653,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final Color subColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
     const Color primaryBlue = Color(0xFF6366F1);
 
     final bgGradient = isDark
@@ -765,7 +683,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
         ),
         title: Text(
           "OTP Entry",
-          style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+          style: GoogleFonts.outfit(
+              color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
       ),
@@ -776,36 +695,23 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
             children: [
               GestureDetector(
                 onTap: () {
-                  if (!_isProcessing && !_isSuccess) {
-                    bool focused = false;
-                    for (int i = 0; i < 6; i++) {
-                      if (_focusNodes[i].hasFocus) {
-                        focused = true;
-                        break;
-                      }
-                    }
-                    if (!focused) {
-                      for (int i = 0; i < 6; i++) {
-                        if (_controllers[i].text.isEmpty) {
-                          _focusNodes[i].requestFocus();
-                          return;
-                        }
-                      }
-                      _focusNodes[5].requestFocus();
-                    }
-                  }
+                  if (!_isProcessing && !_isSuccess) _focusNode.requestFocus();
                 },
                 behavior: HitTestBehavior.opaque,
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 20.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const SizedBox(height: 20),
                       Text(
                         "Enter Verification Code",
-                        style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, color: textColor),
+                        style: GoogleFonts.outfit(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: textColor),
                       ),
                       const SizedBox(height: 8),
                       Padding(
@@ -832,7 +738,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  primaryBlue.withValues(alpha: isDark ? 0.16 : 0.08),
+                                  primaryBlue.withValues(
+                                      alpha: isDark ? 0.16 : 0.08),
                                   primaryBlue.withValues(alpha: 0.0),
                                 ],
                               ),
@@ -840,41 +747,48 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                           ),
                           ConstrainedBox(
                             constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width * 0.85,
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.85,
                               maxHeight: 250,
                             ),
-                            child: Lottie.asset(
-                              'assets/bus.json',
-                              fit: BoxFit.contain,
-                            ),
+                            child: Lottie.asset('assets/bus.json',
+                                fit: BoxFit.contain),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
-                      // Passcode Container Area
+
                       _buildPasscodeBoxes(textColor, primaryBlue, isDark),
-                      
+
                       const SizedBox(height: 16),
                       Text(
-                        "${_otp.length}/6 digits entered",
-                        style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w800, color: subColor),
+                        "${_controller.text.length}/6 digits entered",
+                        style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: subColor),
                       ),
-                      
+
                       const SizedBox(height: 60),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8),
+                          color: isDark
+                              ? const Color(0xFF1E293B).withValues(alpha: 0.5)
+                              : Colors.white.withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.05),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.shield_rounded, color: primaryBlue, size: 18),
+                            const Icon(Icons.shield_rounded,
+                                color: primaryBlue, size: 18),
                             const SizedBox(width: 8),
                             Text(
                               "Secured with Tripzo Fleet Gateway",
@@ -894,12 +808,17 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
               if (_isProcessing)
                 Positioned.fill(
                   child: Container(
-                    color: (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)).withValues(alpha: 0.7),
+                    color: (isDark
+                            ? const Color(0xFF0F172A)
+                            : const Color(0xFFF8FAFC))
+                        .withValues(alpha: 0.7),
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -909,7 +828,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                             ),
                           ],
                         ),
-                        child: const CircularProgressIndicator(color: primaryBlue),
+                        child: const CircularProgressIndicator(
+                            color: primaryBlue),
                       ),
                     ),
                   ),
@@ -921,24 +841,55 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
     );
   }
 
-  Widget _buildPasscodeBoxes(Color textColor, Color primaryBlue, bool isDark) {
+  Widget _buildPasscodeBoxes(
+      Color textColor, Color primaryBlue, bool isDark) {
     return SizedBox(
       height: 80,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Row of 6 individual boxes that slide together and blend to green
+          // ── Invisible TextField ──────────────────────────────────────────
+          // This is the ONLY interactive widget.  It is completely transparent
+          // and 1×1 pixels in size.  All iOS/Android keyboard events — including
+          // the ⌫ backspace — are delivered here and update _controller.text.
+          // The six boxes below are pure decoration that reads _controller.text.
+          Opacity(
+            opacity: 0,
+            child: SizedBox(
+              width: 1,
+              height: 1,
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                enabled: !_isProcessing && !_isSuccess,
+                decoration: const InputDecoration(counterText: ""),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Six visual digit boxes ───────────────────────────────────────
           AnimatedBuilder(
-            animation: Listenable.merge([_shakeAnimation, _mergeAnimation]),
+            animation:
+                Listenable.merge([_shakeAnimation, _mergeAnimation]),
             builder: (context, child) {
               final double shakeOffset = _shakeAnimation.value * 12.0;
               final double mergeVal = _mergeAnimation.value;
-              
-              final double screenWidth = MediaQuery.of(context).size.width;
-              final double availableWidth = screenWidth - 48; // 24 padding each side
-              double baseBoxWidth = (availableWidth - (5 * 12)) / 6; // 12 is the horizontal margin spacing (6 * 2)
+
+              final double screenWidth =
+                  MediaQuery.of(context).size.width;
+              final double availableWidth = screenWidth - 48;
+              double baseBoxWidth =
+                  (availableWidth - (5 * 12)) / 6;
               baseBoxWidth = baseBoxWidth.clamp(35.0, 55.0);
               final double baseBoxHeight = baseBoxWidth * 1.35;
+
+              final String otp = _controller.text;
 
               return Transform.translate(
                 offset: Offset(shakeOffset, 0),
@@ -947,93 +898,105 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(6, (index) {
-                    final bool isCurrent = _focusNodes[index].hasFocus;
-                    
-                    // Center the 6 boxes into one single box in the center (item index relative to center offset is (index - 2.5) * (baseBoxWidth + 12.0))
-                    final double translationX = -(index - 2.5) * (baseBoxWidth + 12.0) * mergeVal;
-                    
-                    Color bgCol = isDark ? const Color(0xFF1E293B) : Colors.white;
-                    Color borderCol = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200;
-                    
-                    if (_isError) {
-                      borderCol = Colors.red;
-                      bgCol = Colors.red.withValues(alpha: 0.05);
-                    } else if (_isSuccess) {
-                      borderCol = Colors.green;
-                      bgCol = Colors.green.withValues(alpha: 0.05);
-                    } else if (isCurrent) {
-                      borderCol = primaryBlue;
-                    }
+                      final bool hasDigit = index < otp.length;
+                      // Highlight the next empty slot as "active".
+                      final bool isCurrent = !_isProcessing &&
+                          !_isSuccess &&
+                          index == otp.length &&
+                          _focusNode.hasFocus;
 
-                    // Lerp background and border colors towards green during merge
-                    final Color finalBgCol = Color.lerp(bgCol, Colors.green.withValues(alpha: 0.05), mergeVal)!;
-                    final Color finalBorderCol = Color.lerp(borderCol, Colors.green, mergeVal)!;
+                      final double translationX =
+                          -(index - 2.5) *
+                              (baseBoxWidth + 12.0) *
+                              mergeVal;
 
-                    return Transform.translate(
-                      offset: Offset(translationX, 0),
-                      child: Container(
-                        width: baseBoxWidth,
-                        height: baseBoxHeight,
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: finalBgCol,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: finalBorderCol,
-                            width: (_isSuccess || isCurrent || _isError) ? 2.0 : 1.0,
-                          ),
-                          boxShadow: isCurrent
-                              ? [
-                                  BoxShadow(
-                                    color: primaryBlue.withValues(alpha: 0.25),
-                                    blurRadius: 10,
-                                    spreadRadius: 1.5,
-                                  ),
-                                ]
-                              : null,
-                        ),
+                      Color bgCol = isDark
+                          ? const Color(0xFF1E293B)
+                          : Colors.white;
+                      Color borderCol = isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.grey.shade200;
+
+                      if (_isError) {
+                        borderCol = Colors.red;
+                        bgCol = Colors.red.withValues(alpha: 0.05);
+                      } else if (_isSuccess) {
+                        borderCol = Colors.green;
+                        bgCol =
+                            Colors.green.withValues(alpha: 0.05);
+                      } else if (isCurrent) {
+                        borderCol = primaryBlue;
+                      }
+
+                      final Color finalBgCol = Color.lerp(
+                          bgCol,
+                          Colors.green.withValues(alpha: 0.05),
+                          mergeVal)!;
+                      final Color finalBorderCol = Color.lerp(
+                          borderCol, Colors.green, mergeVal)!;
+
+                      return Transform.translate(
+                        offset: Offset(translationX, 0),
                         child: Opacity(
-                          opacity: (1.0 - mergeVal).clamp(0.0, 1.0),
-                          child: TextField(
-                            controller: _controllers[index],
-                            focusNode: _focusNodes[index],
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            showCursor: false,
-                            enabled: !_isProcessing && !_isSuccess && (mergeVal == 0.0),
-                            style: GoogleFonts.outfit(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
+                          opacity:
+                              (1.0 - mergeVal).clamp(0.0, 1.0),
+                          child: Container(
+                            width: baseBoxWidth,
+                            height: baseBoxHeight,
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 6),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: finalBgCol,
+                              borderRadius:
+                                  BorderRadius.circular(14),
+                              border: Border.all(
+                                color: finalBorderCol,
+                                width: (_isSuccess ||
+                                        isCurrent ||
+                                        _isError)
+                                    ? 2.0
+                                    : 1.0,
+                              ),
+                              boxShadow: isCurrent
+                                  ? [
+                                      BoxShadow(
+                                        color: primaryBlue
+                                            .withValues(
+                                                alpha: 0.25),
+                                        blurRadius: 10,
+                                        spreadRadius: 1.5,
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(1),
-                            ],
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              counterText: "",
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                            child: hasDigit
+                                ? Text(
+                                    otp[index],
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
                           ),
                         ),
-                      ),
-                    );
-                  }),
-                ),
+                      );
+                    }),
+                  ),
                 ),
               );
             },
           ),
-          
-          // Glowing Tick checkmark in a single box that scales up in the center on success
+
+          // ── Success tick ─────────────────────────────────────────────────
           AnimatedBuilder(
             animation: _mergeAnimation,
             builder: (context, child) {
               final double mergeVal = _mergeAnimation.value;
               if (mergeVal == 0.0) return const SizedBox.shrink();
-              
+
               return Opacity(
                 opacity: mergeVal.clamp(0.0, 1.0),
                 child: Transform.scale(
@@ -1042,12 +1005,16 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen> with Tick
                     width: 48,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.green, width: 2),
+                      border:
+                          Border.all(color: Colors.green, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.green.withValues(alpha: 0.15),
+                          color:
+                              Colors.green.withValues(alpha: 0.15),
                           blurRadius: 10,
                           spreadRadius: 1,
                         ),

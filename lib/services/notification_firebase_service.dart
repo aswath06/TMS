@@ -43,11 +43,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationFirebaseService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   Function(Map<String, dynamic>)? onNewNotification;
+  Function(String)? onTokenRefresh;
 
   Future<void> initialize({
     required Function(Map<String, dynamic>) onNewNotification,
+    Function(String)? onTokenRefresh,
   }) async {
     this.onNewNotification = onNewNotification;
+    this.onTokenRefresh = onTokenRefresh;
 
     // ── Step 1: Request permissions (critical for iOS) ──────────────────────
     final NotificationSettings settings =
@@ -150,9 +153,35 @@ class NotificationFirebaseService {
         this.onNewNotification?.call(message.data);
       }
     });
-  }
 
+  // ── Step 7: Listen for token refreshes ──────────────────────────────────
+  // Firebase rotates the FCM token when the old one is deleted or invalidated.
+  // We must upload the new token to the backend immediately so future pushes work.
+  _firebaseMessaging.onTokenRefresh.listen((newToken) async {
+    debugPrint('🔔 FCM token refreshed — syncing with backend: $newToken');
+    this.onTokenRefresh?.call(newToken);
+  });
+}
+
+  /// Returns a fresh FCM token, deleting any stale cached token first.
+  ///
+  /// The old `APA91b…` format tokens are legacy FCM tokens that cannot
+  /// authenticate with the FCM v1 API. Calling [deleteToken] forces Firebase
+  /// to generate a brand-new v1-compatible token on the next [getToken] call.
   Future<String?> getToken() async {
-    return await _firebaseMessaging.getToken();
+    try {
+      // Delete any potentially stale / legacy token cached on the device.
+      await _firebaseMessaging.deleteToken();
+      debugPrint('🔔 Deleted old FCM token (if any). Fetching fresh token…');
+    } catch (e) {
+      // deleteToken can fail if there was no token; that is fine.
+      debugPrint('🔔 deleteToken skipped (no previous token): $e');
+    }
+
+    // After deletion, getToken() always contacts Firebase and returns a
+    // brand-new, v1-API-compatible token (looks like "fGxq3…" not "APA91b…").
+    final token = await _firebaseMessaging.getToken();
+    debugPrint('🔔 Fresh FCM token obtained: $token');
+    return token;
   }
 }

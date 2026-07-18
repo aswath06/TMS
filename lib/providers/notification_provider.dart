@@ -71,10 +71,21 @@ class NotificationProvider extends ChangeNotifier {
           debugPrint("🔔 Error handling new firebase notification in provider: $e");
         }
       },
+      // When Firebase gives us a fresh token (e.g. after deleteToken() on first
+      // run to replace a stale legacy APA91b token), immediately sync it to the
+      // backend so the very next push notification reaches the device.
+      onTokenRefresh: (newToken) async {
+        try {
+          await apiService.updateFcmToken(newToken);
+          debugPrint("🔔 FCM Token refreshed and synced with backend ✅");
+        } catch (e) {
+          debugPrint("Error syncing refreshed FCM token: $e");
+        }
+      },
     );
     isFirebaseInitialized = true;
     
-    // Sync FCM token with backend
+    // Sync FCM token with backend (deleteToken + getToken ensures a fresh v1 token)
     try {
       final token = await firebaseService.getToken();
       if (token != null) {
@@ -84,6 +95,7 @@ class NotificationProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("Error syncing FCM token: $e");
     }
+
 
     notifyListeners();
     debugPrint("🔔 Firebase Notification Initialized");
