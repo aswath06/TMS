@@ -195,7 +195,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            "Missions",
+                            "Routes",
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
@@ -241,7 +241,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Manage and monitor all fleet missions",
+                    "Manage and monitor all fleet routes",
                     style: TextStyle(
                       color: subColor,
                       fontSize: 15,
@@ -262,7 +262,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                       Row(
                         children: [
                           Text(
-                            "Mission Dates",
+                            "Route Dates",
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
@@ -368,7 +368,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                                       Icon(Icons.auto_awesome_motion_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
                                       const SizedBox(height: 16),
                                       Text(
-                                        _selectedFilter == 'ALL' ? "No active missions" : "No $_selectedFilter missions found",
+                                        _selectedFilter == 'ALL' ? "No active routes" : "No $_selectedFilter routes found",
                                         style: TextStyle(
                                           color: subColor,
                                           fontWeight: FontWeight.bold,
@@ -860,7 +860,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Filter Missions",
+                "Filter Routes",
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

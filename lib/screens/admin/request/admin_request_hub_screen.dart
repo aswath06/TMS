@@ -7,6 +7,8 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/ui_config.dart';
+import 'package:intl/intl.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 
 class AdminRequestHubScreen extends ConsumerStatefulWidget {
   const AdminRequestHubScreen({super.key});
@@ -19,6 +21,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _vehicleSearchController = TextEditingController();
   String _activeVehicleFilter = 'Total'; // 'Total', 'Student', 'Faculty'
+  DateTime _selectedDate = DateTime.now();
 
   late List<Map<String, dynamic>> _cardsData;
   bool _initialized = false;
@@ -36,7 +39,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       ref.read(fleetMonitorStoreProvider).fetchFleetData();
       ref.read(driverStoreProvider).fetchPendingFuelEntries();
       ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
-      ref.read(attendanceDashboardStoreProvider).refresh();
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      ref.read(attendanceDashboardStoreProvider).fetchDashboardData(dateStr);
       UIConfig().load();
     });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
@@ -96,8 +100,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       _cardsData = [
         {
           'id': 'mission',
-          'title': "Missions",
-          'description': "Track and manage transport missions in real-time.",
+          'title': "Routes",
+          'description': "Track and manage transport routes in real-time.",
           'icon': Icons.explore_rounded,
           'color': primaryBlue,
           'onTap': () {
@@ -106,8 +110,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
         },
         {
           'id': 'routines',
-          'title': "Daily Routines",
-          'description': "Monitor campus bus routines and daily schedules.",
+          'title': "Daily Bus",
+          'description': "Monitor campus bus daily schedules and details.",
           'icon': Icons.directions_bus_rounded,
           'color': const Color(0xFF3B82F6),
           'onTap': () {
@@ -340,7 +344,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     final double screenHeight = MediaQuery.of(context).size.height;
     // Decrease card size slightly and make it responsive
     final double cardHeight = (screenHeight * 0.18).clamp(160.0, 190.0);
-    final double stackHeight = cardHeight + 110.0;
+    final double stackHeight = cardHeight + 90.0;
 
     // Calculate a dynamic swipe progress (0.0 to 1.0) to drive background cards
     final double maxDrag = 150.0;
@@ -484,7 +488,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
         bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
-            await ref.read(attendanceDashboardStoreProvider.notifier).refresh();
+            final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+            await ref.read(attendanceDashboardStoreProvider).fetchDashboardData(dateStr);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -511,13 +516,42 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                         ),
                       ],
                     ),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await CustomDateTimePicker.show(
+                          context,
+                          initialDate: _selectedDate,
+                          showTime: false,
+                          accent: primaryBlue,
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedDate = picked;
+                          });
+                          final dateStr = DateFormat('yyyy-MM-dd').format(picked);
+                          ref.read(attendanceDashboardStoreProvider).fetchDashboardData(dateStr);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: primaryBlue.withValues(alpha: 0.15),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 22),
+                      ),
+                    ),
                   ],
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  "Manage missions, daily routines, fuels, and allowances.",
+                  "Manage routes, daily bus, fuels, and allowances.",
                   style: TextStyle(
                     color: subColor,
                     fontSize: 15,
@@ -540,7 +574,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
                           : _buildAlternativeCards(isDark, primaryBlue),
                       
                       if (UIConfig().isUIEnhancementEnabled) ...[
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 10),
                         _buildDynamicCardDetails(isDark, primaryBlue),
                       ],
                     ],
@@ -820,7 +854,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Mission Statistics", isDark, hasPagination: true),
+        _buildSectionHeader("Route Statistics", isDark, hasPagination: true),
         const SizedBox(height: 8),
         _buildPaginatedStats(tiles, isDark),
       ],
@@ -909,6 +943,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       );
     }
 
+    final int activeIdx = _activeVehicleFilter == 'Student' ? 1 : (_activeVehicleFilter == 'Faculty' ? 2 : 0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -917,18 +953,44 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Center(
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(4), // outer padding
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildRoleFilterSegment("Total", isDark, primaryBlue),
-                  _buildRoleFilterSegment("Student", isDark, primaryBlue),
-                  _buildRoleFilterSegment("Faculty", isDark, primaryBlue),
-                ],
+              child: SizedBox(
+                width: 3 * 95.0,
+                height: 40,
+                child: Stack(
+                  children: [
+                    // Sliding background pill with bounce animation
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutBack,
+                      left: activeIdx * 95.0,
+                      top: 0,
+                      width: 95.0,
+                      height: 40.0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? primaryBlue : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: !isDark
+                              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]
+                              : [],
+                        ),
+                      ),
+                    ),
+                    // The three text labels overlaid on top
+                    Row(
+                      children: [
+                        _buildRoleFilterSegment("Total", isDark, primaryBlue, activeIdx == 0),
+                        _buildRoleFilterSegment("Student", isDark, primaryBlue, activeIdx == 1),
+                        _buildRoleFilterSegment("Faculty", isDark, primaryBlue, activeIdx == 2),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1178,8 +1240,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     );
   }
 
-  Widget _buildRoleFilterSegment(String role, bool isDark, Color primaryBlue) {
-    final bool isSelected = _activeVehicleFilter == role;
+  Widget _buildRoleFilterSegment(String role, bool isDark, Color primaryBlue, bool isSelected) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -1187,25 +1248,21 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? primaryBlue : Colors.white)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: isSelected && !isDark
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1))]
-              : [],
-        ),
-        child: Text(
-          role,
+        width: 95.0,
+        height: 40.0,
+        alignment: Alignment.center,
+        color: Colors.transparent,
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 14,
             fontWeight: FontWeight.w800,
             color: isSelected
                 ? (isDark ? Colors.white : primaryBlue)
                 : (isDark ? Colors.grey[400] : Colors.grey[600]),
           ),
+          child: Text(role),
         ),
       ),
     );

@@ -1658,7 +1658,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            "Daily Routines",
+                            "Daily Bus",
                             style: GoogleFonts.outfit(
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
@@ -1685,7 +1685,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Monitor and manage scheduled campus bus routines",
+                    "Monitor and manage scheduled campus bus runs",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -1712,7 +1712,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                       Row(
                         children: [
                           Text(
-                            "Routine Dates",
+                            "Daily Bus Dates",
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
@@ -1822,7 +1822,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                                       Icon(Icons.directions_bus_filled_rounded, size: 54, color: subColor.withValues(alpha: 0.15)),
                                       const SizedBox(height: 16),
                                       Text(
-                                        "No routines found for this date",
+                                        "No daily bus runs found for this date",
                                         style: TextStyle(
                                           color: subColor,
                                           fontSize: 15,
