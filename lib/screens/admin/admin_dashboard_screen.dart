@@ -8,6 +8,8 @@ import 'package:tripzo/store/providers.dart';
 import '../../components/notification_card.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
+import 'package:tripzo/screens/admin/AdminProfileScreen.dart';
+import 'package:tripzo/utils/tab_notification.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -565,7 +567,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         const SizedBox(width: 12),
         GestureDetector(
           onTap: () {
-            const ChangeTabNotification(-1).dispatch(context);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminProfileScreen()));
           },
           child: Container(
             padding: const EdgeInsets.all(3),

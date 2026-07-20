@@ -12,6 +12,7 @@ import 'package:tripzo/screens/driver/driver_allowance_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart';
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/utils/tab_notification.dart';
+import 'package:tripzo/screens/driver/DriverProfileScreen.dart';
 
 import '../../components/notification_bell.dart';
 import 'dart:async';
@@ -311,7 +312,7 @@ final store = ref.watch(driverStoreProvider);
         const SizedBox(width: 8),
         GestureDetector(
           onTap: () {
-            const ChangeTabNotification(-1).dispatch(context);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverProfileScreen()));
           },
           child: Hero(
             tag: 'driver_avatar',

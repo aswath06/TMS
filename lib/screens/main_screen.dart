@@ -35,6 +35,7 @@ import 'package:tripzo/screens/security/security_dashboard_screen.dart';
 import 'package:tripzo/screens/security/security_vehicle_screen.dart';
 import 'package:tripzo/screens/security/security_bus_screen.dart';
 import 'package:tripzo/screens/security/security_qr_scanner_screen.dart';
+import 'package:tripzo/screens/chat/chat_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String userRole;
@@ -179,7 +180,7 @@ class MainScreenState extends State<MainScreen> {
           const AdminRequestHubScreen(),
           const VehiclePage(),
           const AdminDriverScreen(),
-          const AdminProfileScreen(),
+          const ChatScreen(),
         ];
       case 'faculty':
       case 'non teaching':
@@ -189,21 +190,21 @@ class MainScreenState extends State<MainScreen> {
           const MissionsScreen(),
           const FacultyBusScreen(),
           const DriverLeaveScreen(userRole: 'student'),
-          const ProfileScreen(),
+          const ChatScreen(),
         ];
       case 'security':
         return [
           const SecurityDashboardScreen(),
           const SecurityVehicleScreen(),
           const SecurityBusScreen(),
-          const AdminProfileScreen(),
+          const ChatScreen(),
         ];
       case 'student':
         return [
           const StudentDashboardScreen(),
           const StudentBusScreen(),
           const DriverLeaveScreen(userRole: 'student'),
-          const ProfileScreen(),
+          const ChatScreen(),
         ];
       case 'driver':
       default:  
@@ -211,7 +212,7 @@ class MainScreenState extends State<MainScreen> {
           const DriverDutiesScreen(),
           const DriverRoutesScreen(),
           const DriverLeaveScreen(),
-          const DriverProfileScreen(),
+          const ChatScreen(),
         ];
     }
   }

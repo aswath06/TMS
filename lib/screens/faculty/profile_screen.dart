@@ -249,6 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader(BuildContext context, Color titleColor, Map<String, dynamic>? data) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isStudent = data != null && 
         ((data['role']?.toString().toLowerCase().contains('student') ?? false) || 
          (data['role'] is Map && data['role']['name']?.toString().toLowerCase().contains('student') == true));
@@ -256,13 +257,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          isStudent ? "Student Profile" : "Faculty Profile",
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: titleColor,
-          ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 20),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isStudent ? "Student Profile" : "Faculty Profile",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: titleColor,
+              ),
+            ),
+          ],
         ),
         IconButton(
           onPressed: () => Navigator.push(

@@ -872,16 +872,47 @@ final store = ref.watch(driverStoreProvider);
   }
 
   Widget _buildHeader(BuildContext context, Color titleColor, bool isTamil) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          isTamil ? "ஓட்டுநர் விவரம்" : "Driver Profile",
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: titleColor,
-          ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 20),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isTamil ? "ஓட்டுநர் விவரம்" : "Driver Profile",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: titleColor,
+              ),
+            ),
+          ],
         ),
         IconButton(
           onPressed: () async {
