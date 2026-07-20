@@ -8,6 +8,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
 import '../../components/notification_bell.dart';
 import 'package:tripzo/utils/tab_notification.dart';
+import 'package:tripzo/screens/faculty/profile_screen.dart';
 
 class SecurityDashboardScreen extends ConsumerStatefulWidget {
   const SecurityDashboardScreen({super.key});
@@ -258,7 +259,7 @@ class _SecurityDashboardScreenState extends ConsumerState<SecurityDashboardScree
         const SizedBox(width: 12),
         GestureDetector(
           onTap: () {
-            const ChangeTabNotification(-1).dispatch(context);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
           },
           child: Container(
             padding: const EdgeInsets.all(3),

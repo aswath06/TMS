@@ -12,6 +12,7 @@ import '../../utils/routes.dart';
 import '../../utils/api_constants.dart';
 import 'package:tripzo/utils/tab_notification.dart';
 import 'package:tripzo/screens/driver/apply_leave_page.dart';
+import 'package:tripzo/screens/faculty/profile_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -233,7 +234,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         const SizedBox(width: 12),
         GestureDetector(
           onTap: () {
-            const ChangeTabNotification(-1).dispatch(context);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
           },
           child: Container(
             padding: const EdgeInsets.all(3),

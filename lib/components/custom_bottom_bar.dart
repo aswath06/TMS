@@ -116,9 +116,9 @@ class CustomBottomBar extends StatelessWidget {
             'Driver',
           ),
           _NavItem(
-            Icons.person_outline_rounded,
-            Icons.person_rounded,
-            'Profile',
+            Icons.forum_outlined,
+            Icons.forum_rounded,
+            'Chat',
           ),
         ];
       case 'faculty':
@@ -138,9 +138,9 @@ class CustomBottomBar extends StatelessWidget {
             'Leave',
           ),
           _NavItem(
-            Icons.person_outline_rounded,
-            Icons.person_rounded,
-            'Profile',
+            Icons.forum_outlined,
+            Icons.forum_rounded,
+            'Chat',
           ),
         ];
       case 'security':
@@ -157,9 +157,9 @@ class CustomBottomBar extends StatelessWidget {
             'Bus',
           ),
           _NavItem(
-            Icons.person_outline_rounded,
-            Icons.person_rounded,
-            'Profile',
+            Icons.forum_outlined,
+            Icons.forum_rounded,
+            'Chat',
           ),
         ];
       case 'student':
@@ -167,7 +167,7 @@ class CustomBottomBar extends StatelessWidget {
           _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Dashboard'),
           _NavItem(Icons.directions_bus_outlined, Icons.directions_bus_rounded, 'Bus'),
           _NavItem(Icons.event_busy_outlined, Icons.event_busy_rounded, 'Leave'),
-          _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
+          _NavItem(Icons.forum_outlined, Icons.forum_rounded, 'Chat'),
         ];
       case 'driver':
       default:
@@ -180,9 +180,9 @@ class CustomBottomBar extends StatelessWidget {
             'Schedule',
           ),
           _NavItem(
-            Icons.person_outline_rounded,
-            Icons.person_rounded,
-            'Profile',
+            Icons.forum_outlined,
+            Icons.forum_rounded,
+            'Chat',
           ),
         ];
     }
