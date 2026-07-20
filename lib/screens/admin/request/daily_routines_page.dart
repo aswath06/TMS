@@ -338,12 +338,22 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
 
   bool _isAuthorized = false;
   bool _checkingAuth = true;
+  bool _isTransitionFinished = false;
 
   @override
   void initState() {
     super.initState();
     _loadViewPreference();
     _checkAuthorization();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _isTransitionFinished = true;
+          });
+        }
+      });
+    });
   }
 
   Future<void> _loadViewPreference() async {
@@ -1582,6 +1592,18 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+
+    if (!_isTransitionFinished) {
+      return Scaffold(
+        backgroundColor: bgColor,
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     if (_checkingAuth) {
       return const Scaffold(
         body: Center(
@@ -1598,12 +1620,10 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
       );
     }
 
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
 
     final store = ref.watch(dailyRoutinesStoreProvider);
 

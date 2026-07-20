@@ -39,6 +39,8 @@ class Guest {
 
 class _NewRequestScreenState extends State<NewRequestScreen> {
   final _formKey = GlobalKey<FormState>();
+  bool _isTransitionFinished = false;
+  bool _showValidationError = false;
 
   // --- Step Logic ---
   int _currentStep = 0;
@@ -46,7 +48,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   int _totalSteps = 2;
 
   // --- Step 1: Details ---
-  String _routeType = 'One Way';
+  String? _routeType;
   DateTime? _startDate, _endDate;
   final TextEditingController _routeNameController = TextEditingController();
   final TextEditingController _purposeController = TextEditingController();
@@ -114,6 +116,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     _passengerCountController.addListener(_syncGuests);
     _fetchDepartments();
     _fetchPurposes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _isTransitionFinished = true;
+          });
+        }
+      });
+    });
   }
 
   void _syncGuests() {
@@ -959,6 +970,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   void _updateEndDate() {
+    if (_routeType == null) return;
     if (_routeType != 'Multi Day' && _startDate != null) {
       if (_routeType == 'One Way') {
         final addedMinutes = _travelDurationMinutes + (1 * 60);
@@ -1282,8 +1294,19 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         : const Color(0xFFF8FAFC);
     final Color pColor = const Color(0xFF6366F1);
 
+    if (!_isTransitionFinished) {
+      return Scaffold(
+        backgroundColor: bgColor,
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Theme(
-      data: Theme.of(context).copyWith(textTheme: GoogleFonts.interTextTheme()),
+      data: Theme.of(context).copyWith(
+        textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Inter'),
+      ),
       child: Scaffold(
         backgroundColor: bgColor,
         body: Stack(
@@ -1330,15 +1353,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Widget _buildPremiumHeader(BuildContext context, Color p, bool d) {
     double prg = (_currentStep + 1) / _totalSteps;
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-          color: Theme.of(
-            context,
-          ).scaffoldBackgroundColor.withValues(alpha: 0.4),
-          child: Row(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
@@ -1384,9 +1402,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               _buildProgressCircle(p, prg),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildProgressCircle(Color p, double prg) => Stack(
@@ -1668,6 +1684,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               c,
               t,
               minDate: _endDate,
+              hasError: _showValidationError && _enableReturnJourney && _returnStartDate == null,
             ),
           ]
         ],
@@ -1690,6 +1707,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           p,
           c,
           t,
+          hasError: _showValidationError && _startDate == null,
         ),
         if (_routeType == 'Multi Day') ...[
           const SizedBox(height: 12),
@@ -1702,6 +1720,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             p,
             c,
             t,
+            hasError: _showValidationError && _routeType != 'One Way' && _endDate == null,
           ),
         ] else if (_startDate != null && _endDate != null) ...[
           const SizedBox(height: 12),
@@ -1763,93 +1782,115 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     Color c,
     Color t, {
     DateTime? minDate,
+    bool hasError = false,
   }) {
-    return GestureDetector(
-      onTap: () async {
-        final picked = await CustomDateTimePicker.show(
-          context,
-          initialDate: val ?? (minDate != null && minDate.isAfter(DateTime.now()) ? minDate : DateTime.now()),
-          minDate: minDate ?? DateTime.now(),
-          accent: p,
-          cardColor: c,
-          titleColor: t,
-        );
-        if (picked != null) onPick(picked);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: c,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: t.withValues(alpha: 0.04), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    p.withValues(alpha: 0.15),
-                    p.withValues(alpha: 0.05),
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () async {
+            setState(() => _showValidationError = true);
+            final picked = await CustomDateTimePicker.show(
+              context,
+              initialDate: val ?? (minDate != null && minDate.isAfter(DateTime.now()) ? minDate : DateTime.now()),
+              minDate: minDate ?? DateTime.now(),
+              accent: p,
+              cardColor: c,
+              titleColor: t,
+            );
+            if (picked != null) onPick(picked);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: c,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: hasError ? const Color(0xFFEF4444) : t.withValues(alpha: 0.04),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
                 ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: p.withValues(alpha: 0.1)),
-              ),
-              child: Icon(Icons.calendar_today_rounded, size: 20, color: p),
+              ],
             ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    h.replaceFirst('*', '').trim().toUpperCase(),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: t.withValues(alpha: 0.4),
-                      letterSpacing: 0.5,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        p.withValues(alpha: 0.15),
+                        p.withValues(alpha: 0.05),
+                      ],
                     ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: p.withValues(alpha: 0.1)),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    val == null
-                        ? "Set Schedule"
-                        : DateFormat('EEE, MMM dd • hh:mm a').format(val.toLocal()),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: val == null ? Colors.grey : t,
-                    ),
+                  child: Icon(Icons.calendar_today_rounded, size: 20, color: p),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        h.replaceFirst('*', '').trim().toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: t.withValues(alpha: 0.4),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        val == null
+                            ? "Set Schedule"
+                            : DateFormat('EEE, MMM dd • hh:mm a').format(val.toLocal()),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: val == null ? Colors.grey : t,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: t.withValues(alpha: 0.03),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: t.withValues(alpha: 0.2),
+                  ),
+                ),
+              ],
             ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: t.withValues(alpha: 0.03),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: t.withValues(alpha: 0.2),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, top: 8),
+            child: Text(
+              "  * Please select ${h.replaceAll('*', '').toLowerCase().trim()}",
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFFEF4444),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1939,9 +1980,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: c,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: t.withValues(alpha: 0.04)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -1955,10 +1994,11 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         onChanged: onC,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         decoration: InputDecoration(
+          filled: true,
+          fillColor: c,
           hintText: label,
           hintStyle: TextStyle(color: t.withValues(alpha: 0.1), fontSize: 13),
           prefixIcon: Icon(icon, color: p.withValues(alpha: 0.35), size: 20),
-          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 14,
@@ -1969,15 +2009,38 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             color: Colors.grey,
           ),
           counterText: "",
+          errorStyle: GoogleFonts.plusJakartaSans(
+            color: const Color(0xFFEF4444),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: t.withValues(alpha: 0.04), width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: p.withValues(alpha: 0.4), width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
+          ),
         ),
         maxLength: isNum ? 10 : null,
         inputFormatters: isNum
             ? [FilteringTextInputFormatter.digitsOnly]
             : null,
         validator: (v) {
-          if (isReq && (v == null || v.trim().isEmpty)) return "Required";
+          if (isReq && (v == null || v.trim().isEmpty)) {
+            return "  * $label is required";
+          }
           if (isNum && v != null && v.isNotEmpty && v.length != 10) {
-            return "Must be 10 digits";
+            return "  * Must be 10 digits";
           }
           return null;
         },
@@ -2008,30 +2071,38 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              color: c,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: t.withValues(alpha: 0.04)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            child: FormField<String>(
-              initialValue: value,
-              validator: isReq
-                  ? (v) => (value == null || value.isEmpty) ? "Please select a department" : null
-                  : null,
-              builder: (FormFieldState<String> state) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
+        FormField<String>(
+          initialValue: value,
+          validator: isReq
+              ? (v) => (value == null || value.isEmpty)
+                  ? "Please select ${label.replaceAll('*', '').toLowerCase().trim()}"
+                  : null
+              : null,
+          builder: (FormFieldState<String> state) {
+            final hasError = state.hasError;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: onTap,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: c,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: hasError
+                            ? const Color(0xFFEF4444)
+                            : t.withValues(alpha: 0.04),
+                        width: hasError ? 1.5 : 1.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
@@ -2065,19 +2136,23 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                         ],
                       ),
                     ),
-                    if (state.hasError)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16, bottom: 8),
-                        child: Text(
-                          state.errorText ?? "",
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                        ),
+                  ),
+                ),
+                if (hasError)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 8),
+                    child: Text(
+                      "  * ${state.errorText}",
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFFEF4444),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
                       ),
-                  ],
-                );
-              },
-            ),
-          ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
       ],
@@ -2110,9 +2185,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: c,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: t.withValues(alpha: 0.04)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.02),
@@ -2125,6 +2198,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
             keyboardType: isNum ? TextInputType.number : TextInputType.text,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
             decoration: InputDecoration(
+              filled: true,
+              fillColor: c,
               hintText: hint,
               hintStyle: TextStyle(
                 color: t.withValues(alpha: 0.1),
@@ -2135,14 +2210,36 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 color: p.withValues(alpha: 0.35),
                 size: 20,
               ),
-              border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
               ),
+              errorStyle: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFFEF4444),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: t.withValues(alpha: 0.04), width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: p.withValues(alpha: 0.4), width: 1.5),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
+              ),
             ),
             validator: isReq
-                ? (v) => (v == null || v.isEmpty) ? "Req" : null
+                ? (v) => (v == null || v.isEmpty)
+                    ? "  * ${label.replaceAll('*', '').trim()} is required"
+                    : null
                 : null,
           ),
         ),
@@ -3501,7 +3598,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               "value":
                   "${int.tryParse(_passengerCountController.text) ?? 1} People",
             },
-            {"label": "Journey", "value": _routeType},
+            {"label": "Journey", "value": _routeType ?? "Not Selected"},
           ],
           p,
           c,
@@ -3558,7 +3655,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                 "value":
                     "${int.tryParse(_passengerCountController.text) ?? 1} People",
               },
-              {"label": "Journey", "value": _routeType},
+              {"label": "Journey", "value": _routeType ?? "Not Selected"},
             ],
             p,
             c,
@@ -3849,6 +3946,28 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                   ? null
                   : () {
                       if (_currentStep == 0) {
+                        if (_routeType == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Please select a route type (One Way, Two Way, or Multi Day)",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        bool hasDateErrors = false;
+                        if (_startDate == null) hasDateErrors = true;
+                        if (_routeType != 'One Way' && _endDate == null) hasDateErrors = true;
+                        if (_enableReturnJourney && _returnStartDate == null) hasDateErrors = true;
+                        
+                        if (hasDateErrors) {
+                          setState(() {
+                            _showValidationError = true;
+                          });
+                        }
+
                         if (_formKey.currentState!.validate()) {
                           int pCount =
                               int.tryParse(_passengerCountController.text) ?? 1;

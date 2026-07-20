@@ -3,6 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+class FastFixedExtentScrollPhysics extends FixedExtentScrollPhysics {
+  const FastFixedExtentScrollPhysics({super.parent});
+
+  @override
+  FastFixedExtentScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return FastFixedExtentScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double get minFriction => 0.002;
+}
+
 class CustomDateTimePicker {
   static Future<DateTime?> show(
     BuildContext context, {
@@ -271,9 +283,7 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
               
               return GestureDetector(
                 onTap: disabled ? null : () => setState(() => _selectedDay = date),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
+                child: Container(
                   decoration: BoxDecoration(
                     gradient: isSelected ? LinearGradient(colors: [widget.accent, widget.accent.withBlue(255)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
                     color: isSelected ? null : (isToday ? widget.accent.withValues(alpha: 0.12) : Colors.transparent),
@@ -362,10 +372,29 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
       children: [
         Center(child: Container(height: 44, decoration: BoxDecoration(color: widget.accent.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: widget.accent.withValues(alpha: 0.15), width: 1)))),
         ListWheelScrollView.useDelegate(
-          controller: controller, itemExtent: 44, perspective: 0.006, diameterRatio: 1.4, physics: const FixedExtentScrollPhysics(), onSelectedItemChanged: onChanged,
-          childDelegate: ListWheelChildBuilderDelegate(childCount: count, builder: (_, index) {
-            final isSelected = controller.hasClients && controller.selectedItem == index;
-            return Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 200), style: GoogleFonts.plusJakartaSans(fontSize: isSelected ? 22 : 16, fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500, color: isSelected ? widget.accent : widget.subTitleColor.withValues(alpha: 0.4)), child: Text(labelBuilder(index))));
+          controller: controller,
+          itemExtent: 44,
+          perspective: 0.006,
+          diameterRatio: 1.4,
+          physics: const FastFixedExtentScrollPhysics(),
+          onSelectedItemChanged: (index) {
+            int actualIndex = index % count;
+            if (actualIndex < 0) actualIndex += count;
+            onChanged(actualIndex);
+          },
+          childDelegate: ListWheelChildBuilderDelegate(builder: (context, index) {
+            int actualIndex = index % count;
+            if (actualIndex < 0) actualIndex += count;
+            int currentSelected = 0;
+            if (controller.hasClients) {
+              try {
+                currentSelected = controller.selectedItem;
+              } catch (_) {}
+            }
+            int currentSelectedActual = currentSelected % count;
+            if (currentSelectedActual < 0) currentSelectedActual += count;
+            final isSelected = currentSelectedActual == actualIndex;
+            return Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 200), style: GoogleFonts.plusJakartaSans(fontSize: isSelected ? 22 : 16, fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500, color: isSelected ? widget.accent : widget.subTitleColor.withValues(alpha: 0.4)), child: Text(labelBuilder(actualIndex))));
           }),
         ),
       ],
@@ -379,8 +408,8 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
   Widget _amPmChip(String label, bool active, bool isDark) {
     return GestureDetector(
       onTap: () { if (!active) setState(() => _isAM = label == 'AM'); },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic, width: 60, height: 48,
+      child: Container(
+        width: 60, height: 48,
         decoration: BoxDecoration(
           gradient: active ? LinearGradient(colors: [widget.accent, widget.accent.withBlue(255)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
           color: active ? null : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),

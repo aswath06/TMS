@@ -49,13 +49,15 @@ class MainScreenState extends State<MainScreen> {
   late PageController _pageController;
   StreamSubscription<ServiceStatus>? _locationSubscription;
   bool _isGpsDialogOpen = false;
+  List<Widget>? _cachedScreens;
+
+  List<Widget> get _screens {
+    _cachedScreens ??= _getScreens();
+    return _cachedScreens!;
+  }
 
   void setIndex(int index) {
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOutQuart,
-    );
+    _pageController.jumpToPage(index);
   }
 
 
@@ -232,12 +234,8 @@ class MainScreenState extends State<MainScreen> {
     return NotificationListener<ChangeTabNotification>(
       onNotification: (notification) {
         int targetIndex = notification.index;
-        if (targetIndex == -1) targetIndex = _getScreens().length - 1;
-        _pageController.animateToPage(
-          targetIndex,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOutQuart,
-        );
+        if (targetIndex == -1) targetIndex = _screens.length - 1;
+        _pageController.jumpToPage(targetIndex);
         return true;
       },
       child: Scaffold(
@@ -250,7 +248,7 @@ class MainScreenState extends State<MainScreen> {
             controller: _pageController,
             onPageChanged: _onPageChanged,
             physics: const NeverScrollableScrollPhysics(),
-            children: _getScreens(),
+            children: _screens,
           ),
           Align(
             alignment: Alignment.bottomCenter,
@@ -258,11 +256,7 @@ class MainScreenState extends State<MainScreen> {
               currentIndex: _currentIndex,
               userRole: widget.userRole,
               onTap: (index) {
-                _pageController.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOutQuart,
-                );
+                _pageController.jumpToPage(index);
               },
             ),
           ),

@@ -30,6 +30,7 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
   String _selectedFilter = 'ALL';
   String _selectedDateFilter = 'ALL';
   final List<DateTime> _scrollDates = [];
+  bool _isTransitionFinished = false;
 
   final int _infiniteScrollMiddle = 100000;
   late ScrollController _dateScrollController;
@@ -43,6 +44,15 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _isTransitionFinished = true;
+          });
+        }
+      });
+    });
     
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final store = ref.read(requestStoreProvider);
@@ -144,6 +154,15 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
         ? const Color(0xFF0F172A)
         : const Color(0xFFF8FAFC);
 
+    if (!_isTransitionFinished) {
+      return Scaffold(
+        backgroundColor: bgColor,
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final store = ref.watch(requestStoreProvider);
     
     final missions = store.requests.where((req) {
@@ -209,10 +228,29 @@ class _RequestListPageState extends ConsumerState<RequestListPage> with SingleTi
                         children: [
                           IconButton(
                             onPressed: () async {
+                              // Allow tap ripple animation to complete smoothly
+                              await Future.delayed(const Duration(milliseconds: 100));
+                              if (!context.mounted) return;
+                              
                               final refresh = await Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const NewRequestScreen(),
+                                PageRouteBuilder(
+                                  pageBuilder: (context, animation, secondaryAnimation) => const NewRequestScreen(),
+                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                    return SlideTransition(
+                                      position: animation.drive(
+                                        Tween<Offset>(
+                                          begin: const Offset(0.0, 0.08),
+                                          end: Offset.zero,
+                                        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+                                      ),
+                                      child: FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  transitionDuration: const Duration(milliseconds: 250),
                                 ),
                               );
                               if (refresh == true) {

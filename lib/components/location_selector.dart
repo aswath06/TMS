@@ -274,70 +274,75 @@ class _LocationSelectorState extends State<LocationSelector> {
                     width: 1.5,
                   ),
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                leading: ReorderableDragStartListener(
-                  index: i,
-                  child: Icon(
-                    isFirst ? Icons.trip_origin : (isLast ? Icons.location_on : Icons.circle),
-                    size: 18,
-                    color: isFirst ? Colors.green : (isLast ? Colors.red : Colors.grey),
-                  ),
-                ),
-                title: GestureDetector(
-                  onTap: () => _openLocationPicker(i),
-                  child: Container(
-                    color: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: hasValue
-                        ? Text(
-                            _stops[i].controller.text,
-                            style: TextStyle(
-                              color: widget.titleColor,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : Text(
-                            hint,
-                            style: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.black38,
-                              fontSize: 13,
-                            ),
-                          ),
-                  ),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (hasValue)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _stops[i].controller.clear();
-                            _stops[i].lat = null;
-                            _stops[i].lon = null;
-                          });
-                          _calculateRoute();
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(Icons.close_rounded, size: 16, color: Colors.grey.shade400),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: Icon(
+                          isFirst ? Icons.trip_origin : (isLast ? Icons.location_on : Icons.circle),
+                          size: 18,
+                          color: isFirst ? Colors.green : (isLast ? Colors.red : Colors.grey),
                         ),
                       ),
-                    if (_stops.length > 2)
-                      IconButton(
-                        icon: const Icon(Icons.do_disturb_on_outlined, size: 20, color: Colors.redAccent),
-                        onPressed: () => setState(() {
-                          _stops.removeAt(i);
-                          _calculateRoute();
-                        }),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _openLocationPicker(i),
+                          child: Container(
+                            color: Colors.transparent,
+                            child: hasValue
+                                ? Text(
+                                    _stops[i].controller.text,
+                                    style: TextStyle(
+                                      color: widget.titleColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : Text(
+                                    hint,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white38 : Colors.black38,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                          ),
+                        ),
                       ),
-                  ],
+                      if (hasValue) ...[
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _stops[i].controller.clear();
+                              _stops[i].lat = null;
+                              _stops[i].lon = null;
+                            });
+                            _calculateRoute();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.close_rounded, size: 16, color: Colors.grey.shade400),
+                          ),
+                        ),
+                      ],
+                      if (_stops.length > 2) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => setState(() {
+                            _stops.removeAt(i);
+                            _calculateRoute();
+                          }),
+                          child: const Icon(Icons.do_disturb_on_outlined, size: 20, color: Colors.redAccent),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
               ),
             );
           },

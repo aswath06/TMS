@@ -89,6 +89,34 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     super.dispose();
   }
 
+  Future<void> _smoothNavigate(Widget page) async {
+    // Allow tap ripple animation to complete smoothly
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+    
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: animation.drive(
+              Tween<Offset>(
+                begin: const Offset(0.0, 0.08),
+                end: Offset.zero,
+              ).chain(CurveTween(curve: Curves.easeOutCubic)),
+            ),
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -104,9 +132,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'description': "Track and manage transport routes in real-time.",
           'icon': Icons.explore_rounded,
           'color': primaryBlue,
-          'onTap': () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const RequestListPage()));
-          },
+          'onTap': () => _smoothNavigate(const RequestListPage()),
         },
         {
           'id': 'routines',
@@ -114,9 +140,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'description': "Monitor campus bus daily schedules and details.",
           'icon': Icons.directions_bus_rounded,
           'color': const Color(0xFF3B82F6),
-          'onTap': () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const DailyRoutinesListPage()));
-          },
+          'onTap': () => _smoothNavigate(const DailyRoutinesListPage()),
         },
         {
           'id': 'fuels',
@@ -124,9 +148,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'description': "Review fuel requests and vehicle consumption history.",
           'icon': Icons.local_gas_station_rounded,
           'color': const Color(0xFFF59E0B),
-          'onTap': () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelPage()));
-          },
+          'onTap': () => _smoothNavigate(const FuelPage()),
         },
         {
           'id': 'allowance',
@@ -134,9 +156,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'description': "Approve driver allowances (DA/TA) for completed trips.",
           'icon': Icons.payments_rounded,
           'color': const Color(0xFF10B981),
-          'onTap': () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminAllowanceScreen()));
-          },
+          'onTap': () => _smoothNavigate(const AdminAllowanceScreen()),
         },
       ];
     }
@@ -864,12 +884,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   Widget _buildRoutineStats(bool isDark, Color primaryBlue) {
     final attendanceStore = ref.watch(attendanceDashboardStoreProvider);
     
-    if (attendanceStore.isLoading) {
-      return const Center(child: Padding(
-        padding: EdgeInsets.all(20.0),
-        child: CircularProgressIndicator(),
-      ));
-    }
+    // Full-screen loader removed to prevent layout thrashing and transition stutter
 
     if (attendanceStore.error.isNotEmpty) {
       return Center(child: Padding(
@@ -891,7 +906,13 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
     }
 
     if (overallStats == null || attendanceStore.vehicleStats == null || attendanceStore.vehicleStats!.isEmpty) {
-       return const Center(child: Padding(
+      if (attendanceStore.isLoading) {
+        return const Center(child: Padding(
+          padding: EdgeInsets.all(40.0),
+          child: CircularProgressIndicator(),
+        ));
+      }
+      return const Center(child: Padding(
         padding: EdgeInsets.all(20.0),
         child: Text("No attendance data available"),
       ));
@@ -945,12 +966,27 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
 
     final int activeIdx = _activeVehicleFilter == 'Student' ? 1 : (_activeVehicleFilter == 'Faculty' ? 2 : 0);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Role Filter Toggle
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: attendanceStore.isLoading ? 0.6 : 1.0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (attendanceStore.isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryBlue),
+                ),
+              ),
+            ),
+          // Role Filter Toggle
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
           child: Center(
             child: Container(
               padding: const EdgeInsets.all(4), // outer padding
@@ -1170,8 +1206,9 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSessionSummaryCard(String title, String value, IconData icon, Color color, bool isDark) {
     final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
