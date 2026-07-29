@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tripzo/store/user_store.dart';
@@ -194,81 +195,229 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateSB) {
-            return AlertDialog(
-              title: const Text("Send Quick Message"),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: subjectController,
-                      decoration: const InputDecoration(
-                        hintText: "Subject",
-                        border: OutlineInputBorder(),
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+                          : Colors.white.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF818CF8).withValues(alpha: 0.15),
+                          blurRadius: 30,
+                          spreadRadius: -5,
+                        )
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF818CF8).withValues(alpha: 0.5),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF818CF8), Color(0xFF6366F1)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2),
+                                ),
+                                child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 30),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            "Quick Broadcast",
+                            style: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "Send an urgent message to everyone in the group.",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.black.withValues(alpha: 0.2)
+                                  : Colors.white.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF818CF8).withValues(alpha: 0.3)),
+                            ),
+                            child: TextField(
+                              controller: subjectController,
+                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                              decoration: const InputDecoration(
+                                hintText: "Subject",
+                                hintStyle: TextStyle(color: Colors.grey),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(16),
+                                prefixIcon: Icon(Icons.title_rounded, color: Color(0xFF818CF8)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.black.withValues(alpha: 0.2)
+                                  : Colors.white.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF818CF8).withValues(alpha: 0.3)),
+                            ),
+                            child: TextField(
+                              controller: msgController,
+                              style: GoogleFonts.plusJakartaSans(),
+                              decoration: const InputDecoration(
+                                hintText: "Type your message here...",
+                                hintStyle: TextStyle(color: Colors.grey),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                              maxLines: 4,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text("Cancel", style: GoogleFonts.plusJakartaSans(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 16)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF818CF8), Color(0xFF6366F1)],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF818CF8).withValues(alpha: 0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    onPressed: () async {
+                                      // existing logic
+                                      if (subjectController.text.trim().isEmpty || msgController.text.trim().isEmpty) return;
+                                      
+                                      final prefs = await SharedPreferences.getInstance();
+                                      final quickData = {
+                                        "id": DateTime.now().millisecondsSinceEpoch.toString(),
+                                        "subject": subjectController.text.trim(),
+                                        "message": msgController.text.trim(),
+                                        "sender": UserStore.role ?? "Admin",
+                                        "timestamp": DateTime.now().toIso8601String(),
+                                        "targets": ["All Members"],
+                                        "groupName": widget.name,
+                                        "groupAvatar": widget.avatarUrl,
+                                      };
+                                      
+                                      await prefs.setString('quick_message', json.encode(quickData));
+                                      
+                                      setState(() {
+                                        _messages.add({
+                                          "text": "[Quick Message] ${subjectController.text.trim()}\n${msgController.text.trim()}\nTo: All Members",
+                                          "isMe": true,
+                                          "time": _getCurrentTime(),
+                                          "timestamp": DateTime.now().toIso8601String(),
+                                          "status": "sent",
+                                        });
+                                      });
+                                      _saveMessages();
+                                      _scrollToBottom();
+                                      
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Quick Message Sent!"),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text("Send Now", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: msgController,
-                      decoration: const InputDecoration(
-                        hintText: "Enter your message...",
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF818CF8)),
-                  onPressed: () async {
-                    if (subjectController.text.trim().isEmpty || msgController.text.trim().isEmpty) return;
-                    
-                    final prefs = await SharedPreferences.getInstance();
-                    final quickData = {
-                      "id": DateTime.now().millisecondsSinceEpoch.toString(),
-                      "subject": subjectController.text.trim(),
-                      "message": msgController.text.trim(),
-                      "sender": UserStore.role ?? "Admin",
-                      "timestamp": DateTime.now().toIso8601String(),
-                      "targets": ["All Members"],
-                      "groupName": widget.name,
-                      "groupAvatar": widget.avatarUrl,
-                    };
-                    
-                    await prefs.setString('quick_message', json.encode(quickData));
-                    
-                    setState(() {
-                      _messages.add({
-                        "text": "[Quick Message] ${subjectController.text.trim()}\n${msgController.text.trim()}\nTo: All Members",
-                        "isMe": true,
-                        "time": _getCurrentTime(),
-                        "timestamp": DateTime.now().toIso8601String(),
-                        "status": "sent",
-                      });
-                    });
-                    _saveMessages();
-                    _scrollToBottom();
-                    
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Quick Message Sent!"),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text("Send", style: TextStyle(color: Colors.white)),
-                ),
-              ],
             );
           }
         );
