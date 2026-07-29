@@ -27,6 +27,8 @@ class ChatDetailScreen extends StatefulWidget {
   final bool isGroup;
   final Map<String, bool>? permissions;
 
+  static String? activeChatName;
+
   const ChatDetailScreen({
     super.key,
     required this.name,
@@ -96,6 +98,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    ChatDetailScreen.activeChatName = widget.name;
     _currentAvatarUrl = widget.avatarUrl;
     _loadSavedMessages();
     _timeUpdateTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -105,6 +108,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    if (ChatDetailScreen.activeChatName == widget.name) {
+      ChatDetailScreen.activeChatName = null;
+    }
     _inlineYoutubeController?.close();
     _timeUpdateTimer?.cancel();
     _messageController.dispose();

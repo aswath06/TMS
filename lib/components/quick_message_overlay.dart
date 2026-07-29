@@ -115,6 +115,9 @@ class _QuickMessageOverlayState extends State<QuickMessageOverlay> {
     final groupAvatar = _quickData!['groupAvatar'] ?? "";
     
     _acknowledgeMessage().then((_) {
+      if (ChatDetailScreen.activeChatName == groupName) {
+        return; // User is already in this chat
+      }
       AppRoutes.navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => ChatDetailScreen(
