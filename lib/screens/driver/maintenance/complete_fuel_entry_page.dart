@@ -206,6 +206,10 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final isTamil = LanguageStore.isTamil;
 
+    String rawFluidType = widget.entry['fluid_type']?.toString() ?? "";
+    String vFuelType = widget.entry['vehicle']?['fuel_type']?.toString() ?? "DIESEL";
+    final fluidType = rawFluidType == "AD_BLUE" ? "AdBlue" : vFuelType;
+
     final double nowMileage = (mileageData['now_mileage'] ?? 0).toDouble();
     final double lastMileage = (mileageData['last_mileage'] ?? 0).toDouble();
     final String status = mileageData['status'] ?? "N/A";
@@ -256,7 +260,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  isTamil ? "மைலேஜ் தரவு" : "Mileage Report",
+                  isTamil ? "$fluidType மைலேஜ் தரவு" : "$fluidType Mileage Report",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -393,6 +397,10 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     final instanceId = widget.entry['instance_id'] ?? "N/A";
     final bunkName = widget.entry['bunk']?['name'] ?? "N/A";
     final requiredLiter = widget.entry['required_volume']?.toString() ?? "N/A";
+    
+    String rawFluidType = widget.entry['fluid_type']?.toString() ?? "";
+    String vFuelType = widget.entry['vehicle']?['fuel_type']?.toString() ?? "DIESEL";
+    final fluidType = rawFluidType == "AD_BLUE" ? "AdBlue" : vFuelType;
 
     return Scaffold(
       backgroundColor: bg,
@@ -416,7 +424,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                           _buildHeader(context, titleColor, primary, isTamil),
                           const SizedBox(height: 32),
                         // Premium Info Section
-                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, requiredLiter, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == true),
+                        _buildInfoSection(isTamil, surface, titleColor, subColor, vehicleNumber, driverName, bunkName, instanceId, requiredLiter, isDark, widget.entry['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == true, fluidType),
                         const SizedBox(height: 32),
                         
                         // Input Section Title
@@ -512,7 +520,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
     );
   }
 
-  Widget _buildInfoSection(bool isTamil, Color surface, Color titleColor, Color subColor, String vehicle, String driver, String bunk, String instance, String requiredLiter, bool isDark, bool isBitOwner) {
+  Widget _buildInfoSection(bool isTamil, Color surface, Color titleColor, Color subColor, String vehicle, String driver, String bunk, String instance, String requiredLiter, bool isDark, bool isBitOwner, String fluidType) {
     return Container(
       decoration: BoxDecoration(
         color: surface,
@@ -551,6 +559,7 @@ class _CompleteFuelEntryPageState extends State<CompleteFuelEntryPage> with Sing
                 if (!isBitOwner)
                   _buildInfoRow(isTamil ? "பங்க் பெயர்" : "Bunk Name", bunk, titleColor, subColor, Icons.local_gas_station_rounded),
                 _buildInfoRow(isTamil ? "நிகழ்வு ஐடி" : "Instance ID", instance, titleColor, subColor, Icons.tag_rounded),
+                _buildInfoRow(isTamil ? "எரிபொருள் வகை" : "Fluid Type", fluidType, titleColor, subColor, Icons.water_drop_rounded),
                 _buildInfoRow(isTamil ? "தேவையான லிட்டர்" : "Required Max Liter", "$requiredLiter L", titleColor, subColor, Icons.opacity_rounded, isLast: true),
               ],
             ),

@@ -43,6 +43,14 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   bool _isSubmitting = false;
   String? _userRole;
 
+  final List<Map<String, dynamic>> _fuelTypes = [
+    {'id': 1, 'name': 'DIESEL'},
+    {'id': 2, 'name': 'PETROL'},
+    {'id': 3, 'name': 'CNG'},
+    {'id': 4, 'name': 'AD_BLUE'},
+  ];
+  Map<String, dynamic>? _selectedFluidType;
+
   @override
   void initState() {
     super.initState();
@@ -283,6 +291,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     required Function(dynamic) onSelect,
     required bool isVehicle,
     required bool isDriver,
+    bool isFuelType = false,
   }) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color p = const Color(0xFF6366F1);
@@ -311,6 +320,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 final dPhone = (item['phone'] ?? "").toString().toLowerCase();
                 return dName.contains(searchQuery.toLowerCase()) || 
                        dPhone.contains(searchQuery.toLowerCase());
+              } else if (isFuelType) {
+                final fName = (item['name'] ?? "").toString().toLowerCase();
+                return fName.contains(searchQuery.toLowerCase());
               } else {
                 final bName = (item['name'] ?? "").toString().toLowerCase();
                 final bOwner = (item['owner_name'] ?? "").toString().toLowerCase();
@@ -442,12 +454,12 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                                   ? item['vehicle_number'] 
                                   : (isDriver 
                                       ? item['name'] 
-                                      : (item['owner_name']?.toString().toUpperCase().startsWith('BIT') == true ? item['owner_name'] : item['name']));
+                                      : item['name']);
                               String subText = isVehicle 
                                   ? "${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
                                   : (isDriver 
                                       ? "${item['employee_code'] ?? 'N/A'} • ${(item['status'] ?? 'UNKNOWN').toString().replaceAll('_', ' ')} • 📞 ${item['phone'] ?? 'No Contact'}" 
-                                      : "Owner: ${item['owner_name'] ?? 'Unknown'}${_getBunkPriceString(item)}");
+                                      : (isFuelType ? "Fluid Type" : "${_getBunkPriceString(item)}"));
                               
                               return GestureDetector(
                                 onTap: () {
@@ -660,6 +672,11 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   onSelect: (v) {
                     setState(() {
                       _selectedVehicle = v;
+                      final vFuelType = (v['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
+                      _selectedFluidType = _fuelTypes.firstWhere(
+                        (f) => f['name'] == vFuelType,
+                        orElse: () => _fuelTypes.first,
+                      );
                       if (_userRole != 'driver') {
                         if (v['default_driver'] != null) {
                           try {
@@ -718,9 +735,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
             _buildSelectTile(
               "Fuel Bunk Name",
               _selectedBunk != null 
-                  ? (_isBITBunk ? _selectedBunk!['owner_name'] : _selectedBunk!['name']) 
+                  ? _selectedBunk!['name'] 
                   : "Choose Fuel Bunk",
-              _selectedBunk != null ? "Owner: ${_selectedBunk?['owner_name']}" : null,
+              null,
               Icons.store_rounded,
               _selectedBunk != null,
               () {
@@ -742,7 +759,29 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               surfaceColor, titleColor, isDark, primaryBlue,
               isRequired: true,
             ),
-            const SizedBox(height: 24),
+            if (_selectedBunk != null && !_isBITBunk) ...[
+              const SizedBox(height: 12),
+              _buildSelectTile(
+                "Fluid Type",
+                _selectedFluidType != null ? _selectedFluidType!['name'] : "Choose Fluid Type",
+                null,
+                Icons.local_gas_station_rounded,
+                _selectedFluidType != null,
+                () {
+                  _showSelectionSheet(
+                    title: "Select Fluid Type",
+                    items: _fuelTypes,
+                    selected: _selectedFluidType,
+                    onSelect: (f) => setState(() => _selectedFluidType = f),
+                    isVehicle: false,
+                    isDriver: false,
+                    isFuelType: true,
+                  );
+                },
+                surfaceColor, titleColor, isDark, primaryBlue,
+                isRequired: true,
+              ),
+            ],
             const SizedBox(height: 24),
             Row(
               children: [
@@ -1290,6 +1329,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       if (!_isBITBunk) {
         request.fields['current_odometer'] = _odometerController.text;
         request.fields['filled_volume'] = _volumeController.text; // Sending same as required_volume
+        if (_selectedFluidType != null) {
+          request.fields['fluid_type'] = _selectedFluidType!['name'];
+        }
         request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
       }
 

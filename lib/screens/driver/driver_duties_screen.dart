@@ -1053,7 +1053,19 @@ final store = ref.watch(driverStoreProvider);
     final driverName = entry['driver']?['user']?['name'] ?? "N/A";
     final instanceId = entry['instance_id'] ?? "N/A";
     final bunkName = entry['bunk']?['name'] ?? "N/A";
-    final fuelType = entry['vehicle']?['fuel_type'] ?? "N/A";
+    
+    String rawFluidType = entry['fluid_type']?.toString() ?? "";
+    String vFuelType = entry['vehicle']?['fuel_type']?.toString() ?? "DIESEL";
+    final fuelType = rawFluidType == "AD_BLUE" ? "AdBlue" : vFuelType;
+
+    Color themeColor = Colors.orange;
+    if (fuelType.toUpperCase() == "ADBLUE" || fuelType.toUpperCase() == "AD_BLUE") {
+      themeColor = Colors.blue;
+    } else if (fuelType.toUpperCase() == "PETROL") {
+      themeColor = Colors.green;
+    } else if (fuelType.toUpperCase() == "CNG") {
+      themeColor = Colors.teal;
+    }
 
     return GestureDetector(
       onTap: () {
@@ -1074,10 +1086,10 @@ final store = ref.watch(driverStoreProvider);
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1.5),
+          border: Border.all(color: themeColor.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.orange.withValues(alpha: isDark ? 0.1 : 0.05),
+              color: themeColor.withValues(alpha: isDark ? 0.1 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1091,10 +1103,10 @@ final store = ref.watch(driverStoreProvider);
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: themeColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.local_gas_station_rounded, color: Colors.orange, size: 20),
+                  child: Icon(Icons.local_gas_station_rounded, color: themeColor, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1115,12 +1127,12 @@ final store = ref.watch(driverStoreProvider);
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: themeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     isTamil ? "நிலுவையில்" : "PENDING",
-                    style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                    style: TextStyle(color: themeColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                   ),
                 ),
               ],
