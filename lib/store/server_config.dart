@@ -7,7 +7,7 @@ class ServerConfig extends ChangeNotifier {
   static const String _keyIsProduction = 'server_is_production';
 
   static const String productionUrl = "https://18x50gz9-8055.inc1.devtunnels.ms";
-  static const String devTunnelUrl = "https://18x50gz9-8055.inc1.devtunnels.ms";
+  static const String devTunnelUrl = "https://2s01cq2n-8055.inc1.devtunnels.ms";
 
   // Singleton131432
   static final ServerConfig _instance = ServerConfig._internal();

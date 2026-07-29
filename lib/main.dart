@@ -20,6 +20,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:tripzo/services/notification_firebase_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/app_lifecycle_provider.dart';
+import 'package:tripzo/components/quick_message_overlay.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -132,7 +133,7 @@ class MyApp extends ConsumerWidget {
       child: MaterialApp(
         navigatorKey: AppRoutes.navigatorKey,
         debugShowCheckedModeBanner: false,
-        builder: (context, child) => CustomScaffoldMessenger(child: child!),
+        builder: (context, child) => CustomScaffoldMessenger(child: QuickMessageOverlay(child: child!)),
         title: 'TripZo',
         themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
         theme: ThemeData(

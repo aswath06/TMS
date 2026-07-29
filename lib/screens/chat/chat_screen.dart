@@ -1,6 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tripzo/store/user_store.dart';
 import 'chat_detail_screen.dart';
+import 'create_group_screens.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -14,6 +19,159 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<String> _filters = ['All', 'Unread', 'Groups'];
   bool _isSearching = false;
   String _searchQuery = '';
+  final List<Map<String, dynamic>> _chats = [
+    {
+      'name': 'Transport Admin',
+      'message': 'Please ensure the bus leaves at 8:00 AM.',
+      'time': '10:30 AM',
+      'unread': 2,
+      'avatar': '',
+    },
+    {
+      'name': 'Security Team',
+      'message': 'All vehicles checked for today.',
+      'time': '09:15 AM',
+      'unread': 0,
+      'avatar': '',
+      'isGroup': true,
+    },
+    {
+      'name': 'Driver John',
+      'message': 'Route 5 has heavy traffic.',
+      'time': 'Yesterday',
+      'unread': 1,
+      'avatar': '',
+    },
+    {
+      'name': 'Support Hub',
+      'message': 'How can we help you? I need assistance with my account.',
+      'time': 'Yesterday',
+      'unread': 0,
+      'avatar': '',
+    },
+    {
+      'name': 'Maintenance',
+      'message': 'Bus #42 is ready for pickup in the garage.',
+      'time': 'Monday',
+      'unread': 0,
+      'avatar': '',
+    },
+    {
+      'name': 'HR Department',
+      'message': 'Please submit your timesheet by Friday.',
+      'time': 'Last Week',
+      'unread': 0,
+      'avatar': '',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChats();
+  }
+
+  Future<void> _loadChats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonStr = prefs.getString('chat_list_state');
+      if (jsonStr != null) {
+        final List<dynamic> decoded = json.decode(jsonStr);
+        setState(() {
+          _chats.clear();
+          for (var c in decoded) {
+            var map = Map<String, dynamic>.from(c);
+            if (map['avatar'] != null && map['avatar'].toString().contains('pravatar.cc')) {
+              map['avatar'] = '';
+            }
+            _chats.add(map);
+          }
+        });
+      } else {
+        _loadCustomAvatars();
+      }
+    } catch (e) {
+      debugPrint("Error loading chats: $e");
+    }
+  }
+
+  Future<void> _saveChats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String jsonStr = json.encode(_chats);
+      await prefs.setString('chat_list_state', jsonStr);
+    } catch (e) {
+      debugPrint("Error saving chats: $e");
+    }
+  }
+
+  Future<void> _loadCustomAvatars() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        for (var chat in _chats) {
+          final savedAvatar = prefs.getString('group_avatar_${chat['name']}');
+          if (savedAvatar != null) {
+            chat['avatar'] = savedAvatar;
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint("Error loading group avatars: $e");
+    }
+  }
+
+  Future<void> _saveGroupAvatar(String groupName, String avatarPath) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('group_avatar_$groupName', avatarPath);
+    } catch (e) {
+      debugPrint("Error saving group avatar: $e");
+    }
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return "";
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    } else if (parts[0].length >= 2) {
+      return parts[0].substring(0, 2).toUpperCase();
+    } else {
+      return parts[0][0].toUpperCase();
+    }
+  }
+
+  Widget _buildInitialsAvatar({
+    required String name,
+    required double radius,
+  }) {
+    final initials = _getInitials(name);
+    const Color brandColor = Color(0xFF818CF8);
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [brandColor, brandColor.withValues(alpha: 0.75)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initials,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: radius * 0.7,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,54 +180,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color primaryBlue = const Color(0xFF818CF8);
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
-    // Dummy chat data
-    final List<Map<String, dynamic>> chats = [
-      {
-        'name': 'Transport Admin',
-        'message': 'Please ensure the bus leaves at 8:00 AM.',
-        'time': '10:30 AM',
-        'unread': 2,
-        'avatar': 'https://i.pravatar.cc/150?img=11',
-      },
-      {
-        'name': 'Security Team',
-        'message': 'All vehicles checked for today.',
-        'time': '09:15 AM',
-        'unread': 0,
-        'avatar': 'https://i.pravatar.cc/150?img=12',
-      },
-      {
-        'name': 'Driver John',
-        'message': 'Route 5 has heavy traffic.',
-        'time': 'Yesterday',
-        'unread': 1,
-        'avatar': 'https://i.pravatar.cc/150?img=13',
-      },
-      {
-        'name': 'Support Hub',
-        'message': 'How can we help you? I need assistance with my account.',
-        'time': 'Yesterday',
-        'unread': 0,
-        'avatar': 'https://i.pravatar.cc/150?img=14',
-      },
-      {
-        'name': 'Maintenance',
-        'message': 'Bus #42 is ready for pickup in the garage.',
-        'time': 'Monday',
-        'unread': 0,
-        'avatar': 'https://i.pravatar.cc/150?img=15',
-      },
-      {
-        'name': 'HR Department',
-        'message': 'Please submit your timesheet by Friday.',
-        'time': 'Last Week',
-        'unread': 0,
-        'avatar': 'https://i.pravatar.cc/150?img=9',
-      },
-    ];
+    final String? role = UserStore.role?.toLowerCase();
+    final bool canCreateGroup = role == 'super admin' || role == 'transport admin';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -194,7 +309,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                "3 New Messages",
+                                "${_chats.fold<int>(0, (sum, c) => sum + (c['unread'] as int? ?? 0))} New Messages",
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: primaryBlue,
@@ -267,7 +382,17 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              _filters[index],
+                              index == 1
+                                  ? (() {
+                                      final count = _chats.where((c) => (c['unread'] as int? ?? 0) > 0).length;
+                                      return count > 0 ? "Unread ($count)" : "Unread";
+                                    })()
+                                  : index == 2
+                                      ? (() {
+                                          final count = _chats.where((c) => c['isGroup'] == true && (c['unread'] as int? ?? 0) > 0).length;
+                                          return count > 0 ? "Groups ($count)" : "Groups";
+                                        })()
+                                      : _filters[index],
                               style: TextStyle(
                                 color: isSelected ? Colors.white : subColor,
                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -283,11 +408,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(height: 16),
                 Builder(
                   builder: (context) {
-                    List<Map<String, dynamic>> filteredChats = chats;
+                    List<Map<String, dynamic>> filteredChats = _chats;
                     if (_selectedFilterIndex == 1) {
                       filteredChats = filteredChats.where((c) => (c['unread'] as int) > 0).toList();
                     } else if (_selectedFilterIndex == 2) {
-                      filteredChats = filteredChats.where((c) => c['name'] == 'Security Team').toList();
+                      filteredChats = filteredChats.where((c) => c['isGroup'] == true).toList();
                     }
                     
                     if (_searchQuery.isNotEmpty) {
@@ -336,17 +461,45 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(20),
-                            onTap: () {
+                            onTap: () async {
                               HapticFeedback.selectionClick();
-                              Navigator.push(
+                              setState(() {
+                                chat['unread'] = 0;
+                              });
+                              _saveChats();
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ChatDetailScreen(
                                     name: chat['name'],
                                     avatarUrl: chat['avatar'],
+                                    isGroup: chat['isGroup'] ?? false,
+                                    permissions: chat['permissions'],
                                   ),
                                 ),
                               );
+                              if (result == "delete") {
+                                setState(() {
+                                  _chats.removeWhere((c) => c['name'] == chat['name']);
+                                });
+                                _saveChats();
+                              } else if (result != null && result is Map<String, dynamic>) {
+                                setState(() {
+                                  if (result.containsKey("avatar")) {
+                                    chat['avatar'] = result['avatar'];
+                                  }
+                                  if (result.containsKey("lastMessage")) {
+                                    chat['message'] = result['lastMessage'];
+                                  }
+                                  if (result.containsKey("lastTime")) {
+                                    chat['time'] = result['lastTime'];
+                                  }
+                                });
+                                _saveChats();
+                                if (result.containsKey("avatar")) {
+                                  _saveGroupAvatar(chat['name'], result['avatar']);
+                                }
+                              }
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
@@ -365,15 +518,19 @@ class _ChatScreenState extends State<ChatScreen> {
                                             )
                                           : null,
                                     ),
-                                    child: CircleAvatar(
-                                      radius: 26,
-                                      backgroundColor: surfaceColor,
-                                      child: CircleAvatar(
-                                        radius: 24,
-                                        backgroundImage: NetworkImage(chat['avatar']),
-                                        backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                                      ),
-                                    ),
+                                    child: (chat['avatar'] == null || chat['avatar'].toString().isEmpty)
+                                        ? _buildInitialsAvatar(name: chat['name'], radius: 26)
+                                        : CircleAvatar(
+                                            radius: 26,
+                                            backgroundColor: surfaceColor,
+                                            child: CircleAvatar(
+                                              radius: 24,
+                                              backgroundImage: chat['avatar'].startsWith('http')
+                                                  ? NetworkImage(chat['avatar'])
+                                                  : FileImage(File(chat['avatar'])) as ImageProvider,
+                                              backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(width: 16),
                                   
@@ -458,32 +615,46 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 95.0, right: 10.0), // Above bottom nav
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: primaryBlue.withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 6),
+      floatingActionButton: canCreateGroup
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 95.0, right: 10.0), // Above bottom nav
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryBlue.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: FloatingActionButton(
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    final newGroup = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SelectMembersScreen(),
+                      ),
+                    );
+                    if (newGroup != null && newGroup is Map<String, dynamic>) {
+                      setState(() {
+                        _chats.insert(0, newGroup);
+                      });
+                      _saveChats();
+                    }
+                  },
+                  backgroundColor: primaryBlue,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.edit_rounded, color: Colors.white, size: 26),
+                ),
               ),
-            ],
-          ),
-          child: FloatingActionButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-            },
-            backgroundColor: primaryBlue,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.edit_square, color: Colors.white, size: 26),
-          ),
-        ),
-      ),
+            )
+          : null,
     );
   }
 }
