@@ -6,7 +6,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/accident_page.dart';
-import 'package:tripzo/screens/admin/fuel/create_fuel_request_page.dart';
+import 'package:tripzo/screens/driver/maintenance/fuel_options_page.dart';
 import 'package:tripzo/screens/driver/reward_points_history_screen.dart';
 import 'package:tripzo/screens/driver/driver_allowance_screen.dart';
 import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart';
@@ -459,29 +459,39 @@ final store = ref.watch(driverStoreProvider);
             ),
             const SizedBox(height: 18),
             if (animatedValue != null)
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: animatedValue),
-                duration: const Duration(seconds: 2),
-                curve: Curves.easeOutExpo,
-                builder: (context, val, child) {
-                  return Text(
-                    val.toInt().toString().padLeft(2, '0'),
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      letterSpacing: -0.5,
-                    ),
-                  );
-                },
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: animatedValue),
+                  duration: const Duration(seconds: 2),
+                  curve: Curves.easeOutExpo,
+                  builder: (context, val, child) {
+                    return Text(
+                      val.toInt().toString().padLeft(2, '0'),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        letterSpacing: -0.5,
+                      ),
+                      maxLines: 1,
+                    );
+                  },
+                ),
               )
             else
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                  maxLines: 1,
                 ),
               ),
             const SizedBox(height: 4),
@@ -932,7 +942,7 @@ final store = ref.watch(driverStoreProvider);
                 color: const Color(0xFFF59E0B),
                 isDark: isDark,
                 surface: surface,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateFuelRequestPage())),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FuelOptionsPage())),
               ),
             ),
             const SizedBox(width: 16),

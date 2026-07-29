@@ -541,7 +541,7 @@ class _StudentApplyLeavePageState extends State<StudentApplyLeavePage> {
               ),
               const SizedBox(height: 4),
               Text(
-                isTamil ? "போக்குவரத்து இருப்பு" : "Transport Availability",
+                isTamil ? "போக்குவரத்து விடுப்பு" : "Leave for Transport",
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,

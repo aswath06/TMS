@@ -86,7 +86,7 @@ final store = ref.watch(driverStoreProvider);
                           widget.userRole == 'driver' 
                               ? (isTamil ? "வருகை போர்ட்டல்" : "Attendance Portal")
                               : widget.userRole == 'student'
-                                  ? (isTamil ? "போக்குவரத்து இருப்பு" : "Transport Availability")
+                                  ? (isTamil ? "போக்குவரத்து விடுப்பு" : "Leave for Transport")
                                   : (isTamil ? "விடுப்பு போர்ட்டல்" : "Leave Portal"),
                           titleColor,
                           screenWidth,
@@ -591,7 +591,7 @@ final store = ref.watch(driverStoreProvider);
                   Flexible(
                     child: Text(
                       widget.userRole == 'student'
-                          ? (isTamil ? "போக்குவரத்து இருப்பை மாற்று" : "UPDATE TRANSPORT AVAILABILITY")
+                          ? (isTamil ? "போக்குவரத்து விடுப்பு" : "LEAVE FOR TRANSPORT")
                           : (isTamil ? "விடுப்பு விண்ணப்பிக்க" : "APPLY NEW LEAVE"),
                       style: const TextStyle(
                         color: Colors.white,
@@ -983,8 +983,8 @@ final store = ref.watch(driverStoreProvider);
                         ),
                         child: Text(
                           (isTamil 
-                              ? (widget.userRole == 'student' ? "போக்குவரத்து இருப்பு" : "விடுப்பு விவரம்") 
-                              : (widget.userRole == 'student' ? "Transport Availability" : "Leave Details")).toUpperCase(),
+                              ? (widget.userRole == 'student' ? "போக்குவரத்து விடுப்பு" : "விடுப்பு விவரம்") 
+                              : (widget.userRole == 'student' ? "Leave for Transport" : "Leave Details")).toUpperCase(),
                           style: const TextStyle(color: Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.0),
                         ),
                       ),

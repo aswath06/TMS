@@ -32,6 +32,7 @@ class _FuelPageState extends State<FuelPage> {
   List<dynamic> _approvalLogs = [];
   bool _isLoading = true;
   bool _isLoadingApprovals = true;
+  List<Map<String, dynamic>> _bunks = [];
 
   int _currentPage = 1;
   bool _hasMore = true;
@@ -47,6 +48,7 @@ class _FuelPageState extends State<FuelPage> {
     _historyScrollController = ScrollController()..addListener(_onHistoryScroll);
     _fetchFuelLogs(isRefresh: true);
     _fetchApprovalLogs();
+    _fetchBunks();
   }
 
   @override
@@ -65,6 +67,22 @@ class _FuelPageState extends State<FuelPage> {
   void _onHistoryScroll() {
     if (_historyScrollController.position.pixels >= _historyScrollController.position.maxScrollExtent - 200) {
       _fetchMoreFuelLogs();
+    }
+  }
+
+  Future<void> _fetchBunks() async {
+    try {
+      final token = await UserStore.getToken();
+      final url = '${ApiConstants.baseUrl}/admin/fuel-bunk';
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          setState(() => _bunks = List<Map<String, dynamic>>.from(data['data']));
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching bunks: $e");
     }
   }
 
@@ -821,6 +839,38 @@ class _FuelPageState extends State<FuelPage> {
     }
   }
 
+  Future<void> _rejectFuelLog(int id) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()),
+      );
+      final token = await UserStore.getToken();
+      final url = '${ApiConstants.baseUrl}/admin/vehicle-maintenance/fuel-log/$id/reject';
+      
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+      
+      if (mounted) Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        if (mounted) showTopToast(context, "Fuel request rejected");
+        _fetchApprovalLogs();
+      } else {
+        final err = json.decode(response.body);
+        if (mounted) showTopToast(context, err['message'] ?? "Failed to reject", isError: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        showTopToast(context, e.toString(), isError: true);
+      }
+    }
+  }
+
   void _showEditFuelLogSheet(Map<String, dynamic> log) {
     final odoCtrl = TextEditingController(text: log['current_odometer']?.toString() ?? '');
     final reqVolCtrl = TextEditingController(text: log['required_volume']?.toString() ?? '');
@@ -828,6 +878,7 @@ class _FuelPageState extends State<FuelPage> {
     final billCtrl = TextEditingController(text: log['bill_amount']?.toString() ?? '');
     final remarksCtrl = TextEditingController(text: log['remarks']?.toString() ?? '');
     DateTime filledAt = log['filled_at'] != null ? DateTime.parse(log['filled_at']).toLocal() : DateTime.now();
+    int? selectedBunkId = log['bunk_id'];
 
     showModalBottomSheet(
       context: context,
@@ -856,6 +907,19 @@ class _FuelPageState extends State<FuelPage> {
                   children: [
                     Text("Edit & Approve Fuel Log", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      decoration: InputDecoration(
+                        labelText: "Select Fuel Bunk *",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      value: selectedBunkId,
+                      items: _bunks.map((b) => DropdownMenuItem<int>(
+                        value: b['id'],
+                        child: Text("${b['name']} - ${b['owner_name']}"),
+                      )).toList(),
+                      onChanged: (v) => setModalState(() => selectedBunkId = v),
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: odoCtrl,
                       keyboardType: TextInputType.number,
@@ -920,8 +984,13 @@ class _FuelPageState extends State<FuelPage> {
                           backgroundColor: const Color(0xFF6366F1),
                         ),
                         onPressed: () {
+                          if (selectedBunkId == null) {
+                            showTopToast(context, "Please select a fuel bunk", isError: true);
+                            return;
+                          }
                           Navigator.pop(context);
                           _approveFuelLog(log['id'], {
+                            "bunk_id": selectedBunkId,
                             "current_odometer": num.tryParse(odoCtrl.text),
                             "required_volume": num.tryParse(reqVolCtrl.text),
                             "filled_volume": num.tryParse(fillVolCtrl.text),
@@ -1052,6 +1121,20 @@ class _FuelPageState extends State<FuelPage> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text("Reject"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _rejectFuelLog(item['id']),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
                   icon: const Icon(Icons.edit_rounded, size: 18),
                   label: const Text("Edit"),
                   style: OutlinedButton.styleFrom(
@@ -1063,9 +1146,9 @@ class _FuelPageState extends State<FuelPage> {
                   onPressed: () => _showEditFuelLogSheet(item),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
                   label: const Text("Approve"),

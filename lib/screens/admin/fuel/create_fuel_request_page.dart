@@ -313,8 +313,10 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               if (isVehicle) {
                 final vNumber = (item['vehicle_number'] ?? "").toString().toLowerCase();
                 final vType = (item['vehicle_type_name'] ?? "").toString().toLowerCase();
+                final bNumber = (item['bus_number'] ?? "").toString().toLowerCase();
                 return vNumber.contains(searchQuery.toLowerCase()) || 
-                       vType.contains(searchQuery.toLowerCase());
+                       vType.contains(searchQuery.toLowerCase()) ||
+                       bNumber.contains(searchQuery.toLowerCase());
               } else if (isDriver) {
                 final dName = (item['name'] ?? "").toString().toLowerCase();
                 final dPhone = (item['phone'] ?? "").toString().toLowerCase();
@@ -456,7 +458,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                                       ? item['name'] 
                                       : item['name']);
                               String subText = isVehicle 
-                                  ? "${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
+                                  ? "${item['bus_number'] != null ? item['bus_number'] + ' • ' : ''}${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
                                   : (isDriver 
                                       ? "${item['employee_code'] ?? 'N/A'} • ${(item['status'] ?? 'UNKNOWN').toString().replaceAll('_', ' ')} • 📞 ${item['phone'] ?? 'No Contact'}" 
                                       : (isFuelType ? "Fluid Type" : "${_getBunkPriceString(item)}"));
@@ -529,7 +531,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     );
   }
 
-  void _showIndentPopup(String indentNumber) {
+  void _showIndentPopup(String indentNumber, String vehicleNumber) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -553,14 +555,38 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                "Request Generated",
+                "Indent Generated",
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.directions_bus_rounded, color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      vehicleNumber,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               Text(
                 "Your fuel indent number is:",
                 textAlign: TextAlign.center,
@@ -759,7 +785,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               surfaceColor, titleColor, isDark, primaryBlue,
               isRequired: true,
             ),
-            if (_selectedBunk != null && !_isBITBunk) ...[
+            if (_selectedBunk != null) ...[
               const SizedBox(height: 12),
               _buildSelectTile(
                 "Fluid Type",
@@ -768,9 +794,23 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 Icons.local_gas_station_rounded,
                 _selectedFluidType != null,
                 () {
+                  List<Map<String, dynamic>> allowedFuelTypes = [];
+                  if (_selectedVehicle != null) {
+                    final vFuelType = (_selectedVehicle!['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
+                    final isAdBlue = _selectedVehicle!['is_adblue'] == true || _selectedVehicle!['is_adblue'] == 1;
+                    
+                    allowedFuelTypes = _fuelTypes.where((f) {
+                      if (f['name'] == vFuelType) return true;
+                      if (f['name'] == 'AD_BLUE' && isAdBlue) return true;
+                      return false;
+                    }).toList();
+                  } else {
+                    allowedFuelTypes = _fuelTypes;
+                  }
+
                   _showSelectionSheet(
                     title: "Select Fluid Type",
-                    items: _fuelTypes,
+                    items: allowedFuelTypes,
                     selected: _selectedFluidType,
                     onSelect: (f) => setState(() => _selectedFluidType = f),
                     isVehicle: false,
@@ -1326,12 +1366,13 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       request.fields['remarks'] = _remarksController.text;
       request.fields['bill_amount'] = _totalAmount.toString();
 
+      if (_selectedFluidType != null) {
+        request.fields['fluid_type'] = _selectedFluidType!['name'];
+      }
+
       if (!_isBITBunk) {
         request.fields['current_odometer'] = _odometerController.text;
         request.fields['filled_volume'] = _volumeController.text; // Sending same as required_volume
-        if (_selectedFluidType != null) {
-          request.fields['fluid_type'] = _selectedFluidType!['name'];
-        }
         request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
       }
 
@@ -1380,7 +1421,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               }
             }
 
-            _showIndentPopup(instanceId);
+            _showIndentPopup(instanceId, _selectedVehicle!['vehicle_number'] ?? 'Unknown Vehicle');
           }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

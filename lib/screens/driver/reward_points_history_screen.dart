@@ -110,21 +110,24 @@ class _RewardPointsHistoryScreenState extends ConsumerState<RewardPointsHistoryS
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.military_tech_rounded, color: Colors.white, size: 32),
-              const SizedBox(width: 12),
-              Text(
-                points.toString(),
-                style: const TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.military_tech_rounded, color: Colors.white, size: 32),
+                const SizedBox(width: 12),
+                Text(
+                  points.toString(),
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Text(
             isTamil ? "மொத்தப் புள்ளிகள்" : "Total Points",
