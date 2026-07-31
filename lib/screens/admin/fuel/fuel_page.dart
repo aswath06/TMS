@@ -406,7 +406,9 @@ class _FuelPageState extends State<FuelPage> {
                   ? _buildRequestGenerationView(titleColor, subColor, primaryBlue, isDark)
                   : _tabIndex == 1 
                       ? _buildAdminApprovalsView(titleColor, subColor, primaryBlue, isDark)
-                      : _buildHistoryView(titleColor, subColor, primaryBlue, isDark),
+                      : _tabIndex == 2
+                          ? _buildDriverRequestView(titleColor, subColor, primaryBlue, isDark)
+                          : _buildHistoryView(titleColor, subColor, primaryBlue, isDark),
             ),
           ),
         ],
@@ -494,12 +496,14 @@ class _FuelPageState extends State<FuelPage> {
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
             alignment: _tabIndex == 0 
-                ? Alignment.centerLeft 
+                ? const Alignment(-1.0, 0.0)
                 : _tabIndex == 1 
-                    ? Alignment.center 
-                    : Alignment.centerRight,
+                    ? const Alignment(-0.333, 0.0)
+                    : _tabIndex == 2
+                        ? const Alignment(0.333, 0.0)
+                        : const Alignment(1.0, 0.0),
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.30,
+              width: MediaQuery.of(context).size.width * 0.22,
               margin: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: primary,
@@ -525,9 +529,9 @@ class _FuelPageState extends State<FuelPage> {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: Text(
-                      "Pending Driver Fill",
+                      "Pending Fill",
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: _tabIndex == 0 ? Colors.white : Colors.grey,
                       ),
@@ -545,9 +549,10 @@ class _FuelPageState extends State<FuelPage> {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: Text(
-                      "Approvals",
+                      "Admin\nApproval",
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: _tabIndex == 1 ? Colors.white : Colors.grey,
                       ),
@@ -564,11 +569,31 @@ class _FuelPageState extends State<FuelPage> {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: Text(
-                      "History",
+                      "Driver Request",
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: _tabIndex == 2 ? Colors.white : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _tabIndex = 3;
+                    _expandedIndex = null;
+                  }),
+                  behavior: HitTestBehavior.opaque,
+                  child: Center(
+                    child: Text(
+                      "Completed",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: _tabIndex == 3 ? Colors.white : Colors.grey,
                       ),
                     ),
                   ),
@@ -640,6 +665,92 @@ class _FuelPageState extends State<FuelPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAllLogsView(Color titleColor, Color subColor, Color primary, bool isDark) {
+    if (_isLoading) return _buildShimmerLoading(isDark);
+    
+    final List<dynamic> filteredLogs = _fuelLogs.where((log) {
+      if (_selectedDate == null) return true;
+      final DateTime logDate = DateTime.parse(log['created_at']);
+      return logDate.year == _selectedDate!.year &&
+             logDate.month == _selectedDate!.month &&
+             logDate.day == _selectedDate!.day;
+    }).toList();
+
+    // Sort by date (newest first)
+    filteredLogs.sort((a, b) {
+      final DateTime aDate = DateTime.parse(a['created_at']);
+      final DateTime bDate = DateTime.parse(b['created_at']);
+      return bDate.compareTo(aDate);
+    });
+
+    if (filteredLogs.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => _fetchFuelLogs(isRefresh: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.list_alt_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _selectedDate == null ? "No logs found" : "No logs for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => _fetchFuelLogs(isRefresh: true),
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        controller: _requestScrollController,
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+        itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == filteredLogs.length) {
+            if (_isLoadingMore) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+              );
+            } else {
+              return const SizedBox(height: 40);
+            }
+          }
+          final req = filteredLogs[index];
+          final bool isExpanded = _expandedIndex == index;
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _wrapWithDismissible(
+              child: _buildFuelCard(index, req, titleColor, subColor, primary, isDark, isHistory: req['fuel_entry_status'] == 'COMPLETED', isExpanded: isExpanded),
+              log: req,
+              index: index,
+              primary: primary,
+            ),
+          );
+        },
       ),
     );
   }
@@ -732,10 +843,110 @@ class _FuelPageState extends State<FuelPage> {
     );
   }
 
+  Widget _buildDriverRequestView(Color titleColor, Color subColor, Color primary, bool isDark) {
+    if (_isLoadingApprovals) return _buildShimmerLoading(isDark);
+    
+    final List<dynamic> filteredLogs = _approvalLogs.where((log) {
+      // Driver Requests have PENDING_ADMIN_APPROVAL but NO bunk assigned yet ("Unknown Bunk")
+      if (log['fuel_entry_status'] != 'PENDING_ADMIN_APPROVAL') return false;
+      
+      final String bunkName = log['bunk']?['name'] ?? log['fuel_bunk']?['bunk_name'] ?? "Unknown Bunk";
+      if (bunkName != "Unknown Bunk") return false;
+
+      if (_selectedDate == null) return true;
+      
+      final DateTime logDate = DateTime.parse(log['filled_at'] ?? log['created_at']);
+      return logDate.year == _selectedDate!.year &&
+             logDate.month == _selectedDate!.month &&
+             logDate.day == _selectedDate!.day;
+    }).toList();
+
+    // Sort by date (newest first)
+    filteredLogs.sort((a, b) {
+      final DateTime aDate = DateTime.parse(a['filled_at'] ?? a['created_at']);
+      final DateTime bDate = DateTime.parse(b['filled_at'] ?? b['created_at']);
+      return bDate.compareTo(aDate);
+    });
+
+    if (filteredLogs.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchApprovalLogs,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.assignment_turned_in_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
+                  const SizedBox(height: 16),
+                  Text(
+                    _selectedDate == null ? "No driver requests found" : "No requests for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchApprovalLogs,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        controller: _requestScrollController,
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+        itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == filteredLogs.length) {
+            if (_isLoadingMore) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+              );
+            } else {
+              return const SizedBox(height: 40);
+            }
+          }
+          final req = filteredLogs[index];
+          final bool isExpanded = _expandedIndex == index;
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _wrapWithDismissible(
+              child: _buildApprovalCard(req, titleColor, subColor, primary, isDark),
+              log: req,
+              index: index,
+              primary: primary,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildAdminApprovalsView(Color titleColor, Color subColor, Color primary, bool isDark) {
     if (_isLoadingApprovals) return _buildShimmerLoading(isDark);
     
     final List<dynamic> filteredLogs = _approvalLogs.where((log) {
+      // STRICTLY filter only PENDING_ADMIN_APPROVAL
+      if (log['fuel_entry_status'] != 'PENDING_ADMIN_APPROVAL') return false;
+      
+      // Admin Approval should ONLY show logs that have a bunk assigned (i.e. not a driver request)
+      final String bunkName = log['bunk']?['name'] ?? log['fuel_bunk']?['bunk_name'] ?? "Unknown Bunk";
+      if (bunkName == "Unknown Bunk") return false;
+
       if (_selectedDate == null) return true;
       final DateTime logDate = DateTime.parse(log['filled_at'] ?? log['created_at']);
       return logDate.year == _selectedDate!.year &&
@@ -785,7 +996,7 @@ class _FuelPageState extends State<FuelPage> {
     );
   }
 
-  Future<void> _approveFuelLog(int id, [Map<String, dynamic>? body]) async {
+  Future<void> _approveFuelLog(int id, [Map<String, dynamic>? body, String? vehicleNumber]) async {
     try {
       showDialog(
         context: context,
@@ -825,8 +1036,14 @@ class _FuelPageState extends State<FuelPage> {
       if (mounted) Navigator.pop(context); // close loader
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) showTopToast(context, "Fuel log approved successfully");
+        if (mounted) {
+          final responseData = json.decode(response.body);
+          final instanceId = responseData['data']?['instance_id'] ?? responseData['fuelLog']?['instance_id'] ?? "SUCCESS";
+          final successMessage = responseData['message'] ?? "Fuel log approved successfully";
+          _showIndentPopup(instanceId, vehicleNumber ?? 'Unknown Vehicle', title: successMessage, subtitle: "Indent Number:");
+        }
         _fetchApprovalLogs();
+        _fetchFuelLogs(isRefresh: true);
       } else {
         final err = json.decode(response.body);
         if (mounted) showTopToast(context, err['message'] ?? "Failed to approve", isError: true);
@@ -837,6 +1054,98 @@ class _FuelPageState extends State<FuelPage> {
         showTopToast(context, e.toString(), isError: true);
       }
     }
+  }
+
+  void _confirmReject(int id) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          elevation: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.warning_rounded, color: Colors.red, size: 32),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Reject Request",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Are you sure you want to reject this fuel request? This action cannot be undone.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _rejectFuelLog(id);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text(
+                          "Reject",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _rejectFuelLog(int id) async {
@@ -878,7 +1187,12 @@ class _FuelPageState extends State<FuelPage> {
     final billCtrl = TextEditingController(text: log['bill_amount']?.toString() ?? '');
     final remarksCtrl = TextEditingController(text: log['remarks']?.toString() ?? '');
     DateTime filledAt = log['filled_at'] != null ? DateTime.parse(log['filled_at']).toLocal() : DateTime.now();
-    int? selectedBunkId = log['bunk_id'];
+    int? bId = log['fuel_bunk_id'] ?? log['bunk_id'] ?? log['bunk']?['id'];
+    if (bId != null && !_bunks.any((b) => b['id'] == bId)) {
+      bId = null;
+    }
+    int? selectedBunkId = bId;
+
 
     showModalBottomSheet(
       context: context,
@@ -890,49 +1204,90 @@ class _FuelPageState extends State<FuelPage> {
             final isDark = Theme.of(context).brightness == Brightness.dark;
             final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
             final text = isDark ? Colors.white : Colors.black87;
+            final primary = const Color(0xFF6366F1);
             
             return Container(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                top: 24, left: 24, right: 24,
+                top: 12, left: 24, right: 24,
               ),
               decoration: BoxDecoration(
                 color: surface,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5)),
+                ],
               ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Edit & Approve Fuel Log", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
-                    const SizedBox(height: 16),
+                    Center(
+                      child: Container(
+                        width: 40, height: 4,
+                        decoration: BoxDecoration(color: isDark ? Colors.white24 : Colors.black12, borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+                          child: Icon(Icons.edit_note_rounded, color: primary, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Text("Edit Fuel Request", style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.bold, color: text)),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     DropdownButtonFormField<int>(
                       decoration: InputDecoration(
                         labelText: "Select Fuel Bunk *",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                        prefixIcon: Icon(Icons.local_gas_station_rounded, color: primary),
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                       ),
+                      dropdownColor: surface,
                       value: selectedBunkId,
                       items: _bunks.map((b) => DropdownMenuItem<int>(
                         value: b['id'],
-                        child: Text("${b['name']} - ${b['owner_name']}"),
+                        child: Text("${b['name']} - ${b['owner_name']}", style: GoogleFonts.plusJakartaSans(color: text)),
                       )).toList(),
                       onChanged: (v) => setModalState(() => selectedBunkId = v),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: odoCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: "Current Odometer", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                      style: GoogleFonts.plusJakartaSans(color: text),
+                      decoration: InputDecoration(
+                        labelText: "Current Odometer (KM)",
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                        prefixIcon: Icon(Icons.speed_rounded, color: primary),
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             controller: reqVolCtrl,
                             keyboardType: TextInputType.number,
-                            decoration: InputDecoration(labelText: "Required Volume (L)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                            style: GoogleFonts.plusJakartaSans(color: text),
+                            decoration: InputDecoration(
+                              labelText: "Required (L)",
+                              labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                              filled: true,
+                              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -940,48 +1295,82 @@ class _FuelPageState extends State<FuelPage> {
                           child: TextField(
                             controller: fillVolCtrl,
                             keyboardType: TextInputType.number,
-                            decoration: InputDecoration(labelText: "Filled Volume (L)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                            style: GoogleFonts.plusJakartaSans(color: text),
+                            decoration: InputDecoration(
+                              labelText: "Filled (L)",
+                              labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                              filled: true,
+                              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: billCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: "Bill Amount (₹)", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                      style: GoogleFonts.plusJakartaSans(color: text),
+                      decoration: InputDecoration(
+                        labelText: "Bill Amount (₹)",
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                        prefixIcon: Icon(Icons.currency_rupee_rounded, color: primary),
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     GestureDetector(
                       onTap: () async {
-                        final dt = await CustomDateTimePicker.show(context, initialDate: filledAt, accent: const Color(0xFF6366F1));
+                        final dt = await CustomDateTimePicker.show(context, initialDate: filledAt, accent: primary);
                         if (dt != null) setModalState(() => filledAt = dt);
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("Filled At: ${DateFormat('MMM dd, hh:mm a').format(filledAt)}", style: TextStyle(color: text)),
-                            const Icon(Icons.calendar_today, size: 20),
+                            Icon(Icons.calendar_today_rounded, color: primary, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "Date: ${DateFormat('MMM dd, hh:mm a').format(filledAt)}",
+                                style: GoogleFonts.plusJakartaSans(color: text, fontSize: 14),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: remarksCtrl,
-                      decoration: InputDecoration(labelText: "Remarks", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                      style: GoogleFonts.plusJakartaSans(color: text),
+                      decoration: InputDecoration(
+                        labelText: "Remarks",
+                        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                        prefixIcon: Icon(Icons.notes_rounded, color: primary),
+                        filled: true,
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          backgroundColor: const Color(0xFF6366F1),
+                          backgroundColor: primary,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shadowColor: primary.withValues(alpha: 0.4),
                         ),
                         onPressed: () {
                           if (selectedBunkId == null) {
@@ -999,9 +1388,10 @@ class _FuelPageState extends State<FuelPage> {
                             "remarks": remarksCtrl.text,
                           });
                         },
-                        child: const Text("Save & Approve", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: Text("Save Changes & Approve", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
-                    )
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -1048,7 +1438,37 @@ class _FuelPageState extends State<FuelPage> {
                 decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Text("PENDING APPROVAL", style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange)),
               ),
-              Text("#$indentNo", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: subColor)),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateFuelRequestPage(
+                            initialFuelData: item,
+                            isApproveMode: false,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        _fetchApprovalLogs();
+                        _fetchFuelLogs(isRefresh: true);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.edit_rounded, color: primary, size: 16),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text("#$indentNo", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: subColor)),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1129,7 +1549,7 @@ class _FuelPageState extends State<FuelPage> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () => _rejectFuelLog(item['id']),
+                  onPressed: () => _confirmReject(item['id']),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1145,20 +1565,22 @@ class _FuelPageState extends State<FuelPage> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CreateFuelRequestPage(
-                          initialFuelData: item,
-                          isApproveMode: true,
-                        ),
-                      ),
-                    );
-                    if (result == true) {
-                      _fetchApprovalLogs();
-                      _fetchFuelLogs(isRefresh: true);
+                  onPressed: () {
+                    final Map<String, dynamic> body = {
+                      'vehicle_id': item['vehicle_id']?.toString(),
+                      'driver_id': item['driver_id']?.toString(),
+                      'bunk_id': item['bunk_id']?.toString(),
+                      'required_volume': item['required_volume']?.toString(),
+                      'filled_at': item['filled_at'],
+                      'remarks': item['remarks']?.toString() ?? '',
+                      'bill_amount': item['bill_amount']?.toString() ?? '0',
+                      'current_odometer': item['current_odometer']?.toString() ?? '0',
+                      'fluid_type': item['fluid_type'] ?? 'DIESEL',
+                    };
+                    if (item['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == false) {
+                        body['filled_volume'] = item['required_volume']?.toString();
                     }
+                    _approveFuelLog(item['id'], body, vNumber);
                   },
                 ),
               ),
@@ -1451,7 +1873,7 @@ class _FuelPageState extends State<FuelPage> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => _rejectFuelLog(item['id']),
+                      onPressed: () => _confirmReject(item['id']),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
@@ -1626,4 +2048,113 @@ class _FuelPageState extends State<FuelPage> {
       ],
     );
   }
+
+  void _showIndentPopup(String indentNumber, String vehicleNumber, {String title = "Indent Generated", String subtitle = "Your fuel indent number is:"}) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 48),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.directions_bus_rounded, color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      vehicleNumber,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  indentNumber,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.blue,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(
+                    "Done",
+                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+

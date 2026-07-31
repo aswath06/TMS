@@ -63,8 +63,15 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       _volumeController.text = data['required_volume']?.toString() ?? data['filled_volume']?.toString() ?? '';
       _filledVolumeController.text = data['filled_volume']?.toString() ?? '';
       _amountController.text = data['bill_amount']?.toString() ?? '';
-      _odometerController.text = data['odometer_reading']?.toString() ?? '';
+      _odometerController.text = data['current_odometer']?.toString() ?? data['odometer_reading']?.toString() ?? '';
       _remarksController.text = data['internal_ledger_remarks']?.toString() ?? '';
+      
+      if (data['fluid_type'] != null) {
+        _selectedFluidType = _fuelTypes.firstWhere(
+          (f) => f['name'].toString().toUpperCase() == data['fluid_type'].toString().toUpperCase(),
+          orElse: () => _fuelTypes.first,
+        );
+      }
       
       if (data['filled_at'] != null) {
         try {
@@ -218,6 +225,15 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           setState(() {
             _vehicles = fetchedVehicles;
             _selectedVehicle = preSelected ?? _selectedVehicle;
+            
+            if (_selectedVehicle != null && _selectedFluidType == null) {
+              final vFuelType = (_selectedVehicle!['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
+              _selectedFluidType = _fuelTypes.firstWhere(
+                (f) => f['name'] == vFuelType,
+                orElse: () => _fuelTypes.first,
+              );
+            }
+            
             _isLoadingVehicles = false;
           });
         }
@@ -297,7 +313,6 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color p = const Color(0xFF6366F1);
     final Color t = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color s = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     String searchQuery = "";
 
@@ -459,10 +474,10 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                                       ? item['name'] 
                                       : item['name']);
                               String subText = isVehicle 
-                                  ? "${item['bus_number'] != null ? item['bus_number'] + ' • ' : ''}${item['default_driver'] != null ? 'Driver: ' + item['default_driver']['name'] : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
+                                  ? "${item['bus_number'] != null ? '${item['bus_number']} • ' : ''}${item['default_driver'] != null ? 'Driver: ${item['default_driver']['name']}' : (item['vehicle_type_name'] ?? 'Vehicle')} • Fuel: ${item['fuel_type'] ?? 'N/A'}"
                                   : (isDriver 
                                       ? "${item['employee_code'] ?? 'N/A'} • ${(item['status'] ?? 'UNKNOWN').toString().replaceAll('_', ' ')} • 📞 ${item['phone'] ?? 'No Contact'}" 
-                                      : (isFuelType ? "Fluid Type" : "${_getBunkPriceString(item)}"));
+                                      : (isFuelType ? "Fluid Type" : _getBunkPriceString(item)));
                               
                               return GestureDetector(
                                 onTap: () {
@@ -532,7 +547,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     );
   }
 
-  void _showIndentPopup(String indentNumber, String vehicleNumber) {
+  void _showIndentPopup(String indentNumber, String vehicleNumber, {String title = "Indent Generated", String subtitle = "Your fuel indent number is:"}) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -556,7 +571,8 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                "Indent Generated",
+                title,
+                textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -589,7 +605,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                "Your fuel indent number is:",
+                subtitle,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
@@ -1204,6 +1220,14 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   }
 
   Widget _buildImagePicker(Color surface, Color title, bool isDark, Color primary) {
+    String? existingImageUrl;
+    if (widget.initialFuelData != null && widget.initialFuelData!['bill_file_url'] != null) {
+      existingImageUrl = widget.initialFuelData!['bill_file_url'];
+      if (existingImageUrl!.startsWith('/')) {
+        existingImageUrl = "${ApiConstants.baseUrl}$existingImageUrl";
+      }
+    }
+
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
@@ -1213,9 +1237,13 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           color: surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: title.withValues(alpha: 0.05)),
-          image: _billImage != null ? DecorationImage(image: FileImage(_billImage!), fit: BoxFit.cover) : null,
+          image: _billImage != null 
+              ? DecorationImage(image: FileImage(_billImage!), fit: BoxFit.cover) 
+              : (existingImageUrl != null 
+                  ? DecorationImage(image: NetworkImage(existingImageUrl, headers: const {ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue}), fit: BoxFit.cover) 
+                  : null),
         ),
-        child: _billImage == null ? Column(
+        child: (_billImage == null && existingImageUrl == null) ? Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add_a_photo_rounded, color: primary.withValues(alpha: 0.5), size: 32),
@@ -1363,41 +1391,62 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               ? Uri.parse(ApiConstants.updateFuelLog(widget.initialFuelData!['id']))
               : Uri.parse(ApiConstants.fuelLog));
           
-      var request = http.MultipartRequest(widget.isApproveMode ? 'PATCH' : (isEdit ? 'PUT' : 'POST'), uri);
-      request.headers.addAll(ApiConstants.getHeaders(token));
+      final headers = ApiConstants.getHeaders(token);
       
-      request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
+      final Map<String, String> fields = {
+        'vehicle_id': _selectedVehicle!['id'].toString(),
+        'bunk_id': _selectedBunk!['id'].toString(),
+        'required_volume': _volumeController.text,
+        'filled_at': _selectedDate.toIso8601String(),
+        'remarks': _remarksController.text,
+        'bill_amount': _totalAmount.toString(),
+        'current_odometer': _odometerController.text,
+      };
+
       if (_selectedDriver != null) {
-        request.fields['driver_id'] = _selectedDriver!['id'].toString();
+        fields['driver_id'] = _selectedDriver!['id'].toString();
       }
-      request.fields['bunk_id'] = _selectedBunk!['id'].toString();
-      request.fields['required_volume'] = _volumeController.text;
-      request.fields['filled_at'] = _selectedDate.toIso8601String();
-      request.fields['remarks'] = _remarksController.text;
-      request.fields['bill_amount'] = _totalAmount.toString();
 
       if (_selectedFluidType != null) {
-        request.fields['fluid_type'] = _selectedFluidType!['name'];
+        fields['fluid_type'] = _selectedFluidType!['name'];
       }
 
       if (!_isBITBunk) {
-        request.fields['current_odometer'] = _odometerController.text;
-        request.fields['filled_volume'] = _volumeController.text; // Sending same as required_volume
-        request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
+        fields['filled_volume'] = _volumeController.text; // Sending same as required_volume
       }
 
-      // Console log curl equivalent
-      StringBuffer curl = StringBuffer();
-      curl.write('curl --location ');
-      if (!_isBITBunk || isEdit) curl.write('--request ${isEdit ? 'PUT' : 'POST'} ');
-      curl.write("'$uri' \\\n");
-      ApiConstants.getHeaders(token).forEach((k, v) => curl.write("--header '$k: $v' \\\n"));
-      request.fields.forEach((k, v) => curl.write("--form '$k=\"$v\"' \\\n"));
-      if (_billImage != null) curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
-      log("\n--- REQUEST CURL ---\n${curl.toString()}\n-------------------\n");
+      http.Response response;
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      if (widget.isApproveMode) {
+        // Approve endpoint expects JSON, not multipart/form-data
+        headers['Content-Type'] = 'application/json';
+        
+        log("\n--- REQUEST CURL ---\ncurl --location --request PATCH '$uri' \\");
+        headers.forEach((k, v) => log("--header '$k: $v' \\"));
+        log("--data '${json.encode(fields)}'\n-------------------\n");
+
+        response = await http.patch(uri, headers: headers, body: json.encode(fields));
+      } else {
+        var request = http.MultipartRequest(isEdit ? 'PUT' : 'POST', uri);
+        request.headers.addAll(headers);
+        request.fields.addAll(fields);
+        
+        if (!_isBITBunk && _billImage != null) {
+          request.files.add(await http.MultipartFile.fromPath('bill_file', _billImage!.path));
+        }
+
+        // Console log curl equivalent
+        StringBuffer curl = StringBuffer();
+        curl.write('curl --location --request ${isEdit ? 'PUT' : 'POST'} ');
+        curl.write("'$uri' \\\n");
+        headers.forEach((k, v) => curl.write("--header '$k: $v' \\\n"));
+        request.fields.forEach((k, v) => curl.write("--form '$k=\"$v\"' \\\n"));
+        if (_billImage != null) curl.write("--form 'bill_file=@\"${_billImage!.path}\"'");
+        log("\n--- REQUEST CURL ---\n${curl.toString()}\n-------------------\n");
+
+        final streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+      }
 
       log("\n--- FUEL LOG RESPONSE ---\nStatus: ${response.statusCode}\nBody: ${response.body}\n-------------------\n");
       log(ApiErrorParser.parse(response, fallback: "\n--- PARSED RESPONSE ---\nStatus"));
@@ -1406,20 +1455,20 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          final instanceId = responseData['data']['instance_id'] ?? "SUCCESS";
+          final instanceId = responseData['data']?['instance_id'] ?? responseData['fuelLog']?['instance_id'] ?? "SUCCESS";
+          final successMessage = responseData['message'] ?? (widget.isApproveMode ? "Fuel order approved successfully" : (isEdit ? "Fuel order updated successfully" : "Success"));
           
           if (widget.isApproveMode) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Fuel order approved successfully"),
-                backgroundColor: Colors.green,
-              ),
+            _showIndentPopup(
+              instanceId, 
+              _selectedVehicle!['vehicle_number'] ?? 'Unknown Vehicle',
+              title: successMessage,
+              subtitle: "Indent Number:"
             );
-            Navigator.pop(context, true); // Return true to indicate refresh needed
           } else if (isEdit) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Fuel order updated successfully"),
+              SnackBar(
+                content: Text(successMessage),
                 backgroundColor: Colors.green,
               ),
             );
@@ -1427,7 +1476,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(responseData['message'] ?? "Success"),
+                content: Text(successMessage),
                 backgroundColor: Colors.green,
               ),
             );
