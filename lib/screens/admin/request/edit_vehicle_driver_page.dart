@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/screens/admin/request/edit_run_data_tab.dart';
 
 class EditVehicleDriverPage extends StatefulWidget {
   final Map<String, dynamic> run;
@@ -23,6 +24,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
   bool _isLoadingLookups = true;
   bool _isSaving = false;
   String? _errorMessage;
+  int _currentMode = 0; // 0 for Assignment, 1 for Run Data
 
   List<dynamic> _vehicles = [];
   List<dynamic> _drivers = [];
@@ -1178,28 +1180,94 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                   ),
                   const SizedBox(width: 8),
                   // Save Button
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _saveChanges,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      minimumSize: Size.zero,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  if (_currentMode == 0)
+                    ElevatedButton(
+                      onPressed: _isSaving ? null : _saveChanges,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)))
+                          : Text("Save", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
-                    child: _isSaving
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)))
-                        : Text("Save", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
                 ],
               ),
             ),
+            
+            if (!widget.editFacultyOnly)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _currentMode = 0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _currentMode == 0 ? cardBg : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: _currentMode == 0 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Assignment",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: _currentMode == 0 ? FontWeight.bold : FontWeight.w600,
+                                  color: _currentMode == 0 ? primaryBlue : subColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _currentMode = 1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _currentMode == 1 ? cardBg : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: _currentMode == 1 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Run Data",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: _currentMode == 1 ? FontWeight.bold : FontWeight.w600,
+                                  color: _currentMode == 1 ? primaryBlue : subColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             if (_isLoadingLookups)
               _buildShimmerLoading(isDark)
             else if (_errorMessage != null)
               Expanded(child: Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))))
+            else if (_currentMode == 1)
+              Expanded(child: EditRunDataTab(run: widget.run))
             else
               Expanded(
                 child: SingleChildScrollView(

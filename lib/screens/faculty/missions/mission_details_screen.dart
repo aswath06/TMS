@@ -5124,8 +5124,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     final TextEditingController endOdometerCtrl = TextEditingController(text: activeTrip['end_odometer']?.toString() ?? '');
     final TextEditingController remarkCtrl = TextEditingController();
     
-    String? mistakeIsOn;
-    List<String> mistakeRoles = ["Driver", "Transport Admin", "Transport Coordinator", "Faculty", "Other"];
+    int? mistakeIsOnId;
+    List<Map<String, dynamic>> mistakeRoles = [];
     bool isSubmitting = false;
 
     // Fetch roles from backend
@@ -5138,7 +5138,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         if (data['success'] == true && data['data'] != null) {
-          mistakeRoles = (data['data'] as List).map((r) => r['name'].toString()).toList();
+          mistakeRoles = (data['data'] as List)
+              .map((r) => {'id': r['id'], 'name': r['name'].toString()})
+              .toList();
         }
       }
     } catch (e) {
@@ -5448,17 +5450,17 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                               ],
                             ),
                             child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: mistakeIsOn,
+                              child: DropdownButton<int>(
+                                value: mistakeIsOnId,
                                 isExpanded: true,
                                 dropdownColor: cardColor,
                                 icon: Icon(Icons.keyboard_arrow_down_rounded, color: subtitleColor),
                                 hint: Text("Select a role", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: subtitleColor, fontWeight: FontWeight.w500)),
                                 items: mistakeRoles.map((role) {
-                                  return DropdownMenuItem(value: role, child: Text(role, style: GoogleFonts.plusJakartaSans(fontSize: 14, color: titleColor, fontWeight: FontWeight.w600)));
+                                  return DropdownMenuItem<int>(value: role['id'], child: Text(role['name'], style: GoogleFonts.plusJakartaSans(fontSize: 14, color: titleColor, fontWeight: FontWeight.w600)));
                                 }).toList(),
                                 onChanged: (val) {
-                                  setModalState(() => mistakeIsOn = val);
+                                  setModalState(() => mistakeIsOnId = val);
                                 },
                               ),
                             ),
@@ -5503,7 +5505,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                 flex: 2,
                                 child: ElevatedButton(
                                   onPressed: isSubmitting ? null : () async {
-                                    if (mistakeIsOn == null) {
+                                    if (mistakeIsOnId == null) {
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select who the mistake is on")));
                                       return;
                                     }
@@ -5521,7 +5523,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                         if (newEndTime != null) 'new_end_time': newEndTime!.toUtc().toIso8601String(),
                                         if (startOdometerCtrl.text.isNotEmpty) 'new_start_odometer': num.parse(startOdometerCtrl.text),
                                         if (endOdometerCtrl.text.isNotEmpty) 'new_end_odometer': num.parse(endOdometerCtrl.text),
-                                        'mistake_is_on': mistakeIsOn,
+                                        'role_id': mistakeIsOnId,
                                         'remark': remarkCtrl.text.trim(),
                                       };
                                       
