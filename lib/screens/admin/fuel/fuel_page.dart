@@ -2192,10 +2192,7 @@ class _FuelPageState extends State<FuelPage> {
       final url = ApiConstants.fuelEditLogs(fuelLogId);
       final response = await http.get(
         Uri.parse(url),
-        headers: {
-          'Authorization': 'TMS $token',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token),
       );
 
       if (response.statusCode == 200) {
@@ -2204,111 +2201,246 @@ class _FuelPageState extends State<FuelPage> {
         if (!mounted) return;
         _buildEditHistoryDialog(logs);
       } else {
-        throw Exception('Failed to load edit history');
+        final data = json.decode(response.body);
+        final message = data['message'] ?? 'Failed to load edit history';
+        throw Exception(message);
       }
     } catch (e) {
       if (mounted) {
-        showTopToast(context, 'Failed to load edit history: $e', isError: true);
+        showTopToast(context, 'Error: $e', isError: true);
       }
     }
   }
 
   void _buildEditHistoryDialog(List<dynamic> logs) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
+    final Color bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color textSecondary = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
+                ),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "Edit History",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.history_rounded, color: Colors.purple, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          "Edit History",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: Icon(Icons.close_rounded, color: textSecondary, size: 28),
                       onPressed: () => Navigator.pop(context),
+                      splashRadius: 24,
                     ),
                   ],
                 ),
-                const Divider(),
-                if (logs.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      "No edits have been made.",
-                      style: GoogleFonts.plusJakartaSans(color: Colors.grey),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: logs.length,
-                      itemBuilder: (context, index) {
-                        final log = logs[index];
-                        final editor = log['editor']?['name'] ?? 'Unknown User';
-                        final date = log['createdAt'] != null ? DateFormat('MMM dd, yyyy HH:mm').format(DateTime.parse(log['createdAt']).toLocal()) : '';
-                        
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
-                          ),
+              ),
+              
+              // Content
+              Expanded(
+                child: logs.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.person, size: 16, color: Colors.blue),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      editor,
-                                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                  ),
-                                  Text(
-                                    date,
-                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey),
-                                  ),
-                                ],
+                              Icon(Icons.history_toggle_off_rounded, size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              Text(
+                                "No edits have been made yet.",
+                                style: GoogleFonts.plusJakartaSans(color: textSecondary, fontSize: 16, fontWeight: FontWeight.w500),
                               ),
-                              const SizedBox(height: 8),
-                              if (log['previous_odometer'] != log['new_odometer'])
-                                Text("Odometer: ${log['previous_odometer']} -> ${log['new_odometer']}", style: const TextStyle(fontSize: 12)),
-                              if (log['previous_price'] != log['new_price'])
-                                Text("Price: ₹${log['previous_price']} -> ₹${log['new_price']}", style: const TextStyle(fontSize: 12)),
-                              if (log['previous_filled_at'] != log['new_filled_at'])
-                                Text("Filled At: ${log['previous_filled_at']} -> ${log['new_filled_at']}", style: const TextStyle(fontSize: 12)),
-                              const SizedBox(height: 6),
-                              Text("Remark: ${log['remark']}", style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.orange)),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: logs.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 20),
+                        itemBuilder: (context, index) {
+                          final log = logs[index];
+                          final editor = log['editor']?['name'] ?? 'Unknown User';
+                          final date = log['createdAt'] != null 
+                              ? DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(log['createdAt']).toLocal()) 
+                              : '';
+                          
+                          return Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                              boxShadow: [
+                                if (!isDark)
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
+                                  )
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: Colors.blue.withOpacity(0.1),
+                                      child: const Icon(Icons.person, size: 20, color: Colors.blue),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        editor,
+                                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary),
+                                      ),
+                                    ),
+                                    Text(
+                                      date,
+                                      style: GoogleFonts.plusJakartaSans(fontSize: 13, color: textSecondary, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                if (log['previous_odometer'] != log['new_odometer'])
+                                  _buildChangeRow("Odometer", "${log['previous_odometer']} KM", "${log['new_odometer']} KM", isDark),
+                                if (log['previous_price'] != log['new_price'])
+                                  _buildChangeRow("Price", "₹${log['previous_price']}", "₹${log['new_price']}", isDark),
+                                if (log['previous_filled_at'] != log['new_filled_at'])
+                                  _buildChangeRow("Filled At", _formatDateOnly(log['previous_filled_at']), _formatDateOnly(log['new_filled_at']), isDark),
+                                
+                                if (log['remark'] != null && log['remark'].toString().isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.format_quote_rounded, size: 20, color: Colors.orange),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            "${log['remark']}",
+                                            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontStyle: FontStyle.italic, color: isDark ? Colors.orange.shade300 : Colors.orange.shade800, height: 1.5),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
         );
       },
+    );
+  }
+
+  String _formatDateOnly(dynamic dateStr) {
+    if (dateStr == null) return 'N/A';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      return DateFormat('MMM dd, yyyy hh:mm a').format(dt);
+    } catch (_) {
+      return dateStr.toString();
+    }
+  }
+
+  Widget _buildChangeRow(String label, String oldVal, String newVal, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    oldVal,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.red.shade700, decoration: TextDecoration.lineThrough, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const Icon(Icons.arrow_right_alt_rounded, size: 16, color: Colors.grey),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    newVal,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

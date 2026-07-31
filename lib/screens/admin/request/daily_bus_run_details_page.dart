@@ -13486,27 +13486,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                                             },
 
                                             child: (isAssignedFaculty && !isSuperOrTransportAdmin)
-
-                                                ? Padding(
-                                                    padding: const EdgeInsets.only(left: 8, top: 4, bottom: 4),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Icon(Icons.swap_horiz_rounded, color: primaryBlue, size: 18),
-                                                        const SizedBox(width: 4),
-                                                        Text(
-                                                          "Transfer",
-                                                          style: TextStyle(
-                                                            color: primaryBlue,
-                                                            fontWeight: FontWeight.w900,
-                                                            fontSize: 14,
-                                                            letterSpacing: 0.5,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  )
-
+                                                ? Icon(Icons.swap_horiz_rounded, color: primaryBlue, size: 24)
                                                 : Icon(Icons.edit_rounded, color: primaryBlue, size: 24),
 
                                           ),

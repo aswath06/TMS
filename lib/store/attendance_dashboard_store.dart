@@ -25,14 +25,16 @@ class AttendanceDashboardStore extends ChangeNotifier {
       return;
     }
 
-    // Assuming backend is on port 4004 based on Server.js
-    // Extract base URL without the /api part if needed, or define a specific socket URL.
-    final uri = Uri.parse(ApiConstants.baseUrl);
-    final socketUrl = '${uri.scheme}://${uri.host}:${uri.port}';
+    // Use the dynamic base URL from ApiConstants directly
+    final socketUrl = ApiConstants.baseUrl;
 
     _socket = IO.io(socketUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
+      'path': '/tms-socket/',
+      'extraHeaders': {
+        ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
+      },
     });
 
     _socket?.onConnect((_) {

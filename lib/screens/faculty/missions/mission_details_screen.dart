@@ -30,7 +30,8 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/providers/notification_provider.dart';
 import 'package:tripzo/models/notification_model.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
-
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MissionDetailsScreen extends ConsumerStatefulWidget {
   final String missionTitle,
@@ -2848,16 +2849,11 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
   }
 
   Widget _buildHeader(BuildContext context, Color titleColor) {
-    final String statusString = (_missionData?['status'] ?? _missionData?['travel_info']?['status'] ?? widget.status ?? "").toString().toUpperCase();
-    final bool isApproved = statusString == 'APPROVED';
-    final bool isDraft = statusString == 'DRAFT' || statusString == 'PENDING' || statusString == 'SUBMITTED';
     final bool isAdmin = _isTransportOrSuperAdmin;
-    final bool isFaculty = _userRole?.toLowerCase() == 'faculty';
-    
-    final bool showDeleteIcon = (isApproved && isAdmin) || (isFaculty && (isApproved || isDraft));
+    final bool showDeleteIcon = isAdmin;
+    final bool showEditIcon = isAdmin;
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
           onPressed: () => Navigator.pop(context),
@@ -2867,24 +2863,37 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
             size: 22,
           ),
         ),
-        Text(
-          "Mission Details",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: titleColor,
+        Expanded(
+          child: Text(
+            "Mission Details",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: titleColor,
+            ),
           ),
         ),
-        showDeleteIcon
-            ? IconButton(
-                onPressed: _isApproving ? null : _deleteRoute,
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: Colors.red,
-                  size: 24,
-                ),
-              )
-            : const SizedBox(width: 48),
+        if (showEditIcon)
+          IconButton(
+            onPressed: _showEditTripTimeModal,
+            icon: Icon(
+              Icons.edit_rounded,
+              color: titleColor,
+              size: 22,
+            ),
+          ),
+        if (showDeleteIcon)
+          IconButton(
+            onPressed: _isApproving ? null : _deleteRoute,
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: Colors.red,
+              size: 24,
+            ),
+          )
+        else if (!showEditIcon)
+          const SizedBox(width: 48),
       ],
     );
   }
@@ -5089,6 +5098,483 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       () {
         _fetchMissionDetails();
       }
+    );
+  }
+
+  Future<void> _showEditTripTimeModal() async {
+    final tripInstances = _missionData?['trip_instances'] as List?;
+    if (tripInstances == null || tripInstances.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No trip instances available to edit.")),
+      );
+      return;
+    }
+    final activeTrip = tripInstances[0];
+    final tripId = activeTrip['id'];
+    
+    DateTime? initialStartTime = activeTrip['started_at'] != null ? DateTime.tryParse(activeTrip['started_at']) : null;
+    DateTime? initialEndTime = activeTrip['ended_at'] != null ? DateTime.tryParse(activeTrip['ended_at']) : null;
+    final initialStartOdo = activeTrip['start_odometer']?.toString() ?? 'N/A';
+    final initialEndOdo = activeTrip['end_odometer']?.toString() ?? 'N/A';
+    
+    DateTime? newStartTime = initialStartTime;
+    DateTime? newEndTime = initialEndTime;
+    
+    final TextEditingController startOdometerCtrl = TextEditingController(text: activeTrip['start_odometer']?.toString() ?? '');
+    final TextEditingController endOdometerCtrl = TextEditingController(text: activeTrip['end_odometer']?.toString() ?? '');
+    final TextEditingController remarkCtrl = TextEditingController();
+    
+    String? mistakeIsOn;
+    List<String> mistakeRoles = ["Driver", "Transport Admin", "Transport Coordinator", "Faculty", "Other"];
+    bool isSubmitting = false;
+
+    // Fetch roles from backend
+    try {
+      final token = await UserStore.getToken();
+      final res = await http.get(
+        Uri.parse(ApiConstants.getRoles),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['success'] == true && data['data'] != null) {
+          mistakeRoles = (data['data'] as List).map((r) => r['name'].toString()).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch roles: $e");
+    }
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+        final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+        final Color subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+        final Color currentBg = isDark ? const Color(0xFF0F172A) : Colors.grey.shade50;
+        final Color currentBorder = isDark ? Colors.white10 : Colors.grey.shade200;
+
+        Widget buildCurrentBox(String label, String value, IconData icon, Color iconColor) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: currentBg,
+              border: Border.all(color: currentBorder),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: iconColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 10, color: subtitleColor, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(
+                        value, 
+                        style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: titleColor),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.9,
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                children: [
+                  // Premium Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit_calendar_rounded, color: Colors.blue, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              "Edit Trip Time",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, color: subtitleColor, size: 28),
+                          onPressed: () => Navigator.pop(context),
+                          splashRadius: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Scrollable Form Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                        left: 24,
+                        right: 24,
+                        top: 24,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline_rounded, color: Colors.amber, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    "Modify the actual start and end times for this trip. All changes will be permanently logged.",
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Start & End Time
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("Start Time", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                                    const SizedBox(height: 12),
+                                    buildCurrentBox("Current", initialStartTime != null ? DateFormat('dd/MM/yyyy, hh:mm a').format(initialStartTime.toLocal()) : "N/A", Icons.schedule_rounded, Colors.green),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final dt = await CustomDateTimePicker.show(context, initialDate: newStartTime ?? DateTime.now(), maxDate: DateTime.now());
+                                        if (dt != null) setModalState(() => newStartTime = dt);
+                                      },
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                newStartTime != null ? DateFormat('dd/MM/yyyy, hh:mm a').format(newStartTime!.toLocal()) : "Select New Time",
+                                                style: GoogleFonts.plusJakartaSans(fontSize: 13, color: newStartTime != null ? titleColor : subtitleColor, fontWeight: newStartTime != null ? FontWeight.w600 : FontWeight.w500),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            Icon(Icons.edit_calendar_rounded, size: 18, color: subtitleColor),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("End Time", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                                    const SizedBox(height: 12),
+                                    buildCurrentBox("Current", initialEndTime != null ? DateFormat('dd/MM/yyyy, hh:mm a').format(initialEndTime.toLocal()) : "N/A", Icons.schedule_rounded, Colors.red),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final dt = await CustomDateTimePicker.show(context, initialDate: newEndTime ?? DateTime.now(), maxDate: DateTime.now());
+                                        if (dt != null) setModalState(() => newEndTime = dt);
+                                      },
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                newEndTime != null ? DateFormat('dd/MM/yyyy, hh:mm a').format(newEndTime!.toLocal()) : "Select New Time",
+                                                style: GoogleFonts.plusJakartaSans(fontSize: 13, color: newEndTime != null ? titleColor : subtitleColor, fontWeight: newEndTime != null ? FontWeight.w600 : FontWeight.w500),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            Icon(Icons.edit_calendar_rounded, size: 18, color: subtitleColor),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          
+                          // Start & End Odometer
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("Start Odometer", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                                    const SizedBox(height: 12),
+                                    buildCurrentBox("Current", initialStartOdo, Icons.speed_rounded, Colors.green),
+                                    SizedBox(
+                                      height: 52,
+                                      child: TextField(
+                                        controller: startOdometerCtrl,
+                                        keyboardType: TextInputType.number,
+                                        style: GoogleFonts.plusJakartaSans(fontSize: 14, color: titleColor, fontWeight: FontWeight.w600),
+                                        decoration: InputDecoration(
+                                          hintText: "Enter value",
+                                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: subtitleColor, fontWeight: FontWeight.w500),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                                          filled: true,
+                                          fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("End Odometer", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                                    const SizedBox(height: 12),
+                                    buildCurrentBox("Current", initialEndOdo, Icons.speed_rounded, Colors.red),
+                                    SizedBox(
+                                      height: 52,
+                                      child: TextField(
+                                        controller: endOdometerCtrl,
+                                        keyboardType: TextInputType.number,
+                                        style: GoogleFonts.plusJakartaSans(fontSize: 14, color: titleColor, fontWeight: FontWeight.w600),
+                                        decoration: InputDecoration(
+                                          hintText: "Enter value",
+                                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 13, color: subtitleColor, fontWeight: FontWeight.w500),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                                          filled: true,
+                                          fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Mistake is on
+                          Text("Mistake made by *", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                          const SizedBox(height: 12),
+                          Container(
+                            height: 52,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                if (!isDark) BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))
+                              ],
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: mistakeIsOn,
+                                isExpanded: true,
+                                dropdownColor: cardColor,
+                                icon: Icon(Icons.keyboard_arrow_down_rounded, color: subtitleColor),
+                                hint: Text("Select a role", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: subtitleColor, fontWeight: FontWeight.w500)),
+                                items: mistakeRoles.map((role) {
+                                  return DropdownMenuItem(value: role, child: Text(role, style: GoogleFonts.plusJakartaSans(fontSize: 14, color: titleColor, fontWeight: FontWeight.w600)));
+                                }).toList(),
+                                onChanged: (val) {
+                                  setModalState(() => mistakeIsOn = val);
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          
+                          // Remark
+                          Text("Reason for change *", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: titleColor)),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: remarkCtrl,
+                            maxLines: 3,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 14, color: titleColor, fontWeight: FontWeight.w500),
+                            decoration: InputDecoration(
+                              hintText: "E.g., Forgot to update end time yesterday...",
+                              hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: subtitleColor, fontWeight: FontWeight.w500),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              filled: true,
+                              fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Action Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                  child: Text("Cancel", style: GoogleFonts.plusJakartaSans(fontSize: 16, color: titleColor, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton(
+                                  onPressed: isSubmitting ? null : () async {
+                                    if (mistakeIsOn == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select who the mistake is on")));
+                                      return;
+                                    }
+                                    if (remarkCtrl.text.trim().isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reason for change is required")));
+                                      return;
+                                    }
+                                    
+                                    setModalState(() => isSubmitting = true);
+                                    
+                                    try {
+                                      final token = await UserStore.getToken();
+                                      final body = {
+                                        if (newStartTime != null) 'new_start_time': newStartTime!.toUtc().toIso8601String(),
+                                        if (newEndTime != null) 'new_end_time': newEndTime!.toUtc().toIso8601String(),
+                                        if (startOdometerCtrl.text.isNotEmpty) 'new_start_odometer': num.parse(startOdometerCtrl.text),
+                                        if (endOdometerCtrl.text.isNotEmpty) 'new_end_odometer': num.parse(endOdometerCtrl.text),
+                                        'mistake_is_on': mistakeIsOn,
+                                        'remark': remarkCtrl.text.trim(),
+                                      };
+                                      
+                                      final response = await http.put(
+                                        Uri.parse(ApiConstants.updateTripTime(tripId)),
+                                        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+                                        body: json.encode(body),
+                                      );
+                                      
+                                      if (response.statusCode == 200) {
+                                        final respData = json.decode(response.body);
+                                        if (respData['success']) {
+                                          if (mounted) {
+                                            Navigator.pop(context);
+                                            _fetchMissionDetails();
+                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Trip time updated successfully")));
+                                          }
+                                        } else {
+                                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(respData['message'] ?? "Update failed")));
+                                        }
+                                      } else {
+                                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${response.statusCode}")));
+                                      }
+                                    } catch (e) {
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                                    } finally {
+                                      if (mounted) setModalState(() => isSubmitting = false);
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF4F46E5),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    elevation: 0,
+                                  ),
+                                  child: isSubmitting 
+                                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                                      : Text("Update Time & Log", style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

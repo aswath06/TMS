@@ -701,211 +701,221 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSelectTile(
-              "Select Vehicle",
-              _selectedVehicle?['vehicle_number'] ?? "Choose Vehicle",
-              _selectedVehicle != null
-                  ? "${_selectedVehicle?['vehicle_type_name'] ?? 'Vehicle'} • Fuel: ${_selectedVehicle?['fuel_type'] ?? 'N/A'}"
-                  : null,
-              Icons.directions_bus_filled_rounded,
-              _selectedVehicle != null,
-              () {
-                if (_isLoadingVehicles) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Loading vehicles, please wait...")),
-                  );
-                  return;
-                }
-                _showSelectionSheet(
-                  title: "Select Vehicle",
-                  items: _vehicles,
-                  selected: _selectedVehicle,
-                  onSelect: (v) {
-                    setState(() {
-                      _selectedVehicle = v;
-                      final vFuelType = (v['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
-                      _selectedFluidType = _fuelTypes.firstWhere(
-                        (f) => f['name'] == vFuelType,
-                        orElse: () => _fuelTypes.first,
-                      );
-                      if (_userRole != 'driver') {
-                        if (v['default_driver'] != null) {
-                          try {
-                            _selectedDriver = _drivers.firstWhere(
-                              (d) => d['id'] == v['default_driver']['id'] || d['name'] == v['default_driver']['name']
-                            );
-                          } catch (e) {
-                            _selectedDriver = v['default_driver'];
-                          }
-                        } else {
-                          _selectedDriver = null;
-                        }
-                      }
-                    });
-                  },
-                  isVehicle: true,
-                  isDriver: false,
-                );
-              },
-              surfaceColor, titleColor, isDark, primaryBlue,
-              defaultDriver: _selectedVehicle?['default_driver']?['name'],
-              isRequired: true,
-            ),
-            if (_userRole != 'driver') ...[
-              const SizedBox(height: 12),
+            if (!widget.isCompletedEditMode) ...[
               _buildSelectTile(
-                "Driver Assignment",
-                _selectedDriver?['name'] ?? "Choose Driver",
-                _selectedDriver != null ? "📞 ${_selectedDriver?['phone'] ?? 'No Contact'}" : null,
-                Icons.person_rounded,
-                _selectedDriver != null,
+                "Select Vehicle",
+                _selectedVehicle?['vehicle_number'] ?? "Choose Vehicle",
+                _selectedVehicle != null
+                    ? "${_selectedVehicle?['vehicle_type_name'] ?? 'Vehicle'} • Fuel: ${_selectedVehicle?['fuel_type'] ?? 'N/A'}"
+                    : null,
+                Icons.directions_bus_filled_rounded,
+                _selectedVehicle != null,
                 () {
-                  if (_isLoadingDrivers) {
+                  if (_isLoadingVehicles) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Loading drivers, please wait...")),
+                      const SnackBar(content: Text("Loading vehicles, please wait...")),
                     );
                     return;
                   }
                   _showSelectionSheet(
-                    title: "Select Driver",
-                    items: _drivers,
-                    selected: _selectedDriver,
-                    onSelect: (d) => setState(() => _selectedDriver = d),
-                    isVehicle: false,
-                    isDriver: true,
-                  );
-                },
-                surfaceColor, titleColor, isDark, primaryBlue,
-                isDefault: _selectedVehicle != null && 
-                          _selectedVehicle?['default_driver'] != null && 
-                          _selectedVehicle?['default_driver']?['name'] == _selectedDriver?['name'],
-                isRequired: true,
-              ),
-            ],
-            const SizedBox(height: 12),
-            _buildSelectTile(
-              "Fuel Bunk Name",
-              _selectedBunk != null 
-                  ? _selectedBunk!['name'] 
-                  : "Choose Fuel Bunk",
-              null,
-              Icons.store_rounded,
-              _selectedBunk != null,
-              () {
-                if (_isLoadingBunks) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Loading bunks, please wait...")),
-                  );
-                  return;
-                }
-                _showSelectionSheet(
-                  title: "Select Fuel Bunk",
-                  items: _bunks,
-                  selected: _selectedBunk,
-                  onSelect: (b) => setState(() => _selectedBunk = b),
-                  isVehicle: false,
-                  isDriver: false,
-                );
-              },
-              surfaceColor, titleColor, isDark, primaryBlue,
-              isRequired: true,
-            ),
-            if (_selectedBunk != null) ...[
-              const SizedBox(height: 12),
-              _buildSelectTile(
-                "Fluid Type",
-                _selectedFluidType != null ? _selectedFluidType!['name'] : "Choose Fluid Type",
-                null,
-                Icons.local_gas_station_rounded,
-                _selectedFluidType != null,
-                () {
-                  List<Map<String, dynamic>> allowedFuelTypes = [];
-                  if (_selectedVehicle != null) {
-                    final vFuelType = (_selectedVehicle!['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
-                    final isAdBlue = _selectedVehicle!['is_adblue'] == true || _selectedVehicle!['is_adblue'] == 1;
-                    
-                    allowedFuelTypes = _fuelTypes.where((f) {
-                      if (f['name'] == vFuelType) return true;
-                      if (f['name'] == 'AD_BLUE' && isAdBlue) return true;
-                      return false;
-                    }).toList();
-                  } else {
-                    allowedFuelTypes = _fuelTypes;
-                  }
-
-                  _showSelectionSheet(
-                    title: "Select Fluid Type",
-                    items: allowedFuelTypes,
-                    selected: _selectedFluidType,
-                    onSelect: (f) => setState(() => _selectedFluidType = f),
-                    isVehicle: false,
+                    title: "Select Vehicle",
+                    items: _vehicles,
+                    selected: _selectedVehicle,
+                    onSelect: (v) {
+                      setState(() {
+                        _selectedVehicle = v;
+                        final vFuelType = (v['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
+                        _selectedFluidType = _fuelTypes.firstWhere(
+                          (f) => f['name'] == vFuelType,
+                          orElse: () => _fuelTypes.first,
+                        );
+                        if (_userRole != 'driver') {
+                          if (v['default_driver'] != null) {
+                            try {
+                              _selectedDriver = _drivers.firstWhere(
+                                (d) => d['id'] == v['default_driver']['id'] || d['name'] == v['default_driver']['name']
+                              );
+                            } catch (e) {
+                              _selectedDriver = v['default_driver'];
+                            }
+                          } else {
+                            _selectedDriver = null;
+                          }
+                        }
+                      });
+                    },
+                    isVehicle: true,
                     isDriver: false,
-                    isFuelType: true,
                   );
                 },
                 surfaceColor, titleColor, isDark, primaryBlue,
+                defaultDriver: _selectedVehicle?['default_driver']?['name'],
                 isRequired: true,
               ),
-            ],
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLabel(widget.isCompletedEditMode ? "Filled Volume" : (_isBITBunk ? "Required Volume" : "Volume"), primaryBlue, isRequired: true),
-                      const SizedBox(height: 12),
-                      _buildTextField(widget.isCompletedEditMode ? _filledVolumeController : _volumeController, "e.g. 50", Icons.opacity_rounded, surfaceColor, titleColor, isDark, isNumber: true),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLabel(widget.isCompletedEditMode ? "Date & Time" : "Date", primaryBlue, isRequired: true),
-                      const SizedBox(height: 12),
-                      _buildDatePickerTile(surfaceColor, titleColor, isDark, primaryBlue, showTime: widget.isCompletedEditMode),
-                    ],
-                  ),
+              if (_userRole != 'driver') ...[
+                const SizedBox(height: 12),
+                _buildSelectTile(
+                  "Driver Assignment",
+                  _selectedDriver?['name'] ?? "Choose Driver",
+                  _selectedDriver != null ? "📞 ${_selectedDriver?['phone'] ?? 'No Contact'}" : null,
+                  Icons.person_rounded,
+                  _selectedDriver != null,
+                  () {
+                    if (_isLoadingDrivers) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Loading drivers, please wait...")),
+                      );
+                      return;
+                    }
+                    _showSelectionSheet(
+                      title: "Select Driver",
+                      items: _drivers,
+                      selected: _selectedDriver,
+                      onSelect: (d) => setState(() => _selectedDriver = d),
+                      isVehicle: false,
+                      isDriver: true,
+                    );
+                  },
+                  surfaceColor, titleColor, isDark, primaryBlue,
+                  isDefault: _selectedVehicle != null && 
+                            _selectedVehicle?['default_driver'] != null && 
+                            _selectedVehicle?['default_driver']?['name'] == _selectedDriver?['name'],
+                  isRequired: true,
                 ),
               ],
-            ),
-            
-            if ((_selectedBunk != null && !_isBITBunk) || widget.isCompletedEditMode) ...[
+              const SizedBox(height: 12),
+              _buildSelectTile(
+                "Fuel Bunk Name",
+                _selectedBunk != null 
+                    ? _selectedBunk!['name'] 
+                    : "Choose Fuel Bunk",
+                null,
+                Icons.store_rounded,
+                _selectedBunk != null,
+                () {
+                  if (_isLoadingBunks) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Loading bunks, please wait...")),
+                    );
+                    return;
+                  }
+                  _showSelectionSheet(
+                    title: "Select Fuel Bunk",
+                    items: _bunks,
+                    selected: _selectedBunk,
+                    onSelect: (b) => setState(() => _selectedBunk = b),
+                    isVehicle: false,
+                    isDriver: false,
+                  );
+                },
+                surfaceColor, titleColor, isDark, primaryBlue,
+                isRequired: true,
+              ),
+              if (_selectedBunk != null) ...[
+                const SizedBox(height: 12),
+                _buildSelectTile(
+                  "Fluid Type",
+                  _selectedFluidType != null ? _selectedFluidType!['name'] : "Choose Fluid Type",
+                  null,
+                  Icons.local_gas_station_rounded,
+                  _selectedFluidType != null,
+                  () {
+                    List<Map<String, dynamic>> allowedFuelTypes = [];
+                    if (_selectedVehicle != null) {
+                      final vFuelType = (_selectedVehicle!['fuel_type'] ?? 'DIESEL').toString().toUpperCase();
+                      final isAdBlue = _selectedVehicle!['is_adblue'] == true || _selectedVehicle!['is_adblue'] == 1;
+                      
+                      allowedFuelTypes = _fuelTypes.where((f) {
+                        if (f['name'] == vFuelType) return true;
+                        if (f['name'] == 'AD_BLUE' && isAdBlue) return true;
+                        return false;
+                      }).toList();
+                    } else {
+                      allowedFuelTypes = _fuelTypes;
+                    }
+
+                    _showSelectionSheet(
+                      title: "Select Fluid Type",
+                      items: allowedFuelTypes,
+                      selected: _selectedFluidType,
+                      onSelect: (f) => setState(() => _selectedFluidType = f),
+                      isVehicle: false,
+                      isDriver: false,
+                      isFuelType: true,
+                    );
+                  },
+                  surfaceColor, titleColor, isDark, primaryBlue,
+                  isRequired: true,
+                ),
+              ],
               const SizedBox(height: 24),
+            ],
+            
+            if (widget.isCompletedEditMode || _selectedBunk != null) ...[
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildLabel("Odometer", primaryBlue, isRequired: true),
+                        _buildLabel(widget.isCompletedEditMode ? "Filled Volume" : (_isBITBunk ? "Required Volume" : "Volume"), primaryBlue, isRequired: true),
                         const SizedBox(height: 12),
-                        _buildTextField(_odometerController, "e.g. 45200", Icons.speed_rounded, surfaceColor, titleColor, isDark, isNumber: true),
+                        _buildTextField(widget.isCompletedEditMode ? _filledVolumeController : _volumeController, "e.g. 50", Icons.opacity_rounded, surfaceColor, titleColor, isDark, isNumber: true),
                       ],
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Spacer(),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel(widget.isCompletedEditMode ? "Date & Time" : "Date", primaryBlue, isRequired: true),
+                        const SizedBox(height: 12),
+                        _buildDatePickerTile(surfaceColor, titleColor, isDark, primaryBlue, showTime: widget.isCompletedEditMode),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 24),
-              _buildLabel("Bill Image", primaryBlue, isRequired: true),
-              const SizedBox(height: 12),
-              _buildImagePicker(surfaceColor, titleColor, isDark, primaryBlue),
-            ],
-            const SizedBox(height: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildLabel("Remarks (Optional)", primaryBlue),
-                const SizedBox(height: 12),
-                _buildTextField(_remarksController, "e.g. Special trip for BIT", Icons.notes_rounded, surfaceColor, titleColor, isDark),
+              
+              if ((_selectedBunk != null && !_isBITBunk) || widget.isCompletedEditMode) ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel("Odometer", primaryBlue, isRequired: true),
+                          const SizedBox(height: 12),
+                          _buildTextField(_odometerController, "e.g. 45200", Icons.speed_rounded, surfaceColor, titleColor, isDark, isNumber: true),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Spacer(),
+                  ],
+                ),
+                if (!widget.isCompletedEditMode) ...[
+                  const SizedBox(height: 24),
+                  _buildLabel("Bill Image", primaryBlue, isRequired: true),
+                  const SizedBox(height: 12),
+                  _buildImagePicker(surfaceColor, titleColor, isDark, primaryBlue),
+                ],
               ],
-            ),
+            ],
+            
+            if (!widget.isCompletedEditMode) ...[
+              const SizedBox(height: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLabel("Remarks (Optional)", primaryBlue),
+                  const SizedBox(height: 12),
+                  _buildTextField(_remarksController, "e.g. Special trip for BIT", Icons.notes_rounded, surfaceColor, titleColor, isDark),
+                ],
+              ),
+            ],
             if (widget.isCompletedEditMode) ...[
               const SizedBox(height: 24),
               Column(

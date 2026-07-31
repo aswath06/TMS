@@ -22,6 +22,7 @@ class ApiConstants {
   static String get login => "$baseUrl/auth/login-by-username";
   static String get forgotPassword => "$baseUrl/auth/forgot-password";
   static String get userMe => "$baseUrl/auth/user/me";
+  static String get getRoles => "$baseUrl/auth/roles";
   static String get logoutMe => "$baseUrl/auth/logout-me";
   static String get fcmToken => "$baseUrl/auth/user/fcm-token";
 
@@ -83,6 +84,7 @@ class ApiConstants {
   static String getDailyBusRuns(String serviceDate) => "$baseUrl/daily-bus/bus-run/get-all?service_date=$serviceDate&page=1&limit=500";
 
   // Trip actions
+  static String updateTripTime(dynamic tripId) => "$baseUrl/request/trips/$tripId/update-time";
   static String getStartOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-otp";
   static String getEndOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/end-otp";
   static String tripAction(dynamic tripId) => "$baseUrl/request/trips/$tripId/action";
