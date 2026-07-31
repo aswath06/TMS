@@ -14,6 +14,7 @@ class ServerConfig extends ChangeNotifier {
   factory ServerConfig() => _instance;
   ServerConfig._internal();
 
+
   bool _isProduction = true; // default: production ON
 
   bool get isProduction => _isProduction;
