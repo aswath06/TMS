@@ -961,11 +961,16 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
       debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: End Register Response"));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> resultData = jsonDecode(response.body);
+        final double dist = (resultData['data']?['actual_km'] as num?)?.toDouble() ?? 0.0;
+        
         if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => RunEndedGreetingScreen(
+              distance: dist,
+              points: dist.toInt(),
               onComplete: () {
                 Navigator.pop(context);
                 _fetchMissionDetails();

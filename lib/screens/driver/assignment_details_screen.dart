@@ -1604,6 +1604,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                             this.context,
                                             MaterialPageRoute(
                                               builder: (_) => RunEndedGreetingScreen(
+                                                distance: (result['data']?['distance'] as num?)?.toDouble() ?? 0.0,
+                                                points: (result['data']?['distance'] as num?)?.toInt() ?? 0,
                                                 onComplete: () {
                                                   Navigator.pop(this.context);
                                                   _handleRefresh();
@@ -3119,6 +3121,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                             this.context,
                                             MaterialPageRoute(
                                               builder: (_) => RunEndedGreetingScreen(
+                                                distance: (result['data']?['distance'] as num?)?.toDouble() ?? 0.0,
+                                                points: (result['data']?['distance'] as num?)?.toInt() ?? 0,
                                                 onComplete: () {
                                                   Navigator.pop(this.context);
                                                   _handleRefresh();

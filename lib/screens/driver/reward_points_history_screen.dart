@@ -153,12 +153,24 @@ class _RewardPointsHistoryScreenState extends ConsumerState<RewardPointsHistoryS
     Color subColor,
     int index,
   ) {
-    final routeName = item['route']?['route_name'] ?? (isTamil ? "தெரியாத வழி" : "Unknown Route");
-    final points = item['points'] ?? 0;
-    final source = item['source_type'] ?? "SYSTEM";
-    final reason = item['reason'] ?? (isTamil ? "விளக்கம் இல்லை" : "No reason provided");
     final date = DateTime.tryParse(item['awarded_at'] ?? '') ?? DateTime.now();
     final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(date);
+    final dateOnly = DateFormat('yyyy-MM-dd').format(date);
+
+    final reason = item['reason'] ?? (isTamil ? "விளக்கம் இல்லை" : "No reason provided");
+    
+    String defaultRouteName = isTamil ? "தெரியாத வழி" : "Unknown Route";
+    if (reason.toString().toLowerCase().contains('morning')) {
+      defaultRouteName = isTamil ? "காலை வழி" : "Morning Route";
+    } else if (reason.toString().toLowerCase().contains('evening')) {
+      defaultRouteName = isTamil ? "மாலை வழி" : "Evening Route";
+    }
+
+    String baseRouteName = item['route']?['route_name'] ?? defaultRouteName;
+    final routeName = "$baseRouteName - $dateOnly";
+    
+    final points = item['points'] ?? 0;
+    final source = item['source_type'] ?? "SYSTEM";
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -216,11 +228,11 @@ class _RewardPointsHistoryScreenState extends ConsumerState<RewardPointsHistoryS
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                "+$points",
-                style: const TextStyle(
+                "${points > 0 ? '+' : ''}$points",
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF10B981),
+                  color: points < 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981),
                 ),
               ),
               Text(

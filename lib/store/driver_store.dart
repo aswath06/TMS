@@ -1114,7 +1114,8 @@ class DriverStore extends ChangeNotifier {
 
       final decoded = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return {"success": true, "message": decoded['message'] ?? "Evening run ended"};
+        final innerData = (decoded['data'] is Map && decoded['data']['data'] != null) ? decoded['data']['data'] : decoded['data'];
+        return {"success": true, "message": decoded['message'] ?? "Evening run ended", "data": innerData};
       }
       return {"success": false, "message": decoded['message'] ?? "Failed to end evening run"};
     } catch (e) {
@@ -1197,7 +1198,9 @@ class DriverStore extends ChangeNotifier {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         await fetchDailyBusRuns();
-        return {"success": true, "message": "Run ended successfully"};
+        final decoded = json.decode(response.body);
+        final innerData = (decoded['data'] is Map && decoded['data']['data'] != null) ? decoded['data']['data'] : decoded['data'];
+        return {"success": true, "message": "Run ended successfully", "data": innerData};
       }
       
       final decoded = json.decode(response.body);
