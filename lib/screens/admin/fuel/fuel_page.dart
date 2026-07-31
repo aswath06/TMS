@@ -525,7 +525,7 @@ class _FuelPageState extends State<FuelPage> {
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     child: Text(
-                      "Requests",
+                      "Pending Driver Fill",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -847,7 +847,7 @@ class _FuelPageState extends State<FuelPage> {
         builder: (c) => const Center(child: CircularProgressIndicator()),
       );
       final token = await UserStore.getToken();
-      final url = '${ApiConstants.baseUrl}/admin/vehicle-maintenance/fuel-log/$id/reject';
+      final url = '${ApiConstants.baseUrl}/api/vehicles/fuel-log/$id/reject';
       
       final response = await http.patch(
         Uri.parse(url),
@@ -1134,20 +1134,6 @@ class _FuelPageState extends State<FuelPage> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.edit_rounded, size: 18),
-                  label: const Text("Edit"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primary,
-                    side: BorderSide(color: primary),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => _showEditFuelLogSheet(item),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
                 flex: 1,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
@@ -1159,7 +1145,21 @@ class _FuelPageState extends State<FuelPage> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () => _approveFuelLog(item['id']),
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateFuelRequestPage(
+                          initialFuelData: item,
+                          isApproveMode: true,
+                        ),
+                      ),
+                    );
+                    if (result == true) {
+                      _fetchApprovalLogs();
+                      _fetchFuelLogs(isRefresh: true);
+                    }
+                  },
                 ),
               ),
             ],
@@ -1256,6 +1256,8 @@ class _FuelPageState extends State<FuelPage> {
       ),
     );
   }
+
+
 
   Widget _buildShimmerLoading(bool isDark) {
     return ListView.builder(
@@ -1432,43 +1434,78 @@ class _FuelPageState extends State<FuelPage> {
                         ),
                       ],
                     ),
-                    if (!isHistory) ...[
+                    if (!isHistory && item['fuel_entry_status'] != 'PENDING_DRIVER_FILL') ...[
                       const SizedBox(width: 8),
-                      PopupMenuButton<String>(
-                        icon: Icon(Icons.more_vert, color: subColor, size: 20),
-                        padding: EdgeInsets.zero,
-                        onSelected: (value) async {
-                          if (value == 'edit') {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CreateFuelRequestPage(initialFuelData: item),
-                              ),
-                            );
-                            if (result == true) {
-                              _fetchApprovalLogs();
-                              _fetchFuelLogs(isRefresh: true);
-                            }
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 16),
-                                SizedBox(width: 8),
-                                Text('Edit'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Actions rendered below
                     ],
                   ],
                 ),
               ],
             ),
+            if (!isHistory && item['fuel_entry_status'] != 'PENDING_DRIVER_FILL') ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _rejectFuelLog(item['id']),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.close_rounded, size: 16),
+                          SizedBox(width: 4),
+                          Text("Reject", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CreateFuelRequestPage(
+                              initialFuelData: item,
+                              isApproveMode: true,
+                            ),
+                          ),
+                        );
+                        if (result == true) {
+                          _fetchApprovalLogs();
+                          _fetchFuelLogs(isRefresh: true);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF22C55E),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, size: 16),
+                          SizedBox(width: 4),
+                          Text("Approve", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             if (isExpanded) ...[
               const SizedBox(height: 20),
               const Divider(),

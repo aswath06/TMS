@@ -270,39 +270,33 @@ final store = ref.watch(driverStoreProvider);
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [primary, primary.withOpacity(0.8)],
-                  ),
+                  color: primary.withOpacity(0.1),
+                  border: Border.all(color: primary.withOpacity(0.2)),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primary.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.verified_user_rounded, color: Colors.white, size: 12),
+                    Icon(Icons.verified_user_rounded, color: primary, size: 12),
                     const SizedBox(width: 4),
                     Text(
-                      "STATUS: Active Duty",
-                      style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.0),
+                      "STATUS: ON DUTY",
+                      style: TextStyle(fontSize: 10, color: primary, fontWeight: FontWeight.w900, letterSpacing: 1.0),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                "Hi, $name",
-                style: TextStyle(fontSize: width * 0.08, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -1.0, height: 1.1),
+                "Welcome Back,",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: subColor, letterSpacing: 0.5),
               ),
               const SizedBox(height: 4),
               Text(
-                "Ready for your next trip? 🚐",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: subColor, letterSpacing: 0.2),
+                name,
+                style: TextStyle(fontSize: width * 0.07, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -0.5, height: 1.1),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

@@ -14,7 +14,8 @@ import 'package:tripzo/utils/api_error_parser.dart';
 
 class CreateFuelRequestPage extends StatefulWidget {
   final Map<String, dynamic>? initialFuelData;
-  const CreateFuelRequestPage({super.key, this.initialFuelData});
+  final bool isApproveMode;
+  const CreateFuelRequestPage({super.key, this.initialFuelData, this.isApproveMode = false});
 
   @override
   State<CreateFuelRequestPage> createState() => _CreateFuelRequestPageState();
@@ -121,9 +122,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           }
 
           if (widget.initialFuelData != null) {
-            final bId = widget.initialFuelData!['fuel_bunk_id'] ?? widget.initialFuelData!['bunk_id'];
+            final bId = widget.initialFuelData!['fuel_bunk_id'] ?? widget.initialFuelData!['bunk_id'] ?? widget.initialFuelData!['bunk']?['id'];
             if (bId != null) {
-              final idx = fetchedBunks.indexWhere((b) => b['id'] == bId);
+              final idx = fetchedBunks.indexWhere((b) => b['id'].toString() == bId.toString());
               if (idx != -1) _selectedBunk = fetchedBunks[idx];
             }
           }
@@ -159,9 +160,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           
           final role = await UserStore.getRole();
           if (widget.initialFuelData != null) {
-            final dId = widget.initialFuelData!['driver_id'];
+            final dId = widget.initialFuelData!['driver_id'] ?? widget.initialFuelData!['driver']?['id'];
             if (dId != null) {
-              final idx = fetchedDrivers.indexWhere((d) => d['id'] == dId);
+              final idx = fetchedDrivers.indexWhere((d) => d['id'].toString() == dId.toString());
               if (idx != -1) {
                 autoSelectedDriver = fetchedDrivers[idx];
               }
@@ -207,9 +208,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           Map<String, dynamic>? preSelected;
           
           if (widget.initialFuelData != null) {
-            final vId = widget.initialFuelData!['vehicle_id'];
+            final vId = widget.initialFuelData!['vehicle_id'] ?? widget.initialFuelData!['vehicle']?['id'];
             if (vId != null) {
-              final idx = fetchedVehicles.indexWhere((v) => v['id'] == vId);
+              final idx = fetchedVehicles.indexWhere((v) => v['id'].toString() == vId.toString());
               if (idx != -1) preSelected = fetchedVehicles[idx];
             }
           }
@@ -663,7 +664,11 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Generate Indent",
+          widget.isApproveMode 
+              ? "Approve Fuel Log"
+              : widget.initialFuelData != null 
+                  ? "Update Fuel Log" 
+                  : "Generate Indent",
           style: GoogleFonts.plusJakartaSans(
             color: titleColor,
             fontWeight: FontWeight.w800,
@@ -1184,7 +1189,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         child: _isSubmitting 
           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
           : Text(
-              widget.initialFuelData != null ? "UPDATE FUEL LOG" : (_isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG"),
+              widget.isApproveMode 
+                  ? "APPROVE FUEL LOG" 
+                  : (widget.initialFuelData != null ? "UPDATE FUEL LOG" : (_isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG")),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
@@ -1349,11 +1356,14 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     try {
       final token = await UserStore.getToken();
       final bool isEdit = widget.initialFuelData != null;
-      final uri = isEdit 
-          ? Uri.parse(ApiConstants.updateFuelLog(widget.initialFuelData!['id']))
-          : Uri.parse(ApiConstants.fuelLog);
+      
+      final uri = widget.isApproveMode 
+          ? Uri.parse(ApiConstants.approveFuelLog(widget.initialFuelData!['id']))
+          : (isEdit 
+              ? Uri.parse(ApiConstants.updateFuelLog(widget.initialFuelData!['id']))
+              : Uri.parse(ApiConstants.fuelLog));
           
-      var request = http.MultipartRequest(isEdit ? 'PUT' : 'POST', uri);
+      var request = http.MultipartRequest(widget.isApproveMode ? 'PATCH' : (isEdit ? 'PUT' : 'POST'), uri);
       request.headers.addAll(ApiConstants.getHeaders(token));
       
       request.fields['vehicle_id'] = _selectedVehicle!['id'].toString();
@@ -1398,7 +1408,15 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         if (responseData['success'] == true) {
           final instanceId = responseData['data']['instance_id'] ?? "SUCCESS";
           
-          if (isEdit) {
+          if (widget.isApproveMode) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Fuel order approved successfully"),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context, true); // Return true to indicate refresh needed
+          } else if (isEdit) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Fuel order updated successfully"),

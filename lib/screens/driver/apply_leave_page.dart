@@ -60,14 +60,21 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   }
 
   Future<void> _pickDateTime(BuildContext context, bool isStart) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
     final DateTime initialDate = isStart
-        ? (_startDate ?? DateTime.now())
-        : (_endDate ?? (_startDate?.add(const Duration(days: 1)) ?? DateTime.now()));
+        ? (_startDate ?? now)
+        : (_endDate ?? (_startDate?.add(const Duration(days: 1)) ?? now));
+
+    final DateTime minD = isStart
+        ? today
+        : (_startDate != null ? DateTime(_startDate!.year, _startDate!.month, _startDate!.day) : today);
 
     final DateTime? picked = await CustomDateTimePicker.show(
       context,
       initialDate: initialDate,
-      minDate: isStart ? DateTime.now() : (_startDate ?? DateTime.now()),
+      minDate: minD,
       showTime: false,
       accent: primaryBlue,
     );
@@ -601,92 +608,220 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
             borderRadius: BorderRadius.circular(20),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: _selectedLeaveType,
-              isExpanded: true,
-              borderRadius: BorderRadius.circular(16),
-              icon: Container(
-                margin: const EdgeInsets.only(right: 8),
-                child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: primaryBlue,
-                ),
-              ),
-              hint: Row(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              _showLeaveTypeModal(context, types, card, txt, isTamil);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
                 children: [
                   Container(
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: primaryBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.event_note_rounded,
-                      size: 18,
+                      size: 20,
                       color: primaryBlue,
                     ),
                   ),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      isTamil ? 'வகையைத் தேர்ந்தெடுக்கவும்' : 'Select leave type',
+                      _selectedLeaveType != null 
+                          ? (types.firstWhere((t) => t['id'] == _selectedLeaveType, orElse: () => {'name': ''})['name'] ?? 'Select Leave Type')
+                          : (isTamil ? 'வகையைத் தேர்ந்தெடுக்கவும்' : 'Select leave type'),
                       style: TextStyle(
-                        color: txt.withValues(alpha: 0.4),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        color: _selectedLeaveType != null ? txt : txt.withValues(alpha: 0.4),
+                        fontSize: 15,
+                        fontWeight: _selectedLeaveType != null ? FontWeight.w800 : FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(right: 8),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: primaryBlue,
+                      size: 24,
+                    ),
+                  ),
                 ],
               ),
-              style: TextStyle(
-                color: txt,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLeaveTypeModal(BuildContext context, List<dynamic> types, Color cardColor, Color txtColor, bool isTamil) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
               ),
-              dropdownColor: card,
-              onChanged: (val) {
-                if (val != null) setState(() => _selectedLeaveType = val);
-              },
-              items: types.map((type) {
-                final int typeId = type['id'] as int;
-                final String label = type['name'] ?? type['code'] ?? '';
-                return DropdownMenuItem<int>(
-                  value: typeId,
-                  child: Row(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.all(12),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _selectedLeaveType == typeId
-                              ? primaryBlue.withValues(alpha: 0.15)
-                              : primaryBlue.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.event_note_rounded,
-                          size: 18,
-                          color: primaryBlue,
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            color: txt,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Grabber
+                Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: txtColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: primaryBlue.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.dashboard_customize_rounded, color: primaryBlue, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        isTamil ? "விடுப்பு வகையைத் தேர்ந்தெடுக்கவும்" : "Select Leave Type",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: txtColor,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, color: txtColor.withValues(alpha: 0.5)),
+                      onPressed: () => Navigator.pop(context),
+                      style: IconButton.styleFrom(
+                        backgroundColor: txtColor.withValues(alpha: 0.05),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.5,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: types.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final type = types[index];
+                        final int typeId = type['id'] as int;
+                        final String label = type['name'] ?? type['code'] ?? '';
+                        final bool isSelected = _selectedLeaveType == typeId;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedLeaveType = typeId;
+                              });
+                              Navigator.pop(context);
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: isSelected ? primaryBlue.withValues(alpha: 0.08) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? primaryBlue.withValues(alpha: 0.3) : txtColor.withValues(alpha: 0.05),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isSelected 
+                                          ? primaryBlue
+                                          : txtColor.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: isSelected ? [
+                                        BoxShadow(
+                                          color: primaryBlue.withValues(alpha: 0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        )
+                                      ] : null,
+                                    ),
+                                    child: Icon(
+                                      Icons.event_note_rounded,
+                                      size: 20,
+                                      color: isSelected ? Colors.white : txtColor.withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: isSelected ? primaryBlue : txtColor,
+                                        fontSize: 16,
+                                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: primaryBlue.withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.check_circle_rounded,
+                                        color: primaryBlue,
+                                        size: 22,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -710,7 +845,15 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         _endDate != null &&
                         (isNonDriver || _selectedLeaveType != null)) {
 
-                      if (!_endDate!.isAfter(_startDate!)) {
+                      // Build ISO datetime strings matching the API format
+                      final String startTime = _startSession == 'FN' ? "09:00:00" : "14:00:00";
+                      final String endTime = _endSession == 'FN' ? "13:00:00" : "18:00:00";
+                      final String fromDate =
+                          "${DateFormat('yyyy-MM-dd').format(_startDate!)}T$startTime";
+                      final String toDate =
+                          "${DateFormat('yyyy-MM-dd').format(_endDate!)}T$endTime";
+
+                      if (!DateTime.parse(toDate).isAfter(DateTime.parse(fromDate))) {
                         showTopToast(
                           context,
                           isTamil
@@ -721,14 +864,6 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         return;
                       }
 
-                      // Build ISO datetime strings matching the API format:
-                      // "2026-04-16T10:00:00"
-                      final String startTime = _startSession == 'FN' ? "09:00:00" : "14:00:00";
-                      final String endTime = _endSession == 'FN' ? "13:00:00" : "18:00:00";
-                      final String fromDate =
-                          "${DateFormat('yyyy-MM-dd').format(_startDate!)}T$startTime";
-                      final String toDate =
-                          "${DateFormat('yyyy-MM-dd').format(_endDate!)}T$endTime";
 
                       final success = await useDriverStore.createLeave(
                         fromDate: fromDate,

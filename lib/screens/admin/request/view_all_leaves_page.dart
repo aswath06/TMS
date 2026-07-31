@@ -547,7 +547,10 @@ class _ApplyLeaveBottomSheet extends ConsumerStatefulWidget {
 
 class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> {
   final _reasonController = TextEditingController();
-  DateTime? _selectedDate;
+  DateTime? _startDate;
+  DateTime? _endDate;
+  String _startSession = 'FN';
+  String _endSession = 'AN';
   int? _selectedLeaveType;
   Map<String, dynamic>? _selectedDriver;
   List<Map<String, dynamic>> _filteredDrivers = [];
@@ -588,16 +591,59 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
     });
   }
 
+  // --- Helper: Calculate Days Difference ---
+  String _getDaysDifference() {
+    if (_startDate == null || _endDate == null) return "";
+
+    final difference = _endDate!.difference(_startDate!).inDays;
+    final totalDays = difference < 0 ? 0 : difference + 1;
+
+    return "$totalDays ${totalDays == 1 ? 'Day' : 'Days'}";
+  }
+
+  Future<void> _pickDateTime(BuildContext context, bool isStart) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final DateTime initialDate = isStart
+        ? (_startDate ?? now)
+        : (_endDate ?? (_startDate?.add(const Duration(days: 1)) ?? now));
+
+    final DateTime minD = isStart
+        ? today
+        : (_startDate != null ? DateTime(_startDate!.year, _startDate!.month, _startDate!.day) : today);
+
+    final DateTime? picked = await CustomDateTimePicker.show(
+      context,
+      initialDate: initialDate,
+      minDate: minD,
+      showTime: false,
+      accent: widget.primaryBlue,
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        if (isStart) {
+          _startDate = picked;
+          if (_endDate != null && _endDate!.isBefore(_startDate!)) {
+            _endDate = null;
+          }
+        } else {
+          _endDate = picked;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final titleColor = widget.isDark ? Colors.white : const Color(0xFF1E293B);
+    final subTitleColor = widget.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      height:
-          MediaQuery.of(context).size.height * 0.75, // Adjust height as needed
-      margin: EdgeInsets.only(top: 100), // Ensure it's not full screen
+      height: MediaQuery.of(context).size.height * 0.85, // Adjusted for larger content
+      margin: const EdgeInsets.only(top: 80),
       padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomPadding),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -657,7 +703,7 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
                   color: widget.cardColor,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: _selectedDriver != null
                         ? widget.primaryBlue
@@ -691,117 +737,73 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
                 ),
               ),
             ),
+            
             const SizedBox(height: 24),
-            _buildSectionTitle("Select Date"),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _pickDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                  color: widget.cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _selectedDate != null
-                        ? widget.primaryBlue
-                        : Colors.grey.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.date_range_rounded,
-                      color: _selectedDate != null ? widget.primaryBlue : Colors.grey,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _selectedDate != null
-                            ? DateFormat('dd MMM yyyy').format(_selectedDate!)
-                            : "Choose a date...",
-                        style: TextStyle(
-                          color: _selectedDate != null ? titleColor : Colors.grey,
-                          fontWeight: _selectedDate != null ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
-                  ],
-                ),
-              ),
-            ),
+            
+            _buildSectionTitle("Leave Duration"),
+            const SizedBox(height: 16),
+            _buildDateSelectionArea(widget.cardColor, titleColor, subTitleColor),
+
             const SizedBox(height: 24),
 
             _buildSectionTitle("Leave Type"),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Consumer(
-builder: (context, ref, child) {
-final requestStore = ref.watch(requestStoreProvider);
+              builder: (context, ref, child) {
+                final requestStore = ref.watch(requestStoreProvider);
                 final types = requestStore.leaveTypes;
+                
                 if (requestStore.isLoadingLeaveTypes && _selectedLeaveType == null) {
                   return Container(
-                    height: 56,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 60,
                     decoration: BoxDecoration(
                       color: widget.cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                    child: const Center(
+                      child: SizedBox(
+                        height: 20, width: 20, 
+                        child: CircularProgressIndicator(strokeWidth: 2)
+                      )
+                    ),
                   );
                 }
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: widget.cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: _selectedLeaveType,
-                      isExpanded: true,
-                      hint: const Text("Select leave type", style: TextStyle(color: Colors.grey)),
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                      style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
-                      onChanged: (val) => setState(() => _selectedLeaveType = val),
-                      items: types.map((type) {
-                        return DropdownMenuItem<int>(
-                          value: type['id'],
-                          child: Text(type['name'] ?? type['code'] ?? ""),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                );
+                
+                return _buildLeaveTypeSelector(types, widget.cardColor, titleColor);
               },
             ),
+            
+            const SizedBox(height: 24),
+
             // Reason
             _buildSectionTitle("Reason"),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               controller: _reasonController,
-              maxLines: 3,
-              style: TextStyle(color: titleColor),
+              maxLines: 4,
+              style: TextStyle(color: titleColor, fontSize: 14, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 filled: true,
                 fillColor: widget.cardColor,
                 hintText: "Enter the reason for leave...",
                 hintStyle: TextStyle(
-                  color: Colors.grey.withValues(alpha: 0.6),
+                  color: titleColor.withValues(alpha: 0.4),
+                  fontSize: 13
+                ),
+                prefixIcon: Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: widget.primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.notes_rounded, size: 18, color: widget.primaryBlue),
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.grey.withValues(alpha: 0.2),
-                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.grey.withValues(alpha: 0.2),
-                  ),
-                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
               ),
             ),
 
@@ -848,32 +850,351 @@ final requestStore = ref.watch(requestStoreProvider);
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey,
+  Widget _buildDateSelectionArea(Color card, Color txt, Color sub) {
+    return Column(
+      children: [
+        _splitDateTile("From Date", _startDate, _startSession, () => _pickDateTime(context, true), (val) {
+          if (val != null) setState(() => _startSession = val);
+        }, card, txt, sub),
+        if (_startDate != null && _endDate != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(child: Divider(color: widget.primaryBlue.withValues(alpha: 0.2), thickness: 1)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: widget.primaryBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: widget.primaryBlue.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    _getDaysDifference(),
+                    style: TextStyle(
+                      color: widget.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: widget.primaryBlue.withValues(alpha: 0.2), thickness: 1)),
+              ],
+            ),
+          )
+        else
+          const SizedBox(height: 12),
+        _splitDateTile("To Date", _endDate, _endSession, () => _pickDateTime(context, false), (val) {
+          if (val != null) setState(() => _endSession = val);
+        }, card, txt, sub),
+      ],
+    );
+  }
+
+  Widget _splitDateTile(String label, DateTime? dateTime, String session, VoidCallback onDateTap, ValueChanged<String?> onSessionChanged, Color card, Color txt, Color sub) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: sub)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  onTap: onDateTap,
+                  child: _dateTimeBox(
+                    Icons.calendar_month_rounded,
+                    dateTime == null ? "Date" : DateFormat('dd MMM, yyyy').format(dateTime),
+                    txt,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: widget.primaryBlue.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: widget.primaryBlue.withValues(alpha: 0.1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: session,
+                      isExpanded: true,
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: widget.primaryBlue, size: 18),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: txt),
+                      dropdownColor: card,
+                      onChanged: onSessionChanged,
+                      items: ['FN', 'AN'].map((String value) {
+                        return DropdownMenuItem<String>(value: value, child: Text(value));
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  void _pickDate() async {
-    final picked = await CustomDateTimePicker.show(
-      context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      minDate: DateTime.now(),
-      maxDate: DateTime.now().add(const Duration(days: 365)),
-      showTime: false,
-      accent: widget.primaryBlue,
-      cardColor: widget.cardColor,
+  Widget _dateTimeBox(IconData icon, String value, Color txt) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: widget.primaryBlue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: widget.primaryBlue.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: widget.primaryBlue),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: txt),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: widget.primaryBlue,
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: widget.isDark ? Colors.white : const Color(0xFF1E293B),
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeaveTypeSelector(List<dynamic> types, Color card, Color txt) {
+    return Container(
+      decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          _showLeaveTypeModal(context, types, card, txt);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                margin: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: widget.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.event_note_rounded, size: 20, color: widget.primaryBlue),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _selectedLeaveType != null 
+                      ? (types.firstWhere((t) => t['id'] == _selectedLeaveType, orElse: () => {'name': ''})['name'] ?? 'Select Leave Type')
+                      : 'Select leave type',
+                  style: TextStyle(
+                    color: _selectedLeaveType != null ? txt : txt.withValues(alpha: 0.4),
+                    fontSize: 15,
+                    fontWeight: _selectedLeaveType != null ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(right: 8),
+                child: Icon(Icons.keyboard_arrow_down_rounded, color: widget.primaryBlue, size: 24),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLeaveTypeModal(BuildContext context, List<dynamic> types, Color cardColor, Color txtColor) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48, height: 5,
+                  decoration: BoxDecoration(
+                    color: txtColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: widget.primaryBlue.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.dashboard_customize_rounded, color: widget.primaryBlue, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        "Select Leave Type",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: txtColor,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, color: txtColor.withValues(alpha: 0.5)),
+                      onPressed: () => Navigator.pop(context),
+                      style: IconButton.styleFrom(backgroundColor: txtColor.withValues(alpha: 0.05)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: types.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final type = types[index];
+                        final int typeId = type['id'] as int;
+                        final String label = type['name'] ?? type['code'] ?? '';
+                        final bool isSelected = _selectedLeaveType == typeId;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              setState(() => _selectedLeaveType = typeId);
+                              Navigator.pop(context);
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: isSelected ? widget.primaryBlue.withValues(alpha: 0.08) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? widget.primaryBlue.withValues(alpha: 0.3) : txtColor.withValues(alpha: 0.05),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? widget.primaryBlue : txtColor.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: isSelected ? [BoxShadow(color: widget.primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+                                    ),
+                                    child: Icon(Icons.event_note_rounded, size: 20, color: isSelected ? Colors.white : txtColor.withValues(alpha: 0.5)),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        color: isSelected ? widget.primaryBlue : txtColor,
+                                        fontSize: 16,
+                                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(color: widget.primaryBlue.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                      child: Icon(Icons.check_circle_rounded, color: widget.primaryBlue, size: 22),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showDriverPicker() {
@@ -1080,7 +1401,8 @@ final requestStore = ref.watch(requestStoreProvider);
 
   void _submitLeave() async {
     if (_selectedDriver == null ||
-        _selectedDate == null ||
+        _startDate == null ||
+        _endDate == null ||
         _selectedLeaveType == null ||
         _reasonController.text.isEmpty) {
       showTopToast(
@@ -1091,20 +1413,25 @@ final requestStore = ref.watch(requestStoreProvider);
       return;
     }
 
+    final String startTime = _startSession == 'FN' ? "09:00:00" : "14:00:00";
+    final String endTime = _endSession == 'FN' ? "13:00:00" : "18:00:00";
+    final String fromDate = "${DateFormat('yyyy-MM-dd').format(_startDate!)}T$startTime";
+    final String toDate = "${DateFormat('yyyy-MM-dd').format(_endDate!)}T$endTime";
+
+    if (!DateTime.parse(toDate).isAfter(DateTime.parse(fromDate))) {
+      showTopToast(context, "End date must be after start date", isError: true);
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final navigator = Navigator.of(context);
     final requestStore = ref.read(requestStoreProvider);
 
-    // Build ISO datetime strings for a full day (00:00:00 to 00:00:00)
-    final String dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-    final String fromDatetime = "${dateStr}T00:00:00";
-    final String toDatetime = "${dateStr}T00:00:00";
-
     final success = await requestStore.createLeave(
       driverId: _selectedDriver!['id'],
-      fromDatetime: fromDatetime,
-      toDatetime: toDatetime,
+      fromDatetime: fromDate,
+      toDatetime: toDate,
       leaveType: _selectedLeaveType!,
       reason: _reasonController.text,
     );

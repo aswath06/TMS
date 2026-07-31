@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/SecuritySettingsPage.dart';
 import 'package:tripzo/screens/setting/user_session_management_page.dart';
 import 'package:tripzo/screens/setting/support_tickets_screen.dart';
+import 'package:tripzo/screens/setting/auto_block_dashboard_page.dart';
 import 'package:tripzo/screens/setting/backup/backup_settings_page.dart';
 import 'package:tripzo/screens/security/security_vehicle_screen.dart';
 import 'package:tripzo/store/istamil.dart';
@@ -354,6 +355,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const UserSessionManagementPage(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _settingsTile(
+                        Icons.block_flipped,
+                        "Auto-Block Dashboard",
+                        "View automated attendance warnings & blocks",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        const Color(0xFFEF4444), // Red/Rose color
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AutoBlockDashboardPage(),
                           ),
                         ),
                       ),

@@ -107,7 +107,7 @@ class ApiConstants {
   static String rewardPoints(dynamic userId) => "$baseUrl/api/drivers/reward-points?user_id=$userId";
   static String get verifyFuelBill => "$baseUrl/api/vehicles/verify-fuel-bill";
   static String get pendingFuelEntries => "$baseUrl/api/vehicles/fuel-log/pending-driver";
-  static String get pendingAdminApprovalFuelLogs => "$baseUrl/api/vehicles/fuel-log?fuel_entry_status=PENDING_DRIVER_FILL&page=1&limit=50&sortBy=filled_at&sortOrder=DESC&status=PENDING_ADMIN_APPROVAL";
+  static String get pendingAdminApprovalFuelLogs => "$baseUrl/api/vehicles/fuel-log?page=1&limit=50&sortBy=filled_at&sortOrder=DESC&status=PENDING_ADMIN_APPROVAL,PENDING_DRIVER_FILL";
   static String approveFuelLog(dynamic id) => "$baseUrl/api/vehicles/fuel-log/$id/approve";
   static String get pendingRoutesToComplete => "$baseUrl/request/driver/pending-routes-to-complete";
   static String rejectRouteRequest(dynamic id) => "$baseUrl/route-requests/$id/reject";
@@ -148,6 +148,12 @@ class ApiConstants {
       bypassHeaderKey: bypassHeaderValue
     };
   }
+
+  // Auto-Block Endpoints
+  static String get getAutoBlockStats => "$baseUrl/daily-bus/auto-block-stats";
+  static String get getAutoBlockSettings => "$baseUrl/daily-bus/auto-block-settings";
+  static String get updateAutoBlockSettings => "$baseUrl/daily-bus/auto-block-settings";
+  static String unblockUser(dynamic id) => "$baseUrl/auth/users/$id/unblock";
 
   static const Map<String, int> DRIVER_STATUS = {
     'AVAILABLE': 1,
