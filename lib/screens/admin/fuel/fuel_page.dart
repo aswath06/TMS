@@ -38,6 +38,10 @@ class _FuelPageState extends State<FuelPage> {
   bool _hasMore = true;
   bool _isLoadingMore = false;
 
+  // Search state for Completed tab
+  final TextEditingController _completedSearchController = TextEditingController();
+  String _completedSearchQuery = "";
+
   late ScrollController _requestScrollController;
   late ScrollController _historyScrollController;
 
@@ -46,6 +50,7 @@ class _FuelPageState extends State<FuelPage> {
     super.initState();
     _requestScrollController = ScrollController()..addListener(_onRequestScroll);
     _historyScrollController = ScrollController()..addListener(_onHistoryScroll);
+    
     _fetchFuelLogs(isRefresh: true);
     _fetchApprovalLogs();
     _fetchBunks();
@@ -124,11 +129,15 @@ class _FuelPageState extends State<FuelPage> {
 
     try {
       final token = await UserStore.getToken();
-      String url = "${ApiConstants.fuelLog}?page=$_currentPage&limit=20";
       
-      if (_selectedDate != null) {
-        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-        url += "&from_date=$dateStr&to_date=$dateStr";
+      String status = _tabIndex == 0 ? "PENDING_DRIVER_FILL" : (_tabIndex == 3 ? "COMPLETED" : "");
+      
+      String url = "${ApiConstants.fuelLog}?page=$_currentPage&limit=20";
+      if (status.isNotEmpty) {
+        url += "&status=$status";
+      }
+      if (_completedSearchQuery.isNotEmpty) {
+        url += "&search=${Uri.encodeComponent(_completedSearchQuery)}";
       }
 
       debugPrint("\n--- FETCH FUEL LOGS REQUEST ---");
@@ -525,6 +534,7 @@ class _FuelPageState extends State<FuelPage> {
                   onTap: () => setState(() {
                     _tabIndex = 0;
                     _expandedIndex = null;
+                    _fetchFuelLogs(isRefresh: true);
                   }),
                   behavior: HitTestBehavior.opaque,
                   child: Center(
@@ -585,6 +595,7 @@ class _FuelPageState extends State<FuelPage> {
                   onTap: () => setState(() {
                     _tabIndex = 3;
                     _expandedIndex = null;
+                    _fetchFuelLogs(isRefresh: true);
                   }),
                   behavior: HitTestBehavior.opaque,
                   child: Center(
@@ -669,113 +680,10 @@ class _FuelPageState extends State<FuelPage> {
     );
   }
 
-  Widget _buildAllLogsView(Color titleColor, Color subColor, Color primary, bool isDark) {
-    if (_isLoading) return _buildShimmerLoading(isDark);
-    
-    final List<dynamic> filteredLogs = _fuelLogs.where((log) {
-      if (_selectedDate == null) return true;
-      final DateTime logDate = DateTime.parse(log['created_at']);
-      return logDate.year == _selectedDate!.year &&
-             logDate.month == _selectedDate!.month &&
-             logDate.day == _selectedDate!.day;
-    }).toList();
-
-    // Sort by date (newest first)
-    filteredLogs.sort((a, b) {
-      final DateTime aDate = DateTime.parse(a['created_at']);
-      final DateTime bDate = DateTime.parse(b['created_at']);
-      return bDate.compareTo(aDate);
-    });
-
-    if (filteredLogs.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () => _fetchFuelLogs(isRefresh: true),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.list_alt_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
-                  const SizedBox(height: 16),
-                  Text(
-                    _selectedDate == null ? "No logs found" : "No logs for ${DateFormat('MMM dd').format(_selectedDate!)}", 
-                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _fetchFuelLogs(isRefresh: true),
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        controller: _requestScrollController,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == filteredLogs.length) {
-            if (_isLoadingMore) {
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
-              );
-            } else {
-              return const SizedBox(height: 40);
-            }
-          }
-          final req = filteredLogs[index];
-          final bool isExpanded = _expandedIndex == index;
-          
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _wrapWithDismissible(
-              child: _buildFuelCard(index, req, titleColor, subColor, primary, isDark, isHistory: req['fuel_entry_status'] == 'COMPLETED', isExpanded: isExpanded),
-              log: req,
-              index: index,
-              primary: primary,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildRequestGenerationView(Color titleColor, Color subColor, Color primary, bool isDark) {
     if (_isLoading) return _buildShimmerLoading(isDark);
     
-    final List<dynamic> filteredLogs = _fuelLogs.where((log) {
-      if (log['fuel_entry_status'] != "PENDING_DRIVER_FILL") return false;
-      if (_selectedDate == null) return true;
-      
-      final DateTime logDate = DateTime.parse(log['created_at']);
-      return logDate.year == _selectedDate!.year &&
-             logDate.month == _selectedDate!.month &&
-             logDate.day == _selectedDate!.day;
-    }).toList();
-
-    // Sort by date (newest first)
-    filteredLogs.sort((a, b) {
-      final DateTime aDate = DateTime.parse(a['created_at']);
-      final DateTime bDate = DateTime.parse(b['created_at']);
-      return bDate.compareTo(aDate);
-    });
-
-    if (filteredLogs.isEmpty) {
+    if (_fuelLogs.isEmpty) {
       return RefreshIndicator(
         onRefresh: () => _fetchFuelLogs(isRefresh: true),
         child: ListView(
@@ -806,9 +714,9 @@ class _FuelPageState extends State<FuelPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _requestScrollController,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
+        itemCount: _fuelLogs.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == filteredLogs.length) {
+          if (index == _fuelLogs.length) {
             if (_isLoadingMore) {
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -826,7 +734,7 @@ class _FuelPageState extends State<FuelPage> {
               return const SizedBox(height: 40);
             }
           }
-          final req = filteredLogs[index];
+          final req = _fuelLogs[index];
           final bool isExpanded = _expandedIndex == index;
           
           return Padding(
@@ -847,7 +755,6 @@ class _FuelPageState extends State<FuelPage> {
     if (_isLoadingApprovals) return _buildShimmerLoading(isDark);
     
     final List<dynamic> filteredLogs = _approvalLogs.where((log) {
-      // Driver Requests have PENDING_ADMIN_APPROVAL but NO bunk assigned yet ("Unknown Bunk")
       if (log['fuel_entry_status'] != 'PENDING_ADMIN_APPROVAL') return false;
       
       final String bunkName = log['bunk']?['name'] ?? log['fuel_bunk']?['bunk_name'] ?? "Unknown Bunk";
@@ -899,29 +806,9 @@ class _FuelPageState extends State<FuelPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _requestScrollController,
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        itemCount: filteredLogs.length + (_hasMore ? 1 : 0),
+        itemCount: filteredLogs.length,
         itemBuilder: (context, index) {
-          if (index == filteredLogs.length) {
-            if (_isLoadingMore) {
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
-              );
-            } else {
-              return const SizedBox(height: 40);
-            }
-          }
           final req = filteredLogs[index];
-          final bool isExpanded = _expandedIndex == index;
-          
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _wrapWithDismissible(
@@ -940,10 +827,8 @@ class _FuelPageState extends State<FuelPage> {
     if (_isLoadingApprovals) return _buildShimmerLoading(isDark);
     
     final List<dynamic> filteredLogs = _approvalLogs.where((log) {
-      // STRICTLY filter only PENDING_ADMIN_APPROVAL
       if (log['fuel_entry_status'] != 'PENDING_ADMIN_APPROVAL') return false;
       
-      // Admin Approval should ONLY show logs that have a bunk assigned (i.e. not a driver request)
       final String bunkName = log['bunk']?['name'] ?? log['fuel_bunk']?['bunk_name'] ?? "Unknown Bunk";
       if (bunkName == "Unknown Bunk") return false;
 
@@ -1038,9 +923,8 @@ class _FuelPageState extends State<FuelPage> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
           final responseData = json.decode(response.body);
-          final instanceId = responseData['data']?['instance_id'] ?? responseData['fuelLog']?['instance_id'] ?? "SUCCESS";
-          final successMessage = responseData['message'] ?? "Fuel log approved successfully";
-          _showIndentPopup(instanceId, vehicleNumber ?? 'Unknown Vehicle', title: successMessage, subtitle: "Indent Number:");
+          final successMessage = responseData['message'] ?? "Fuel Request Approved successfully";
+          showTopToast(context, successMessage);
         }
         _fetchApprovalLogs();
         _fetchFuelLogs(isRefresh: true);
@@ -1324,7 +1208,7 @@ class _FuelPageState extends State<FuelPage> {
                     const SizedBox(height: 16),
                     GestureDetector(
                       onTap: () async {
-                        final dt = await CustomDateTimePicker.show(context, initialDate: filledAt, accent: primary);
+                        final dt = await CustomDateTimePicker.show(context, initialDate: filledAt, maxDate: DateTime.now(), accent: primary);
                         if (dt != null) setModalState(() => filledAt = dt);
                       },
                       child: Container(
@@ -1565,22 +1449,38 @@ class _FuelPageState extends State<FuelPage> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    final Map<String, dynamic> body = {
-                      'vehicle_id': item['vehicle_id']?.toString(),
-                      'driver_id': item['driver_id']?.toString(),
-                      'bunk_id': item['bunk_id']?.toString(),
-                      'required_volume': item['required_volume']?.toString(),
-                      'filled_at': item['filled_at'],
-                      'remarks': item['remarks']?.toString() ?? '',
-                      'bill_amount': item['bill_amount']?.toString() ?? '0',
-                      'current_odometer': item['current_odometer']?.toString() ?? '0',
-                      'fluid_type': item['fluid_type'] ?? 'DIESEL',
-                    };
-                    if (item['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == false) {
-                        body['filled_volume'] = item['required_volume']?.toString();
+                  onPressed: () async {
+                    if (bunkName == "Unknown Bunk") {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateFuelRequestPage(
+                            initialFuelData: item,
+                            isApproveMode: true,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        _fetchApprovalLogs();
+                        _fetchFuelLogs(isRefresh: true);
+                      }
+                    } else {
+                      final Map<String, dynamic> body = {
+                        'vehicle_id': item['vehicle_id']?.toString(),
+                        'driver_id': item['driver_id']?.toString(),
+                        'bunk_id': item['bunk_id']?.toString(),
+                        'required_volume': item['required_volume']?.toString(),
+                        'filled_at': item['filled_at'],
+                        'remarks': item['remarks']?.toString() ?? '',
+                        'bill_amount': item['bill_amount']?.toString() ?? '0',
+                        'current_odometer': item['current_odometer']?.toString() ?? '0',
+                        'fluid_type': item['fluid_type'] ?? 'DIESEL',
+                      };
+                      if (item['bunk']?['owner_name']?.toString().toUpperCase().startsWith('BIT') == false) {
+                          body['filled_volume'] = item['required_volume']?.toString();
+                      }
+                      _approveFuelLog(item['id'], body, vNumber);
                     }
-                    _approveFuelLog(item['id'], body, vNumber);
                   },
                 ),
               ),
@@ -1595,7 +1495,6 @@ class _FuelPageState extends State<FuelPage> {
     if (_isLoading) return _buildShimmerLoading(isDark);
 
     final List<dynamic> historyItems = _fuelLogs.where((log) {
-      if (log['fuel_entry_status'] != "COMPLETED") return false;
       if (_selectedDate == null) return true;
 
       final DateTime logDate = DateTime.parse(log['filled_at'] ?? log['created_at']);
@@ -1611,70 +1510,118 @@ class _FuelPageState extends State<FuelPage> {
       return bDate.compareTo(aDate);
     });
 
-    if (historyItems.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () => _fetchFuelLogs(isRefresh: true),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.history_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
-                  const SizedBox(height: 16),
-                  Text(
-                    _selectedDate == null ? "No history found" : "No history for ${DateFormat('MMM dd').format(_selectedDate!)}", 
-                    style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: () => _fetchFuelLogs(isRefresh: true),
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        controller: _historyScrollController,
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        itemCount: historyItems.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == historyItems.length) {
-            if (_isLoadingMore) {
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFF6366F1),
-                  ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: TextField(
+              controller: _completedSearchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (value) {
+                setState(() {
+                  _completedSearchQuery = value.trim();
+                });
+                _fetchFuelLogs(isRefresh: true);
+              },
+              decoration: InputDecoration(
+                hintText: "Search by Vehicle or Indent Number",
+                hintStyle: TextStyle(color: subColor, fontSize: 14),
+                prefixIcon: Icon(Icons.search_rounded, color: subColor),
+                suffixIcon: _completedSearchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 20),
+                        onPressed: () {
+                          _completedSearchController.clear();
+                          setState(() {
+                            _completedSearchQuery = "";
+                          });
+                          FocusScope.of(context).unfocus();
+                          _fetchFuelLogs(isRefresh: true);
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: titleColor.withValues(alpha: 0.1)),
                 ),
-              );
-            } else {
-              return const SizedBox(height: 40);
-            }
-          }
-          final item = historyItems[index];
-          final bool isExpanded = _expandedIndex == index;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _wrapWithDismissible(
-              child: _buildFuelCard(index, item, titleColor, subColor, primary, isDark, isHistory: true, isExpanded: isExpanded),
-              log: item,
-              index: index,
-              primary: primary,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: titleColor.withValues(alpha: 0.1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: primary),
+                ),
+              ),
+              style: TextStyle(color: titleColor),
             ),
-          );
-        },
+          ),
+          Expanded(
+            child: historyItems.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history_rounded, size: 48, color: titleColor.withValues(alpha: 0.1)),
+                            const SizedBox(height: 16),
+                            Text(
+                              _selectedDate == null ? "No history found" : "No history for ${DateFormat('MMM dd').format(_selectedDate!)}", 
+                              style: TextStyle(color: subColor, fontWeight: FontWeight.w600)
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    controller: _historyScrollController,
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+                    itemCount: historyItems.length + (_hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == historyItems.length) {
+                        if (_isLoadingMore) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            alignment: Alignment.center,
+                            child: const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Color(0xFF6366F1),
+                              ),
+                            ),
+                          );
+                        } else {
+                          return const SizedBox(height: 40);
+                        }
+                      }
+                      final item = historyItems[index];
+                      final bool isExpanded = _expandedIndex == index;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _wrapWithDismissible(
+                          child: _buildFuelCard(index, item, titleColor, subColor, primary, isDark, isHistory: true, isExpanded: isExpanded),
+                          log: item,
+                          index: index,
+                          primary: primary,
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -1860,6 +1807,7 @@ class _FuelPageState extends State<FuelPage> {
                       const SizedBox(width: 8),
                       // Actions rendered below
                     ],
+
                   ],
                 ),
               ],
@@ -1928,6 +1876,37 @@ class _FuelPageState extends State<FuelPage> {
                 ],
               ),
             ],
+            if (!isHistory && item['fuel_entry_status'] == 'PENDING_DRIVER_FILL') ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateFuelRequestPage(
+                          initialFuelData: item,
+                        ),
+                      ),
+                    );
+                    if (result == true) {
+                      _fetchFuelLogs(isRefresh: true);
+                    }
+                  },
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  label: const Text("Edit Pending Request", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primary,
+                    side: BorderSide(color: primary.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
             if (isExpanded) ...[
               const SizedBox(height: 20),
               const Divider(),
@@ -1972,6 +1951,53 @@ class _FuelPageState extends State<FuelPage> {
                   const Expanded(child: SizedBox.shrink()),
                 ],
               ),
+              if (isHistory) ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CreateFuelRequestPage(
+                                initialFuelData: item,
+                                isCompletedEditMode: true,
+                              ),
+                            ),
+                          );
+                          if (result == true) {
+                            _fetchFuelLogs(isRefresh: true);
+                          }
+                        },
+                        icon: const Icon(Icons.edit_rounded, size: 18),
+                        label: const Text("Edit Log", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(color: Colors.blue.withValues(alpha: 0.3)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showEditHistory(item['id']),
+                        icon: const Icon(Icons.history_rounded, size: 18),
+                        label: const Text("View History", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.purple,
+                          side: BorderSide(color: Colors.purple.withValues(alpha: 0.3)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (isHistory && item['bill_file_url'] != null) ...[
                 const SizedBox(height: 20),
                 _buildOptionLabel("FUEL PROOF IMAGE", subColor),
@@ -2156,5 +2182,134 @@ class _FuelPageState extends State<FuelPage> {
       ),
     );
   }
+
+  Future<void> _showEditHistory(int fuelLogId) async {
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) throw Exception('No token found');
+
+      final url = ApiConstants.fuelEditLogs(fuelLogId);
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'TMS $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> logs = data['data'] ?? [];
+        if (!mounted) return;
+        _buildEditHistoryDialog(logs);
+      } else {
+        throw Exception('Failed to load edit history');
+      }
+    } catch (e) {
+      if (mounted) {
+        showTopToast(context, 'Failed to load edit history: $e', isError: true);
+      }
+    }
+  }
+
+  void _buildEditHistoryDialog(List<dynamic> logs) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Edit History",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                if (logs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(
+                      "No edits have been made.",
+                      style: GoogleFonts.plusJakartaSans(color: Colors.grey),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: logs.length,
+                      itemBuilder: (context, index) {
+                        final log = logs[index];
+                        final editor = log['editor']?['name'] ?? 'Unknown User';
+                        final date = log['createdAt'] != null ? DateFormat('MMM dd, yyyy HH:mm').format(DateTime.parse(log['createdAt']).toLocal()) : '';
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.person, size: 16, color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      editor,
+                                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  ),
+                                  Text(
+                                    date,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (log['previous_odometer'] != log['new_odometer'])
+                                Text("Odometer: ${log['previous_odometer']} -> ${log['new_odometer']}", style: const TextStyle(fontSize: 12)),
+                              if (log['previous_price'] != log['new_price'])
+                                Text("Price: ₹${log['previous_price']} -> ₹${log['new_price']}", style: const TextStyle(fontSize: 12)),
+                              if (log['previous_filled_at'] != log['new_filled_at'])
+                                Text("Filled At: ${log['previous_filled_at']} -> ${log['new_filled_at']}", style: const TextStyle(fontSize: 12)),
+                              const SizedBox(height: 6),
+                              Text("Remark: ${log['remark']}", style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.orange)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
+
 

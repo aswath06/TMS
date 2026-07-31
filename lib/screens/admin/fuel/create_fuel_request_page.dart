@@ -15,7 +15,8 @@ import 'package:tripzo/utils/api_error_parser.dart';
 class CreateFuelRequestPage extends StatefulWidget {
   final Map<String, dynamic>? initialFuelData;
   final bool isApproveMode;
-  const CreateFuelRequestPage({super.key, this.initialFuelData, this.isApproveMode = false});
+  final bool isCompletedEditMode;
+  const CreateFuelRequestPage({super.key, this.initialFuelData, this.isApproveMode = false, this.isCompletedEditMode = false});
 
   @override
   State<CreateFuelRequestPage> createState() => _CreateFuelRequestPageState();
@@ -26,6 +27,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   final TextEditingController _filledVolumeController = TextEditingController();
   final TextEditingController _odometerController = TextEditingController();
   final TextEditingController _remarksController = TextEditingController();
+  final TextEditingController _editRemarkController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   File? _billImage;
   DateTime _selectedDate = DateTime.now();
@@ -682,9 +684,11 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         title: Text(
           widget.isApproveMode 
               ? "Approve Fuel Log"
-              : widget.initialFuelData != null 
-                  ? "Update Fuel Log" 
-                  : "Generate Indent",
+              : widget.isCompletedEditMode
+                  ? "Edit Fuel Log"
+                  : widget.initialFuelData != null 
+                      ? "Update Fuel Log" 
+                      : "Generate Indent",
           style: GoogleFonts.plusJakartaSans(
             color: titleColor,
             fontWeight: FontWeight.w800,
@@ -850,9 +854,9 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel(_isBITBunk ? "Required Volume" : "Volume", primaryBlue, isRequired: true),
+                      _buildLabel(widget.isCompletedEditMode ? "Filled Volume" : (_isBITBunk ? "Required Volume" : "Volume"), primaryBlue, isRequired: true),
                       const SizedBox(height: 12),
-                      _buildTextField(_volumeController, "e.g. 50", Icons.opacity_rounded, surfaceColor, titleColor, isDark, isNumber: true),
+                      _buildTextField(widget.isCompletedEditMode ? _filledVolumeController : _volumeController, "e.g. 50", Icons.opacity_rounded, surfaceColor, titleColor, isDark, isNumber: true),
                     ],
                   ),
                 ),
@@ -861,16 +865,16 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel("Date", primaryBlue, isRequired: true),
+                      _buildLabel(widget.isCompletedEditMode ? "Date & Time" : "Date", primaryBlue, isRequired: true),
                       const SizedBox(height: 12),
-                      _buildDatePickerTile(surfaceColor, titleColor, isDark, primaryBlue),
+                      _buildDatePickerTile(surfaceColor, titleColor, isDark, primaryBlue, showTime: widget.isCompletedEditMode),
                     ],
                   ),
                 ),
               ],
             ),
             
-            if (_selectedBunk != null && !_isBITBunk) ...[
+            if ((_selectedBunk != null && !_isBITBunk) || widget.isCompletedEditMode) ...[
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -885,7 +889,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Spacer(), // Keeps layout consistent
+                  const Spacer(),
                 ],
               ),
               const SizedBox(height: 24),
@@ -893,7 +897,6 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
               const SizedBox(height: 12),
               _buildImagePicker(surfaceColor, titleColor, isDark, primaryBlue),
             ],
-
             const SizedBox(height: 24),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -903,6 +906,17 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 _buildTextField(_remarksController, "e.g. Special trip for BIT", Icons.notes_rounded, surfaceColor, titleColor, isDark),
               ],
             ),
+            if (widget.isCompletedEditMode) ...[
+              const SizedBox(height: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLabel("Reason for Edit", primaryBlue, isRequired: true),
+                  const SizedBox(height: 12),
+                  _buildTextField(_editRemarkController, "e.g. Wrong odometer reading entered previously", Icons.edit_note_rounded, surfaceColor, titleColor, isDark),
+                ],
+              ),
+            ],
             const SizedBox(height: 40),
             if (_selectedBunk != null) ...[
               const SizedBox(height: 24),
@@ -957,7 +971,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                           ),
                       ],
                     ),
-                    if (!_isBITBunk) ...[
+                    if (!_isBITBunk || widget.isCompletedEditMode) ...[
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
@@ -1148,13 +1162,14 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     );
   }
 
-  Widget _buildDatePickerTile(Color surface, Color title, bool isDark, Color primary) {
+  Widget _buildDatePickerTile(Color surface, Color title, bool isDark, Color primary, {bool showTime = false}) {
     return GestureDetector(
       onTap: () async {
         final picked = await CustomDateTimePicker.show(
           context,
           initialDate: _selectedDate,
-          showTime: false,
+          showTime: showTime,
+          maxDate: DateTime.now(),
           accent: primary,
           titleColor: title,
         );
@@ -1176,12 +1191,16 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           children: [
             Icon(Icons.calendar_today_rounded, color: primary, size: 18),
             const SizedBox(width: 12),
-            Text(
-              DateFormat('MMM dd').format(_selectedDate),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: title,
+            Expanded(
+              child: Text(
+                showTime ? DateFormat('MMM dd, hh:mm a').format(_selectedDate) : DateFormat('MMM dd').format(_selectedDate),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: title,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1207,7 +1226,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           : Text(
               widget.isApproveMode 
                   ? "APPROVE FUEL LOG" 
-                  : (widget.initialFuelData != null ? "UPDATE FUEL LOG" : (_isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG")),
+                  : (widget.isCompletedEditMode ? "SAVE EDITS" : (widget.initialFuelData != null ? "UPDATE FUEL LOG" : (_isBITBunk ? "GENERATE INDENT" : "COMPLETE FUEL LOG"))),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
@@ -1426,6 +1445,22 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
         log("--data '${json.encode(fields)}'\n-------------------\n");
 
         response = await http.patch(uri, headers: headers, body: json.encode(fields));
+      } else if (widget.isCompletedEditMode) {
+        if (_editRemarkController.text.isEmpty) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please provide a reason for the edit", style: TextStyle(color: Colors.white)), backgroundColor: Colors.red));
+          setState(() => _isSubmitting = false);
+          return;
+        }
+        headers['Content-Type'] = 'application/json';
+        final editFields = {
+          'new_odometer': _odometerController.text,
+          'new_price': _totalAmount.toString(),
+          'new_filled_at': _selectedDate.toUtc().toIso8601String(),
+          'new_volume': _filledVolumeController.text,
+          'remark': _editRemarkController.text,
+        };
+        final editUri = Uri.parse(ApiConstants.editCompletedFuelLog(widget.initialFuelData!['id']));
+        response = await http.put(editUri, headers: headers, body: json.encode(editFields));
       } else {
         var request = http.MultipartRequest(isEdit ? 'PUT' : 'POST', uri);
         request.headers.addAll(headers);
