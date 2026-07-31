@@ -1803,9 +1803,41 @@ class _FuelPageState extends State<FuelPage> {
                         ),
                       ],
                     ),
-                    if (!isHistory && item['fuel_entry_status'] != 'PENDING_DRIVER_FILL') ...[
-                      const SizedBox(width: 8),
-                      // Actions rendered below
+                    if (!isHistory && item['fuel_entry_status'] == 'PENDING_DRIVER_FILL') ...[
+                      const SizedBox(width: 4),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert_rounded, color: subColor),
+                        padding: EdgeInsets.zero,
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CreateFuelRequestPage(
+                                  initialFuelData: item,
+                                ),
+                              ),
+                            );
+                            if (result == true) {
+                              _fetchFuelLogs(isRefresh: true);
+                            }
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_rounded, size: 18, color: primary),
+                                const SizedBox(width: 8),
+                                Text("Edit Request", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: titleColor)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
 
                   ],
@@ -1874,37 +1906,6 @@ class _FuelPageState extends State<FuelPage> {
                     ),
                   ),
                 ],
-              ),
-            ],
-            if (!isHistory && item['fuel_entry_status'] == 'PENDING_DRIVER_FILL') ...[
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CreateFuelRequestPage(
-                          initialFuelData: item,
-                        ),
-                      ),
-                    );
-                    if (result == true) {
-                      _fetchFuelLogs(isRefresh: true);
-                    }
-                  },
-                  icon: const Icon(Icons.edit_rounded, size: 18),
-                  label: const Text("Edit Pending Request", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primary,
-                    side: BorderSide(color: primary.withValues(alpha: 0.3)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
               ),
             ],
             if (isExpanded) ...[
