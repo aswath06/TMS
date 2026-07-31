@@ -161,9 +161,7 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
         ),
         centerTitle: true,
       ),
-      body: _isLoadingVehicles 
-        ? const StructuralLoading(padding: 24)
-        : SingleChildScrollView(
+      body: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: _formKey,
@@ -179,12 +177,12 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
                     Icons.directions_bus_filled_rounded,
                     _selectedVehicle != null,
                     () async {
+                      if (_isLoadingVehicles) return;
                       if (_vehicles.isEmpty) {
                         setState(() => _isLoadingVehicles = true);
                         await _fetchVehicles();
                         if (!mounted) return;
                       }
-                      if (_isLoadingVehicles) return;
                       _showSelectionSheet(
                         title: isTamil ? "வாகனத்தைத் தேர்ந்தெடுக்கவும்" : "Select Vehicle",
                         items: _vehicles,
@@ -209,6 +207,7 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
                         },
                       );
                     },
+                    isLoading: _isLoadingVehicles,
                   ),
                   if (_availableFuelTypes.length > 1) ...[
                     const SizedBox(height: 24),
@@ -391,8 +390,9 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
     String? subText,
     IconData icon,
     bool isSelected,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    bool isLoading = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -459,7 +459,17 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
                     ],
                   ),
                 ),
-                const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 24),
+                if (isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                    ),
+                  )
+                else
+                  const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 24),
               ],
             ),
           ),

@@ -175,7 +175,7 @@ class _FuelOptionsPageState extends State<FuelOptionsPage> {
   Widget _buildPendingCard(Map<String, dynamic> log) {
     final vehicle = log['vehicle'];
     final vNum = vehicle != null ? (vehicle['vehicle_number'] ?? 'Unknown') : 'Unknown';
-    final volume = log['filled_volume_liters'] ?? log['required_volume_liters'] ?? '0';
+    final volume = log['filled_volume'] ?? log['required_volume'] ?? log['filled_volume_liters'] ?? log['required_volume_liters'] ?? '0';
     final dateStr = log['filled_at'];
     String formattedDate = "N/A";
     if (dateStr != null) {

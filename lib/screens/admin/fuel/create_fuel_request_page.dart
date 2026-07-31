@@ -751,6 +751,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 surfaceColor, titleColor, isDark, primaryBlue,
                 defaultDriver: _selectedVehicle?['default_driver']?['name'],
                 isRequired: true,
+                isLoading: _isLoadingVehicles,
               ),
               if (_userRole != 'driver') ...[
                 const SizedBox(height: 12),
@@ -781,6 +782,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                             _selectedVehicle?['default_driver'] != null && 
                             _selectedVehicle?['default_driver']?['name'] == _selectedDriver?['name'],
                   isRequired: true,
+                  isLoading: _isLoadingDrivers,
                 ),
               ],
               const SizedBox(height: 12),
@@ -810,6 +812,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 },
                 surfaceColor, titleColor, isDark, primaryBlue,
                 isRequired: true,
+                isLoading: _isLoadingBunks,
               ),
               if (_selectedBunk != null) ...[
                 const SizedBox(height: 12),
@@ -1042,7 +1045,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     Color title, 
     bool isDark, 
     Color primary, 
-    {bool isDefault = false, String? defaultDriver, bool isRequired = false}
+    {bool isDefault = false, String? defaultDriver, bool isRequired = false, bool isLoading = false}
   ) {
     return GestureDetector(
       onTap: onTap,
@@ -1138,7 +1141,17 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                       style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.w900)
                     ),
                   ),
-                Icon(Icons.expand_more_rounded, color: title.withValues(alpha: 0.2), size: 20),
+                if (isLoading)
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(primary),
+                    ),
+                  )
+                else
+                  Icon(Icons.expand_more_rounded, color: title.withValues(alpha: 0.2), size: 20),
               ],
             ),
           ],
