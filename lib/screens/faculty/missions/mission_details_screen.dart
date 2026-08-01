@@ -23,6 +23,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_finalize_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/services/location_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/app_lifecycle_provider.dart';
@@ -2120,7 +2121,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                           const SizedBox(height: 20),
                           _buildCheckpointList(primaryBlue, titleColor),
                           const SizedBox(height: 32),
-                          if (isDraft && _userRole?.toLowerCase() != 'faculty') ...[
+                          if ((isDraft || statusString == 'APPROVED') && _userRole?.toLowerCase() != 'faculty') ...[
                             const SizedBox(height: 8),
                             SizedBox(
                               width: double.infinity,
@@ -2137,9 +2138,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                    }
                                  },
                                 icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-                                label: const Text(
-                                  "ASSIGN DRIVER & VEHICLE",
-                                  style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                                label: Text(
+                                  statusString == 'APPROVED' ? "CREATE FULL ROUTE" : "ASSIGN DRIVER & VEHICLE",
+                                  style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: primaryBlue,
@@ -5511,11 +5512,11 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                 child: ElevatedButton(
                                   onPressed: isSubmitting ? null : () async {
                                     if (mistakeIsOnId == null) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select who the mistake is on")));
+                                      showTopToast(context, "Please specify who the mistake is on", isError: true);
                                       return;
                                     }
                                     if (remarkCtrl.text.trim().isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Reason for change is required")));
+                                      showTopToast(context, "Reason for change is required", isError: true);
                                       return;
                                     }
                                     
@@ -5528,7 +5529,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                         if (newEndTime != null) 'new_end_time': newEndTime!.toUtc().toIso8601String(),
                                         if (startOdometerCtrl.text.isNotEmpty) 'new_start_odometer': num.parse(startOdometerCtrl.text),
                                         if (endOdometerCtrl.text.isNotEmpty) 'new_end_odometer': num.parse(endOdometerCtrl.text),
-                                        'role_id': mistakeIsOnId,
+                                        'mistake_is_on': mistakeRoles.firstWhere((r) => r['id'] == mistakeIsOnId)['name'],
                                         'remark': remarkCtrl.text.trim(),
                                       };
                                       
@@ -5544,16 +5545,16 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                           if (mounted) {
                                             Navigator.pop(context);
                                             _fetchMissionDetails();
-                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Trip time updated successfully")));
+                                            showTopToast(context, "Trip time updated successfully");
                                           }
                                         } else {
-                                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(respData['message'] ?? "Update failed")));
+                                          if (mounted) showTopToast(context, respData['message'] ?? "Update failed", isError: true);
                                         }
                                       } else {
-                                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${response.statusCode}")));
+                                        if (mounted) showTopToast(context, ApiErrorParser.parse(response, fallback: "Error: ${response.statusCode}"), isError: true);
                                       }
                                     } catch (e) {
-                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                                      if (mounted) showTopToast(context, "Error: $e", isError: true);
                                     } finally {
                                       if (mounted) setModalState(() => isSubmitting = false);
                                     }

@@ -1258,6 +1258,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           });
 
           await _refreshDetails();
+          
+          if (_getIsAssignedFaculty()) {
+            _showPostConfirmAbsentPopup();
+          }
 
         } else {
 
@@ -1299,6 +1303,163 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     }
 
+  }
+
+  void _showPostConfirmAbsentPopup() {
+    int absentCount = 0;
+    
+    // Calculate total absent from students and faculties for current session
+    final List<dynamic> allPassengers = [];
+    if (_run['passengers'] != null) allPassengers.addAll(_run['passengers']);
+    if (_run['faculties'] != null) allPassengers.addAll(_run['faculties']);
+    
+    for (var p in allPassengers) {
+      final String sessionStatus = (_attendanceSessionIndex == 0 
+          ? p['morning_attendance_status'] 
+          : p['evening_attendance_status'])?.toString().toUpperCase() ?? 'ABSENT';
+      if (sessionStatus != 'PRESENT' && sessionStatus != 'LEAVE' && sessionStatus != 'ON_LEAVE') {
+        absentCount++;
+      }
+    }
+
+    if (absentCount == 0) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final Color bg = isDark ? const Color(0xFF1E293B) : Colors.white;
+        final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+        final Color textColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+        final Color dangerColor = const Color(0xFFEF4444);
+        
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 40,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: dangerColor.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+              border: Border.all(
+                color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: dangerColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: dangerColor.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.warning_rounded, color: dangerColor, size: 48),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  "Action Required",
+                  style: GoogleFonts.outfit(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: dangerColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: dangerColor.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "$absentCount",
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: dangerColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Passenger${absentCount > 1 ? 's' : ''} Absent",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: dangerColor.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Please ensure the absent count is strictly zero. We expect no absentees.\n\nMake sure all passengers are accounted as only present or leave. If the student is absent, the student needs to apply for leave.",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: textColor,
+                    height: 1.6,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: dangerColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text(
+                      "I Understand",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
 
@@ -13447,13 +13608,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                                           ),
 
-                                          if (isEditable && (widget.showEditIcon || isAssignedFaculty))
+                                          if ((isSuperOrTransportAdmin && widget.showEditIcon) || (isEditable && isAssignedFaculty))
 
                                             const SizedBox(width: 16),
 
                                         ],
 
-                                        if (isEditable && ((isSuperOrTransportAdmin && widget.showEditIcon) || isAssignedFaculty))
+                                        if ((isSuperOrTransportAdmin && widget.showEditIcon) || (isEditable && isAssignedFaculty))
 
                                           GestureDetector(
 

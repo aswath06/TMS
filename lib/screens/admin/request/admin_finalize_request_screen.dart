@@ -186,7 +186,9 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
               if (isVehicle) {
                 final vNumber = (item['vehicle_number'] ?? "").toString().toLowerCase();
                 final vType = (item['vehicle_type_name'] ?? "").toString().toLowerCase();
+                final bNumber = (item['bus_number'] ?? "").toString().toLowerCase();
                 return vNumber.contains(searchQuery.toLowerCase()) || 
+                       bNumber.contains(searchQuery.toLowerCase()) ||
                        vType.contains(searchQuery.toLowerCase());
               } else {
                 final dName = (item['name'] ?? item['user']?['name'] ?? "").toString().toLowerCase();
@@ -290,8 +292,8 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
                         final item = currentFilteredList[i];
                         final bool isSelected = selected != null && (item['id'] == selected['id']);
                         
-                        String main = isVehicle ? item['vehicle_number'] : (item['name'] ?? item['user']?['name'] ?? "Unknown");
-                        String sub = isVehicle ? item['vehicle_type_name'] : "Driver";
+                        String main = isVehicle ? "${item['vehicle_number'] ?? 'Unknown'}${item['bus_number'] != null && item['bus_number'].toString().trim().isNotEmpty ? ' (${item['bus_number']})' : ''}" : (item['name'] ?? item['user']?['name'] ?? "Unknown");
+                        String sub = isVehicle ? (item['vehicle_type_name'] ?? "Vehicle") : "Driver";
                         int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
                         
                         String status = (item['status'] ?? "AVAILABLE").toString().toUpperCase();
@@ -368,8 +370,8 @@ class _AdminFinalizeRequestScreenState extends ConsumerState<AdminFinalizeReques
     required Color c,
     int? guestCount,
   }) {
-    String disp = selected != null ? (isVehicle ? selected['vehicle_number'] : (selected['name'] ?? selected['user']?['name'] ?? "Unknown")) : (isVehicle ? "Choose Vehicle" : "Choose Driver");
-    String? sub = selected != null ? (isVehicle ? selected['vehicle_type_name'] : "Driver") : null;
+    String disp = selected != null ? (isVehicle ? "${selected['vehicle_number'] ?? 'Unknown'}${selected['bus_number'] != null && selected['bus_number'].toString().trim().isNotEmpty ? ' (${selected['bus_number']})' : ''}" : (selected['name'] ?? selected['user']?['name'] ?? "Unknown")) : (isVehicle ? "Choose Vehicle" : "Choose Driver");
+    String? sub = selected != null ? (isVehicle ? (selected['vehicle_type_name'] ?? "Vehicle") : "Driver") : null;
     Map<String, dynamic>? defD = (isVehicle && selected != null) ? selected['default_driver'] : null;
 
     return GestureDetector(

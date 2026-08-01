@@ -2792,7 +2792,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               if (isVehicle) {
                 final vNumber = (item['vehicle_number'] ?? "").toString().toLowerCase();
                 final vType = (item['vehicle_type_name'] ?? "").toString().toLowerCase();
+                final bNumber = (item['bus_number'] ?? "").toString().toLowerCase();
                 return vNumber.contains(searchQuery.toLowerCase()) || 
+                       bNumber.contains(searchQuery.toLowerCase()) ||
                        vType.contains(searchQuery.toLowerCase());
               } else {
                 final dName = (item['user']?['name'] ?? item['name'] ?? "").toString().toLowerCase();
@@ -2974,7 +2976,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                           int capacity = 0;
 
                           if (isVehicle) {
-                            mainText = item['vehicle_number'] ?? "Unknown";
+                            mainText = "${item['vehicle_number'] ?? 'Unknown'}${item['bus_number'] != null && item['bus_number'].toString().trim().isNotEmpty ? ' (${item['bus_number']})' : ''}";
                             subText = item['vehicle_type_name'] ?? "General";
                             capacity =
                                 int.tryParse(item['capacity']?.toString() ?? "0") ??
@@ -3287,7 +3289,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }) {
     String dispTitle = sel != null
         ? (isV
-              ? sel['vehicle_number']
+              ? "${sel['vehicle_number'] ?? 'Unknown'}${sel['bus_number'] != null && sel['bus_number'].toString().trim().isNotEmpty ? ' (${sel['bus_number']})' : ''}"
               : (sel['user']?['name'] ?? sel['name'] ?? "Unknown"))
         : (isV ? "Choose Vehicle" : "Choose Driver");
     String? dispSub = sel != null

@@ -865,9 +865,10 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                 return name.contains(q) || code.contains(q);
               } else if (isVehicle) {
                 final vNum = (item['vehicle_number'] ?? '').toString().toLowerCase();
+                final bNum = (item['bus_number'] ?? '').toString().toLowerCase();
                 final make = (item['make'] ?? '').toString().toLowerCase();
                 final model = (item['model'] ?? '').toString().toLowerCase();
-                return vNum.contains(q) || make.contains(q) || model.contains(q);
+                return vNum.contains(q) || bNum.contains(q) || make.contains(q) || model.contains(q);
               } else {
                 final name = (item['user']?['name'] ?? item['name'] ?? '').toString().toLowerCase();
                 final code = (item['employee_code'] ?? '').toString().toLowerCase();
@@ -996,7 +997,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                               String sub = isFaculty
                                   ? (item['department'] ?? 'Faculty')
                                   : (isVehicle
-                                      ? "${item['make'] ?? ''} ${item['model'] ?? ''}".trim()
+                                      ? "Bus - ${item['bus_number'] ?? 'N/A'} • ${item['make'] ?? ''} ${item['model'] ?? ''}".trim()
                                       : "Driver");
                               if (sub.isEmpty) sub = isVehicle ? "Vehicle" : "Driver";
                               int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
