@@ -58,6 +58,7 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   void initState() {
     super.initState();
     _volumeController.addListener(() => setState(() {}));
+    _filledVolumeController.addListener(() => setState(() {}));
     _amountController.addListener(() => setState(() {}));
 
     if (widget.initialFuelData != null) {
@@ -295,11 +296,24 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
   }
 
   double get _totalAmount {
+    if (widget.isCompletedEditMode) {
+      if (_amountController.text.trim().isNotEmpty) {
+        return double.tryParse(_amountController.text.trim()) ?? 0.0;
+      }
+      final volStr = _filledVolumeController.text.trim().isNotEmpty
+          ? _filledVolumeController.text.trim()
+          : _volumeController.text.trim();
+      final vol = double.tryParse(volStr) ?? 0.0;
+      return vol * _pricePerLiter;
+    }
+    if (_amountController.text.trim().isNotEmpty && !_isBITBunk) {
+      return double.tryParse(_amountController.text.trim()) ?? 0.0;
+    }
     if (_isBITBunk) {
-      final vol = double.tryParse(_volumeController.text) ?? 0.0;
+      final vol = double.tryParse(_volumeController.text.trim()) ?? 0.0;
       return vol * _pricePerLiter;
     } else {
-      return double.tryParse(_amountController.text) ?? 0.0;
+      return double.tryParse(_amountController.text.trim()) ?? 0.0;
     }
   }
 
