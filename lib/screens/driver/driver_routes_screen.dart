@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
-
-import 'package:tripzo/store/providers.dart';
+import 'package:google_fonts/google_fonts.dart';import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/istamil.dart'; 
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:shimmer/shimmer.dart';
@@ -26,7 +28,11 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
   final TextEditingController _searchController = TextEditingController();
 
   // Toggle state
-  bool _isDailyBusRoutes = false;
+  int _selectedTab = 0;
+
+  // Schedules state
+  List<dynamic> _schedulesData = [];
+  bool _isLoadingSchedules = false;
 
   // Date slider state
   late String _selectedDateFilter;
@@ -116,6 +122,37 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     // Fetch Daily Bus Routes for the selected date
     final dailyStore = ref.read(dailyRoutinesStoreProvider);
     await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
+
+    if (!mounted) return;
+    // Fetch Schedules
+    setState(() => _isLoadingSchedules = true);
+    try {
+      final String driverId = "166";
+      final url = Uri.parse('https://18x50gz9-8055.inc1.devtunnels.ms/schedule-duty/master/driver/$driverId/schedules?duty_date=$_selectedDateFilter');
+      
+      final token = await UserStore.getToken();
+      final headers = token != null ? ApiConstants.getHeaders(token) : <String, String>{};
+      
+      print("Fetching schedules: $url");
+      final response = await http.get(url, headers: headers);
+      print("Schedules response (${response.statusCode}): ${response.body}");
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) {
+          setState(() {
+            _schedulesData = data is List ? data : (data['data'] is List ? data['data'] : []);
+          });
+        }
+      } else {
+        if (mounted) setState(() => _schedulesData = []);
+      }
+    } catch (e) {
+      print("Error fetching schedules: $e");
+      if (mounted) setState(() => _schedulesData = []);
+    } finally {
+      if (mounted) setState(() => _isLoadingSchedules = false);
+    }
   }
 
   @override
@@ -194,38 +231,63 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isDailyBusRoutes = false),
+                      onTap: () => setState(() => _selectedTab = 0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: !_isDailyBusRoutes ? primaryBlue : Colors.transparent,
+                          color: _selectedTab == 0 ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           isTamil ? "பயணங்கள்" : "Routes",
                           style: TextStyle(
-                            color: !_isDailyBusRoutes ? Colors.white : subColor,
+                            color: _selectedTab == 0 ? Colors.white : subColor,
                             fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isDailyBusRoutes = true),
+                      onTap: () => setState(() => _selectedTab = 1),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _isDailyBusRoutes ? primaryBlue : Colors.transparent,
+                          color: _selectedTab == 1 ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          isTamil ? "தினசரிப் பேருந்துப் பயணங்கள்" : "Daily Bus Routes",
+                          isTamil ? "தினசரிப் பயணங்கள்" : "Daily Bus",
                           style: TextStyle(
-                            color: _isDailyBusRoutes ? Colors.white : subColor,
+                            color: _selectedTab == 1 ? Colors.white : subColor,
                             fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedTab = 2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 2 ? primaryBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isTamil ? "அட்டவணைகள்" : "Schedules",
+                          style: TextStyle(
+                            color: _selectedTab == 2 ? Colors.white : subColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
@@ -297,7 +359,11 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
 
           // Main List
           Expanded(
-            child: _isDailyBusRoutes ? _buildDailyBusRoutesList() : _buildRouteList(),
+            child: _selectedTab == 0 
+                ? _buildRouteList() 
+                : _selectedTab == 1 
+                    ? _buildDailyBusRoutesList() 
+                    : _buildSchedulesList(),
           ),
         ],
       ),
@@ -568,6 +634,99 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
             subColor: subColor,
             primaryBlue: primaryBlue,
             isDark: isDark,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSchedulesList() {
+    final isTamil = LanguageStore.isTamil;
+    final store = ref.watch(driverStoreProvider);
+    final query = store.searchQuery.toLowerCase().trim();
+
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    if (_isLoadingSchedules && _schedulesData.isEmpty) {
+      return _buildSkeletonList(isDark, surfaceColor);
+    }
+
+    List<dynamic> list = List.from(_schedulesData);
+
+    if (query.isNotEmpty) {
+      list = list.where((s) => s.toString().toLowerCase().contains(query)).toList();
+    }
+
+    if (list.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              query.isNotEmpty ? Icons.search_off_rounded : Icons.schedule_rounded,
+              size: 64,
+              color: Colors.grey.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              query.isNotEmpty 
+                ? (isTamil ? "பொருத்தமான அட்டவணைகள் எதுவும் இல்லை" : "No matching schedules found") 
+                : (isTamil ? "அட்டவணைகள் இல்லை" : "No schedules available for this date"), 
+              style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _fetchDataForSelectedDate();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          final schedule = list[index];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  schedule['duty_name'] ?? 'Schedule ${index + 1}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  schedule.toString(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subColor,
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
