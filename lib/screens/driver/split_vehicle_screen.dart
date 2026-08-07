@@ -46,7 +46,7 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
           "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/resume-evening-trip";
 
       final Map<String, dynamic> body = {
-        "startOdometer": int.tryParse(_startOdometerController.text.trim()) ?? 0,
+        "startOdometer": double.tryParse(_startOdometerController.text.trim()) ?? 0.0,
       };
 
       debugPrint("---- [SPLIT VEHICLE: SUBMIT] ----\nPATCH $url\nBody: ${json.encode(body)}\n----------------------------");
@@ -179,8 +179,8 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
 
             TextField(
               controller: _startOdometerController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               style: TextStyle(
                 color: isDark ? Colors.white : Colors.black,
                 fontSize: 15,

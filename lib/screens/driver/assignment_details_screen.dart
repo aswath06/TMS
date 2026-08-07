@@ -891,9 +891,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -971,11 +971,11 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(
+                                    final double odo =
+                                        double.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
-                                        0;
+                                        0.0;
 
                                     final dynamic rawRunId =
                                         widget.run['id'] ??
@@ -1185,9 +1185,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -1523,11 +1523,11 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(
+                                    final double odo =
+                                        double.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
-                                        0;
+                                        0.0;
                                     final int? passCount = (_userRole == 'driver')
                                         ? null
                                         : (int.tryParse(
@@ -2333,9 +2333,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -2558,9 +2558,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(odometerController.text) ??
-                                        0;
+                                    final double odo =
+                                        double.tryParse(odometerController.text) ??
+                                        0.0;
                                     final int passCount = (_userRole == 'driver')
                                         ? (int.tryParse(
                                             run['campus_out_count']?.toString() ?? '0',
@@ -2787,9 +2787,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -3044,11 +3044,11 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(
+                                    final double odo =
+                                        double.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
-                                        0;
+                                        0.0;
 
                                     final dynamic rawRunId =
                                         widget.run['id'] ??

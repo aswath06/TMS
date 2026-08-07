@@ -177,7 +177,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
         "mergeStopId": _selectedStop!['id'],
         "shiftPeriod": "MORNING",
         "remark": _remarkController.text.trim(),
-        "endOdometer": int.tryParse(_endOdometerController.text.trim()) ?? 0,
+        "endOdometer": double.tryParse(_endOdometerController.text.trim()) ?? 0.0,
         "allowanceNeeded": _allowanceNeeded,
       };
 
@@ -883,8 +883,8 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
                 icon: Icons.speed_rounded,
                 isDark: isDark,
                 accentColor: primaryBlue,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               ),
 
               const SizedBox(height: 24),

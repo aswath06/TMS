@@ -477,8 +477,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                   ),
                   child: TextField(
                     controller: odometerController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -891,7 +891,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
 
       final url = ApiConstants.startRegister(tripId);
       final body = {
-        "start_odometer": int.tryParse(odometer) ?? 0,
+        "start_odometer": double.tryParse(odometer) ?? 0.0,
         "start_capacity": int.tryParse(capacity) ?? 0,
       };
 

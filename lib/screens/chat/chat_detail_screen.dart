@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
+import 'package:lottie/lottie.dart' hide Marker;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tripzo/store/user_store.dart';
@@ -190,15 +191,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final TextEditingController subjectController = TextEditingController();
     final TextEditingController msgController = TextEditingController();
 
-    return showDialog(
+    return showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateSB) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutBack,
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  alignment: Alignment.bottomCenter,
+                  child: child,
+                );
+              },
+              child: RepaintBoundary(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+                    left: 12,
+                    right: 12,
+                  ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: BackdropFilter(
@@ -229,20 +246,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           Stack(
                             alignment: Alignment.center,
                             children: [
-                              Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF818CF8).withValues(alpha: 0.5),
-                                      blurRadius: 20,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              // Removed shadow container as requested
                               Container(
                                 width: 60,
                                 height: 60,
@@ -255,7 +259,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2),
                                 ),
-                                child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 30),
+                                child: Center(
+                                  child: Lottie.asset('assets/Message.json', width: 60, height: 60, fit: BoxFit.cover),
+                                ),
                               ),
                             ],
                           ),
@@ -412,18 +418,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }
-        );
-      },
-    );
-  }
+                          const SizedBox(height: 16),
+                        ], // closes Column children
+                      ), // closes Column
+                    ), // closes SingleChildScrollView
+                  ), // closes Container
+                ), // closes BackdropFilter
+              ), // closes ClipRRect
+            ), // closes Padding
+          ), // closes RepaintBoundary
+        ); // closes TweenAnimationBuilder
+      }, // closes StatefulBuilder builder
+      ); // closes StatefulBuilder
+    }, // closes showModalBottomSheet builder
+  ); // closes showModalBottomSheet
+} // closes _showQuickMessageDialog
 
   void _showMessageInfo(Map<String, dynamic> message) {
     showDialog(
@@ -1851,8 +1860,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 leading: IconButton(
                   icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 20),
                   onPressed: () {
-                    final String lastMsg = _messages.isNotEmpty ? _messages.last['text'] : "";
-                    final String lastTime = _messages.isNotEmpty ? _messages.last['time'] : "";
+                    final String lastMsg = _messages.isNotEmpty ? (_messages.last['text']?.toString() ?? "") : "";
+                    final String lastTime = _messages.isNotEmpty ? (_messages.last['time']?.toString() ?? "") : "";
                     Navigator.pop(context, {
                       "avatar": _currentAvatarUrl,
                       "lastMessage": lastMsg,
@@ -1890,7 +1899,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           },
           child: Row(
             children: [
-              widget.isGroup
+              (widget.isGroup && _currentAvatarUrl.isNotEmpty)
                   ? CircleAvatar(
                       radius: 18,
                       backgroundImage: _currentAvatarUrl.startsWith('http')
@@ -1927,7 +1936,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         actions: [
           if (widget.isGroup && (UserStore.role == "super admin" || UserStore.role == "transport admin"))
             IconButton(
-              icon: const Icon(Icons.flash_on_rounded, color: Color(0xFF818CF8)),
+              icon: const Icon(Icons.podcasts_rounded, color: Color(0xFF818CF8)),
               onPressed: _showQuickMessageDialog,
             ),
         ],
@@ -2058,8 +2067,95 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               itemBuilder: (context, index) {
                 final actualIndex = _messages.length - 1 - index;
                 final message = _messages[actualIndex];
-                final isMe = message['isMe'];
+                final isMe = message['isMe'] ?? false;
                 final isSelected = _selectedMessageIndices.contains(actualIndex);
+                final msgText = message['text']?.toString() ?? "";
+
+                if (msgText.startsWith("[Quick Message]")) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    child: Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF818CF8).withValues(alpha: 0.3)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF818CF8).withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Lottie.asset('assets/Message.json', width: 24, height: 24, fit: BoxFit.contain),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Broadcast",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF818CF8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Builder(
+                              builder: (context) {
+                                final lines = msgText.replaceFirst("[Quick Message]", "").trim().split('\n');
+                                final subject = lines.isNotEmpty ? lines.first : "";
+                                final body = lines.length > 1 ? lines.sublist(1).join('\n') : "";
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (subject.isNotEmpty)
+                                      Text(
+                                        subject,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                    if (body.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        body,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              }
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              message['time'] ?? "",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
 
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,

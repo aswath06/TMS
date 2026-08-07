@@ -928,7 +928,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> startBusRun({
     required int runId,
-    required int startOdometer,
+    required double startOdometer,
     String? imageUrl,
   }) async {
     try {
@@ -1051,7 +1051,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> startEveningCampusOut({
     required int runId,
-    required int startOdometer,
+    required double startOdometer,
     required int passengerCount,
   }) async {
     try {
@@ -1088,7 +1088,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> endEveningOdometer({
     required int runId,
-    required int endOdometer,
+    required double endOdometer,
     required bool allowanceNeeded,
   }) async {
     try {
@@ -1154,7 +1154,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> endMorningBusRun({
     required int runId,
-    required int endOdometer,
+    required double endOdometer,
     int? passengerCount,
     required bool allowanceNeeded,
   }) async {
