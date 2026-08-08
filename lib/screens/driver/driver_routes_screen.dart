@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/istamil.dart'; 
+import 'package:tripzo/store/driver_schedules_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:shimmer/shimmer.dart';
@@ -26,7 +27,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
   final TextEditingController _searchController = TextEditingController();
 
   // Toggle state
-  bool _isDailyBusRoutes = false;
+  int _selectedTab = 0; // 0 = Routes, 1 = Daily Bus Routes, 2 = Schedule
 
   // Date slider state
   late String _selectedDateFilter;
@@ -116,6 +117,11 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     // Fetch Daily Bus Routes for the selected date
     final dailyStore = ref.read(dailyRoutinesStoreProvider);
     await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
+
+    if (!mounted) return;
+    // Fetch Schedules for the selected date
+    final scheduleStore = ref.read(driverSchedulesStoreProvider);
+    await scheduleStore.fetchSchedules(isRefresh: true, date: _selectedDateFilter);
   }
 
   @override
@@ -142,11 +148,13 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
       appBar: AppBar(
         backgroundColor: bgColor,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: _isSearching
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
                   hintText: isTamil ? "பயண பெயரைத் தேடுக..." : "Search route name...",
                   hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.normal),
@@ -158,7 +166,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
               )
             : Text(
                 isTamil ? "உங்கள் பயணங்கள்" : "My Journeys",
-                style: TextStyle(color: titleColor, fontWeight: FontWeight.w900),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w900),
               ),
         actions: [
           _isSearching
@@ -174,7 +182,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                   },
                 )
               : IconButton(
-                  icon: Icon(Icons.search_rounded, color: titleColor),
+                  icon: Icon(Icons.search_rounded, color: isDark ? Colors.white : Colors.black),
                   onPressed: () => setState(() => _isSearching = true),
                 ),
         ],
@@ -187,25 +195,26 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
             child: Container(
               height: 48,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isDailyBusRoutes = false),
+                      onTap: () => setState(() => _selectedTab = 0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: !_isDailyBusRoutes ? primaryBlue : Colors.transparent,
+                          color: _selectedTab == 0 ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           isTamil ? "பயணங்கள்" : "Routes",
                           style: TextStyle(
-                            color: !_isDailyBusRoutes ? Colors.white : subColor,
+                            color: _selectedTab == 0 ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
                             fontWeight: FontWeight.bold,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -213,18 +222,39 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isDailyBusRoutes = true),
+                      onTap: () => setState(() => _selectedTab = 1),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _isDailyBusRoutes ? primaryBlue : Colors.transparent,
+                          color: _selectedTab == 1 ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          isTamil ? "தினசரிப் பேருந்துப் பயணங்கள்" : "Daily Bus Routes",
+                          isTamil ? "தினசரிப் பேருந்து" : "Daily Bus",
                           style: TextStyle(
-                            color: _isDailyBusRoutes ? Colors.white : subColor,
+                            color: _selectedTab == 1 ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
                             fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedTab = 2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 2 ? primaryBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isTamil ? "அட்டவணை" : "Schedule",
+                          style: TextStyle(
+                            color: _selectedTab == 2 ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -297,7 +327,11 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
 
           // Main List
           Expanded(
-            child: _isDailyBusRoutes ? _buildDailyBusRoutesList() : _buildRouteList(),
+            child: _selectedTab == 0
+                ? _buildRouteList()
+                : _selectedTab == 1
+                    ? _buildDailyBusRoutesList()
+                    : _buildScheduleList(),
           ),
         ],
       ),
@@ -1157,5 +1191,387 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
         },
       ),
     );
+  }
+
+  Widget _buildScheduleEmptyState({bool isSearch = false}) {
+    final bool isTamil = LanguageStore.isTamil;
+    String text = "";
+    if (isSearch) {
+      text = isTamil ? "பொருத்தமான அட்டவணை எதுவும் இல்லை" : "No matching schedules found";
+    } else {
+      text = isTamil ? "அட்டவணை இல்லை" : "No schedules for this date";
+    }
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isSearch ? Icons.search_off_rounded : Icons.event_note_rounded,
+            size: 64,
+            color: Colors.grey.withValues(alpha: 0.2),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            text,
+            style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleList() {
+    final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+    final isTamil = LanguageStore.isTamil;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    // identify search query
+    final driverStore = ref.watch(driverStoreProvider);
+    final query = driverStore.searchQuery.toLowerCase().trim();
+
+    List<Map<String, dynamic>> list = List<Map<String, dynamic>>.from(scheduleStore.schedules);
+
+    if (query.isNotEmpty) {
+      list = list.where((s) {
+        final dutyShift = s['dutyShift'] as Map? ?? {};
+        final masterDuty = dutyShift['masterDuty'] as Map? ?? {};
+        final category = masterDuty['category'] as Map? ?? {};
+        final categoryName = (category['category_name'] ?? "").toString().toLowerCase();
+        final shiftName = (dutyShift['shift_name'] ?? "").toString().toLowerCase();
+        
+        final vehicles = dutyShift['vehicles'] as List? ?? [];
+        bool vehicleMatches = false;
+        for (var v in vehicles) {
+          final plate = (v['vehicle_number'] ?? "").toString().toLowerCase();
+          final details = v['vehicle'] as Map? ?? {};
+          final busNum = (details['bus_number'] ?? "").toString().toLowerCase();
+          if (plate.contains(query) || busNum.contains(query)) {
+            vehicleMatches = true;
+            break;
+          }
+        }
+        
+        return categoryName.contains(query) || shiftName.contains(query) || vehicleMatches;
+      }).toList();
+    }
+
+    if (scheduleStore.isLoading && list.isEmpty) {
+      return _buildSkeletonList(isDark, cardColor);
+    }
+
+    if (list.isEmpty) {
+      return _buildScheduleEmptyState(isSearch: query.isNotEmpty);
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _fetchDataForSelectedDate();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          final schedule = list[index];
+          return _buildScheduleCard(
+            context: context,
+            schedule: schedule,
+            cardColor: cardColor,
+            titleColor: titleColor,
+            subColor: subColor,
+            primaryBlue: primaryBlue,
+            isDark: isDark,
+            isTamil: isTamil,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildScheduleCard({
+    required BuildContext context,
+    required Map<String, dynamic> schedule,
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required Color primaryBlue,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final String assignmentType = schedule['assignment_type'] ?? 'PRIMARY';
+    final String assignmentStatus = schedule['assignment_status'] ?? 'ASSIGNED';
+    
+    final dutyShift = schedule['dutyShift'] as Map<String, dynamic>? ?? {};
+    final String shiftName = dutyShift['shift_name'] ?? 'FN';
+    final String shiftCode = dutyShift['shift_code'] ?? 'FN';
+    final String shiftStart = dutyShift['shift_start'] ?? '06:00:00';
+    final String shiftEnd = dutyShift['shift_end'] ?? '14:00:00';
+    final String shiftTime = "${_formatTimeOfDay(shiftStart)} - ${_formatTimeOfDay(shiftEnd)}";
+
+    final masterDuty = dutyShift['masterDuty'] as Map<String, dynamic>? ?? {};
+    final String dutyDate = masterDuty['duty_date'] ?? '';
+    final category = masterDuty['category'] as Map<String, dynamic>? ?? {};
+    final String categoryName = category['category_name'] ?? (isTamil ? 'கடமை அட்டவணை' : 'Duty Schedule');
+
+    final vehicles = dutyShift['vehicles'] as List? ?? [];
+
+    Color accentColor = primaryBlue;
+    if (shiftCode == 'FN') {
+      accentColor = const Color(0xFF6366F1);
+    } else if (shiftCode == 'AN') {
+      accentColor = const Color(0xFFF59E0B);
+    } else {
+      accentColor = const Color(0xFF10B981);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    categoryName,
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: titleColor,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildStatusBadgeWidget(assignmentStatus),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        shiftName,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: accentColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primaryBlue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    assignmentType,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: 16, color: subColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDate(dutyDate.isNotEmpty ? dutyDate : null),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule_rounded, size: 16, color: subColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        shiftTime,
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (vehicles.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                isTamil ? "ஒதுக்கப்பட்ட வாகனங்கள்" : "ASSIGNED VEHICLES",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: subColor.withValues(alpha: 0.5),
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...vehicles.map((v) {
+                final vehicleNum = v['vehicle_number'] ?? 'N/A';
+                final details = v['vehicle'] as Map<String, dynamic>? ?? {};
+                final busNum = details['bus_number'] ?? '';
+                final make = details['make'] ?? '';
+                final model = details['model'] ?? '';
+                final capacity = details['capacity'] ?? 0;
+
+                final bool isCar = capacity <= 7 || 
+                                   busNum.toString().toLowerCase().contains('car') || 
+                                   model.toString().toLowerCase().contains('crysta') ||
+                                   make.toString().toLowerCase().contains('marazzo');
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.015),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          isCar ? Icons.directions_car_filled_rounded : Icons.directions_bus_rounded,
+                          size: 20,
+                          color: primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              busNum.isNotEmpty ? busNum : (make.isNotEmpty ? "$make $model" : (isTamil ? "வாகனம்" : "Vehicle")),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isTamil ? "ஆசனங்கள்: $capacity • $model" : "Capacity: $capacity • $model",
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: subColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF475569) : const Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          vehicleNum,
+                          style: GoogleFonts.outfit(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: titleColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimeOfDay(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return "TBD";
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        final period = hour >= 12 ? 'PM' : 'AM';
+        final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+        final minStr = minute.toString().padLeft(2, '0');
+        return "$displayHour:$minStr $period";
+      }
+      return timeStr;
+    } catch (_) {
+      return timeStr;
+    }
   }
 }
