@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
@@ -1090,27 +1091,56 @@ class DriverStore extends ChangeNotifier {
     required int runId,
     required int endOdometer,
     required bool allowanceNeeded,
+    List<int>? allowanceTypeIds,
+    Map<int, int>? allowanceCounts,
+    Map<int, String>? allowanceAmounts,
+    File? proofImage,
   }) async {
     try {
       final token = await UserStore.getToken();
       if (token == null) return {"success": false, "message": "Session expired"};
 
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/evening-odometer";
-      final bodyStr = json.encode({
-        "end_odometer": endOdometer,
-        "allowance_needed": allowanceNeeded,
-        "latitude": null,
-        "longitude": null,
-        "image_url": null,
-      });
+      
+      http.Response response;
 
-      debugPrint("API CALL (Evening End): PATCH $url\nBody: $bodyStr");
+      if (proofImage != null) {
+        var request = http.MultipartRequest('PATCH', Uri.parse(url));
+        request.headers.addAll(ApiConstants.getHeaders(token));
+        request.fields['end_odometer'] = endOdometer.toString();
+        request.fields['allowance_needed'] = allowanceNeeded.toString();
+        if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
+          request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
+        }
+        if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
+          request.fields['allowance_counts'] = jsonEncode(allowanceCounts);
+        }
+        if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
+          request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts);
+        }
+        
+        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
+        
+        final streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+      } else {
+        final Map<String, dynamic> body = {
+          "end_odometer": endOdometer,
+          "allowance_needed": allowanceNeeded,
+          "latitude": null,
+          "longitude": null,
+          "image_url": null,
+          if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) "allowance_type_ids": allowanceTypeIds,
+          if (allowanceCounts != null && allowanceCounts.isNotEmpty) "allowance_counts": allowanceCounts,
+          if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) "allowance_amounts": allowanceAmounts,
+        };
 
-      final response = await http.patch(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
-        body: bodyStr,
-      );
+        response = await http.patch(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+          body: jsonEncode(body),
+        );
+      }
 
       final decoded = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -1158,52 +1188,70 @@ class DriverStore extends ChangeNotifier {
     required int endOdometer,
     int? passengerCount,
     required bool allowanceNeeded,
+    List<int>? allowanceTypeIds,
+    Map<int, int>? allowanceCounts,
+    Map<int, String>? allowanceAmounts,
+    File? proofImage,
   }) async {
     try {
       final token = await UserStore.getToken();
       if (token == null) return {"success": false, "message": "Session expired"};
 
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/morning-odometer";
-      final Map<String, dynamic> body = {
-        "end_odometer": endOdometer,
-        "allowance_needed": allowanceNeeded,
-        "latitude": null,
-        "longitude": null,
-        "image_url": null,
-      };
-      if (passengerCount != null) {
-        body["passenger_count"] = passengerCount;
+      
+      http.Response response;
+
+      if (proofImage != null) {
+        var request = http.MultipartRequest('PATCH', Uri.parse(url));
+        request.headers.addAll(ApiConstants.getHeaders(token));
+        request.fields['end_odometer'] = endOdometer.toString();
+        request.fields['allowance_needed'] = allowanceNeeded.toString();
+        if (passengerCount != null) {
+          request.fields['passenger_count'] = passengerCount.toString();
+        }
+        if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
+          request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
+        }
+        if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
+          request.fields['allowance_counts'] = jsonEncode(allowanceCounts);
+        }
+        if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
+          request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts);
+        }
+        
+        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
+        
+        final streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+      } else {
+        final Map<String, dynamic> body = {
+          "end_odometer": endOdometer,
+          "allowance_needed": allowanceNeeded,
+          "latitude": null,
+          "longitude": null,
+          "image_url": null,
+          if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) "allowance_type_ids": allowanceTypeIds,
+          if (allowanceCounts != null && allowanceCounts.isNotEmpty) "allowance_counts": allowanceCounts,
+          if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) "allowance_amounts": allowanceAmounts,
+        };
+        if (passengerCount != null) {
+          body["passenger_count"] = passengerCount;
+        }
+
+        response = await http.patch(
+          Uri.parse(url),
+          headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
+          body: jsonEncode(body),
+        );
       }
-      final bodyStr = json.encode(body);
 
-      // --- DEBUG LOGGING ---
-      String curl = "curl -X PATCH '$url' \\\n";
-      curl += "-H 'Authorization: TMS $token' \\\n";
-      curl += "-H 'Content-Type: application/json' \\\n";
-      curl += "-d '$bodyStr'";
-      debugPrint("================= API DEBUG (End Run) =================");
-      debugPrint("CURL:\n$curl");
-      debugPrint("=========================================================");
-
-      final response = await http.patch(
-        Uri.parse(url),
-        headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
-        body: bodyStr,
-      );
-
-      debugPrint("================= API RESPONSE (End Run) ==============");
-      debugPrint(ApiErrorParser.parse(response, fallback: "STATUS CODE"));
-      debugPrint("RESPONSE BODY: ${response.body}");
-      debugPrint("=========================================================");
-
+      final decoded = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         await fetchDailyBusRuns();
-        final decoded = json.decode(response.body);
         final innerData = (decoded['data'] is Map && decoded['data']['data'] != null) ? decoded['data']['data'] : decoded['data'];
         return {"success": true, "message": "Run ended successfully", "data": innerData};
       }
       
-      final decoded = json.decode(response.body);
       return {"success": false, "message": decoded['message'] ?? "Failed to end run"};
     } catch (e) {
       debugPrint("End Run Exception: $e");
