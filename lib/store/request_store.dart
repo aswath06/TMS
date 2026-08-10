@@ -397,14 +397,21 @@ class RequestStore extends ChangeNotifier {
 
     double calculatedDays = double.tryParse(leave['total_days']?.toString() ?? '0') ?? 0.0;
     if (fromRaw.isNotEmpty && toRaw.isNotEmpty) {
-      String d1 = fromRaw.contains('T') ? fromRaw.split('T')[0] : fromRaw.split(' ')[0];
-      String d2 = toRaw.contains('T') ? toRaw.split('T')[0] : toRaw.split(' ')[0];
-      if (d1 == d2) {
-         if (startSession == endSession) {
-            calculatedDays = 0.5;
-         } else if (calculatedDays == 0) {
-            calculatedDays = 1.0;
-         }
+      try {
+        final start = DateTime.parse(fromRaw.contains('T') ? fromRaw.split('T')[0] : fromRaw.split(' ')[0]);
+        final end = DateTime.parse(toRaw.contains('T') ? toRaw.split('T')[0] : toRaw.split(' ')[0]);
+        final difference = end.difference(start).inDays;
+        if (difference >= 0) {
+          calculatedDays = difference + 1.0;
+          if (startSession == 'AN') {
+            calculatedDays -= 0.5;
+          }
+          if (endSession == 'FN') {
+            calculatedDays -= 0.5;
+          }
+        }
+      } catch (e) {
+        debugPrint("Error parsing date in _formatLeave: $e");
       }
     }
 
