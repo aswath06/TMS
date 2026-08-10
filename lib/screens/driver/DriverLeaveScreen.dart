@@ -29,6 +29,7 @@ class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
       } else {
         useDriverStore.fetchLeaves();
         useDriverStore.fetchAttendance(isRefresh: true);
+        useDriverStore.fetchCalendarSummary(_focusedDay.year, _focusedDay.month);
       }
     });
   }
@@ -43,6 +44,9 @@ class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
     setState(() {
       _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + offset);
     });
+    if (widget.userRole != 'student') {
+      useDriverStore.fetchCalendarSummary(_focusedDay.year, _focusedDay.month);
+    }
   }
 
   @override
@@ -468,6 +472,37 @@ final store = ref.watch(driverStoreProvider);
                   _focusedDay.month == DateTime.now().month &&
                   _focusedDay.year == DateTime.now().year;
 
+              String dateKey = "${_focusedDay.year}-${_focusedDay.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+              String? status = widget.userRole != 'student' ? useDriverStore.calendarSummary[dateKey] : null;
+
+              Widget statusIndicator = const SizedBox.shrink();
+              if (status == 'green') {
+                statusIndicator = Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle),
+                );
+              } else if (status == 'red') {
+                statusIndicator = Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                );
+              } else if (status == 'mixed') {
+                statusIndicator = Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.greenAccent, Colors.redAccent],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                );
+              }
+
               return Center(
                 child: Container(
                   width: 38,
@@ -476,18 +511,26 @@ final store = ref.watch(driverStoreProvider);
                     color: isToday ? primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Text(
-                      "$day",
-                      style: TextStyle(
-                        color: isToday
-                            ? Colors.white
-                            : (isDark ? Colors.white70 : Colors.black87),
-                        fontWeight: isToday
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "$day",
+                        style: TextStyle(
+                          color: isToday
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : Colors.black87),
+                          fontWeight: isToday
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          height: 1.0,
+                        ),
                       ),
-                    ),
+                      if (statusIndicator is! SizedBox) ...[
+                        const SizedBox(height: 2),
+                        statusIndicator,
+                      ]
+                    ],
                   ),
                 ),
               );
@@ -650,8 +693,17 @@ final store = ref.watch(driverStoreProvider);
       else if (status == 3) statusStr = "நிராகரிக்கப்பட்டது";
     }
 
-    final int typeInt = leave['leave_type'] ?? 1;
-    final String typeStr = DriverStore.LEAVE_TYPE[typeInt] ?? (isTamil ? "விடுப்பு" : "Leave");
+    String typeStr = isTamil ? "விடுப்பு" : "Leave";
+    if (leave['leaveType'] != null && leave['leaveType']['name'] != null) {
+      typeStr = leave['leaveType']['name'];
+    } else {
+      final int typeInt = leave['leave_type_id'] is int ? leave['leave_type_id'] : int.tryParse(leave['leave_type_id']?.toString() ?? '1') ?? 1;
+      typeStr = DriverStore.LEAVE_TYPE[typeInt] ?? (isTamil ? "விடுப்பு" : "Leave");
+      try {
+        final match = useDriverStore.leaveTypes.firstWhere((t) => t['id'] == typeInt, orElse: () => <String, dynamic>{});
+        if (match.isNotEmpty && match['name'] != null) typeStr = match['name'];
+      } catch (_) {}
+    }
 
     return GestureDetector(
       onTap: () => _showLeaveDetailsPopup(context, leave, isTamil, isDark),
@@ -661,6 +713,13 @@ final store = ref.watch(driverStoreProvider);
           color: surface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -720,8 +779,19 @@ final store = ref.watch(driverStoreProvider);
 
   void _showLeaveDetailsPopup(BuildContext context, Map<String, dynamic> leave, bool isTamil, bool isDark) {
     final status = leave['status'] ?? 1;
-    final type = DriverStore.LEAVE_TYPE[leave['leave_type']] ?? "Leave";
-    final driver = leave['driver'] ?? {};
+    
+    String type = DriverStore.LEAVE_TYPE[1] ?? "Leave";
+    if (leave['leaveType'] != null && leave['leaveType']['name'] != null) {
+      type = leave['leaveType']['name'];
+    } else {
+      final int typeInt = leave['leave_type_id'] is int ? leave['leave_type_id'] : int.tryParse(leave['leave_type_id']?.toString() ?? '1') ?? 1;
+      type = DriverStore.LEAVE_TYPE[typeInt] ?? "Leave";
+      try {
+        final match = useDriverStore.leaveTypes.firstWhere((t) => t['id'] == typeInt, orElse: () => <String, dynamic>{});
+        if (match.isNotEmpty && match['name'] != null) type = match['name'];
+      } catch (_) {}
+    }
+
     final routes = leave['routes_during_leave'] as List? ?? [];
 
     Color statusColor = Colors.orange;
@@ -734,18 +804,73 @@ final store = ref.watch(driverStoreProvider);
       statusStr = isTamil ? "நிராகரிக்கப்பட்டது" : "Rejected";
     }
 
+    String getSessionAndDate(String dateStr, String? dbSession) {
+      if (dateStr.isEmpty) return "";
+      String session = "";
+      if (dbSession != null && dbSession.isNotEmpty) {
+        session = " ($dbSession)";
+      } else {
+        if (dateStr.contains("09:00:00") || dateStr.contains("13:00:00")) session = " (FN)";
+        else if (dateStr.contains("14:00:00") || dateStr.contains("18:00:00")) session = " (AN)";
+      }
+      return "${_formatDateLong(dateStr)}$session";
+    }
+    
+    String dateRangeStr = "${getSessionAndDate(leave['from_date']?.toString() ?? '', leave['start_session'])} - ${getSessionAndDate(leave['to_date']?.toString() ?? '', leave['end_session'])}";
+
+    final totalDaysRaw = leave['total_days'];
+    double totalDays = 0.0;
+    if (totalDaysRaw != null) {
+      totalDays = double.tryParse(totalDaysRaw.toString()) ?? 0.0;
+    }
+    String totalDaysStr = totalDays % 1 == 0 ? totalDays.toInt().toString() : totalDays.toString();
+
+    // Fallback recalculation if backend returned 0
+    if (totalDays == 0.0) {
+      final String fromStr = leave['from_date']?.toString() ?? '';
+      final String toStr = leave['to_date']?.toString() ?? '';
+      
+      if (fromStr.isNotEmpty && toStr.isNotEmpty) {
+        final startDt = DateTime.tryParse(fromStr);
+        final endDt = DateTime.tryParse(toStr);
+        if (startDt != null && endDt != null) {
+          final diff = DateTime(endDt.year, endDt.month, endDt.day).difference(DateTime(startDt.year, startDt.month, startDt.day)).inDays;
+          double calc = diff + 1.0;
+          
+          final startSession = leave['start_session'] ?? (fromStr.contains("14:00:00") || fromStr.contains("18:00:00") ? "AN" : "FN");
+          final endSession = leave['end_session'] ?? (toStr.contains("09:00:00") || toStr.contains("13:00:00") ? "FN" : "AN");
+          
+          if (startSession == 'AN') calc -= 0.5;
+          if (endSession == 'FN') calc -= 0.5;
+          
+          if (calc > 0) {
+             totalDays = calc;
+             totalDaysStr = totalDays % 1 == 0 ? totalDays.toInt().toString() : totalDays.toString();
+          }
+        }
+      }
+    }
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: Container(
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E293B) : Colors.white,
             borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+            ],
           ),
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(28),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -754,53 +879,149 @@ final store = ref.watch(driverStoreProvider);
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(
-                          statusStr.toUpperCase(),
-                          style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.circle, size: 8, color: statusColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              statusStr.toUpperCase(),
+                              style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                            ),
+                          ],
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 28),
                   Text(
                     type,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      fontSize: 26, 
+                      fontWeight: FontWeight.w900, 
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      letterSpacing: -0.5
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "${_formatDateLong(leave['from_date'])} - ${_formatDateLong(leave['to_date'])}",
-                    style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.date_range_rounded, color: Color(0xFF6366F1), size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            dateRangeStr,
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : const Color(0xFF334155), 
+                              fontWeight: FontWeight.bold,
+                              height: 1.4,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  _popupInfoRow(isTamil ? "ஓட்டுநர்" : "Driver", driver['name'] ?? "Unknown", Icons.person_outline_rounded),
-                  _popupInfoRow(isTamil ? "மின்னஞ்சல்" : "Email", driver['email'] ?? "No email", Icons.alternate_email_rounded),
-                  _popupInfoRow(isTamil ? "மொத்த நாட்கள்" : "Total Days", "${leave['total_days']} ${isTamil ? 'நாட்கள்' : 'Days'}", Icons.date_range_rounded),
                   
-                  const SizedBox(height: 20),
-                  Text(
-                    isTamil ? "விடுப்புக்கான காரணம்" : "Reason for Leave",
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
                   Container(
-                    width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(16),
+                      color: isDark ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                     ),
-                    child: Text(
-                      leave['reason'] ?? (isTamil ? "விளக்கப்படவில்லை" : "No reason provided"),
-                      style: const TextStyle(height: 1.5),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.work_history_rounded, color: Color(0xFF6366F1), size: 22),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isTamil ? "மொத்த நாட்கள்" : "Total Days", 
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade600)
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "$totalDaysStr ${isTamil ? 'நாட்கள்' : 'Days'}", 
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: isDark ? Colors.white : const Color(0xFF1E293B))
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 28),
+                  Text(
+                    isTamil ? "விடுப்புக்கான காரணம்" : "Reason for Leave",
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white70 : const Color(0xFF475569)),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black26 : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                         BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                         ),
+                      ]
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                         Icon(Icons.notes_rounded, size: 20, color: Colors.grey.shade400),
+                         const SizedBox(width: 12),
+                         Expanded(
+                           child: Text(
+                             leave['reason'] ?? (isTamil ? "விளக்கப்படவில்லை" : "No reason provided"),
+                             style: TextStyle(
+                               height: 1.6, 
+                               fontSize: 14,
+                               color: isDark ? Colors.white : const Color(0xFF1E293B),
+                               fontWeight: FontWeight.w500,
+                             ),
+                           ),
+                         ),
+                      ],
                     ),
                   ),
 

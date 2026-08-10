@@ -9,6 +9,7 @@ import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/driver_schedules_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
+import 'package:tripzo/screens/driver/schedule_details_page.dart';
 import 'package:shimmer/shimmer.dart';
 
 
@@ -1233,7 +1234,26 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     final driverStore = ref.watch(driverStoreProvider);
     final query = driverStore.searchQuery.toLowerCase().trim();
 
-    List<Map<String, dynamic>> list = List<Map<String, dynamic>>.from(scheduleStore.schedules);
+    final List<Map<String, dynamic>> dashboardSchedules = [];
+
+    // Filter and add started schedules
+    for (var s in scheduleStore.startedSchedules) {
+      dashboardSchedules.add(s);
+    }
+    // Add today's schedules if they are not already in the started list
+    for (var s in scheduleStore.todaySchedules) {
+      if (!dashboardSchedules.any((item) => item['id'] == s['id'])) {
+        dashboardSchedules.add(s);
+      }
+    }
+    // Add selected date schedules if they are not already in the list
+    for (var s in scheduleStore.schedules) {
+      if (!dashboardSchedules.any((item) => item['id'] == s['id'])) {
+        dashboardSchedules.add(s);
+      }
+    }
+
+    List<Map<String, dynamic>> list = List<Map<String, dynamic>>.from(dashboardSchedules);
 
     if (query.isNotEmpty) {
       list = list.where((s) {
@@ -1302,10 +1322,12 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     required bool isDark,
     required bool isTamil,
   }) {
+    final int scheduleId = schedule['id'] ?? 0;
     final String assignmentType = schedule['assignment_type'] ?? 'PRIMARY';
     final String assignmentStatus = schedule['assignment_status'] ?? 'ASSIGNED';
     
     final dutyShift = schedule['dutyShift'] as Map<String, dynamic>? ?? {};
+    final String shiftStatus = dutyShift['status'] ?? 'PLANNED';
     final String shiftName = dutyShift['shift_name'] ?? 'FN';
     final String shiftCode = dutyShift['shift_code'] ?? 'FN';
     final String shiftStart = dutyShift['shift_start'] ?? '06:00:00';
@@ -1328,230 +1350,242 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
       accentColor = const Color(0xFF10B981);
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return GestureDetector(
+      onTap: () {
+        if (scheduleId > 0) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScheduleDetailsPage(scheduleId: scheduleId),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+            width: 1,
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    categoryName,
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: titleColor,
-                      letterSpacing: -0.2,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      categoryName,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: titleColor,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                _buildStatusBadgeWidget(assignmentStatus),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: accentColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        shiftName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: accentColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: primaryBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    assignmentType,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: primaryBlue,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 1,
-              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today_rounded, size: 16, color: subColor),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDate(dutyDate.isNotEmpty ? dutyDate : null),
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(Icons.schedule_rounded, size: 16, color: subColor),
-                      const SizedBox(width: 8),
-                      Text(
-                        shiftTime,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (vehicles.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Text(
-                isTamil ? "ஒதுக்கப்பட்ட வாகனங்கள்" : "ASSIGNED VEHICLES",
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: subColor.withValues(alpha: 0.5),
-                  letterSpacing: 0.8,
-                ),
+                  const SizedBox(width: 8),
+                  _buildStatusBadgeWidget(shiftStatus),
+                ],
               ),
-              const SizedBox(height: 10),
-              ...vehicles.map((v) {
-                final vehicleNum = v['vehicle_number'] ?? 'N/A';
-                final details = v['vehicle'] as Map<String, dynamic>? ?? {};
-                final busNum = details['bus_number'] ?? '';
-                final make = details['make'] ?? '';
-                final model = details['model'] ?? '';
-                final capacity = details['capacity'] ?? 0;
-
-                final bool isCar = capacity <= 7 || 
-                                   busNum.toString().toLowerCase().contains('car') || 
-                                   model.toString().toLowerCase().contains('crysta') ||
-                                   make.toString().toLowerCase().contains('marazzo');
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.015),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: primaryBlue.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          isCar ? Icons.directions_car_filled_rounded : Icons.directions_bus_rounded,
-                          size: 20,
-                          color: primaryBlue,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              busNum.isNotEmpty ? busNum : (make.isNotEmpty ? "$make $model" : (isTamil ? "வாகனம்" : "Vehicle")),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: titleColor,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              isTamil ? "ஆசனங்கள்: $capacity • $model" : "Capacity: $capacity • $model",
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: subColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF475569) : const Color(0xFFE2E8F0),
-                            width: 1.5,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            shape: BoxShape.circle,
                           ),
                         ),
-                        child: Text(
-                          vehicleNum,
-                          style: GoogleFonts.outfit(
+                        const SizedBox(width: 6),
+                        Text(
+                          shiftName,
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
-                            color: titleColor,
-                            letterSpacing: 0.5,
+                            color: accentColor,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              }),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      assignmentType,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                height: 1,
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today_rounded, size: 16, color: subColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDate(dutyDate.isNotEmpty ? dutyDate : null),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 16, color: subColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          shiftTime,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (vehicles.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(
+                  isTamil ? "ஒதுக்கப்பட்ட வாகனங்கள்" : "ASSIGNED VEHICLES",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: subColor.withValues(alpha: 0.5),
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...vehicles.map((v) {
+                  final vehicleNum = v['vehicle_number'] ?? 'N/A';
+                  final details = v['vehicle'] as Map<String, dynamic>? ?? {};
+                  final busNum = details['bus_number'] ?? '';
+                  final make = details['make'] ?? '';
+                  final model = details['model'] ?? '';
+                  final capacity = details['capacity'] ?? 0;
+  
+                  final bool isCar = capacity <= 7 || 
+                                     busNum.toString().toLowerCase().contains('car') || 
+                                     model.toString().toLowerCase().contains('crysta') ||
+                                     make.toString().toLowerCase().contains('marazzo');
+  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.015),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isCar ? Icons.directions_car_filled_rounded : Icons.directions_bus_rounded,
+                            size: 20,
+                            color: primaryBlue,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                busNum.isNotEmpty ? busNum : (make.isNotEmpty ? "$make $model" : (isTamil ? "வாகனம்" : "Vehicle")),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isTamil ? "ஆசனங்கள்: $capacity • $model" : "Capacity: $capacity • $model",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: subColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF475569) : const Color(0xFFE2E8F0),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            vehicleNum,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

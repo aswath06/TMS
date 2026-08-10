@@ -207,6 +207,13 @@ class MainScreenState extends State<MainScreen> {
           const ChatScreen(),
         ];
       case 'driver':
+        return [
+          const DriverDutiesScreen(),
+          const DriverRoutesScreen(),
+          const DriverLeaveScreen(),
+          const ChatScreen(),
+          const DriverProfileScreen(),
+        ];
       default:  
         return [
           const DriverDutiesScreen(),

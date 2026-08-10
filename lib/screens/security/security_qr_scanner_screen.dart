@@ -7,7 +7,7 @@ import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
-
+import 'package:tripzo/screens/security/security_gate_success_screen.dart';
 class SecurityQrScannerScreen extends StatefulWidget {
   final String defaultMode;
   const SecurityQrScannerScreen({super.key, this.defaultMode = 'Routes'});
@@ -222,20 +222,34 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         HapticFeedback.vibrate();
-        setState(() {
-          _isSuccessState = true;
-          _isProcessing = false;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$action successfully registered!'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        if (widget.defaultMode == 'Routes') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SecurityGateSuccessScreen(
+                isGateOut: action == "START" || action == "CAMPUS_OUT",
+                onComplete: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+          );
+        } else {
+          setState(() {
+            _isSuccessState = true;
+            _isProcessing = false;
+          });
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$action successfully registered!'),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
         final error = jsonDecode(response.body);
         throw error['message'] ?? ApiErrorParser.parse(response, fallback: "Action failed");

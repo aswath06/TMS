@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
@@ -13,6 +14,8 @@ import 'package:tripzo/screens/driver/maintenance/complete_fuel_entry_page.dart'
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/utils/tab_notification.dart';
 import 'package:tripzo/screens/driver/DriverProfileScreen.dart';
+import 'package:tripzo/screens/driver/schedule_details_page.dart';
+import 'package:tripzo/store/driver_schedules_store.dart';
 
 import '../../components/notification_bell.dart';
 import 'dart:async';
@@ -39,6 +42,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       useDriverStore.fetchActiveRoutesToComplete();
       useDriverStore.fetchPendingAllowanceCount();
       ref.read(notificationProviderFamily).fetchNotifications();
+      ref.read(driverSchedulesStoreProvider).fetchSchedules();
     });
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -74,6 +78,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
             child: Consumer(
 builder: (context, ref, _) {
 final store = ref.watch(driverStoreProvider);
+final scheduleStore = ref.watch(driverSchedulesStoreProvider);
                 final profile = store.profileData.value;
                 final List<Map<String, dynamic>> allAssignments = [];
                 for (var run in store.dailyBusRuns) {
@@ -127,6 +132,24 @@ final store = ref.watch(driverStoreProvider);
                   }
                 }).toList();
 
+                final List<Map<String, dynamic>> dashboardSchedules = [];
+                // Prepend started schedules (except completed ones)
+                for (var s in scheduleStore.startedSchedules) {
+                  final dutyShift = s['dutyShift'] as Map? ?? {};
+                  final String shiftStatus = (dutyShift['status'] ?? 'PLANNED').toString().toUpperCase();
+                  if (shiftStatus != 'COMPLETED') {
+                    dashboardSchedules.add(s);
+                  }
+                }
+                // Prepend today's schedules (except completed ones and already started ones)
+                for (var s in scheduleStore.todaySchedules) {
+                  final dutyShift = s['dutyShift'] as Map? ?? {};
+                  final String shiftStatus = (dutyShift['status'] ?? 'PLANNED').toString().toUpperCase();
+                  if (shiftStatus != 'COMPLETED' && !dashboardSchedules.any((item) => item['id'] == s['id'])) {
+                    dashboardSchedules.add(s);
+                  }
+                }
+
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchProfile();
@@ -135,6 +158,7 @@ final store = ref.watch(driverStoreProvider);
                     await store.fetchPendingFuelEntries();
                     await store.fetchActiveRoutesToComplete();
                     await store.fetchPendingAllowanceCount();
+                    await ref.read(driverSchedulesStoreProvider).fetchSchedules(isRefresh: true);
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -154,14 +178,14 @@ final store = ref.watch(driverStoreProvider);
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${allAssignments.length + todayMissions.length})", titleColor),
+                              child: _buildSectionTitle("${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${allAssignments.length + todayMissions.length + dashboardSchedules.length})", titleColor),
                             ),
                           ],
                         ),
                         const SizedBox(height: 18),
-                        if (store.isLoadingBusRuns && allAssignments.isEmpty && todayMissions.isEmpty)
+                        if (store.isLoadingBusRuns && allAssignments.isEmpty && todayMissions.isEmpty && dashboardSchedules.isEmpty)
                           const Center(child: CircularProgressIndicator())
-                        else if (allAssignments.isEmpty && todayMissions.isEmpty)
+                        else if (allAssignments.isEmpty && todayMissions.isEmpty && dashboardSchedules.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else ...[
                           ...todayMissions.map((m) => _buildMissionCard(
@@ -171,6 +195,16 @@ final store = ref.watch(driverStoreProvider);
                                 primary: primaryBlue,
                                 titleColor: titleColor,
                                 subColor: subColor,
+                                isDark: isDark,
+                                isTamil: isTamil,
+                              )),
+                          ...dashboardSchedules.map((s) => _buildScheduleCard(
+                                context: context,
+                                schedule: s,
+                                cardColor: surfaceColor,
+                                titleColor: titleColor,
+                                subColor: subColor,
+                                primaryBlue: primaryBlue,
                                 isDark: isDark,
                                 isTamil: isTamil,
                               )),
@@ -1397,5 +1431,387 @@ final store = ref.watch(driverStoreProvider);
         ),
       ),
     );
+  }
+
+  Widget _buildScheduleCard({
+    required BuildContext context,
+    required Map<String, dynamic> schedule,
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required Color primaryBlue,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final int scheduleId = schedule['id'] ?? 0;
+    final String assignmentType = schedule['assignment_type'] ?? 'PRIMARY';
+    
+    final dutyShift = schedule['dutyShift'] as Map<String, dynamic>? ?? {};
+    final String shiftStatus = dutyShift['status'] ?? 'PLANNED';
+    final String shiftName = dutyShift['shift_name'] ?? 'FN';
+    final String shiftCode = dutyShift['shift_code'] ?? 'FN';
+    final String shiftStart = dutyShift['shift_start'] ?? '06:00:00';
+    final String shiftEnd = dutyShift['shift_end'] ?? '14:00:00';
+    final String shiftTime = "${_formatTimeOfDay(shiftStart)} - ${_formatTimeOfDay(shiftEnd)}";
+
+    final masterDuty = dutyShift['masterDuty'] as Map<String, dynamic>? ?? {};
+    final String dutyDate = masterDuty['duty_date'] ?? '';
+    final category = masterDuty['category'] as Map<String, dynamic>? ?? {};
+    final String categoryName = category['category_name'] ?? (isTamil ? 'கடமை அட்டவணை' : 'Duty Schedule');
+
+    final vehicles = dutyShift['vehicles'] as List? ?? [];
+
+    Color accentColor = primaryBlue;
+    if (shiftCode == 'FN') {
+      accentColor = const Color(0xFF6366F1);
+    } else if (shiftCode == 'AN') {
+      accentColor = const Color(0xFFF59E0B);
+    } else {
+      accentColor = const Color(0xFF10B981);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (scheduleId > 0) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScheduleDetailsPage(scheduleId: scheduleId),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      categoryName,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: titleColor,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildStatusBadgeWidget(shiftStatus),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          shiftName,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: primaryBlue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      assignmentType,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: primaryBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                height: 1,
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today_rounded, size: 16, color: subColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDate(dutyDate.isNotEmpty ? dutyDate : null),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 16, color: subColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          shiftTime,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: subColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (vehicles.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(
+                  isTamil ? "ஒதுக்கப்பட்ட வாகனங்கள்" : "ASSIGNED VEHICLES",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: subColor.withOpacity(0.5),
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...vehicles.map((v) {
+                  final vehicleNum = v['vehicle_number'] ?? 'N/A';
+                  final details = v['vehicle'] as Map<String, dynamic>? ?? {};
+                  final busNum = details['bus_number'] ?? '';
+                  final make = details['make'] ?? '';
+                  final model = details['model'] ?? '';
+                  final capacity = details['capacity'] ?? 0;
+  
+                  final bool isCar = capacity <= 7 || 
+                                     busNum.toString().toLowerCase().contains('car') || 
+                                     model.toString().toLowerCase().contains('crysta') ||
+                                     make.toString().toLowerCase().contains('marazzo');
+  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.015),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isCar ? Icons.directions_car_filled_rounded : Icons.directions_bus_rounded,
+                            size: 20,
+                            color: primaryBlue,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                busNum.isNotEmpty ? busNum : (make.isNotEmpty ? "$make $model" : (isTamil ? "வாகனம்" : "Vehicle")),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isTamil ? "ஆசனங்கள்: $capacity • $model" : "Capacity: $capacity • $model",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: subColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF475569) : const Color(0xFFE2E8F0),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            vehicleNum,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadgeWidget(String status, {String? displayText}) {
+    final String s = status.toUpperCase();
+    Color bgColor;
+    Color textColor;
+    Color borderColor;
+
+    switch (s) {
+      case "PLANNED":
+      case "APPROVED":
+      case "ASSIGNED":
+        bgColor = const Color(0xFFFEF3C7);
+        textColor = const Color(0xFFD97706);
+        borderColor = const Color(0xFFFDE68A);
+        break;
+      case "READY":
+        bgColor = const Color(0xFFFCE7F3);
+        textColor = const Color(0xFFBE185D);
+        borderColor = const Color(0xFFFBCFE8);
+        break;
+      case "STARTED":
+      case "ON_TRIP":
+      case "ONGOING":
+        bgColor = const Color(0xFFDBEAFE);
+        textColor = const Color(0xFF2563EB);
+        borderColor = const Color(0xFF93C5FD);
+        break;
+      case "ARRIVED_CAMPUS":
+      case "CAMPUS_IN":
+        bgColor = const Color(0xFFEEF2FF);
+        textColor = const Color(0xFF6366F1);
+        borderColor = const Color(0xFFC7D2FE);
+        break;
+      case "FN_COMPLETED":
+        bgColor = const Color(0xFFD1FAE5);
+        textColor = const Color(0xFF059669);
+        borderColor = const Color(0xFFA7F3D0);
+        break;
+      case "RESUMED_MIDWAY":
+      case "MERGED_HALTED":
+      case "DEPARTED_CAMPUS":
+        bgColor = const Color(0xFFFEF3C7);
+        textColor = const Color(0xFFB45309);
+        borderColor = const Color(0xFFFDE68A);
+        break;
+      case "HALTED":
+        bgColor = const Color(0xFFFAF5FF);
+        textColor = const Color(0xFF8B5CF6);
+        borderColor = const Color(0xFFE9D5FF);
+        break;
+      case "COMPLETED":
+      case "FINISHED":
+        bgColor = const Color(0xFFD1FAE5);
+        textColor = const Color(0xFF047857);
+        borderColor = const Color(0xFFA7F3D0);
+        break;
+      case "CANCELLED":
+      case "REJECTED":
+        bgColor = const Color(0xFFFFE4E6);
+        textColor = const Color(0xFFBE123C);
+        borderColor = const Color(0xFFFECDD3);
+        break;
+      default:
+        bgColor = const Color(0xFFF1F5F9);
+        textColor = const Color(0xFF475569);
+        borderColor = const Color(0xFFE2E8F0);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Text(
+        (displayText ?? status).replaceAll('_', ' ').toUpperCase(),
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  String _formatTimeOfDay(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return "TBD";
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        final period = hour >= 12 ? 'PM' : 'AM';
+        final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+        final minStr = minute.toString().padLeft(2, '0');
+        return "$displayHour:$minStr $period";
+      }
+      return timeStr;
+    } catch (_) {
+      return timeStr;
+    }
   }
 }

@@ -49,14 +49,27 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
   String _getDaysDifference(bool isTamil) {
     if (_startDate == null || _endDate == null) return "";
 
-    final difference = _endDate!.difference(_startDate!).inDays;
-    // We add 1 to include the partial/starting day in the count
-    final totalDays = difference < 0 ? 0 : difference + 1;
+    final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+    final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+    
+    final difference = end.difference(start).inDays;
+    if (difference < 0) return isTamil ? "0 நாட்கள்" : "0 Days";
+
+    double totalDays = difference + 1.0;
+
+    if (_startSession == 'AN') {
+      totalDays -= 0.5;
+    }
+    if (_endSession == 'FN') {
+      totalDays -= 0.5;
+    }
+
+    String dayString = totalDays % 1 == 0 ? totalDays.toInt().toString() : totalDays.toString();
 
     if (isTamil) {
-      return "$totalDays நாட்கள்";
+      return "$dayString நாட்கள்";
     }
-    return "$totalDays ${totalDays == 1 ? 'Day' : 'Days'}";
+    return "$dayString ${totalDays <= 1 ? 'Day' : 'Days'}";
   }
 
   Future<void> _pickDateTime(BuildContext context, bool isStart) async {
@@ -530,30 +543,50 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
       decoration: BoxDecoration(
         color: c,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
         maxLines: max,
-        style: TextStyle(color: t, fontSize: 14, fontWeight: FontWeight.w600),
-        validator: (value) => (value == null || value.isEmpty)
-            ? (isTamil ? "தேவை" : "Required")
+        style: TextStyle(color: t, fontSize: 15, fontWeight: FontWeight.w600),
+        validator: (value) => (value == null || value.trim().isEmpty)
+            ? (isTamil ? "தயவுசெய்து காரணத்தை உள்ளிடவும்" : "Please provide a reason")
             : null,
         decoration: InputDecoration(
           hintText: h,
-          hintStyle: TextStyle(color: t.withValues(alpha: 0.4), fontSize: 13),
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: primaryBlue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+          hintStyle: TextStyle(color: t.withValues(alpha: 0.4), fontSize: 14),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 12, top: 16, bottom: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Icon(i, size: 22, color: primaryBlue.withValues(alpha: 0.7)),
+              ],
             ),
-            child: Icon(i, size: 18, color: primaryBlue),
           ),
-          border: InputBorder.none,
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: primaryBlue.withValues(alpha: 0.5), width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: Colors.red.withValues(alpha: 0.5), width: 1.5),
+          ),
           contentPadding: const EdgeInsets.symmetric(
-            vertical: 20,
-            horizontal: 12,
+            vertical: 16,
+            horizontal: 16,
           ),
         ),
       ),
@@ -870,6 +903,9 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
                         toDate: toDate,
                         leaveType: isNonDriver ? 1 : _selectedLeaveType!,
                         reason: _reasonController.text,
+                        startSession: _startSession,
+                        endSession: _endSession,
+                        totalDays: double.tryParse(_getDaysDifference(false).split(' ').first),
                       );
 
                       if (!context.mounted) return;

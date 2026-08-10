@@ -83,6 +83,7 @@ class ApiConstants {
   static String getSecurityRoutes(int page, int limit, String type) => "$baseUrl/request/security/get-routes?page=$page&limit=$limit&type=$type";
   static String getDailyBusRuns(String serviceDate) => "$baseUrl/daily-bus/bus-run/get-all?service_date=$serviceDate&page=1&limit=500";
   static String getDriverSchedules(String date) => "$baseUrl/schedule-duty/master-driver/schedules?duty_date=$date";
+  static String getDriverScheduleDetails(int id) => "$baseUrl/schedule-duty/master-driver/schedules/$id";
 
   // Trip actions
   static String updateTripTime(dynamic tripId) => "$baseUrl/request/trips/$tripId/update-time";
@@ -102,6 +103,7 @@ class ApiConstants {
 
   // OCR / Drivers
   static String get getDriverAttendance => "$baseUrl/api/drivers/attendance/data";
+  static String get getCalendarSummary => "$baseUrl/api/drivers/attendance/calendar-summary";
   static String get licenseCheck => "$baseUrl/api/drivers/license-check";
   static String get getAllDriversWithoutPagination => "$baseUrl/api/drivers/get-all-without-pagination";
   static String get getDriverMissions => "$baseUrl/api/drivers/drive-routes";

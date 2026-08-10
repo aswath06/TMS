@@ -119,10 +119,45 @@ class DriverStore extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint("Error fetching attendance: $e");
+      // Ignored for now
     } finally {
       _isLoadingAttendance = false;
       _isFetchingMoreAttendance = false;
+      notifyListeners();
+    }
+  }
+
+  // Calendar Status
+  Map<String, String> _calendarSummary = {};
+  Map<String, String> get calendarSummary => _calendarSummary;
+  bool _isLoadingCalendar = false;
+  bool get isLoadingCalendar => _isLoadingCalendar;
+
+  Future<void> fetchCalendarSummary(int year, int month) async {
+    _isLoadingCalendar = true;
+    notifyListeners();
+
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return;
+
+      final url = "${ApiConstants.getCalendarSummary}?year=$year&month=$month";
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          _calendarSummary = Map<String, String>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      // Ignore
+    } finally {
+      _isLoadingCalendar = false;
       notifyListeners();
     }
   }
@@ -928,7 +963,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> startBusRun({
     required int runId,
-    required int startOdometer,
+    required double startOdometer,
     String? imageUrl,
   }) async {
     try {
@@ -1051,7 +1086,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> startEveningCampusOut({
     required int runId,
-    required int startOdometer,
+    required double startOdometer,
     required int passengerCount,
   }) async {
     try {
@@ -1088,7 +1123,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> endEveningOdometer({
     required int runId,
-    required int endOdometer,
+    required double endOdometer,
     required bool allowanceNeeded,
   }) async {
     try {
@@ -1155,7 +1190,7 @@ class DriverStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> endMorningBusRun({
     required int runId,
-    required int endOdometer,
+    required double endOdometer,
     int? passengerCount,
     required bool allowanceNeeded,
   }) async {
@@ -1503,6 +1538,9 @@ class DriverStore extends ChangeNotifier {
     required String toDate,
     required int leaveType,
     required String reason,
+    String? startSession,
+    String? endSession,
+    double? totalDays,
   }) async {
     _isLoadingLeaves = true;
     _leavesError = null;
@@ -1520,6 +1558,9 @@ class DriverStore extends ChangeNotifier {
         "to_date": toDate,
         "leave_type": leaveType,
         "reason": reason,
+        if (startSession != null) "start_session": startSession,
+        if (endSession != null) "end_session": endSession,
+        if (totalDays != null) "total_days": totalDays,
       };
 
       debugPrint("API Request: ${ApiConstants.createLeave}");

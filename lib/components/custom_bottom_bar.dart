@@ -170,6 +170,25 @@ class CustomBottomBar extends StatelessWidget {
           _NavItem(Icons.forum_outlined, Icons.forum_rounded, 'Chat'),
         ];
       case 'driver':
+        return [
+          _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
+          _NavItem(Icons.alt_route_outlined, Icons.alt_route_rounded, 'Routes'),
+          _NavItem(
+            Icons.calendar_month_outlined,
+            Icons.calendar_month_rounded,
+            'Schedule',
+          ),
+          _NavItem(
+            Icons.forum_outlined,
+            Icons.forum_rounded,
+            'Chat',
+          ),
+          _NavItem(
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+            'Profile',
+          ),
+        ];
       default:
         return [
           _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),

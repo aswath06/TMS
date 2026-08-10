@@ -110,7 +110,14 @@ class _CustomScaffoldMessengerState extends ScaffoldMessengerState {
                         lowerMsg.contains('invalid') ||
                         lowerMsg.contains('unauthorized') ||
                         lowerMsg.contains('exception') ||
-                        lowerMsg.contains('warning');
+                        lowerMsg.contains('warning') ||
+                        lowerMsg.contains('cannot') ||
+                        lowerMsg.contains('less than') ||
+                        lowerMsg.contains('must') ||
+                        lowerMsg.contains('should') ||
+                        lowerMsg.contains('unable') ||
+                        lowerMsg.contains('incorrect') ||
+                        lowerMsg.contains('denied');
 
     // Determine if the SnackBar was intended as an error/warning by checking colors or text
     final isError = isErrorText ||

@@ -891,7 +891,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -971,8 +971,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(
+                                    final double odo =
+                                        double.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
                                         0;
@@ -1185,7 +1185,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -1523,8 +1523,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(
+                                    final double odo =
+                                        double.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
                                         0;
@@ -2335,7 +2335,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -2419,7 +2419,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       // Passenger Controller Input Field
                       TextFormField(
                         controller: passengerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         style: TextStyle(
                           fontSize: 16,
@@ -2560,8 +2560,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(odometerController.text) ??
+                                    final double odo =
+                                        double.tryParse(odometerController.text) ??
                                         0;
                                     final int passCount = (_userRole == 'driver')
                                         ? (int.tryParse(
@@ -2789,7 +2789,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                       ),
                       child: TextField(
                         controller: odometerController,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -3046,8 +3046,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final int odo =
-                                        int.tryParse(
+                                    final double odo =
+                                        double.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
                                         0;
