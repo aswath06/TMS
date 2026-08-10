@@ -40,9 +40,22 @@ class FacultyStore {
 
         profileData.value = decoded['data'];
         
-        // Persist name for dashboards
-        if (decoded['data'] != null && decoded['data']['name'] != null) {
-          await UserStore.saveName(decoded['data']['name']);
+        // Persist name for dashboards and check for role updates
+        if (decoded['data'] != null) {
+          if (decoded['data']['name'] != null) {
+            await UserStore.saveName(decoded['data']['name']);
+          }
+          
+          final roleData = decoded['data']['role'];
+          String? fetchedRole;
+          if (roleData is String) {
+            fetchedRole = roleData;
+          } else if (roleData is Map) {
+            fetchedRole = roleData['name'] ?? roleData['code'];
+          }
+          if (fetchedRole != null && fetchedRole.toString().isNotEmpty) {
+            await UserStore.updateRole(fetchedRole.toString());
+          }
         }
       } else if (response.statusCode == 401) {
         errorMessage.value = "SESSION_EXPIRED";

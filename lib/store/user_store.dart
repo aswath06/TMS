@@ -23,11 +23,15 @@ class UserStore {
   static int? _driverId;
   static bool? _pushNotificationEnabled;
 
+  // Central role notifier
+  static final ValueNotifier<String?> roleNotifier = ValueNotifier<String?>(null);
+
   /// Call this once in main.dart to initialize the static cache
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(_keyToken);
     _role = prefs.getString(_keyRole);
+    roleNotifier.value = _role;
     _email = prefs.getString(_keyEmail);
     _name = prefs.getString(_keyName);
     _userId = prefs.getInt(_keyUserId);
@@ -43,6 +47,17 @@ class UserStore {
   static int? get userId => _userId;
   static int? get driverId => _driverId;
   static bool get pushNotificationEnabled => _pushNotificationEnabled ?? true;
+
+  // Update role dynamically
+  static Future<void> updateRole(String newRole) async {
+    final formattedRole = newRole.toLowerCase();
+    if (_role != formattedRole) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyRole, formattedRole);
+      _role = formattedRole;
+      roleNotifier.value = formattedRole;
+    }
+  }
 
   // --- Asynchronous Getters (Legacy - Keep for compatibility) ---
   static Future<String?> getToken() async => _token ?? (await SharedPreferences.getInstance()).getString(_keyToken);
@@ -72,6 +87,7 @@ class UserStore {
     // Update memory cache
     _token = token;
     _role = role.toLowerCase();
+    roleNotifier.value = _role;
     _email = email;
     _userId = id;
     if (name != null) _name = name;
@@ -115,6 +131,7 @@ class UserStore {
     // Clear memory cache
     _token = null;
     _role = null;
+    roleNotifier.value = null;
     _email = null;
     _name = null;
     _userId = null;

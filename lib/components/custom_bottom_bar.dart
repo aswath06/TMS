@@ -168,6 +168,7 @@ class CustomBottomBar extends StatelessWidget {
           _NavItem(Icons.directions_bus_outlined, Icons.directions_bus_rounded, 'Bus'),
           _NavItem(Icons.event_busy_outlined, Icons.event_busy_rounded, 'Leave'),
           _NavItem(Icons.forum_outlined, Icons.forum_rounded, 'Chat'),
+          _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
         ];
       case 'driver':
         return [

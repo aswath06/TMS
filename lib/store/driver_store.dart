@@ -887,6 +887,17 @@ class DriverStore extends ChangeNotifier {
             await UserStore.saveDriverId(data['driverProfile']['id']);
           }
 
+          final roleData = data['role'];
+          String? fetchedRole;
+          if (roleData is String) {
+            fetchedRole = roleData;
+          } else if (roleData is Map) {
+            fetchedRole = roleData['name'] ?? roleData['code'];
+          }
+          if (fetchedRole != null && fetchedRole.toString().isNotEmpty) {
+            await UserStore.updateRole(fetchedRole.toString());
+          }
+
           // Optional: Fetch dashboard specifics if still needed for routes/tasks
           await _fetchDashboardExtra(token, data['id']);
           return;

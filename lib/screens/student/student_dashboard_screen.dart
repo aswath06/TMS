@@ -6,7 +6,6 @@ import 'package:tripzo/screens/driver/apply_leave_page.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/components/notification_card.dart';
 import 'package:tripzo/utils/tab_notification.dart';
-import 'package:tripzo/screens/faculty/profile_screen.dart';
 import 'package:tripzo/store/faculty_store.dart';
 import 'package:tripzo/store/user_store.dart';
 
@@ -174,7 +173,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
             const SizedBox(width: 8),
             GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                ChangeTabNotification(4).dispatch(context);
               },
               child: Container(
                 padding: const EdgeInsets.all(3),

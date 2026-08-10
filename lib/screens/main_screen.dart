@@ -50,6 +50,7 @@ class MainScreenState extends State<MainScreen> {
   late PageController _pageController;
   StreamSubscription<ServiceStatus>? _locationSubscription;
   bool _isGpsDialogOpen = false;
+  late String _currentRole;
 
   void setIndex(int index) {
     _pageController.animateToPage(
@@ -59,15 +60,28 @@ class MainScreenState extends State<MainScreen> {
     );
   }
 
-
+  void _onRoleChanged() {
+    final newRole = tripzo_user_store.UserStore.roleNotifier.value;
+    if (newRole != null && newRole.isNotEmpty && newRole.toLowerCase() != _currentRole) {
+      setState(() {
+        _currentRole = newRole.toLowerCase();
+        _currentIndex = 0;
+      });
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _currentRole = widget.userRole.toLowerCase();
+    tripzo_user_store.UserStore.roleNotifier.addListener(_onRoleChanged);
     _pageController = PageController(initialPage: _currentIndex);
     
     // Initialize monitor for drivers
-    if (widget.userRole.toLowerCase() == 'driver') {
+    if (_currentRole == 'driver') {
       _startLocationMonitor();
     }
     
@@ -166,13 +180,14 @@ class MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    tripzo_user_store.UserStore.roleNotifier.removeListener(_onRoleChanged);
     _pageController.dispose();
     _locationSubscription?.cancel();
     super.dispose();
   }
 
   List<Widget> _getScreens() {
-    switch (widget.userRole.toLowerCase()) {
+    switch (_currentRole) {
       case 'transport admin':
       case 'super admin':
         return [
@@ -205,6 +220,7 @@ class MainScreenState extends State<MainScreen> {
           const StudentBusScreen(),
           const DriverLeaveScreen(userRole: 'student'),
           const ChatScreen(),
+          const ProfileScreen(),
         ];
       case 'driver':
         return [
@@ -264,7 +280,7 @@ class MainScreenState extends State<MainScreen> {
             alignment: Alignment.bottomCenter,
             child: CustomBottomBar(
               currentIndex: _currentIndex,
-              userRole: widget.userRole,
+              userRole: _currentRole,
               onTap: (index) {
                 _pageController.animateToPage(
                   index,
