@@ -114,4 +114,36 @@ class DailyRoutinesStore extends ChangeNotifier {
     if (_isLoading || !_hasMore) return;
     await fetchDailyRoutines(page: _currentPage + 1, limit: _limit);
   }
+
+  Future<bool> bulkEditAttendanceTiming(List<String> runIds, {String? morningOtpEnd, String? eveningOtpStart, String? eveningOtpEnd}) async {
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) return false;
+
+      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/bulk-edit-attendance-timing";
+      
+      Map<String, dynamic> bodyData = {
+        "run_ids": runIds.map((id) => int.parse(id)).toList(),
+      };
+      
+      if (morningOtpEnd != null && morningOtpEnd.isNotEmpty) bodyData["morning_otp_end_time"] = morningOtpEnd;
+      if (eveningOtpStart != null && eveningOtpStart.isNotEmpty) bodyData["evening_otp_start_time"] = eveningOtpStart;
+      if (eveningOtpEnd != null && eveningOtpEnd.isNotEmpty) bodyData["evening_otp_end_time"] = eveningOtpEnd;
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+        body: json.encode(bodyData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("bulkEditAttendanceTiming Error: $e");
+      return false;
+    }
+  }
 }
+

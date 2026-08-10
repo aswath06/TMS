@@ -390,7 +390,28 @@ class RequestStore extends ChangeNotifier {
   /// Formats raw API leave data into the UI-friendly Map used by LeaveCard
   Map<String, dynamic> _formatLeave(dynamic leave) {
     String status = 'Pending';
-    int days = int.tryParse(leave['total_days']?.toString() ?? '0') ?? 0;
+    final String fromRaw = leave['from_date']?.toString() ?? '';
+    final String toRaw = leave['to_date']?.toString() ?? '';
+    final String startSession = leave['start_session'] ?? (fromRaw.contains("14:00") || fromRaw.contains("18:00") ? "AN" : "FN");
+    final String endSession = leave['end_session'] ?? (toRaw.contains("09:00") || toRaw.contains("13:00") ? "FN" : "AN");
+
+    double calculatedDays = double.tryParse(leave['total_days']?.toString() ?? '0') ?? 0.0;
+    if (fromRaw.isNotEmpty && toRaw.isNotEmpty) {
+      String d1 = fromRaw.contains('T') ? fromRaw.split('T')[0] : fromRaw.split(' ')[0];
+      String d2 = toRaw.contains('T') ? toRaw.split('T')[0] : toRaw.split(' ')[0];
+      if (d1 == d2) {
+         if (startSession == endSession) {
+            calculatedDays = 0.5;
+         } else if (calculatedDays == 0) {
+            calculatedDays = 1.0;
+         }
+      }
+    }
+
+    String daysStr = calculatedDays == calculatedDays.toInt() 
+        ? calculatedDays.toInt().toString() 
+        : calculatedDays.toString();
+
     if (leave['status'] is int) {
       switch (leave['status']) {
         case 1:
@@ -414,12 +435,16 @@ class RequestStore extends ChangeNotifier {
       'email': leave['user']?['email'] ?? '',
       'roll_number': leave['user']?['roll_number'] ?? '',
       'department': leave['user']?['department'] ?? '',
+      'username': leave['user']?['username'] ?? '',
+      'phone': leave['user']?['phone'] ?? leave['user']?['phone_number'] ?? '',
       'from': _formatDate(leave['from_date']),
       'to': _formatDate(leave['to_date']),
       'from_raw': leave['from_date'],
       'to_raw': leave['to_date'],
-      'duration': '$days ${days == 1 ? "day" : "days"}',
-      'days': days.toString(),
+      'start_session': startSession,
+      'end_session': endSession,
+      'duration': '$daysStr ${calculatedDays == 1 ? "day" : "days"}',
+      'days': daysStr,
       'status': status,
       'rawStatus': leave['status'],
       'reason': leave['reason'] ?? 'No reason provided',
@@ -469,6 +494,8 @@ class RequestStore extends ChangeNotifier {
     required String toDatetime,    // "2026-04-17T16:00:00"
     required int leaveType,        // field name: leave_type
     required String reason,
+    required String startSession,
+    required String endSession,
   }) async {
     _isLoadingLeaves = true;
     _leavesErrorMessage = null;
@@ -488,6 +515,8 @@ class RequestStore extends ChangeNotifier {
         "to_date": toDatetime,
         "leave_type": leaveType,
         "reason": reason,
+        "start_session": startSession,
+        "end_session": endSession,
       };
       final String bodyJson = json.encode(body);
 

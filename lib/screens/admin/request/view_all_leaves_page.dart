@@ -595,10 +595,23 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
   String _getDaysDifference() {
     if (_startDate == null || _endDate == null) return "";
 
-    final difference = _endDate!.difference(_startDate!).inDays;
-    final totalDays = difference < 0 ? 0 : difference + 1;
+    final startMidnight = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+    final endMidnight = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+    
+    final difference = endMidnight.difference(startMidnight).inDays;
+    double totalDays = (difference < 0 ? 0 : difference + 1).toDouble();
 
-    return "$totalDays ${totalDays == 1 ? 'Day' : 'Days'}";
+    if (_startSession == 'AN') {
+      totalDays -= 0.5;
+    }
+    if (_endSession == 'FN') {
+      totalDays -= 0.5;
+    }
+
+    if (totalDays <= 0) return "0 Days";
+
+    String daysStr = totalDays == totalDays.toInt() ? totalDays.toInt().toString() : totalDays.toString();
+    return "$daysStr ${totalDays == 1.0 ? 'Day' : 'Days'}";
   }
 
   Future<void> _pickDateTime(BuildContext context, bool isStart) async {
@@ -1434,6 +1447,8 @@ class _ApplyLeaveBottomSheetState extends ConsumerState<_ApplyLeaveBottomSheet> 
       toDatetime: toDate,
       leaveType: _selectedLeaveType!,
       reason: _reasonController.text,
+      startSession: _startSession,
+      endSession: _endSession,
     );
 
     if (mounted) {

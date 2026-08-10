@@ -1308,10 +1308,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   void _showPostConfirmAbsentPopup() {
     int absentCount = 0;
     
-    // Calculate total absent from students and faculties for current session
-    final List<dynamic> allPassengers = [];
-    if (_run['passengers'] != null) allPassengers.addAll(_run['passengers']);
-    if (_run['faculties'] != null) allPassengers.addAll(_run['faculties']);
+    // Calculate total absent from attendanceRecords for current session
+    final List<dynamic> allPassengers = _run['attendanceRecords'] as List? ?? [];
     
     for (var p in allPassengers) {
       final String sessionStatus = (_attendanceSessionIndex == 0 

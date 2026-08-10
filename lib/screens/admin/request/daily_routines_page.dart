@@ -2070,6 +2070,276 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     }
   }
 
+  void _showBulkEditTimingModal(
+    BuildContext context,
+    Color primaryBlue,
+    Color titleColor,
+    Color subColor,
+    bool isDark,
+  ) {
+    bool isSubmitting = false;
+    String? morningOtpEnd;
+    String? eveningOtpStart;
+    String? eveningOtpEnd;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 24),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.access_time_rounded, color: Colors.orange, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Bulk Edit Timing",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: titleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "Update attendance timings for ${_selectedRunIds.length} runs",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: subColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Morning OTP End
+                    Text(
+                      "Morning End Time (FN)",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: titleColor),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await CustomDateTimePicker.show(
+                          context,
+                          initialDate: DateTime.now(),
+                          showTime: true,
+                          accent: Colors.orange,
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            morningOtpEnd = DateFormat('HH:mm:ss').format(picked);
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time_rounded, size: 18, color: Colors.orange),
+                            const SizedBox(width: 10),
+                            Text(
+                              morningOtpEnd ?? "Select Time",
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Evening OTP Start
+                    Text(
+                      "Evening Start Time (AN)",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: titleColor),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await CustomDateTimePicker.show(
+                          context,
+                          initialDate: DateTime.now(),
+                          showTime: true,
+                          accent: Colors.orange,
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            eveningOtpStart = DateFormat('HH:mm:ss').format(picked);
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time_rounded, size: 18, color: Colors.orange),
+                            const SizedBox(width: 10),
+                            Text(
+                              eveningOtpStart ?? "Select Time",
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Evening OTP End
+                    Text(
+                      "Evening End Time (AN)",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: titleColor),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await CustomDateTimePicker.show(
+                          context,
+                          initialDate: DateTime.now(),
+                          showTime: true,
+                          accent: Colors.orange,
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            eveningOtpEnd = DateFormat('HH:mm:ss').format(picked);
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time_rounded, size: 18, color: Colors.orange),
+                            const SizedBox(width: 10),
+                            Text(
+                              eveningOtpEnd ?? "Select Time",
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(color: titleColor, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    setModalState(() => isSubmitting = true);
+                                    bool success = await ref.read(dailyRoutinesStoreProvider).bulkEditAttendanceTiming(
+                                      _selectedRunIds.toList(),
+                                      morningOtpEnd: morningOtpEnd,
+                                      eveningOtpStart: eveningOtpStart,
+                                      eveningOtpEnd: eveningOtpEnd,
+                                    );
+                                    if (!context.mounted) return;
+                                    setModalState(() => isSubmitting = false);
+                                    Navigator.pop(ctx);
+                                    if (success) {
+                                      _showSnackBar("Timings updated successfully", Colors.green);
+                                      setState(() {
+                                        _selectedRunIds.clear();
+                                      });
+                                    } else {
+                                      _showSnackBar("Failed to update timings", Colors.red);
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 0,
+                            ),
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Text(
+                                    "Save Timings",
+                                    style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w900),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
   void _showBulkReadyModal(
     BuildContext context,
     Color primaryBlue,
@@ -2426,6 +2696,21 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (_selectedRunIds.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                _showBulkEditTimingModal(context, primaryBlue, titleColor, subColor, isDark);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.access_time_rounded, color: Colors.orange, size: 18),
+                              ),
+                            ),
                           GestureDetector(
                             onTap: () => _showBulkTransitActionsModal(context, primaryBlue, titleColor, subColor, isDark),
                             child: Container(

@@ -84,7 +84,9 @@ class LeaveCard extends ConsumerWidget {
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    "${leaf['from']} - ${leaf['to']} (${leaf['duration']})",
+                    leaf['from'] == leaf['to'] 
+                        ? "${leaf['from']} (${leaf['start_session'] == leaf['end_session'] ? leaf['start_session'] : '${leaf['start_session']} - ${leaf['end_session']}'}) • ${leaf['duration']}"
+                        : "${leaf['from']} (${leaf['start_session']}) - ${leaf['to']} (${leaf['end_session']}) • ${leaf['duration']}",
                     style: TextStyle(
                       color: subColor,
                       fontSize: 12,
@@ -256,7 +258,10 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
                         ),
                       ),
                       Text(
-                        "${widget.leaf['role'] ?? 'Role N/A'} ${((widget.leaf['department'] ?? "").isNotEmpty) ? '• ${widget.leaf['department']}' : ''}",
+                        [
+                          if (widget.leaf['username'] != null && widget.leaf['username'].toString().isNotEmpty) widget.leaf['username'],
+                          if (widget.leaf['phone'] != null && widget.leaf['phone'].toString().isNotEmpty) widget.leaf['phone'] else if ((widget.leaf['department'] ?? "").isNotEmpty) widget.leaf['department']
+                        ].where((e) => e.toString().trim().isNotEmpty).join(" • "),
                         style: TextStyle(
                           fontSize: 13,
                           color: subColor,
@@ -273,16 +278,7 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
                           ),
                         ),
                       ],
-                      if ((widget.leaf['email'] ?? "").isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.leaf['email'],
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: subColor.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
+
                     ],
                   ),
                 ),
@@ -292,13 +288,21 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
           const SizedBox(height: 24),
 
           // Details Grid
-          _buildInfoRow(Icons.calendar_today_rounded, "Duration", "${widget.leaf['from']} - ${widget.leaf['to']} (${widget.leaf['duration']})", titleColor, subColor),
+          _buildInfoRow(
+            Icons.calendar_today_rounded, 
+            "Duration", 
+            widget.leaf['from'] == widget.leaf['to'] 
+                ? "${widget.leaf['from']} (${widget.leaf['start_session'] == widget.leaf['end_session'] ? widget.leaf['start_session'] : '${widget.leaf['start_session']} - ${widget.leaf['end_session']}'}) • ${widget.leaf['duration']}"
+                : "${widget.leaf['from']} (${widget.leaf['start_session']}) - ${widget.leaf['to']} (${widget.leaf['end_session']}) • ${widget.leaf['duration']}", 
+            titleColor, 
+            subColor
+          ),
           const SizedBox(height: 16),
           _buildInfoRow(
             Icons.category_rounded, 
             (widget.leaf['role']?.toString().toLowerCase() ?? 'driver') == 'driver' ? "Leave Type" : "Shift", 
             (widget.leaf['role']?.toString().toLowerCase() ?? 'driver') == 'driver' 
-                ? _getLeaveTypeName(widget.leaf['leave_type'])
+                ? (widget.leaf['type'] != 'Unknown' ? widget.leaf['type'] : _getLeaveTypeName(widget.leaf['leave_type']))
                 : (widget.leaf['type']?.toString().replaceAll('Shift: ', '') ?? "Regular"),
             titleColor, 
             subColor
