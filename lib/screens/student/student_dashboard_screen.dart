@@ -1,4 +1,16 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
+import 'package:tripzo/screens/student/student_apply_leave_page.dart';
+import 'package:tripzo/screens/driver/DriverLeaveScreen.dart';
+
+
+import 'package:tripzo/screens/student/student_attendance_screen.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/notification_bell.dart';
 import '../../utils/routes.dart';
@@ -18,12 +30,20 @@ class StudentDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen> {
+  bool _isLoadingRun = false;
+  List<dynamic> _runs = [];
+  String? _runError;
+  int _leaveCount = 2;
+  int _attendanceDays = 17;
+  int _totalDays = 20; // Mocked leave count for now
+
   @override
   void initState() {
     super.initState();
     if (useFacultyStore.profileData.value == null) {
       useFacultyStore.fetchProfile();
     }
+    _loadTodayRun();
     useFacultyStore.errorMessage.addListener(_handleAuthError);
   }
 
@@ -40,6 +60,173 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
   void dispose() {
     useFacultyStore.errorMessage.removeListener(_handleAuthError);
     super.dispose();
+  }
+
+
+  Future<void> _loadTodayRun() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingRun = true;
+      _runError = null;
+    });
+
+    try {
+      final token = await UserStore.getToken();
+      final userId = await UserStore.getUserId() ?? 80;
+      
+      if (token == null) {
+        if (mounted) setState(() { _runError = "Session expired."; _isLoadingRun = false; });
+        return;
+      }
+
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      String url = "${ApiConstants.baseUrl}/daily-bus/bus-run/get-all?user_id=$userId&service_date=$todayStr";
+
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          setState(() {
+            _runs = decoded['data']['runs'] ?? [];
+            _isLoadingRun = false;
+          });
+        } else {
+          setState(() {
+            _runError = decoded['message'] ?? "Failed to load run.";
+            _isLoadingRun = false;
+          });
+        }
+      } else {
+        setState(() {
+          _runError = "Failed to load today's run.";
+          _isLoadingRun = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _runError = "Connection error"; _isLoadingRun = false; });
+    }
+  }
+  
+  String _formatShift(dynamic shiftCode) {
+    if (shiftCode == null) return 'FULL DAY';
+    final s = shiftCode.toString().replaceAll('_', ' ').toUpperCase();
+    if (s == 'FULL DAY') return 'FULL DAY';
+    return s;
+  }
+
+  String _getVehicleNumber(Map<String, dynamic> run) {
+    final assignments = run['assignment'] as List? ?? [];
+    if (assignments.isEmpty) return 'No Vehicle';
+    final numbers = assignments.map((a) => a['vehicle']?['vehicle_number']?.toString()).whereType<String>().toSet();
+    if (numbers.isEmpty) return 'No Vehicle';
+    return numbers.join(', ');
+  }
+
+  String? _getBusNumber(Map<String, dynamic> run) {
+    final assignments = run['assignment'] as List? ?? [];
+    if (assignments.isEmpty) return null;
+    for (var a in assignments) {
+      final bn = a['vehicle']?['bus_number']?.toString();
+      if (bn != null && bn.trim().isNotEmpty && bn.toLowerCase() != 'null') {
+        return bn;
+      }
+    }
+    return null;
+  }
+  
+  Widget _buildStatusBadge(String status) {
+    Color bg;
+    Color fg;
+    String label = status.toUpperCase();
+
+    switch (status.toUpperCase()) {
+      case 'UPCOMING':
+      case 'PUBLISHED':
+        bg = Colors.blue.shade50;
+        fg = Colors.blue.shade700;
+        label = 'UPCOMING';
+        break;
+      case 'IN_PROGRESS':
+        bg = Colors.orange.shade50;
+        fg = Colors.orange.shade800;
+        break;
+      case 'COMPLETED':
+        bg = Colors.green.shade50;
+        fg = Colors.green.shade700;
+        break;
+      default:
+        bg = Colors.grey.shade100;
+        fg = Colors.grey.shade700;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: fg.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDriverMinimal(Color blue, String title, String subtitle, Color subColor) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: blue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: blue.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: blue.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(Icons.directions_bus_rounded, color: blue, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: subColor, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Mock Data
@@ -99,7 +286,18 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                   const SizedBox(height: 24),
                   _buildHeader(titleColor, screenWidth, primaryBlue),
                   const SizedBox(height: 32),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+                  
+                  _buildSectionTitle("Attendance", titleColor),
+                  const SizedBox(height: 16),
+                  _buildAttendanceSection(primaryBlue, surfaceColor, isDark, screenWidth, titleColor, subColor),
+                  
+                  const SizedBox(height: 32),
+                  _buildSectionTitle("Today's Bus", titleColor),
+                  const SizedBox(height: 16),
+                  _buildTodayRunSection(surfaceColor, titleColor, subColor, isDark),
+                  
+                  const SizedBox(height: 32),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -202,96 +400,115 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
     );
   }
 
-  Widget _buildAttendanceSection(Color primary, Color surface, bool isDark, double width, Color titleColor, Color subColor) {
+    Widget _buildStatCard(
+    String title,
+    String value,
+    String subValue,
+    IconData icon,
+    Color iconColor,
+    Color bgColor,
+    Color surfaceColor,
+    bool isDark,
+    {double? percentage}
+  ) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(32),
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
         ),
         boxShadow: [
           BoxShadow(
-            color: primary.withValues(alpha: 0.05),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    "Excellent Status",
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  "Keep it up!",
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Tap to view your detailed attendance overview.",
-                  style: TextStyle(
-                    color: subColor,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 20),
-          SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CircularProgressIndicator(
-                  value: attendancePercentage,
-                  strokeWidth: 12,
-                  backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
-                  color: primary,
-                  strokeCap: StrokeCap.round,
-                ),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              if (percentage != null)
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Text(
-                        "${(attendancePercentage * 100).toInt()}%",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
+                      CircularProgressIndicator(
+                        value: percentage,
+                        strokeWidth: 4,
+                        backgroundColor: bgColor,
+                        color: iconColor,
+                        strokeCap: StrokeCap.round,
+                      ),
+                      Center(
+                        child: Text(
+                          "${(percentage * 100).toInt()}%",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (value.isNotEmpty || subValue.isNotEmpty)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (value.isNotEmpty)
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      height: 1.0,
+                    ),
+                  ),
+                if (value.isNotEmpty && subValue.isNotEmpty)
+                  const SizedBox(width: 4),
+                if (subValue.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      subValue,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white54 : Colors.black38,
+                      ),
+                    ),
+                  ),
               ],
+            ),
+          if (value.isNotEmpty || subValue.isNotEmpty)
+            const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),
           ),
         ],
@@ -299,189 +516,232 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
     );
   }
 
-  Widget _buildBusDetailsSection(Color primary, Color surface, bool isDark, Color titleColor, Color subColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
+  Widget _buildAttendanceSection(Color primary, Color surface, bool isDark, double width, Color titleColor, Color subColor) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const StudentAttendanceScreen()),
+              );
+            },
+            child: _buildStatCard(
+              "Attendance",
+              "${(attendancePercentage * 100).toInt()}%",
+              "",
+              Icons.school_rounded,
+              const Color(0xFF10B981),
+              const Color(0xFF10B981).withValues(alpha: 0.1),
+              surface,
+              isDark,
+              percentage: attendancePercentage,
+            ),
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: primary.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  primary.withValues(alpha: 0.12),
-                  primary.withValues(alpha: 0.02),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(32),
-                topRight: Radius.circular(32),
-              ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DriverLeaveScreen(userRole: 'student')),
+              );
+            },
+            child: _buildStatCard(
+              "Leave Count",
+              "$_leaveCount",
+              "days",
+              Icons.event_busy_rounded,
+              const Color(0xFFF43F5E),
+              const Color(0xFFF43F5E).withValues(alpha: 0.1),
+              surface,
+              isDark,
             ),
-            child: Row(
+          ),
+        ),
+      ],
+    );
+  }
+
+    Widget _buildTodayRunSection(Color cardColor, Color titleColor, Color subColor, bool isDark) {
+    if (_isLoadingRun) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_runError != null) {
+      return Center(child: Text(_runError!, style: TextStyle(color: Colors.red)));
+    }
+    if (_runs.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Text(
+          "No bus assigned for today.",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: subColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+        final run = _runs[0] as Map<String, dynamic>;
+    final status = run['status']?.toString() ?? 'UNKNOWN';
+    final runName = run['run_name']?.toString() ?? 'Route';
+    final startLoc = run['start_location_name']?.toString() ?? 'N/A';
+    final haltLoc = run['halt_location_name']?.toString() ?? 'N/A';
+    final shift = _formatShift(run['shift_code']);
+    
+    final routeData = run['dailyBusRoute'] as Map<String, dynamic>?;
+    final routeName = routeData?['route_name']?.toString() ?? 'N/A';
+    final maxCapacity = routeData?['max_vehicle_capacity'] ?? 60;
+    
+    final vehicleNo = _getVehicleNumber(run);
+    final busNo = _getBusNumber(run);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DailyBusRunDetailsPage(runData: run),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Date + Status Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Prominent Bus Number Badge
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: primary.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      busDetails["busNumber"]!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        busDetails["route"]!,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
-                          letterSpacing: -0.5,
+                      const Icon(Icons.schedule_rounded, size: 18, color: Color(0xFF6366F1)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          run['service_date']?.toString() ?? '',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.directions_bus_rounded, size: 14, color: subColor),
-                          const SizedBox(width: 6),
-                          Text(
-                            busDetails["vehicleNo"]!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: subColor,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _buildStatusBadge(status),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Title: run_name
+            Text(
+              runName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            
+            // Route info + Capacity
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Icon(Icons.directions_bus_outlined, size: 14, color: subColor),
+                const SizedBox(width: 4),
+                Text(
+                  "Route: ",
+                  style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  routeName,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(width: 8),
+                Text("•", style: TextStyle(fontSize: 12, color: subColor)),
+                const SizedBox(width: 8),
+                Icon(Icons.airline_seat_recline_normal_rounded, size: 14, color: subColor),
+                const SizedBox(width: 4),
+                Text(
+                  "Capacity: ",
+                  style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  "$maxCapacity Seats",
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6366F1), fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Vehicle + Bus Panel
+            _buildDriverMinimal(
+              const Color(0xFF6366F1), 
+              "Bus Number: ${busNo != null && busNo.toLowerCase() != 'null' ? busNo : 'N/A'}", 
+              "Vehicle: $vehicleNo", 
+              subColor
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "STOP SEQUENCE",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.grey,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                Text(
+                  shift.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF6366F1),
+                    letterSpacing: 1.0,
                   ),
                 ),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.access_time_rounded, size: 16, color: Colors.orange),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            "Pick-up Time",
-                            style: TextStyle(color: subColor, fontSize: 13, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        busDetails["time"]!,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(width: 1, height: 50, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Live Status",
-                        style: TextStyle(color: subColor, fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              busDetails["status"]!,
-                              style: const TextStyle(
-                                color: Colors.green,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            _buildSimpleTimelineRow(0, startLoc, false, const Color(0xFF6366F1), titleColor, subColor, true, status.toUpperCase() == 'COMPLETED'),
+            _buildSimpleTimelineRow(1, haltLoc, true, const Color(0xFF6366F1), titleColor, subColor, status.toUpperCase() == 'COMPLETED', status.toUpperCase() == 'COMPLETED'),
+          ],
+        ),
       ),
     );
   }
@@ -614,4 +874,68 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
       }).toList(),
     );
   }
+
+
+
+  Widget _buildSimpleTimelineRow(
+    int order,
+    String name,
+    bool isLast,
+    Color blue,
+    Color titleColor,
+    Color sub,
+    bool isPast,
+    bool isCompleted,
+  ) {
+    final Color dotColor = isCompleted
+        ? const Color(0xFF10B981)
+        : (isPast ? blue : const Color(0xFF94A3B8));
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: dotColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: dotColor, width: 2),
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isCompleted
+                        ? const Color(0xFF10B981)
+                        : dotColor.withValues(alpha: 0.3),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
