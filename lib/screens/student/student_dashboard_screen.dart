@@ -399,30 +399,30 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
     );
   }
 
-    Widget _buildStatCard(
-    String title,
-    String value,
-    String subValue,
-    IconData icon,
-    Color iconColor,
-    Color bgColor,
-    Color surfaceColor,
-    bool isDark,
-    {double? percentage}
-  ) {
+  Widget _buildGraphicalCard({
+    required String title,
+    required String currentValue,
+    required String totalValue,
+    double? percent,
+    required IconData icon,
+    required Color color,
+    required Color surface,
+    required bool isDark,
+    required double width,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(24),
+        color: surface,
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -435,80 +435,97 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: bgColor,
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
+                child: Icon(icon, color: color, size: 24),
               ),
-              if (percentage != null)
-                SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CircularProgressIndicator(
-                        value: percentage,
-                        strokeWidth: 4,
-                        backgroundColor: bgColor,
-                        color: iconColor,
-                        strokeCap: StrokeCap.round,
+              if (percent != null)
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: percent),
+                        duration: const Duration(milliseconds: 1500),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return CircularProgressIndicator(
+                            value: value,
+                            strokeWidth: 5,
+                            backgroundColor: color.withValues(alpha: 0.1),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
+                            strokeCap: StrokeCap.round,
+                          );
+                        },
                       ),
-                      Center(
-                        child: Text(
-                          "${(percentage * 100).toInt()}%",
+                    ),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: percent * 100),
+                      duration: const Duration(milliseconds: 1500),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Text(
+                          '${value.toInt()}%',
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : Colors.black,
                           ),
-                        ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(
+                child: Text(
+                  currentValue,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: width * 0.07,
+                    letterSpacing: -1.0,
+                    color: isDark ? Colors.white : Colors.black,
+                    height: 1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (totalValue.isNotEmpty)
+                const SizedBox(width: 4),
+              if (totalValue.isNotEmpty)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      totalValue,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
-          if (value.isNotEmpty || subValue.isNotEmpty)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (value.isNotEmpty)
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      height: 1.0,
-                    ),
-                  ),
-                if (value.isNotEmpty && subValue.isNotEmpty)
-                  const SizedBox(width: 4),
-                if (subValue.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(
-                      subValue,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white54 : Colors.black38,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          if (value.isNotEmpty || subValue.isNotEmpty)
-            const SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -526,16 +543,16 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 MaterialPageRoute(builder: (context) => const StudentAttendanceScreen()),
               );
             },
-            child: _buildStatCard(
-              "Attendance",
-              "${(attendancePercentage * 100).toInt()}%",
-              "",
-              Icons.school_rounded,
-              const Color(0xFF10B981),
-              const Color(0xFF10B981).withValues(alpha: 0.1),
-              surface,
-              isDark,
-              percentage: attendancePercentage,
+            child: _buildGraphicalCard(
+              title: "Attendance",
+              currentValue: "${(attendancePercentage * 100).toInt()}%",
+              totalValue: "",
+              percent: attendancePercentage,
+              icon: Icons.school_rounded,
+              color: const Color(0xFF10B981), // Green
+              surface: surface,
+              isDark: isDark,
+              width: width,
             ),
           ),
         ),
@@ -548,15 +565,15 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 MaterialPageRoute(builder: (context) => const DriverLeaveScreen(userRole: 'student')),
               );
             },
-            child: _buildStatCard(
-              "Leave Count",
-              "$_leaveCount",
-              "days",
-              Icons.event_busy_rounded,
-              const Color(0xFFF43F5E),
-              const Color(0xFFF43F5E).withValues(alpha: 0.1),
-              surface,
-              isDark,
+            child: _buildGraphicalCard(
+              title: "Leave Count",
+              currentValue: "$_leaveCount",
+              totalValue: "days",
+              icon: Icons.calendar_today_rounded,
+              color: const Color(0xFFEF4444), // Red
+              surface: surface,
+              isDark: isDark,
+              width: width,
             ),
           ),
         ),
@@ -599,7 +616,49 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
       );
     }
 
-        final run = _runs[0] as Map<String, dynamic>;
+    final run = _runs[0] as Map<String, dynamic>;
+
+    if (run['is_on_leave'] == true) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.redAccent.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.event_busy_rounded, size: 32, color: Colors.redAccent),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "On Leave Today",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.redAccent),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Your mapped bus will not be displayed.",
+              style: TextStyle(fontSize: 14, color: subColor, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    }
+
     final status = run['status']?.toString() ?? 'UNKNOWN';
     final runName = run['run_name']?.toString() ?? 'Route';
     final startLoc = run['start_location_name']?.toString() ?? 'N/A';

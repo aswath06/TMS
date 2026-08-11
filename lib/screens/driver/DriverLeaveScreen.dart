@@ -1078,9 +1078,15 @@ final store = ref.watch(driverStoreProvider);
     bool isDark,
     bool isTamil,
   ) {
-    final String dateStr = _formatDateShort(leave['leave_date']);
-    final String shiftType = leave['shift_type'] ?? "";
-    final String leaveType = leave['leave_type'] ?? "Leave";
+    final String fromDateStr = _formatDateShort(leave['from_date'] ?? leave['leave_date']);
+    final String toDateStr = _formatDateShort(leave['to_date'] ?? leave['leave_date']);
+    final String dateDisplay = fromDateStr == toDateStr ? fromDateStr : "$fromDateStr to $toDateStr";
+
+    final String startShift = leave['start_shift'] ?? leave['shift_type'] ?? "";
+    final String endShift = leave['end_shift'] ?? leave['shift_type'] ?? "";
+    final String shiftDisplay = startShift == endShift ? startShift : "$startShift to $endShift";
+
+    final String leaveType = leave['reason'] != null && leave['reason'].toString().isNotEmpty ? "Leave" : "Leave";
     final bool canRevoke = leave['can_revoke'] == true;
 
     return GestureDetector(
@@ -1138,7 +1144,7 @@ final store = ref.watch(driverStoreProvider);
                       Icon(Icons.event_note_rounded, size: 14, color: Colors.grey.shade500),
                       const SizedBox(width: 4),
                       Text(
-                        "$dateStr • $shiftType",
+                        "$dateDisplay   $shiftDisplay",
                         style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -1170,12 +1176,16 @@ final store = ref.watch(driverStoreProvider);
   }
 
   void _showStudentLeaveDetailsPopup(BuildContext context, Map<String, dynamic> leave, bool isTamil, bool isDark) {
-    final type = leave['leave_type'] ?? "Leave";
-    final dateStr = _formatDateLong(leave['leave_date']);
-    final shift = leave['shift_type'] ?? "";
+    final type = "Leave";
+    final fromDateStr = _formatDateLong(leave['from_date'] ?? leave['leave_date']);
+    final toDateStr = _formatDateLong(leave['to_date'] ?? leave['leave_date']);
+    final dateDisplay = fromDateStr == toDateStr ? fromDateStr : "$fromDateStr to\n$toDateStr";
+    final startShift = leave['start_shift'] ?? leave['shift_type'] ?? "";
+    final endShift = leave['end_shift'] ?? leave['shift_type'] ?? "";
+    final shiftDisplay = startShift == endShift ? startShift : "$startShift to $endShift";
     final reason = leave['reason'] ?? (isTamil ? "விளக்கப்படவில்லை" : "No reason provided");
     final bool canRevoke = leave['can_revoke'] == true;
-    final int id = leave['id'];
+    final ids = leave['leave_ids'] ?? [leave['id']];
 
     showDialog(
       context: context,
@@ -1230,11 +1240,11 @@ final store = ref.watch(driverStoreProvider);
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    dateStr,
+                    dateDisplay,
                     style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
-                  _popupInfoRow(isTamil ? "ஷிப்ட்" : "Shift", shift, Icons.access_time_rounded),
+                  _popupInfoRow(isTamil ? "ஷிப்ட்" : "Shift", shiftDisplay, Icons.access_time_rounded),
                   
                   const SizedBox(height: 20),
                   Text(
@@ -1262,7 +1272,7 @@ final store = ref.watch(driverStoreProvider);
                       child: TextButton(
                         onPressed: () async {
                           Navigator.pop(dialogContext);
-                          final success = await useStudentLeaveStore.revokeLeave(id);
+                          final success = await useStudentLeaveStore.revokeLeave(ids);
                           if (success) {
                             if (mounted) {
                               showTopToast(context, isTamil ? "ரத்து செய்யப்பட்டது" : "Leave Revoked Successfully");

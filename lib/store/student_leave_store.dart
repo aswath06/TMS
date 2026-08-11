@@ -129,12 +129,13 @@ class StudentLeaveStore extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> revokeLeave(int id) async {
+  Future<bool> revokeLeave(dynamic idOrIds) async {
     try {
       final token = await UserStore.getToken();
       if (token == null) return false;
 
-      final url = "${ApiConstants.baseUrl}/transport-leaves/revoke/$id";
+      final idParam = idOrIds is List ? idOrIds.join(',') : idOrIds.toString();
+      final url = "${ApiConstants.baseUrl}/transport-leaves/revoke/$idParam";
       final response = await http.delete(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
