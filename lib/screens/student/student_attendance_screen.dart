@@ -9,8 +9,10 @@ class DayRecord {
   final DateTime date;
   final String fnStatus; // "Present", "Absent", "Leave"
   final String anStatus;
+  final String? fnBusNo;
+  final String? anBusNo;
 
-  DayRecord({required this.date, required this.fnStatus, required this.anStatus});
+  DayRecord({required this.date, required this.fnStatus, required this.anStatus, this.fnBusNo, this.anBusNo});
 }
 
 class StudentAttendanceScreen extends StatefulWidget {
@@ -59,7 +61,10 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
          an = "Absent";
       }
       
-      _records.add(DayRecord(date: date, fnStatus: fn, anStatus: an));
+      String? fnBus = "Bus 12";
+      String? anBus = "Bus 14";
+      
+      _records.add(DayRecord(date: date, fnStatus: fn, anStatus: an, fnBusNo: fnBus, anBusNo: anBus));
     }
   }
 
@@ -427,17 +432,17 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           ),
           const SizedBox(height: 12),
           if (_selectedFilter == "All" || record.fnStatus == _selectedFilter) ...[
-            _buildRecordCard("Forenoon Session", record.fnStatus, surface, titleColor, subColor),
+            _buildRecordCard("Forenoon Session", record.fnStatus, record.fnBusNo, surface, titleColor, subColor),
             const SizedBox(height: 10),
           ],
           if (_selectedFilter == "All" || record.anStatus == _selectedFilter)
-            _buildRecordCard("Afternoon Session", record.anStatus, surface, titleColor, subColor),
+            _buildRecordCard("Afternoon Session", record.anStatus, record.anBusNo, surface, titleColor, subColor),
         ],
       ),
     );
   }
 
-  Widget _buildRecordCard(String title, String status, Color surface, Color titleColor, Color subColor) {
+  Widget _buildRecordCard(String title, String status, String? busNo, Color surface, Color titleColor, Color subColor) {
     Color statusColor;
     if (status == "Present") {
       statusColor = const Color(0xFF10B981);
@@ -475,13 +480,35 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: titleColor,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: titleColor,
+                  ),
+                ),
+                if (busNo != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.directions_bus_rounded, size: 14, color: subColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        busNo,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: subColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
           Container(

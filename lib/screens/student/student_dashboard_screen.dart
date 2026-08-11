@@ -33,6 +33,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
   List<dynamic> _runs = [];
   String? _runError;
   int _leaveCount = 2;
+  int _absentCount = 1;
   int _attendanceDays = 17;
   int _totalDays = 20; // Mocked leave count for now
 
@@ -411,6 +412,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
     required double width,
   }) {
     return Container(
+<<<<<<< HEAD
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: surface,
@@ -423,6 +425,23 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
             color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
+=======
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(28),
+
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+>>>>>>> 51a9ed6ba1fe390bc87b8f9973546e6c08e21f3e
           ),
         ],
       ),
@@ -433,11 +452,16 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: iconColor.withValues(alpha: 0.2),
+                    width: 2,
+                  ),
                 ),
+<<<<<<< HEAD
                 child: Icon(icon, color: color, size: 24),
               ),
               if (percent != null)
@@ -460,6 +484,23 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                             strokeCap: StrokeCap.round,
                           );
                         },
+=======
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              if (percentage != null)
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CircularProgressIndicator(
+                        value: percentage,
+                        strokeWidth: 4.5,
+                        backgroundColor: bgColor,
+                        color: iconColor,
+                        strokeCap: StrokeCap.round,
+>>>>>>> 51a9ed6ba1fe390bc87b8f9973546e6c08e21f3e
                       ),
                     ),
                     TweenAnimationBuilder<double>(
@@ -470,9 +511,15 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                         return Text(
                           '${value.toInt()}%',
                           style: TextStyle(
+<<<<<<< HEAD
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: isDark ? Colors.white : Colors.black,
+=======
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+>>>>>>> 51a9ed6ba1fe390bc87b8f9973546e6c08e21f3e
                           ),
                         );
                       },
@@ -517,6 +564,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 ),
             ],
           ),
+<<<<<<< HEAD
           const SizedBox(height: 8),
           Text(
             title,
@@ -524,6 +572,48 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
               color: Colors.grey,
               fontSize: 13,
               fontWeight: FontWeight.bold,
+=======
+          const SizedBox(height: 20),
+          if (value.isNotEmpty || subValue.isNotEmpty)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (value.isNotEmpty)
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      height: 1.0,
+                    ),
+                  ),
+                if (value.isNotEmpty && subValue.isNotEmpty)
+                  const SizedBox(width: 6),
+                if (subValue.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(
+                      subValue,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white60 : Colors.black45,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          if (value.isNotEmpty || subValue.isNotEmpty)
+            const SizedBox(height: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              letterSpacing: 0.3,
+>>>>>>> 51a9ed6ba1fe390bc87b8f9973546e6c08e21f3e
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -543,6 +633,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 MaterialPageRoute(builder: (context) => const StudentAttendanceScreen()),
               );
             },
+<<<<<<< HEAD
             child: _buildGraphicalCard(
               title: "Attendance",
               currentValue: "${(attendancePercentage * 100).toInt()}%",
@@ -553,6 +644,17 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
               surface: surface,
               isDark: isDark,
               width: width,
+=======
+            child: _buildStatCard(
+              "Absent",
+              "$_absentCount",
+              "days",
+              Icons.school_rounded,
+              const Color(0xFFEF4444),
+              const Color(0xFFEF4444).withValues(alpha: 0.1),
+              surface,
+              isDark,
+>>>>>>> 51a9ed6ba1fe390bc87b8f9973546e6c08e21f3e
             ),
           ),
         ),
@@ -562,9 +664,10 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const DriverLeaveScreen(userRole: 'student')),
+                MaterialPageRoute(builder: (context) => const StudentAttendanceScreen()),
               );
             },
+<<<<<<< HEAD
             child: _buildGraphicalCard(
               title: "Leave Count",
               currentValue: "$_leaveCount",
@@ -574,6 +677,17 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
               surface: surface,
               isDark: isDark,
               width: width,
+=======
+            child: _buildStatCard(
+              "Leave Count",
+              "$_leaveCount",
+              "days",
+              Icons.event_rounded,
+              const Color(0xFFF59E0B),
+              const Color(0xFFF59E0B).withValues(alpha: 0.1),
+              surface,
+              isDark,
+>>>>>>> 51a9ed6ba1fe390bc87b8f9973546e6c08e21f3e
             ),
           ),
         ),
