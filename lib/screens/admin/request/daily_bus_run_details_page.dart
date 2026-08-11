@@ -1749,11 +1749,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/mark-present";
 
       final bodyData = {
-
         "type": type,
-
         "targetUserId": targetUserId,
-
+        "shiftType": _attendanceSessionIndex == 0 ? "MORNING" : "EVENING",
       };
 
 
@@ -1887,11 +1885,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/mark-absent";
 
       final bodyData = {
-
         "type": type,
-
-        "targetId": targetUserId,
-
+        "targetUserId": targetUserId,
+        "shiftType": _attendanceSessionIndex == 0 ? "MORNING" : "EVENING",
       };
 
 
@@ -6178,8 +6174,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-    final sortedStops = List<Map<String, dynamic>>.from(stops.map((s) => Map<String, dynamic>.from(s)));
+    var sortedStops = List<Map<String, dynamic>>.from(stops.map((s) => Map<String, dynamic>.from(s)));
     sortedStops.sort((a, b) => (a['stop_order'] ?? 0).compareTo(b['stop_order'] ?? 0));
+
+    final String currentStatus = (_run['status'] ?? '').toString().toUpperCase();
+    final bool isEveningTrip = !["PLANNED", "READY", "STARTED", "ARRIVED_CAMPUS"].contains(currentStatus);
+    if (isEveningTrip) {
+      sortedStops = sortedStops.reversed.toList();
+    }
 
     final bool isSuperOrTransportAdmin = _userRole != null &&
         (_userRole!.toLowerCase() == 'super_admin' ||
@@ -13397,11 +13399,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       tabsList = const [
         Tab(text: "My Details"),
         Tab(text: "Assignment"),
+        Tab(text: "Timeline"),
         Tab(text: "Requests"),
       ];
       tabViews = [
         _buildMyDetailsTab(isDark, titleColor, subColor, primaryBlue, cardColor, morningStatus, eveningStatus),
         _buildAssignmentsTabForNormalFaculty(isDark, titleColor, subColor, primaryBlue, cardColor),
+        _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
         _buildRequestsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
       ];
     } else if (isDriver) {

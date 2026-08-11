@@ -998,7 +998,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                                   ? (item['department'] ?? 'Faculty')
                                   : (isVehicle
                                       ? "Bus - ${item['bus_number'] ?? 'N/A'} • ${item['make'] ?? ''} ${item['model'] ?? ''}".trim()
-                                      : "Driver");
+                                      : "${item['user']?['username'] ?? item['username'] ?? 'N/A'} - ${item['user']?['phone'] ?? item['phone'] ?? 'N/A'}");
                               if (sub.isEmpty) sub = isVehicle ? "Vehicle" : "Driver";
                               int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
 
