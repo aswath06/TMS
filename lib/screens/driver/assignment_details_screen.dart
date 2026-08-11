@@ -1597,13 +1597,33 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      name,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                      ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        Builder(
+                                          builder: (context) {
+                                            final double amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
+                                            final double tot = amt * count;
+                                            final String totalStr = tot % 1 == 0 ? tot.toInt().toString() : tot.toStringAsFixed(2);
+                                            return Text(
+                                              "Total: ₹$totalStr",
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14,
+                                                color: const Color(0xFF6366F1),
+                                              ),
+                                            );
+                                          }
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 16),
                                     Row(
@@ -1626,10 +1646,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                               Container(
                                                 height: 48,
                                                 decoration: BoxDecoration(
-                                                  color: (isEditingAmount[id] ?? false) ? (isDark ? const Color(0xFF0F172A) : Colors.white) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                                   borderRadius: BorderRadius.circular(12),
                                                   border: Border.all(
-                                                    color: (isEditingAmount[id] ?? false) ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                                                   ),
                                                 ),
                                                 child: Row(
@@ -1642,7 +1662,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                       child: TextField(
                                                         controller: allowanceAmounts[id],
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        readOnly: !(isEditingAmount[id] ?? false),
+                                                        readOnly: true,
                                                         style: GoogleFonts.plusJakartaSans(
                                                           fontSize: 14,
                                                           fontWeight: FontWeight.w600,
@@ -1653,21 +1673,137 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                           contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                                                           border: InputBorder.none,
                                                         ),
-                                                        onChanged: (_) => setState(() {}),
                                                       ),
                                                     ),
                                                     GestureDetector(
                                                       onTap: () {
-                                                        setState(() {
-                                                          isEditingAmount[id] = !(isEditingAmount[id] ?? false);
-                                                        });
+                                                        final String capitalizedName = name.split(' ').map((str) => str.isEmpty ? '' : str[0].toUpperCase() + str.substring(1).toLowerCase()).join(' ');
+                                                        showModalBottomSheet(
+                                                          context: context,
+                                                          isScrollControlled: true,
+                                                          backgroundColor: Colors.transparent,
+                                                          builder: (BuildContext sheetContext) {
+                                                            final tempController = TextEditingController(text: allowanceAmounts[id]?.text ?? "");
+                                                            return StatefulBuilder(
+                                                              builder: (BuildContext context, StateSetter setSheetState) {
+                                                                return Padding(
+                                                                  padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.all(24),
+                                                                    decoration: BoxDecoration(
+                                                                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                                                    ),
+                                                                    child: Column(
+                                                                      mainAxisSize: MainAxisSize.min,
+                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                      children: [
+                                                                        Center(
+                                                                          child: Container(
+                                                                            width: 40,
+                                                                            height: 5,
+                                                                            decoration: BoxDecoration(
+                                                                              color: Colors.grey.withOpacity(0.3),
+                                                                              borderRadius: BorderRadius.circular(10),
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(height: 24),
+                                                                        Text(
+                                                                          "Edit $capitalizedName",
+                                                                          style: GoogleFonts.plusJakartaSans(
+                                                                            fontWeight: FontWeight.bold,
+                                                                            fontSize: 20,
+                                                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(height: 16),
+                                                                        Container(
+                                                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                                          decoration: BoxDecoration(
+                                                                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                                            borderRadius: BorderRadius.circular(12),
+                                                                            border: Border.all(
+                                                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                                                            ),
+                                                                          ),
+                                                                          child: Row(
+                                                                            children: [
+                                                                              Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 18)),
+                                                                              const SizedBox(width: 8),
+                                                                              Expanded(
+                                                                                child: TextField(
+                                                                                  controller: tempController,
+                                                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                                                  autofocus: true,
+                                                                                  style: GoogleFonts.plusJakartaSans(
+                                                                                    fontSize: 16,
+                                                                                    fontWeight: FontWeight.w600,
+                                                                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                                                  ),
+                                                                                  decoration: const InputDecoration(
+                                                                                    border: InputBorder.none,
+                                                                                    contentPadding: EdgeInsets.symmetric(vertical: 16),
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(height: 24),
+                                                                        Row(
+                                                                          mainAxisAlignment: MainAxisAlignment.end,
+                                                                          children: [
+                                                                            TextButton(
+                                                                              onPressed: () => Navigator.pop(sheetContext),
+                                                                              child: Text(
+                                                                                "Cancel",
+                                                                                style: GoogleFonts.plusJakartaSans(
+                                                                                  color: Colors.grey,
+                                                                                  fontWeight: FontWeight.bold,
+                                                                                  fontSize: 16,
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                            const SizedBox(width: 16),
+                                                                            ElevatedButton(
+                                                                              onPressed: () {
+                                                                                setState(() {
+                                                                                  allowanceAmounts[id]?.text = tempController.text;
+                                                                                });
+                                                                                Navigator.pop(sheetContext);
+                                                                              },
+                                                                              style: ElevatedButton.styleFrom(
+                                                                                backgroundColor: const Color(0xFF6366F1),
+                                                                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                              ),
+                                                                              child: Text(
+                                                                                "Submit",
+                                                                                style: GoogleFonts.plusJakartaSans(
+                                                                                  color: Colors.white,
+                                                                                  fontWeight: FontWeight.bold,
+                                                                                  fontSize: 16,
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              }
+                                                            );
+                                                          },
+                                                        );
                                                       },
                                                       child: Container(
                                                         padding: const EdgeInsets.symmetric(horizontal: 12),
                                                         color: Colors.transparent,
-                                                        child: Icon(
-                                                          (isEditingAmount[id] ?? false) ? Icons.check_circle_rounded : Icons.edit_rounded,
-                                                          color: (isEditingAmount[id] ?? false) ? Colors.green : const Color(0xFF6366F1),
+                                                        child: const Icon(
+                                                          Icons.edit_rounded,
+                                                          color: Color(0xFF6366F1),
                                                           size: 20,
                                                         ),
                                                       ),
@@ -3539,13 +3675,33 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      name,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                      ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        Builder(
+                                          builder: (context) {
+                                            final double amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
+                                            final double tot = amt * count;
+                                            final String totalStr = tot % 1 == 0 ? tot.toInt().toString() : tot.toStringAsFixed(2);
+                                            return Text(
+                                              "Total: ₹$totalStr",
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14,
+                                                color: const Color(0xFF6366F1),
+                                              ),
+                                            );
+                                          }
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 16),
                                     Row(
@@ -3568,10 +3724,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                               Container(
                                                 height: 48,
                                                 decoration: BoxDecoration(
-                                                  color: (isEditingAmount[id] ?? false) ? (isDark ? const Color(0xFF0F172A) : Colors.white) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                                   borderRadius: BorderRadius.circular(12),
                                                   border: Border.all(
-                                                    color: (isEditingAmount[id] ?? false) ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                                                   ),
                                                 ),
                                                 child: Row(
@@ -3584,7 +3740,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                       child: TextField(
                                                         controller: allowanceAmounts[id],
                                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        readOnly: !(isEditingAmount[id] ?? false),
+                                                        readOnly: true,
                                                         style: GoogleFonts.plusJakartaSans(
                                                           fontSize: 14,
                                                           fontWeight: FontWeight.w600,
@@ -3595,21 +3751,137 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                           contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                                                           border: InputBorder.none,
                                                         ),
-                                                        onChanged: (_) => setState(() {}),
                                                       ),
                                                     ),
                                                     GestureDetector(
                                                       onTap: () {
-                                                        setState(() {
-                                                          isEditingAmount[id] = !(isEditingAmount[id] ?? false);
-                                                        });
+                                                        final String capitalizedName = name.split(' ').map((str) => str.isEmpty ? '' : str[0].toUpperCase() + str.substring(1).toLowerCase()).join(' ');
+                                                        showModalBottomSheet(
+                                                          context: context,
+                                                          isScrollControlled: true,
+                                                          backgroundColor: Colors.transparent,
+                                                          builder: (BuildContext sheetContext) {
+                                                            final tempController = TextEditingController(text: allowanceAmounts[id]?.text ?? "");
+                                                            return StatefulBuilder(
+                                                              builder: (BuildContext context, StateSetter setSheetState) {
+                                                                return Padding(
+                                                                  padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.all(24),
+                                                                    decoration: BoxDecoration(
+                                                                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                                                    ),
+                                                                    child: Column(
+                                                                      mainAxisSize: MainAxisSize.min,
+                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                      children: [
+                                                                        Center(
+                                                                          child: Container(
+                                                                            width: 40,
+                                                                            height: 5,
+                                                                            decoration: BoxDecoration(
+                                                                              color: Colors.grey.withOpacity(0.3),
+                                                                              borderRadius: BorderRadius.circular(10),
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(height: 24),
+                                                                        Text(
+                                                                          "Edit $capitalizedName",
+                                                                          style: GoogleFonts.plusJakartaSans(
+                                                                            fontWeight: FontWeight.bold,
+                                                                            fontSize: 20,
+                                                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(height: 16),
+                                                                        Container(
+                                                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                                          decoration: BoxDecoration(
+                                                                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                                            borderRadius: BorderRadius.circular(12),
+                                                                            border: Border.all(
+                                                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                                                            ),
+                                                                          ),
+                                                                          child: Row(
+                                                                            children: [
+                                                                              Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 18)),
+                                                                              const SizedBox(width: 8),
+                                                                              Expanded(
+                                                                                child: TextField(
+                                                                                  controller: tempController,
+                                                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                                                  autofocus: true,
+                                                                                  style: GoogleFonts.plusJakartaSans(
+                                                                                    fontSize: 16,
+                                                                                    fontWeight: FontWeight.w600,
+                                                                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                                                  ),
+                                                                                  decoration: const InputDecoration(
+                                                                                    border: InputBorder.none,
+                                                                                    contentPadding: EdgeInsets.symmetric(vertical: 16),
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                        ),
+                                                                        const SizedBox(height: 24),
+                                                                        Row(
+                                                                          mainAxisAlignment: MainAxisAlignment.end,
+                                                                          children: [
+                                                                            TextButton(
+                                                                              onPressed: () => Navigator.pop(sheetContext),
+                                                                              child: Text(
+                                                                                "Cancel",
+                                                                                style: GoogleFonts.plusJakartaSans(
+                                                                                  color: Colors.grey,
+                                                                                  fontWeight: FontWeight.bold,
+                                                                                  fontSize: 16,
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                            const SizedBox(width: 16),
+                                                                            ElevatedButton(
+                                                                              onPressed: () {
+                                                                                setState(() {
+                                                                                  allowanceAmounts[id]?.text = tempController.text;
+                                                                                });
+                                                                                Navigator.pop(sheetContext);
+                                                                              },
+                                                                              style: ElevatedButton.styleFrom(
+                                                                                backgroundColor: const Color(0xFF6366F1),
+                                                                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                              ),
+                                                                              child: Text(
+                                                                                "Submit",
+                                                                                style: GoogleFonts.plusJakartaSans(
+                                                                                  color: Colors.white,
+                                                                                  fontWeight: FontWeight.bold,
+                                                                                  fontSize: 16,
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              }
+                                                            );
+                                                          },
+                                                        );
                                                       },
                                                       child: Container(
                                                         padding: const EdgeInsets.symmetric(horizontal: 12),
                                                         color: Colors.transparent,
-                                                        child: Icon(
-                                                          (isEditingAmount[id] ?? false) ? Icons.check_circle_rounded : Icons.edit_rounded,
-                                                          color: (isEditingAmount[id] ?? false) ? Colors.green : const Color(0xFF6366F1),
+                                                        child: const Icon(
+                                                          Icons.edit_rounded,
+                                                          color: Color(0xFF6366F1),
                                                           size: 20,
                                                         ),
                                                       ),

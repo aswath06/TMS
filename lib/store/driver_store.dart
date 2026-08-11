@@ -476,8 +476,42 @@ class DriverStore extends ChangeNotifier {
         return;
       }
 
+      String sortParam = "experience_years";
+      String orderParam = "DESC";
+
+      switch (_sortType) {
+        case "A to Z":
+          sortParam = "name";
+          orderParam = "ASC";
+          break;
+        case "Z to A":
+          sortParam = "name";
+          orderParam = "DESC";
+          break;
+        case "Max Distance":
+          sortParam = "total_distance";
+          orderParam = "DESC";
+          break;
+        case "Min Distance":
+          sortParam = "total_distance";
+          orderParam = "ASC";
+          break;
+        case "Max Experience":
+          sortParam = "experience_years";
+          orderParam = "DESC";
+          break;
+        case "Min Experience":
+          sortParam = "experience_years";
+          orderParam = "ASC";
+          break;
+        default:
+          sortParam = "experience_years";
+          orderParam = "DESC";
+          break;
+      }
+
       String url =
-          "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10&sortBy=joining_date&sortOrder=DESC";
+          "${ApiConstants.baseUrl}/api/drivers/all-drivers?page=$_currentPage&limit=10&sortBy=$sortParam&sortOrder=$orderParam";
       if (_driverSearchQuery.isNotEmpty) {
         url += "&search=${Uri.encodeComponent(_driverSearchQuery)}";
       }
@@ -825,7 +859,7 @@ class DriverStore extends ChangeNotifier {
   }
 
   // Sort state
-  String _sortType = 'Default';
+  String _sortType = 'Max Experience';
   String get sortType => _sortType;
 
   void setSortType(String newSort) {
@@ -1148,45 +1182,27 @@ class DriverStore extends ChangeNotifier {
 
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/evening-odometer";
       
-      http.Response response;
-
-      if (proofImage != null) {
-        var request = http.MultipartRequest('PATCH', Uri.parse(url));
-        request.headers.addAll(ApiConstants.getHeaders(token));
-        request.fields['end_odometer'] = endOdometer.toString();
-        request.fields['allowance_needed'] = allowanceNeeded.toString();
-        if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
-          request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
-        }
-        if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
-          request.fields['allowance_counts'] = jsonEncode(allowanceCounts);
-        }
-        if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
-          request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts);
-        }
-        
-        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
-        
-        final streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
-      } else {
-        final Map<String, dynamic> body = {
-          "end_odometer": endOdometer,
-          "allowance_needed": allowanceNeeded,
-          "latitude": null,
-          "longitude": null,
-          "image_url": null,
-          if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) "allowance_type_ids": allowanceTypeIds,
-          if (allowanceCounts != null && allowanceCounts.isNotEmpty) "allowance_counts": allowanceCounts,
-          if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) "allowance_amounts": allowanceAmounts,
-        };
-
-        response = await http.patch(
-          Uri.parse(url),
-          headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
-          body: jsonEncode(body),
-        );
+      final headers = ApiConstants.getHeaders(token)..remove('Content-Type');
+      var request = http.MultipartRequest('PATCH', Uri.parse(url));
+      request.headers.addAll(headers);
+      request.fields['end_odometer'] = endOdometer.toString();
+      request.fields['allowance_needed'] = allowanceNeeded.toString();
+      if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
+        request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
       }
+      if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
+        request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
+      }
+      if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
+        request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts.map((k, v) => MapEntry(k.toString(), v)));
+      }
+      
+      if (proofImage != null) {
+        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
+      }
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       final decoded = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -1245,51 +1261,30 @@ class DriverStore extends ChangeNotifier {
 
       final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/$runId/morning-odometer";
       
-      http.Response response;
-
-      if (proofImage != null) {
-        var request = http.MultipartRequest('PATCH', Uri.parse(url));
-        request.headers.addAll(ApiConstants.getHeaders(token));
-        request.fields['end_odometer'] = endOdometer.toString();
-        request.fields['allowance_needed'] = allowanceNeeded.toString();
-        if (passengerCount != null) {
-          request.fields['passenger_count'] = passengerCount.toString();
-        }
-        if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
-          request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
-        }
-        if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
-          request.fields['allowance_counts'] = jsonEncode(allowanceCounts);
-        }
-        if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
-          request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts);
-        }
-        
-        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
-        
-        final streamedResponse = await request.send();
-        response = await http.Response.fromStream(streamedResponse);
-      } else {
-        final Map<String, dynamic> body = {
-          "end_odometer": endOdometer,
-          "allowance_needed": allowanceNeeded,
-          "latitude": null,
-          "longitude": null,
-          "image_url": null,
-          if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) "allowance_type_ids": allowanceTypeIds,
-          if (allowanceCounts != null && allowanceCounts.isNotEmpty) "allowance_counts": allowanceCounts,
-          if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) "allowance_amounts": allowanceAmounts,
-        };
-        if (passengerCount != null) {
-          body["passenger_count"] = passengerCount;
-        }
-
-        response = await http.patch(
-          Uri.parse(url),
-          headers: ApiConstants.getHeaders(token)..addAll({'Content-Type': 'application/json'}),
-          body: jsonEncode(body),
-        );
+      final headers = ApiConstants.getHeaders(token)..remove('Content-Type');
+      var request = http.MultipartRequest('PATCH', Uri.parse(url));
+      request.headers.addAll(headers);
+      request.fields['end_odometer'] = endOdometer.toString();
+      request.fields['allowance_needed'] = allowanceNeeded.toString();
+      if (passengerCount != null) {
+        request.fields['passenger_count'] = passengerCount.toString();
       }
+      if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
+        request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
+      }
+      if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
+        request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
+      }
+      if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
+        request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts.map((k, v) => MapEntry(k.toString(), v)));
+      }
+      
+      if (proofImage != null) {
+        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
+      }
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       final decoded = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {

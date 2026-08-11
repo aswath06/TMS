@@ -78,7 +78,7 @@ class _ApplyLeavePageState extends State<ApplyLeavePage> {
     
     final DateTime initialDate = isStart
         ? (_startDate ?? now)
-        : (_endDate ?? (_startDate?.add(const Duration(days: 1)) ?? now));
+        : (_endDate ?? (_startDate ?? now));
 
     final DateTime minD = isStart
         ? today

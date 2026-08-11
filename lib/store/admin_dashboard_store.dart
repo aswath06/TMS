@@ -22,6 +22,7 @@ class AdminDashboardStore {
   final ValueNotifier<int> driversOnLeave = ValueNotifier<int>(0);
   final ValueNotifier<double> totalKilometers = ValueNotifier<double>(0.0);
   final ValueNotifier<int> movingBuses = ValueNotifier<int>(0);
+  final ValueNotifier<int> totalBuses = ValueNotifier<int>(0);
   final ValueNotifier<int> servicesCount = ValueNotifier<int>(0);
   final ValueNotifier<List<Map<String, dynamic>>> history = ValueNotifier<List<Map<String, dynamic>>>([]);
 
@@ -50,14 +51,6 @@ class AdminDashboardStore {
 
         // Compute real statistics from fetched requests
         servicesCount.value = items.length;
-        movingBuses.value = items
-            .where(
-              (req) =>
-                  req['status'] == 4 ||
-                  req['status'] == 6 ||
-                  (req['status'] ?? '').toString().toLowerCase() == 'approved',
-            )
-            .length;
 
         // Still keep some placeholders for things not yet in requests API
         totalKilometers.value = 4523.7;
@@ -78,23 +71,21 @@ class AdminDashboardStore {
       final String? token = await UserStore.getToken();
       final String dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-      // Sending GET with body via http.Request
-      final request = http.Request(
-        'GET',
-        Uri.parse(ApiConstants.getTodayDriverCount),
-      );
-      request.headers.addAll(ApiConstants.getHeaders(token));
-      request.body = json.encode({"date": dateStr});
+      final String url = "${ApiConstants.getTodayDriverCount}?date=$dateStr";
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         debugPrint("TodayDriverCount Response: ${response.body}");
         if (data['success'] == true) {
-          driversPresent.value = data['present_drivers'] ?? 0;
-          driversOnLeave.value = data['drivers_on_leave'] ?? 0;
+          driversPresent.value = data['available_drivers'] ?? 0;
+          driversOnLeave.value = data['absent_drivers'] ?? 0;
+          movingBuses.value = data['running_vehicles'] ?? 0;
+          totalBuses.value = data['total_vehicles'] ?? 0;
         } else {
           debugPrint("TodayDriverCount failed in body: ${data['message']}");
         }

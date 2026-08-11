@@ -20,6 +20,13 @@ class AdminAllowanceStore extends ChangeNotifier {
   bool _isLoadingPendingCreations = false;
   bool get isLoadingPendingCreations => _isLoadingPendingCreations;
   
+  bool _isFetchingMorePending = false;
+  bool get isFetchingMorePending => _isFetchingMorePending;
+
+  int _pendingPage = 1;
+  bool _hasMorePending = true;
+  bool get hasMorePending => _hasMorePending;
+  
   bool _isLoadingAllowances = false;
   bool get isLoadingAllowances => _isLoadingAllowances;
   
@@ -138,26 +145,49 @@ class AdminAllowanceStore extends ChangeNotifier {
     await fetchAllowances();
   }
 
-  Future<void> fetchPendingAllowanceCreations() async {
-    _isLoadingPendingCreations = true;
+  Future<void> fetchPendingAllowanceCreations({bool isRefresh = false}) async {
+    if (isRefresh) {
+      _pendingPage = 1;
+      _hasMorePending = true;
+    }
+    
+    if (_pendingPage == 1) {
+      _isLoadingPendingCreations = true;
+    } else {
+      _isFetchingMorePending = true;
+    }
     notifyListeners();
 
     try {
       final token = await UserStore.getToken();
       if (token == null) return;
 
-      final url = "${ApiConstants.getDriverAllowances}?page=1&limit=10&pending_allowance_creation=true";
+      final url = "${ApiConstants.getDriverAllowances}?page=$_pendingPage&limit=10&pending_allowance_creation=true";
       final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         if (decoded['success'] == true) {
           final List<dynamic> items = decoded['data'] ?? [];
-          _pendingCreations = items.map((e) => e as Map<String, dynamic>).toList();
+          final newItems = items.map((e) => e as Map<String, dynamic>).toList();
+          
+          if (isRefresh || _pendingPage == 1) {
+            _pendingCreations = newItems;
+          } else {
+            _pendingCreations.addAll(newItems);
+          }
+          
           if (_pendingCreations.isNotEmpty) {
             try {
               File('C:/Tripzo/TMS/scratch.json').writeAsStringSync(jsonEncode(_pendingCreations.first));
             } catch (_) {}
+          }
+
+          final pagination = decoded['pagination'];
+          if (pagination != null) {
+            _hasMorePending = _pendingPage < (pagination['totalPages'] ?? 1);
+          } else {
+             _hasMorePending = false;
           }
         }
       }
@@ -165,8 +195,15 @@ class AdminAllowanceStore extends ChangeNotifier {
       debugPrint("Error fetching pending allowance creations: $e");
     } finally {
       _isLoadingPendingCreations = false;
+      _isFetchingMorePending = false;
       notifyListeners();
     }
+  }
+
+  Future<void> fetchMorePendingCreations() async {
+    if (_isFetchingMorePending || !_hasMorePending) return;
+    _pendingPage++;
+    await fetchPendingAllowanceCreations();
   }
 
   Future<void> fetchDriversForFilter() async {

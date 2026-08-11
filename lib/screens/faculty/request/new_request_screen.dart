@@ -316,6 +316,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         final data = json.decode(response1.body);
         setState(() => _availableDrivers = List<Map<String, dynamic>>.from(data['data']['drivers'] ?? []));
         _autoProposeDrivers();
+      } else {
+        if (mounted) {
+          try {
+            final error = json.decode(response1.body);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error['message'] ?? "Failed to fetch drivers"), backgroundColor: Colors.red));
+          } catch (_) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to fetch drivers (${response1.statusCode})"), backgroundColor: Colors.red));
+          }
+        }
       }
 
       if (req2 != null) {
@@ -324,7 +333,15 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         if (response2.statusCode == 200) {
           final data = json.decode(response2.body);
           setState(() => _availableDriversReturn = List<Map<String, dynamic>>.from(data['data']['drivers'] ?? []));
-          // Propose first matching driver for return logic? Not strictly required unless UI needs it.
+        } else {
+          if (mounted) {
+            try {
+              final error = json.decode(response2.body);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error['message'] ?? "Failed to fetch return drivers"), backgroundColor: Colors.red));
+            } catch (_) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to fetch return drivers (${response2.statusCode})"), backgroundColor: Colors.red));
+            }
+          }
         }
       }
     } catch (e) {

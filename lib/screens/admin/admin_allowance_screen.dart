@@ -58,8 +58,14 @@ class _AdminAllowanceScreenState extends ConsumerState<AdminAllowanceScreen> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50) {
-      if (!adminAllowanceStore.isLoadingAllowances && !adminAllowanceStore.isFetchingMoreAllowances && adminAllowanceStore.hasMoreAllowances) {
-        adminAllowanceStore.fetchMoreAllowances();
+      if (_showPendingTab) {
+        if (!adminAllowanceStore.isLoadingPendingCreations && !adminAllowanceStore.isFetchingMorePending && adminAllowanceStore.hasMorePending) {
+          adminAllowanceStore.fetchMorePendingCreations();
+        }
+      } else {
+        if (!adminAllowanceStore.isLoadingAllowances && !adminAllowanceStore.isFetchingMoreAllowances && adminAllowanceStore.hasMoreAllowances) {
+          adminAllowanceStore.fetchMoreAllowances();
+        }
       }
     }
   }

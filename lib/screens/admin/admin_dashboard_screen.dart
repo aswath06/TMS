@@ -20,7 +20,7 @@ import 'fuel/fuel_page.dart';
 import 'admin_allowance_screen.dart';
 import 'package:tripzo/screens/driver/assignment_details_screen.dart';
 import 'package:tripzo/utils/tab_notification.dart';
-import 'package:tripzo/screens/admin/live_bus_routes_screen.dart';
+
 import 'package:tripzo/utils/api_error_parser.dart';
 
 /// Admin Dashboard Screen – mirrors the Faculty dashboard but adds admin‑specific statistics.
@@ -418,69 +418,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     ),
                     const SizedBox(height: 36),
                   ],
-                  if (_userRole.toLowerCase() == 'transport admin') ...[
-                    FadeInUp(
-                      index: 7,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => LiveBusRoutesScreen(adminDailyBusRuns: _adminDailyBusRuns),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: surfaceColor,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: primaryBlue.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(Icons.directions_bus, color: primaryBlue),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text("Live Bus Routes", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _isLoadingAdminBusRuns ? "Loading..." : "${_adminDailyBusRuns.length} Active Routes",
-                                        style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Icon(Icons.arrow_forward_ios, size: 16, color: subColor),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                  ],
+
                   FadeInUp(
                     index: 7,
                     child: Row(
@@ -728,22 +666,24 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         ),
         const SizedBox(height: 16),
         ValueListenableBuilder<int>(
-          valueListenable: AdminDashboardStore().movingBuses,
-          builder: (_, buses, _) {
-            const int totalBuses = 20; // Example total
-            final double percent = buses / totalBuses;
-            return _buildGraphicalCard(
-              title: 'Buses Currently Running',
-              currentValue: buses.toString(),
-              totalValue: ' Active Fleet',
-              percent: percent.clamp(0.0, 1.0),
-              icon: Icons.directions_bus_rounded,
-              color: const Color(0xFF3B82F6), // Blue
-              surface: surface,
-              isDark: isDark,
-              width: width,
-            );
-          },
+          valueListenable: AdminDashboardStore().totalBuses,
+          builder: (_, totalBuses, _) => ValueListenableBuilder<int>(
+            valueListenable: AdminDashboardStore().movingBuses,
+            builder: (_, buses, _) {
+              final double percent = totalBuses == 0 ? 0 : buses / totalBuses;
+              return _buildGraphicalCard(
+                title: 'Buses Currently Running',
+                currentValue: buses.toString(),
+                totalValue: ' Active Fleet',
+                percent: percent.clamp(0.0, 1.0),
+                icon: Icons.directions_bus_rounded,
+                color: const Color(0xFF3B82F6), // Blue
+                surface: surface,
+                isDark: isDark,
+                width: width,
+              );
+            },
+          ),
         ),
       ],
     );
@@ -1389,14 +1329,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: list.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final vehicle = list[index];
         final isExpired = _expirationTabIndex == 0;
         final docs = isExpired ? vehicle['expired_documents'] as List : vehicle['expiring_soon_documents'] as List;
         final Color statusColor = isExpired ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
+        final Color statusBg = isExpired ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
 
-        // Helper to get icon data
         IconData getIconForDoc(String doc) {
           switch (doc) {
             case 'rc_expiry_date': return Icons.description_rounded;
@@ -1413,75 +1353,125 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             case 'insurance_expiry_date': return 'Insurance';
             case 'pollution_expiry_date': return 'Pollution';
             case 'fc_expiry_date': return 'Fitness';
-            default: return 'Document';
+            default: {
+              final str = doc.replaceAll('_expiry_date', '').replaceAll('_', ' ');
+              if (str.isEmpty) return 'Document';
+              return str.split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
+            }
           }
         }
 
         return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             color: surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-          ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      vehicle['vehicle_number'] ?? 'Unknown',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: titleColor,
-                      ),
-                    ),
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: docs.map<Widget>((doc) {
-                      return Icon(getIconForDoc(doc), size: 18, color: statusColor);
-                    }).toList(),
-                  ),
-                ],
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            ],
+            border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: docs.map<Widget>((doc) {
-                    final icon = getIconForDoc(doc);
-                    final label = getLabelForDoc(doc);
-                    final date = vehicle[doc] ?? 'N/A';
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: statusColor.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                // Minimalist left status bar
+                Container(
+                  width: 4,
+                  color: statusColor,
+                ),
+                Expanded(
+                  child: Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(icon, size: 14, color: statusColor),
-                          const SizedBox(width: 6),
                           Text(
-                            "$label: $date",
+                            vehicle['vehicle_number'] ?? 'Unknown',
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: statusColor,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: titleColor,
+                              letterSpacing: 0.5,
                             ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(isExpired ? Icons.error_rounded : Icons.warning_rounded, size: 14, color: statusColor),
+                              const SizedBox(width: 6),
+                              Text(
+                                "${docs.length} Document${docs.length > 1 ? 's' : ''} ${isExpired ? 'Expired' : 'Expiring Soon'}",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    );
-                  }).toList(),
+                      childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        ...docs.map<Widget>((doc) {
+                          final icon = getIconForDoc(doc);
+                          final label = getLabelForDoc(doc);
+                          final date = vehicle[doc] ?? 'N/A';
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? statusColor.withValues(alpha: 0.1) : statusBg,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(icon, size: 16, color: statusColor),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        label,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: titleColor,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isExpired ? 'Expired on $date' : 'Expiring on $date',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: subColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

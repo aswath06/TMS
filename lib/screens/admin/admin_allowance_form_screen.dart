@@ -788,31 +788,41 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, {bool isRequired = false, bool isNumber = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text(label.toUpperCase(), style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0)),
+            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700)),
             if (isRequired) const Text(" *", style: TextStyle(color: Colors.red)),
           ],
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          validator: isRequired ? (val) => (val == null || val.isEmpty) ? 'Required' : null : null,
-          style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            hintText: "Enter ${label.toLowerCase()}...",
-            hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey.shade400, fontWeight: FontWeight.w600, fontSize: 13),
-            isDense: true,
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              if (!isDark) BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            validator: isRequired ? (val) => (val == null || val.isEmpty) ? 'Required' : null : null,
+            style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.transparent,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              hintText: "Enter ${label.toLowerCase()}...",
+              hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey.shade400, fontWeight: FontWeight.w500, fontSize: 14),
+              isDense: true,
+            ),
           ),
         ),
       ],
@@ -1020,7 +1030,7 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
       children: [
         Row(
           children: [
-            Text(label.toUpperCase(), style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0)),
+            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700)),
             const Text(" *", style: TextStyle(color: Colors.red)),
           ],
         ),
@@ -1028,11 +1038,14 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
         GestureDetector(
           onTap: isLoading ? null : () => _showCustomBottomSheet(label, items, onChanged, allowAdd: allowAdd, onAdd: onAdd),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+              boxShadow: [
+                if (!isDark) BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1052,9 +1065,9 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
                   ),
                 ),
                 if (isLoading)
-                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)))
+                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)))
                 else
-                  Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white54 : Colors.grey.shade400),
+                  Icon(Icons.unfold_more_rounded, color: isDark ? Colors.white54 : Colors.grey.shade400),
               ],
             ),
           ),
@@ -1070,14 +1083,14 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
       children: [
         Row(
           children: [
-            Text("ALLOWANCE TYPES", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 1.0)),
+            Text("Allowance Types", style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700)),
             const Text(" *", style: TextStyle(color: Colors.red)),
           ],
         ),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 10,
-          runSpacing: 10,
+          spacing: 12,
+          runSpacing: 12,
           children: adminAllowanceStore.types.map((type) {
             final idStr = type['id'].toString();
             final isSelected = _selectedTypeIds.contains(idStr);
@@ -1096,9 +1109,11 @@ class _AdminAllowanceFormScreenState extends State<AdminAllowanceFormScreen> {
                 selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
                 checkmarkColor: const Color(0xFF6366F1),
                 backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade300)),
-                labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13, color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade600),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? const Color(0xFF6366F1) : Colors.grey.shade200, width: isSelected ? 1.5 : 1)),
+                labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13, color: isSelected ? const Color(0xFF6366F1) : (isDark ? Colors.white70 : Colors.grey.shade700)),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                elevation: isSelected ? 0 : 1,
+                shadowColor: Colors.black.withValues(alpha: 0.05),
             );
           }).toList(),
         ),

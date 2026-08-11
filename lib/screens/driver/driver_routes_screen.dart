@@ -27,7 +27,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
   final TextEditingController _searchController = TextEditingController();
 
   // Toggle state
-  bool _isDailyBusRoutes = false;
+  int _selectedToggleIndex = 0;
 
   // Date slider state
   late String _selectedDateFilter;
@@ -197,18 +197,19 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isDailyBusRoutes = false),
+                      onTap: () => setState(() => _selectedToggleIndex = 0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: !_isDailyBusRoutes ? primaryBlue : Colors.transparent,
+                          color: _selectedToggleIndex == 0 ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           isTamil ? "பயணங்கள்" : "Routes",
                           style: TextStyle(
-                            color: !_isDailyBusRoutes ? Colors.white : subColor,
+                            color: _selectedToggleIndex == 0 ? Colors.white : subColor,
                             fontWeight: FontWeight.bold,
+                            fontSize: 11,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -217,19 +218,42 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _isDailyBusRoutes = true),
+                      onTap: () => setState(() => _selectedToggleIndex = 1),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _isDailyBusRoutes ? primaryBlue : Colors.transparent,
+                          color: _selectedToggleIndex == 1 ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          isTamil ? "தினசரிப் பேருந்துப் பயணங்கள்" : "Daily Bus Routes",
+                          isTamil ? "தினசரிப் பேருந்து" : "Daily Bus",
                           style: TextStyle(
-                            color: _isDailyBusRoutes ? Colors.white : subColor,
+                            color: _selectedToggleIndex == 1 ? Colors.white : subColor,
                             fontWeight: FontWeight.bold,
+                            fontSize: 11,
                           ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedToggleIndex = 2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _selectedToggleIndex == 2 ? primaryBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isTamil ? "பணி அட்டவணை" : "Schedules",
+                          style: TextStyle(
+                            color: _selectedToggleIndex == 2 ? Colors.white : subColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
@@ -301,7 +325,11 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
 
           // Main List
           Expanded(
-            child: _isDailyBusRoutes ? _buildDailyBusRoutesList() : _buildRouteList(),
+            child: _selectedToggleIndex == 2
+                ? _buildScheduleList()
+                : (_selectedToggleIndex == 1
+                    ? _buildDailyBusRoutesList()
+                    : _buildRouteList()),
           ),
         ],
       ),
