@@ -115,6 +115,16 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           },
         },
         {
+          'id': 'duty_allocation',
+          'title': "Duty Allocation",
+          'description': "Allocate duties and manage driver schedules.",
+          'icon': Icons.assignment_ind_rounded,
+          'color': const Color(0xFFEF4444),
+          'onTap': () {
+            // Navigator.push(context, MaterialPageRoute(builder: (context) => const DutyAllocationScreen()));
+          },
+        },
+        {
           'id': 'fuels',
           'title': "Fuel Logs",
           'description': "Review fuel requests and vehicle consumption history.",
@@ -576,7 +586,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
             children: [
               _buildAlternativeCardItem(_cardsData[3], isDark, 3),
               const SizedBox(width: 15),
-              Expanded(child: const SizedBox()),
+              _cardsData.length > 4 ? _buildAlternativeCardItem(_cardsData[4], isDark, 4) : Expanded(child: const SizedBox()),
               const SizedBox(width: 15),
               Expanded(child: const SizedBox()),
             ],

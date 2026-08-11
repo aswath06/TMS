@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/components/assigned_faculty_cards.dart';
 
 import 'package:flutter/services.dart';
@@ -836,9 +838,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     top: Radius.circular(32),
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
                       child: Container(
@@ -1091,6 +1094,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                   ],
                 ),
               ),
+              ),
             );
           },
         );
@@ -1109,6 +1113,15 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     final passengerController = TextEditingController();
     bool? allowanceNeeded;
     bool isSubmitting = false;
+    
+    bool isFetchingAllowances = false;
+    bool hasFetchedAllowances = false;
+    List<dynamic> allowanceTypes = [];
+    List<int> selectedAllowanceTypes = [];
+    Map<int, int> allowanceCounts = {};
+    Map<int, TextEditingController> allowanceAmounts = {};
+    Map<int, bool> isEditingAmount = {};
+    File? proofImage;
 
     showModalBottomSheet(
       context: context,
@@ -1117,6 +1130,37 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
+            if (!hasFetchedAllowances && !isFetchingAllowances) {
+              isFetchingAllowances = true;
+              UserStore.getToken().then((token) {
+                http.get(
+                  Uri.parse('${ApiConstants.baseUrl}/api/allowance/allowance-types'),
+                  headers: ApiConstants.getHeaders(token),
+                ).then((response) {
+                  if (response.statusCode == 200) {
+                    final data = json.decode(response.body);
+                    if (data['success'] == true) {
+                      setState(() {
+                        allowanceTypes = (data['data'] != null && (data['data'] as List).isNotEmpty)
+                            ? data['data']
+                            : [
+                                {'id': 1, 'name': 'BUS FARE', 'amount': '0.00'},
+                                {'id': 2, 'name': 'FOOD ALLOWANCE', 'amount': '0.00'},
+                                {'id': 3, 'name': 'OTHER', 'amount': '0.00'},
+                              ];
+                        hasFetchedAllowances = true;
+                        isFetchingAllowances = false;
+                      });
+                    }
+                  }
+                }).catchError((_) {
+                  setState(() {
+                    hasFetchedAllowances = true;
+                    isFetchingAllowances = false;
+                  });
+                });
+              });
+            }
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
@@ -1138,9 +1182,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     top: Radius.circular(32),
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
                       child: Container(
@@ -1449,6 +1494,379 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         ],
                       ),
                     ),
+                    if (allowanceNeeded == true) ...[
+                      const SizedBox(height: 16),
+                      RichText(
+                        text: TextSpan(
+                          text: "ALLOWANCE TYPES (MULTI-SELECT) ",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            letterSpacing: 1.0,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: "*",
+                              style: TextStyle(color: Colors.red),
+                            )
+                          ]
+                        )
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: allowanceTypes.map<Widget>((type) {
+                          final isSelected = selectedAllowanceTypes.contains(type['id']);
+                          final isOther = (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase() == 'OTHER';
+                          final isOtherSelected = selectedAllowanceTypes.any((id) {
+                            final t = allowanceTypes.firstWhere((e) => e['id'] == id, orElse: () => null);
+                            return t != null && (t['type_name'] ?? t['name'] ?? "").toString().toUpperCase() == 'OTHER';
+                          });
+                          final isDisabled = isOtherSelected && !isOther;
+
+                          return GestureDetector(
+                            onTap: isDisabled ? null : () {
+                              setState(() {
+                                  if (isSelected) {
+                                    selectedAllowanceTypes.remove(type['id']);
+                                    allowanceAmounts.remove(type['id']);
+                                  } else {
+                                    if (isOther) {
+                                      selectedAllowanceTypes.clear();
+                                      allowanceAmounts.clear();
+                                    }
+                                    selectedAllowanceTypes.add(type['id']);
+                                    if (!allowanceAmounts.containsKey(type['id'])) {
+                                      allowanceAmounts[type['id']] = TextEditingController(text: (type['amount'] ?? "0.00").toString());
+                                    }
+                                  }
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFF6366F1) : (isDisabled ? Colors.grey.withValues(alpha: 0.1) : Colors.transparent),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                ),
+                              ),
+                              child: Text(
+                                (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      if (allowanceNeeded == true) ...[
+                        for (var id in selectedAllowanceTypes)
+                          Builder(builder: (context) {
+                            final type = allowanceTypes.firstWhere((e) => e['id'] == id, orElse: () => null);
+                            if (type == null) return const SizedBox.shrink();
+                            
+                            final name = (type['type_name'] ?? type['name'] ?? "").toString();
+                            final count = allowanceCounts[id] ?? 1;
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 16, bottom: 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.02),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Amount",
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                  color: (isEditingAmount[id] ?? false) ? (isDark ? const Color(0xFF0F172A) : Colors.white) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: (isEditingAmount[id] ?? false) ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(left: 12),
+                                                      child: Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 16)),
+                                                    ),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller: allowanceAmounts[id],
+                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        readOnly: !(isEditingAmount[id] ?? false),
+                                                        style: GoogleFonts.plusJakartaSans(
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                        ),
+                                                        decoration: const InputDecoration(
+                                                          isDense: true,
+                                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                                          border: InputBorder.none,
+                                                        ),
+                                                        onChanged: (_) => setState(() {}),
+                                                      ),
+                                                    ),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        setState(() {
+                                                          isEditingAmount[id] = !(isEditingAmount[id] ?? false);
+                                                        });
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                        color: Colors.transparent,
+                                                        child: Icon(
+                                                          (isEditingAmount[id] ?? false) ? Icons.check_circle_rounded : Icons.edit_rounded,
+                                                          color: (isEditingAmount[id] ?? false) ? Colors.green : const Color(0xFF6366F1),
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Quantity",
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: count > 1 ? () {
+                                                        setState(() {
+                                                          allowanceCounts[id] = count - 1;
+                                                        });
+                                                      } : null,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: count > 1 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          boxShadow: count > 1 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
+                                                        ),
+                                                        child: Icon(Icons.remove_rounded, color: count > 1 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "$count",
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 16,
+                                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                      ),
+                                                    ),
+                                                    GestureDetector(
+                                                      onTap: count < 6 ? () {
+                                                        setState(() {
+                                                          allowanceCounts[id] = count + 1;
+                                                        });
+                                                      } : null,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: count < 6 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          boxShadow: count < 6 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
+                                                        ),
+                                                        child: Icon(Icons.add_rounded, color: count < 6 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        if (selectedAllowanceTypes.isNotEmpty)
+                          Builder(
+                            builder: (context) {
+                              double total = 0.0;
+                              for (var id in selectedAllowanceTypes) {
+                                final amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
+                                final cnt = allowanceCounts[id] ?? 1;
+                                total += amt * cnt;
+                              }
+                              
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 16),
+                                  if (total > 300) ...[
+                                    Text("Image proof (Mandatory)", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                  ] else ...[
+                                    Text("Image proof (Optional)", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final Color primaryBlue = const Color(0xFF6366F1);
+                                      final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+                                      showModalBottomSheet(
+                                        context: context,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (ctx) => Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(width: 40, height: 4, decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
+                                              const SizedBox(height: 24),
+                                              Text("Select Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor)),
+                                              const SizedBox(height: 32),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        Navigator.pop(ctx);
+                                                        final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                                                        if (picked != null) setState(() => proofImage = File(picked.path));
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(vertical: 24),
+                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                        child: Column(children: [Icon(Icons.camera_alt_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        Navigator.pop(ctx);
+                                                        final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
+                                                        if (picked != null) setState(() => proofImage = File(picked.path));
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(vertical: 24),
+                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                        child: Column(children: [Icon(Icons.photo_library_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 24),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      height: 120,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                        image: proofImage != null ? DecorationImage(image: FileImage(proofImage!), fit: BoxFit.cover) : null,
+                                      ),
+                                      child: proofImage == null ? Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
+                                          const SizedBox(height: 8),
+                                          Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ) : Container(
+                                        decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
+                                        child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                      ],
+                    ],
+
                     const SizedBox(height: 32),
 
                     Row(
@@ -1510,21 +1928,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     }
 
                                     if (allowanceNeeded == null) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Please select DA/TA requirement",
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select DA/TA requirement"), backgroundColor: Colors.red));
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final double odo =
-                                        double.tryParse(
+                                    final int odo =
+                                        int.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
                                         0;
@@ -1546,28 +1955,25 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                               0;
 
                                     if (runId == 0) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Error: Run ID is missing",
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Run ID is missing"), backgroundColor: Colors.red));
                                       setState(() => isSubmitting = false);
                                       return;
                                     }
 
-                                    final result = await useDriverStore
-                                        .endMorningBusRun(
-                                          runId: runId,
-                                          endOdometer: odo,
-                                          passengerCount: passCount,
-                                          allowanceNeeded:
-                                              allowanceNeeded ?? false,
-                                        );
+                                    final Map<int, String> amountMap = allowanceAmounts.map(
+                                      (id, controller) => MapEntry(id, controller.text.trim()),
+                                    );
+
+                                    final result = await useDriverStore.endMorningBusRun(
+                                      runId: runId,
+                                      endOdometer: odo.toDouble(),
+                                      passengerCount: passCount,
+                                      allowanceNeeded: allowanceNeeded ?? false,
+                                      allowanceTypeIds: selectedAllowanceTypes,
+                                      allowanceCounts: allowanceCounts,
+                                      allowanceAmounts: amountMap,
+                                      proofImage: proofImage,
+                                    );
 
                                     if (result['success'] == true) {
                                       if (mounted) {
@@ -1665,6 +2071,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },
@@ -2287,9 +2694,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     top: Radius.circular(32),
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
                       child: Container(
@@ -2695,6 +3103,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                   ],
                 ),
               ),
+              ),
             );
           },
         );
@@ -2713,6 +3122,15 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
 
     bool? allowanceNeeded;
     bool isSubmitting = false;
+    
+    bool isFetchingAllowances = false;
+    bool hasFetchedAllowances = false;
+    List<dynamic> allowanceTypes = [];
+    List<int> selectedAllowanceTypes = [];
+    Map<int, int> allowanceCounts = {};
+    Map<int, TextEditingController> allowanceAmounts = {};
+    Map<int, bool> isEditingAmount = {};
+    File? proofImage;
 
     showModalBottomSheet(
       context: context,
@@ -2721,6 +3139,37 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
+            if (!hasFetchedAllowances && !isFetchingAllowances) {
+              isFetchingAllowances = true;
+              UserStore.getToken().then((token) {
+                http.get(
+                  Uri.parse('${ApiConstants.baseUrl}/api/allowance/allowance-types'),
+                  headers: ApiConstants.getHeaders(token),
+                ).then((response) {
+                  if (response.statusCode == 200) {
+                    final data = json.decode(response.body);
+                    if (data['success'] == true) {
+                      setState(() {
+                        allowanceTypes = (data['data'] != null && (data['data'] as List).isNotEmpty)
+                            ? data['data']
+                            : [
+                                {'id': 1, 'name': 'BUS FARE', 'amount': '0.00'},
+                                {'id': 2, 'name': 'FOOD ALLOWANCE', 'amount': '0.00'},
+                                {'id': 3, 'name': 'OTHER', 'amount': '0.00'},
+                              ];
+                        hasFetchedAllowances = true;
+                        isFetchingAllowances = false;
+                      });
+                    }
+                  }
+                }).catchError((_) {
+                  setState(() {
+                    hasFetchedAllowances = true;
+                    isFetchingAllowances = false;
+                  });
+                });
+              });
+            }
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom > 0
@@ -2742,9 +3191,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     top: Radius.circular(32),
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
                       child: Container(
@@ -2986,6 +3436,379 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         ],
                       ),
                     ),
+                    if (allowanceNeeded == true) ...[
+                      const SizedBox(height: 16),
+                      RichText(
+                        text: TextSpan(
+                          text: "ALLOWANCE TYPES (MULTI-SELECT) ",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            letterSpacing: 1.0,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: "*",
+                              style: TextStyle(color: Colors.red),
+                            )
+                          ]
+                        )
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: allowanceTypes.map<Widget>((type) {
+                          final isSelected = selectedAllowanceTypes.contains(type['id']);
+                          final isOther = (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase() == 'OTHER';
+                          final isOtherSelected = selectedAllowanceTypes.any((id) {
+                            final t = allowanceTypes.firstWhere((e) => e['id'] == id, orElse: () => null);
+                            return t != null && (t['type_name'] ?? t['name'] ?? "").toString().toUpperCase() == 'OTHER';
+                          });
+                          final isDisabled = isOtherSelected && !isOther;
+
+                          return GestureDetector(
+                            onTap: isDisabled ? null : () {
+                              setState(() {
+                                  if (isSelected) {
+                                    selectedAllowanceTypes.remove(type['id']);
+                                    allowanceAmounts.remove(type['id']);
+                                  } else {
+                                    if (isOther) {
+                                      selectedAllowanceTypes.clear();
+                                      allowanceAmounts.clear();
+                                    }
+                                    selectedAllowanceTypes.add(type['id']);
+                                    if (!allowanceAmounts.containsKey(type['id'])) {
+                                      allowanceAmounts[type['id']] = TextEditingController(text: (type['amount'] ?? "0.00").toString());
+                                    }
+                                  }
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFF6366F1) : (isDisabled ? Colors.grey.withValues(alpha: 0.1) : Colors.transparent),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                ),
+                              ),
+                              child: Text(
+                                (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      if (allowanceNeeded == true) ...[
+                        for (var id in selectedAllowanceTypes)
+                          Builder(builder: (context) {
+                            final type = allowanceTypes.firstWhere((e) => e['id'] == id, orElse: () => null);
+                            if (type == null) return const SizedBox.shrink();
+                            
+                            final name = (type['type_name'] ?? type['name'] ?? "").toString();
+                            final count = allowanceCounts[id] ?? 1;
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 16, bottom: 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.02),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Amount",
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                  color: (isEditingAmount[id] ?? false) ? (isDark ? const Color(0xFF0F172A) : Colors.white) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: (isEditingAmount[id] ?? false) ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(left: 12),
+                                                      child: Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 16)),
+                                                    ),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller: allowanceAmounts[id],
+                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                        readOnly: !(isEditingAmount[id] ?? false),
+                                                        style: GoogleFonts.plusJakartaSans(
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                        ),
+                                                        decoration: const InputDecoration(
+                                                          isDense: true,
+                                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                                          border: InputBorder.none,
+                                                        ),
+                                                        onChanged: (_) => setState(() {}),
+                                                      ),
+                                                    ),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        setState(() {
+                                                          isEditingAmount[id] = !(isEditingAmount[id] ?? false);
+                                                        });
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                        color: Colors.transparent,
+                                                        child: Icon(
+                                                          (isEditingAmount[id] ?? false) ? Icons.check_circle_rounded : Icons.edit_rounded,
+                                                          color: (isEditingAmount[id] ?? false) ? Colors.green : const Color(0xFF6366F1),
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Quantity",
+                                                style: GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: count > 1 ? () {
+                                                        setState(() {
+                                                          allowanceCounts[id] = count - 1;
+                                                        });
+                                                      } : null,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: count > 1 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          boxShadow: count > 1 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
+                                                        ),
+                                                        child: Icon(Icons.remove_rounded, color: count > 1 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "$count",
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 16,
+                                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                      ),
+                                                    ),
+                                                    GestureDetector(
+                                                      onTap: count < 6 ? () {
+                                                        setState(() {
+                                                          allowanceCounts[id] = count + 1;
+                                                        });
+                                                      } : null,
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: count < 6 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          boxShadow: count < 6 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
+                                                        ),
+                                                        child: Icon(Icons.add_rounded, color: count < 6 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        if (selectedAllowanceTypes.isNotEmpty)
+                          Builder(
+                            builder: (context) {
+                              double total = 0.0;
+                              for (var id in selectedAllowanceTypes) {
+                                final amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
+                                final cnt = allowanceCounts[id] ?? 1;
+                                total += amt * cnt;
+                              }
+                              
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 16),
+                                  if (total > 300) ...[
+                                    Text("Image proof (Mandatory)", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                  ] else ...[
+                                    Text("Image proof (Optional)", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final Color primaryBlue = const Color(0xFF6366F1);
+                                      final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+                                      showModalBottomSheet(
+                                        context: context,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (ctx) => Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(width: 40, height: 4, decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
+                                              const SizedBox(height: 24),
+                                              Text("Select Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor)),
+                                              const SizedBox(height: 32),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        Navigator.pop(ctx);
+                                                        final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                                                        if (picked != null) setState(() => proofImage = File(picked.path));
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(vertical: 24),
+                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                        child: Column(children: [Icon(Icons.camera_alt_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 16),
+                                                  Expanded(
+                                                    child: GestureDetector(
+                                                      onTap: () async {
+                                                        Navigator.pop(ctx);
+                                                        final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
+                                                        if (picked != null) setState(() => proofImage = File(picked.path));
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(vertical: 24),
+                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                        child: Column(children: [Icon(Icons.photo_library_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 24),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      height: 120,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                        image: proofImage != null ? DecorationImage(image: FileImage(proofImage!), fit: BoxFit.cover) : null,
+                                      ),
+                                      child: proofImage == null ? Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
+                                          const SizedBox(height: 8),
+                                          Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ) : Container(
+                                        decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
+                                        child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                      ],
+                    ],
+
                     const SizedBox(height: 32),
 
                     Row(
@@ -3033,21 +3856,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     }
 
                                     if (allowanceNeeded == null) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Please select DA/TA requirement",
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select DA/TA requirement"), backgroundColor: Colors.red));
                                       return;
                                     }
                                     setState(() => isSubmitting = true);
-                                    final double odo =
-                                        double.tryParse(
+                                    final int odo =
+                                        int.tryParse(
                                           odometerController.text.trim(),
                                         ) ??
                                         0;
@@ -3061,30 +3875,25 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                 rawRunId?.toString() ?? '0',
                                               ) ??
                                               0;
-
                                     if (runId == 0) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Error: Run ID is missing",
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Run ID is missing"), backgroundColor: Colors.red));
                                       setState(() => isSubmitting = false);
                                       return;
                                     }
 
-                                    final result = await useDriverStore
-                                        .endEveningOdometer(
-                                          runId: runId,
-                                          endOdometer: odo,
+                                    final Map<int, String> amountMap = allowanceAmounts.map(
+                                      (id, controller) => MapEntry(id, controller.text.trim()),
+                                    );
 
-                                          allowanceNeeded:
-                                              allowanceNeeded ?? false,
-                                        );
+                                    final result = await useDriverStore.endEveningOdometer(
+                                      runId: runId,
+                                      endOdometer: odo.toDouble(),
+                                      allowanceNeeded: allowanceNeeded ?? false,
+                                      allowanceTypeIds: selectedAllowanceTypes,
+                                      allowanceCounts: allowanceCounts,
+                                      allowanceAmounts: amountMap,
+                                      proofImage: proofImage,
+                                    );
 
                                     if (result['success'] == true) {
                                       if (mounted) {
@@ -3182,6 +3991,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },

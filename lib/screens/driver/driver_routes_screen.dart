@@ -1,12 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
-
-import 'package:tripzo/store/providers.dart';
+import 'package:google_fonts/google_fonts.dart';import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/istamil.dart'; 
-import 'package:tripzo/store/driver_schedules_store.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/screens/driver/schedule_details_page.dart';
@@ -28,7 +27,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
   final TextEditingController _searchController = TextEditingController();
 
   // Toggle state
-  int _selectedTab = 0; // 0 = Routes, 1 = Daily Bus Routes, 2 = Schedule
+  bool _isDailyBusRoutes = false;
 
   // Date slider state
   late String _selectedDateFilter;
@@ -118,11 +117,6 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     // Fetch Daily Bus Routes for the selected date
     final dailyStore = ref.read(dailyRoutinesStoreProvider);
     await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
-
-    if (!mounted) return;
-    // Fetch Schedules for the selected date
-    final scheduleStore = ref.read(driverSchedulesStoreProvider);
-    await scheduleStore.fetchSchedules(isRefresh: true, date: _selectedDateFilter);
   }
 
   @override
@@ -203,59 +197,38 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _selectedTab = 0),
+                      onTap: () => setState(() => _isDailyBusRoutes = false),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _selectedTab == 0 ? primaryBlue : Colors.transparent,
+                          color: !_isDailyBusRoutes ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           isTamil ? "பயணங்கள்" : "Routes",
                           style: TextStyle(
-                            color: _selectedTab == 0 ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                            color: !_isDailyBusRoutes ? Colors.white : subColor,
                             fontWeight: FontWeight.bold,
-                            fontSize: 11,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _selectedTab = 1),
+                      onTap: () => setState(() => _isDailyBusRoutes = true),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _selectedTab == 1 ? primaryBlue : Colors.transparent,
+                          color: _isDailyBusRoutes ? primaryBlue : Colors.transparent,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          isTamil ? "தினசரிப் பேருந்து" : "Daily Bus",
+                          isTamil ? "தினசரிப் பேருந்துப் பயணங்கள்" : "Daily Bus Routes",
                           style: TextStyle(
-                            color: _selectedTab == 1 ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                            color: _isDailyBusRoutes ? Colors.white : subColor,
                             fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedTab = 2),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _selectedTab == 2 ? primaryBlue : Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          isTamil ? "அட்டவணை" : "Schedule",
-                          style: TextStyle(
-                            color: _selectedTab == 2 ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -328,11 +301,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
 
           // Main List
           Expanded(
-            child: _selectedTab == 0
-                ? _buildRouteList()
-                : _selectedTab == 1
-                    ? _buildDailyBusRoutesList()
-                    : _buildScheduleList(),
+            child: _isDailyBusRoutes ? _buildDailyBusRoutesList() : _buildRouteList(),
           ),
         ],
       ),
@@ -608,6 +577,8 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
       ),
     );
   }
+
+
 
   Widget _buildMissionCard({
     required BuildContext context,

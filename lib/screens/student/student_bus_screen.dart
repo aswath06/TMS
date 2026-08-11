@@ -208,6 +208,26 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
     return numbers.isNotEmpty ? numbers.join(', ') : null;
   }
 
+  String _getDriverName(Map<String, dynamic> run) {
+    final assignments = run['assignment'] as List? ?? [];
+    if (assignments.isEmpty) return 'No Driver';
+    final names = assignments
+        .map((a) => a['driver']?['user']?['name']?.toString() ?? a['driver']?['name']?.toString())
+        .whereType<String>()
+        .toSet();
+    return names.isNotEmpty ? names.join(', ') : 'No Driver';
+  }
+
+  String _getDriverPhone(Map<String, dynamic> run) {
+    final assignments = run['assignment'] as List? ?? [];
+    if (assignments.isEmpty) return '';
+    final phones = assignments
+        .map((a) => a['driver']?['user']?['phone']?.toString())
+        .whereType<String>()
+        .toSet();
+    return phones.isNotEmpty ? phones.join(', ') : '';
+  }
+
   Widget _buildStatusBadge(String status) {
     final String s = status.toUpperCase();
     final Map<String, Map<String, Color>> statusStyles = {
@@ -720,11 +740,11 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                       ),
                       const SizedBox(height: 16),
                       
-                      // Vehicle + Bus Panel (Bus Number instead of driver name)
+                      // Vehicle + Bus Panel (Show Driver details and Bus/Vehicle details)
                       _buildDriverMinimal(
                         const Color(0xFF6366F1), 
-                        "Bus Number: ${busNo != null && busNo.toLowerCase() != 'null' ? busNo : 'N/A'}", 
-                        "Vehicle: $vehicleNo", 
+                        "Driver: ${_getDriverName(run)}${_getDriverPhone(run).isNotEmpty ? ' (${_getDriverPhone(run)})' : ''}", 
+                        "Bus No: ${busNo != null && busNo.toLowerCase() != 'null' ? busNo : 'N/A'} • Vehicle: $vehicleNo", 
                         subColor
                       ),
                       const SizedBox(height: 24),

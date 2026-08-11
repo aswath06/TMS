@@ -76,6 +76,7 @@ class _SecurityGateSuccessScreenState extends State<SecurityGateSuccessScreen> {
   void _triggerComplete() {
     if (mounted && !_isCompleting) {
       _isCompleting = true;
+      Navigator.of(context).pop();
       widget.onComplete();
     }
   }

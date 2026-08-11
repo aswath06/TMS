@@ -228,9 +228,7 @@ class _SecurityQrScannerScreenState extends State<SecurityQrScannerScreen> with 
             MaterialPageRoute(
               builder: (_) => SecurityGateSuccessScreen(
                 isGateOut: action == "START" || action == "CAMPUS_OUT",
-                onComplete: () {
-                  Navigator.pop(context);
-                },
+                onComplete: () {},
               ),
             ),
           );
