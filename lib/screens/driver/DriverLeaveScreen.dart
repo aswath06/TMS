@@ -24,8 +24,9 @@ class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.userRole == 'student') {
+      if (widget.userRole != 'driver') {
         useStudentLeaveStore.fetchLeaves();
+        useStudentLeaveStore.fetchCalendarSummary(_focusedDay.year, _focusedDay.month);
       } else {
         useDriverStore.fetchLeaves();
         useDriverStore.fetchAttendance(isRefresh: true);
@@ -44,8 +45,10 @@ class _DriverLeaveScreenState extends ConsumerState<DriverLeaveScreen> {
     setState(() {
       _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + offset);
     });
-    if (widget.userRole != 'student') {
+    if (widget.userRole == 'driver') {
       useDriverStore.fetchCalendarSummary(_focusedDay.year, _focusedDay.month);
+    } else {
+      useStudentLeaveStore.fetchCalendarSummary(_focusedDay.year, _focusedDay.month);
     }
   }
 
@@ -72,7 +75,7 @@ builder: (context, ref, _) {
 final store = ref.watch(driverStoreProvider);
                 return RefreshIndicator(
                   onRefresh: () async {
-                    if (widget.userRole == 'student') {
+                    if (widget.userRole != 'driver') {
                       await useStudentLeaveStore.fetchLeaves();
                     } else {
                       await store.fetchLeaves();
@@ -89,7 +92,7 @@ final store = ref.watch(driverStoreProvider);
                         _buildHeader(
                           widget.userRole == 'driver' 
                               ? (isTamil ? "வருகை போர்ட்டல்" : "Attendance Portal")
-                              : widget.userRole == 'student'
+                              : widget.userRole != 'driver'
                                   ? (isTamil ? "போக்குவரத்து விடுப்பு" : "Leave for Transport")
                                   : (isTamil ? "விடுப்பு போர்ட்டல்" : "Leave Portal"),
                           titleColor,
@@ -105,14 +108,19 @@ final store = ref.watch(driverStoreProvider);
                           titleColor,
                         ),
                         const SizedBox(height: 18),
-                        _buildFullCalendar(
-                          surfaceColor,
-                          isDark,
-                          primaryBlue,
-                          isTamil,
+                        ListenableBuilder(
+                          listenable: widget.userRole == 'driver' ? useDriverStore : useStudentLeaveStore,
+                          builder: (context, _) {
+                            return _buildFullCalendar(
+                              surfaceColor,
+                              isDark,
+                              primaryBlue,
+                              isTamil,
+                            );
+                          }
                         ),
 
-                        if (widget.userRole != 'student') ...[
+                        if (widget.userRole == 'driver') ...[
                           const SizedBox(height: 36),
 
                           _buildHistoryHeader(
@@ -127,7 +135,7 @@ final store = ref.watch(driverStoreProvider);
                         const SizedBox(height: 36),
 
                         _buildHistoryHeader(
-                          widget.userRole == 'student'
+                          widget.userRole != 'driver'
                               ? (isTamil ? "வரலாறு" : "Availability History")
                               : (isTamil ? "விடுப்பு வரலாறு" : "Leave History"),
                           titleColor,
@@ -135,7 +143,7 @@ final store = ref.watch(driverStoreProvider);
                         ),
                         const SizedBox(height: 16),
                         
-                        if (widget.userRole == 'student')
+                        if (widget.userRole != 'driver')
                           ListenableBuilder(
                             listenable: useStudentLeaveStore,
                             builder: (context, _) {
@@ -369,7 +377,7 @@ final store = ref.watch(driverStoreProvider);
             Icon(Icons.history_toggle_off_rounded, size: 48, color: isDark ? Colors.white24 : Colors.black12),
             const SizedBox(height: 12),
             Text(
-              widget.userRole == 'student' 
+              widget.userRole != 'driver' 
                   ? (isTamil ? "வரலாறு எதுவும் இல்லை" : "No availability history found")
                   : (isTamil ? "வரலாறு எதுவும் இல்லை" : "No leave history found"),
               style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.bold),
@@ -456,12 +464,14 @@ final store = ref.watch(driverStoreProvider);
                 .toList(),
           ),
           const SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-            ),
+          Stack(
+            children: [
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                ),
             itemCount: totalCells,
             itemBuilder: (context, index) {
               if (index < firstDayOffset) return const SizedBox.shrink();
@@ -473,7 +483,9 @@ final store = ref.watch(driverStoreProvider);
                   _focusedDay.year == DateTime.now().year;
 
               String dateKey = "${_focusedDay.year}-${_focusedDay.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
-              String? status = widget.userRole != 'student' ? useDriverStore.calendarSummary[dateKey] : null;
+              String? status = widget.userRole == 'driver' 
+                  ? useDriverStore.calendarSummary[dateKey] 
+                  : useStudentLeaveStore.calendarSummary[dateKey];
 
               Widget statusIndicator = const SizedBox.shrink();
               if (status == 'green') {
@@ -487,6 +499,12 @@ final store = ref.watch(driverStoreProvider);
                   width: 5,
                   height: 5,
                   decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                );
+              } else if (status == 'yellow') {
+                statusIndicator = Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(color: Colors.amberAccent, shape: BoxShape.circle),
                 );
               } else if (status == 'mixed') {
                 statusIndicator = Container(
@@ -536,7 +554,20 @@ final store = ref.watch(driverStoreProvider);
               );
             },
           ),
+          if (widget.userRole != 'driver' && useStudentLeaveStore.isLoadingSummary)
+            Positioned.fill(
+              child: Container(
+                color: surface.withValues(alpha: 0.5),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: primary,
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+    ],
       ),
     );
   }
@@ -586,7 +617,7 @@ final store = ref.watch(driverStoreProvider);
   ) => GestureDetector(
     onTap: () => Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => widget.userRole == 'student' 
+      MaterialPageRoute(builder: (context) => widget.userRole != 'driver' 
           ? const StudentApplyLeavePage() 
           : ApplyLeavePage(userRole: widget.userRole)),
     ),
@@ -626,14 +657,14 @@ final store = ref.watch(driverStoreProvider);
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    widget.userRole == 'student' ? Icons.directions_bus_rounded : Icons.add_task_rounded,
+                    widget.userRole != 'driver' ? Icons.directions_bus_rounded : Icons.add_task_rounded,
                     color: Colors.white,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
                   Flexible(
                     child: Text(
-                      widget.userRole == 'student'
+                      widget.userRole != 'driver'
                           ? (isTamil ? "போக்குவரத்து விடுப்பு" : "LEAVE FOR TRANSPORT")
                           : (isTamil ? "விடுப்பு விண்ணப்பிக்க" : "APPLY NEW LEAVE"),
                       style: const TextStyle(
@@ -668,7 +699,7 @@ final store = ref.watch(driverStoreProvider);
     bool isDark,
     bool isTamil,
   ) {
-    if (widget.userRole == 'student') {
+    if (widget.userRole != 'driver') {
       return _buildStudentLeaveHistoryItem(leave, surface, isDark, isTamil);
     }
     
@@ -1214,8 +1245,8 @@ final store = ref.watch(driverStoreProvider);
                         ),
                         child: Text(
                           (isTamil 
-                              ? (widget.userRole == 'student' ? "போக்குவரத்து விடுப்பு" : "விடுப்பு விவரம்") 
-                              : (widget.userRole == 'student' ? "Leave for Transport" : "Leave Details")).toUpperCase(),
+                              ? (widget.userRole != 'driver' ? "போக்குவரத்து விடுப்பு" : "விடுப்பு விவரம்") 
+                              : (widget.userRole != 'driver' ? "Leave for Transport" : "Leave Details")).toUpperCase(),
                           style: const TextStyle(color: Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.0),
                         ),
                       ),

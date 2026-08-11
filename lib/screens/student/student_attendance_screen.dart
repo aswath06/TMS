@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
-
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-
-class DayRecord {
-  final DateTime date;
-  final String fnStatus; // "Present", "Absent", "Leave"
-  final String anStatus;
-  final String? fnBusNo;
-  final String? anBusNo;
-
-  DayRecord({required this.date, required this.fnStatus, required this.anStatus, this.fnBusNo, this.anBusNo});
-}
+import 'package:shimmer/shimmer.dart';
+import 'package:tripzo/store/student_leave_store.dart';
 
 class StudentAttendanceScreen extends StatefulWidget {
   const StudentAttendanceScreen({super.key});
@@ -23,59 +14,43 @@ class StudentAttendanceScreen extends StatefulWidget {
 }
 
 class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
-  bool _isLoading = false;
   String _selectedFilter = "All"; // All, Present, Absent, Leave
   DateTime? _selectedDate; // The date picked by the user
-  
-  // Stats
-  final double _attendancePercentage = 88.0;
-  final int _presentCount = 22;
-  final int _absentCount = 3;
-  final int _leaveCount = 5; 
-
-  // Mock list of past days
-  final List<DayRecord> _records = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _generateMockData();
-    _fetchAttendanceData();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchLogs();
+    });
   }
-  
-  void _generateMockData() {
-    final now = DateTime.now();
-    for (int i = 0; i < 14; i++) {
-      final date = now.subtract(Duration(days: i));
-      String fn = "Present";
-      String an = "Present";
-      
-      if (date.weekday == 6 || date.weekday == 7) {
-         fn = "Leave"; 
-         an = "Leave";
-      } else if (date.day % 3 == 0) {
-         fn = "Present";
-         an = "Absent";
-      } else if (date.day % 5 == 0) {
-         fn = "Absent";
-         an = "Absent";
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      if (useStudentLeaveStore.attendanceLogsHasMore && !useStudentLeaveStore.isFetchingMoreLogs) {
+        useStudentLeaveStore.fetchAttendanceLogs(
+          isLoadMore: true,
+          filterDate: _selectedDate,
+          statusFilter: _selectedFilter,
+        );
       }
-      
-      String? fnBus = "Bus 12";
-      String? anBus = "Bus 14";
-      
-      _records.add(DayRecord(date: date, fnStatus: fn, anStatus: an, fnBusNo: fnBus, anBusNo: anBus));
     }
   }
 
-  Future<void> _fetchAttendanceData() async {
-    setState(() { _isLoading = true; });
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (mounted) {
-      setState(() { 
-        _isLoading = false; 
-      });
-    }
+  void _fetchLogs() {
+    useStudentLeaveStore.fetchAttendanceLogs(
+      isLoadMore: false,
+      filterDate: _selectedDate,
+      statusFilter: _selectedFilter,
+    );
   }
 
   Future<void> _pickDate() async {
@@ -90,6 +65,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
       setState(() {
         _selectedDate = picked;
       });
+      _fetchLogs();
     }
   }
 
@@ -188,6 +164,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
         setModalState(() { _selectedFilter = filter; }); 
         setState(() { _selectedFilter = filter; }); 
         Navigator.pop(context);
+        _fetchLogs();
       },
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
@@ -231,14 +208,17 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
     final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final primaryBlue = const Color(0xFF6366F1);
 
-    List<DayRecord> filteredRecords = _records.where((record) {
-      bool statusMatch = _selectedFilter == "All" || record.fnStatus == _selectedFilter || record.anStatus == _selectedFilter;
-      bool dateMatch = _selectedDate == null || 
-          (record.date.year == _selectedDate!.year && 
-           record.date.month == _selectedDate!.month && 
-           record.date.day == _selectedDate!.day);
-      return statusMatch && dateMatch;
-    }).toList();
+    // Calculate metrics
+    final totalMapped = useStudentLeaveStore.dashboardTotalMappedDays;
+    final absentCount = useStudentLeaveStore.dashboardAbsentCount;
+    final leaveCount = useStudentLeaveStore.dashboardLeaveCount;
+    final presentCount = totalMapped - absentCount - leaveCount;
+    final attendancePercentage = totalMapped > 0 ? (presentCount / totalMapped) * 100 : 0.0;
+
+    String formatMetric(double val) {
+      if (val == val.toInt()) return val.toInt().toString();
+      return val.toString();
+    }
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -264,11 +244,24 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
           ),
         ],
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator()) 
-          : RefreshIndicator(
-              onRefresh: _fetchAttendanceData,
-              child: ListView(
+      body: ListenableBuilder(
+        listenable: useStudentLeaveStore,
+        builder: (context, _) {
+          Map<String, List<dynamic>> groupedLogs = {};
+          for (var log in useStudentLeaveStore.attendanceLogs) {
+            String dateStr = DateFormat('dd MMM yyyy').format(DateTime.parse(log['date']));
+            if (!groupedLogs.containsKey(dateStr)) {
+              groupedLogs[dateStr] = [];
+            }
+            groupedLogs[dateStr]!.add(log);
+          }
+
+          return useStudentLeaveStore.isLoadingMetrics 
+              ? _buildShimmerLoading(isDark, surfaceColor, bgColor)
+              : RefreshIndicator(
+                  onRefresh: () async => _fetchLogs(),
+                  child: ListView(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   const SizedBox(height: 16),
@@ -279,13 +272,13 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     physics: const BouncingScrollPhysics(),
                     child: Row(
                       children: [
-                        _buildStatCard("${_attendancePercentage.toInt()}%", "Attendance", const Color(0xFF10B981), surfaceColor),
+                        _buildStatCard("${attendancePercentage.toStringAsFixed(0)}%", "Attendance", const Color(0xFF10B981), surfaceColor),
                         const SizedBox(width: 12),
-                        _buildStatCard("$_presentCount", "Present", primaryBlue, surfaceColor),
+                        _buildStatCard(formatMetric(presentCount), "Present", primaryBlue, surfaceColor),
                         const SizedBox(width: 12),
-                        _buildStatCard("$_absentCount", "Absent", const Color(0xFFF43F5E), surfaceColor),
+                        _buildStatCard(formatMetric(absentCount), "Absent", const Color(0xFFF43F5E), surfaceColor),
                         const SizedBox(width: 12),
-                        _buildStatCard("$_leaveCount", "Leave", const Color(0xFFF59E0B), surfaceColor),
+                        _buildStatCard(formatMetric(leaveCount), "Leave", const Color(0xFFF59E0B), surfaceColor),
                       ],
                     ),
                   ),
@@ -347,7 +340,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     ),
 
                   // Daily Attendance List
-                  if (filteredRecords.isEmpty)
+                  if (groupedLogs.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(32.0),
                       child: Center(
@@ -361,14 +354,83 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Column(
-                        children: filteredRecords
-                            .map((record) => _buildDaySection(record, surfaceColor, titleColor, subColor))
-                            .toList(),
+                        children: [
+                          ...groupedLogs.entries.map((entry) => _buildDaySection(entry.key, entry.value, surfaceColor, titleColor, subColor)),
+                          if (useStudentLeaveStore.isFetchingMoreLogs)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 24),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                        ],
                       ),
                     ),
                 ],
               ),
+            );
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmerLoading(bool isDark, Color surfaceColor, Color bgColor) {
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: List.generate(4, (index) => Container(
+                width: 110,
+                height: 90,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              )),
             ),
+          ),
+          const SizedBox(height: 32),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              children: List.generate(4, (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(width: 120, height: 20, color: surfaceColor),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 85,
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      height: 85,
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -414,9 +476,7 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
     );
   }
 
-  Widget _buildDaySection(DayRecord record, Color surface, Color titleColor, Color subColor) {
-    final dateStr = DateFormat('dd MMM yyyy').format(record.date);
-
+  Widget _buildDaySection(String dateStr, List<dynamic> logs, Color surface, Color titleColor, Color subColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -431,18 +491,16 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          if (_selectedFilter == "All" || record.fnStatus == _selectedFilter) ...[
-            _buildRecordCard("Forenoon Session", record.fnStatus, record.fnBusNo, surface, titleColor, subColor),
-            const SizedBox(height: 10),
-          ],
-          if (_selectedFilter == "All" || record.anStatus == _selectedFilter)
-            _buildRecordCard("Afternoon Session", record.anStatus, record.anBusNo, surface, titleColor, subColor),
+          ...logs.map((log) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildRecordCard(log['session'], log['status'], log['bus_number'], log['run_name'], surface, titleColor, subColor),
+              )),
         ],
       ),
     );
   }
 
-  Widget _buildRecordCard(String title, String status, String? busNo, Color surface, Color titleColor, Color subColor) {
+  Widget _buildRecordCard(String title, String status, String? busNo, String? runName, Color surface, Color titleColor, Color subColor) {
     Color statusColor;
     if (status == "Present") {
       statusColor = const Color(0xFF10B981);
@@ -453,30 +511,32 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
     }
     
     final statusBgColor = statusColor.withOpacity(0.1);
+    final iconColor = const Color(0xFF6366F1); // Indigo
+    final iconBgColor = iconColor.withOpacity(0.1);
     
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.15)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: statusBgColor,
+              color: iconBgColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.access_time_rounded, color: statusColor, size: 20),
+            child: Icon(Icons.access_time_rounded, color: iconColor, size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -491,18 +551,22 @@ class _StudentAttendanceScreenState extends State<StudentAttendanceScreen> {
                     color: titleColor,
                   ),
                 ),
-                if (busNo != null) ...[
+                if (busNo != null || runName != null) ...[
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(Icons.directions_bus_rounded, size: 14, color: subColor),
                       const SizedBox(width: 4),
-                      Text(
-                        busNo,
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: subColor,
-                          fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Text(
+                          "${busNo ?? 'Not Assigned'} • ${runName ?? ''}",
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: subColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

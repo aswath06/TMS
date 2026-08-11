@@ -174,4 +174,7 @@ class ApiConstants {
     'lat': 11.49518076229493,
     'lon': 77.27954948427481,
   };
+  static String get getPassengerCalendarSummary => "$baseUrl/transport-leaves/passenger-calendar-summary";
+  static String get getPassengerDashboardMetrics => "$baseUrl/transport-leaves/passenger-dashboard-metrics";
+  static String get getPassengerAttendanceLogs => "$baseUrl/transport-leaves/passenger-attendance-logs";
 }
