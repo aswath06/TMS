@@ -115,6 +115,13 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
       if (mounted) setState(() { _runError = "Connection error"; _isLoadingRun = false; });
     }
   }
+
+  Future<void> _onRefresh() async {
+    useFacultyStore.fetchProfile();
+    await _loadTodayRun();
+    useStudentLeaveStore.fetchDashboardMetrics();
+    ref.invalidate(notificationProviderFamily);
+  }
   
   String _formatShift(dynamic shiftCode) {
     if (shiftCode == null) return 'FULL DAY';
@@ -281,9 +288,12 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
 
           SafeArea(
             bottom: true,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: primaryBlue,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
               ),
               padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
               child: Column(
@@ -362,6 +372,7 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                 ],
               ),
             ),
+            ),
           ),
         ],
       ),
@@ -396,13 +407,17 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    "Hello, $displayName",
-                    style: TextStyle(
-                      fontSize: width * 0.075,
-                      fontWeight: FontWeight.w900,
-                      color: titleColor,
-                      letterSpacing: -1.0,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Hello, $displayName",
+                      style: TextStyle(
+                        fontSize: width * 0.075,
+                        fontWeight: FontWeight.w900,
+                        color: titleColor,
+                        letterSpacing: -1.0,
+                      ),
                     ),
                   ),
                 ],

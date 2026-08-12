@@ -896,7 +896,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         controller: odometerController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -1232,7 +1232,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         controller: odometerController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -2881,7 +2881,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         controller: odometerController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,
@@ -3377,7 +3377,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         controller: odometerController,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                         ],
                         style: TextStyle(
                           fontSize: 16,

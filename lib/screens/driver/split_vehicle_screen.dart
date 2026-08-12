@@ -180,7 +180,7 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
             TextField(
               controller: _startOdometerController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               style: TextStyle(
                 color: isDark ? Colors.white : Colors.black,
                 fontSize: 15,

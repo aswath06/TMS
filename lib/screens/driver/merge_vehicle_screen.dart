@@ -884,7 +884,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
                 isDark: isDark,
                 accentColor: primaryBlue,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               ),
 
               const SizedBox(height: 24),

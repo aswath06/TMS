@@ -1116,6 +1116,9 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
               builder: (context) => DailyBusRunDetailsPage(runData: run),
             ),
           );
+          if (context.mounted) {
+            ref.read(dailyRoutinesStoreProvider).fetchDailyRoutines(isRefresh: true);
+          }
         }
       },
       child: Container(
@@ -1279,6 +1282,9 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
               builder: (context) => DailyBusRunDetailsPage(runData: run),
             ),
           );
+          if (context.mounted) {
+            ref.read(dailyRoutinesStoreProvider).fetchDailyRoutines(isRefresh: true);
+          }
         }
       },
       child: Container(

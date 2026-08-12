@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:tripzo/utils/api_constants.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import 'package:tripzo/store/user_store.dart';
 
@@ -477,14 +478,38 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           ),
 
         ],
-
       ),
-
     );
-
   }
 
+  IO.Socket? _socket;
 
+  String? currentBusLocationStopId;
+
+  void _initSocket() {
+    try {
+      final baseUrl = ApiConstants.baseUrl.replaceAll(RegExp(r'/api$'), '');
+      _socket = IO.io(baseUrl, IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .setPath('/tms-socket/')
+          .build());
+      _socket?.connect();
+      _socket?.onConnect((_) {
+        debugPrint('WebSocket connected for timeline bus location');
+      });
+      _socket?.on('bus_location_update', (data) {
+        if (data != null && data['runId']?.toString() == _run['id']?.toString()) {
+          if (mounted) {
+            setState(() {
+              currentBusLocationStopId = data['currentBusLocationStopId']?.toString();
+            });
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error initializing websocket: $e');
+    }
+  }
 
   @override
 
@@ -495,6 +520,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     _run = widget.runData;
 
     _localAttendanceConfirmed = false;
+    currentBusLocationStopId = _run['current_bus_location_stop_id']?.toString();
+    _initSocket();
 
     _studentSearchController.addListener(() {
 
@@ -597,6 +624,8 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   @override
 
   void dispose() {
+    _socket?.disconnect();
+    _socket?.dispose();
 
     _studentSearchController.dispose();
 
@@ -693,6 +722,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
           if (mounted) {
             setState(() {
               _run = freshRun;
+              if (freshRun['current_bus_location_stop_id'] != null) {
+                currentBusLocationStopId = freshRun['current_bus_location_stop_id']?.toString();
+              }
               _localAttendanceConfirmed = false;
             });
           }
@@ -6218,9 +6250,11 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         int facultyCount = 0;
         int nonTeachingCount = 0;
         int internCount = 0;
+        
+        final stopIdStr = (stop['stop_id'] ?? stop['id'])?.toString();
+        final bool isCurrentBusLocation = !isEveningTrip && stopIdStr != null && stopIdStr == currentBusLocationStopId;
 
         if (isSuperOrTransportAdmin || isAssignedFaculty) {
-          final stopIdStr = (stop['stop_id'] ?? stop['id'])?.toString();
           if (stopIdStr != null) {
             void checkStop(List list, void Function() increment) {
               for (var p in list) {
@@ -6247,25 +6281,25 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
               Column(
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: isCurrentBusLocation ? 32 : 28,
+                    height: isCurrentBusLocation ? 32 : 28,
                     decoration: BoxDecoration(
-                      color: isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue),
+                      color: isCurrentBusLocation ? Colors.orange : (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: Colors.white, width: isCurrentBusLocation ? 3 : 2),
                       boxShadow: [
                         BoxShadow(
-                          color: (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue)).withOpacity( 0.3),
-                          blurRadius: 6,
+                          color: (isCurrentBusLocation ? Colors.orange : (isFirst ? const Color(0xFF10B981) : (isLast ? const Color(0xFFEF4444) : primaryBlue))).withOpacity( 0.3),
+                          blurRadius: isCurrentBusLocation ? 10 : 6,
                           offset: const Offset(0, 3),
                         ),
                       ],
                     ),
                     child: Center(
                       child: Icon(
-                        isFirst ? Icons.home_rounded : (isLast ? Icons.flag_rounded : Icons.location_on_rounded),
+                        isCurrentBusLocation ? Icons.directions_bus_rounded : (isFirst ? Icons.home_rounded : (isLast ? Icons.flag_rounded : Icons.location_on_rounded)),
                         color: Colors.white,
-                        size: 14,
+                        size: isCurrentBusLocation ? 16 : 14,
                       ),
                     ),
                   ),
@@ -12702,15 +12736,19 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
     final bool showQrCodeButton = (isSuperOrTransportAdmin || isAssignedFaculty) &&
 
-        (s == 'STARTED' ||
-
-         s == 'ARRIVED_CAMPUS' ||
+        (s == 'ARRIVED_CAMPUS' ||
 
          s == 'FN_COMPLETED' ||
 
          s == 'AN_STARTED' ||
 
          s == 'DEPARTED_CAMPUS');
+
+
+
+    final bool showTimerButton = (isSuperOrTransportAdmin || isAssignedFaculty) &&
+
+        (s == 'PLANNED' || s == 'READY' || s == 'STARTED');
 
 
 
@@ -13584,6 +13622,14 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                                       children: [
 
+                                        if (showTimerButton) ...[
+                                          GestureDetector(
+                                            onTap: _showMorningAttendanceTimeBottomSheet,
+                                            child: Icon(Icons.access_time_filled_rounded, color: primaryBlue, size: 24),
+                                          ),
+                                          const SizedBox(width: 16),
+                                        ],
+
                                         if (showQrCodeButton) ...[
 
                                           GestureDetector(
@@ -14181,6 +14227,136 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
   }
 
 
+
+  Future<void> _showMorningAttendanceTimeBottomSheet() async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color primaryBlue = const Color(0xFF6366F1);
+
+    int currentMinutes = _run['morning_attendance_window_minutes'] ?? 15;
+    TextEditingController minutesController = TextEditingController(text: currentMinutes.toString());
+    bool isSubmitting = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5)),
+                  ],
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+                    const SizedBox(height: 20),
+                    Text(
+                      "Morning Attendance Time",
+                      style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: titleColor),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Set the allowed time window (in minutes) for morning attendance.",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(fontSize: 14, color: subColor),
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: minutesController,
+                      keyboardType: TextInputType.number,
+                      style: GoogleFonts.outfit(color: titleColor, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: "Minutes",
+                        labelStyle: GoogleFonts.outfit(color: subColor),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryBlue, width: 2)),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final val = int.tryParse(minutesController.text.trim());
+                                if (val == null || val <= 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter a valid number of minutes.")));
+                                  return;
+                                }
+                                setModalState(() { isSubmitting = true; });
+                                try {
+                                  final token = await UserStore.getToken();
+                                  final url = '${ApiConstants.baseUrl}/daily-bus/update-runs/${_run['id']}';
+                                  final reqBody = json.encode({
+                                    'morning_attendance_window_minutes': val,
+                                  });
+                                  final headers = {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'TMS $token'
+                                  };
+
+                                  debugPrint('--- API REQUEST CURL ---');
+                                  debugPrint("curl -X PUT '$url' -H 'Content-Type: application/json' -H 'Authorization: ${headers['Authorization']}' -d '$reqBody'");
+
+                                  final response = await http.put(
+                                    Uri.parse(url),
+                                    headers: headers,
+                                    body: reqBody,
+                                  );
+
+                                  debugPrint('--- API RESPONSE ---');
+                                  debugPrint('Status Code: ${response.statusCode}');
+                                  debugPrint('Body: ${response.body}');
+
+                                  final data = json.decode(response.body);
+                                  if (data['success'] == true) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Time updated successfully!")));
+                                    Navigator.pop(context);
+                                    _refreshDetails();
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['message'] ?? "Failed to update time")));
+                                  }
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("An error occurred. Please try again.")));
+                                } finally {
+                                  setModalState(() { isSubmitting = false; });
+                                }
+                              },
+                        child: isSubmitting
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Text("Submit", style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _showQrCodeBottomSheet() async {
 

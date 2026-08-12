@@ -485,8 +485,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                   ),
                   child: TextField(
                     controller: odometerController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

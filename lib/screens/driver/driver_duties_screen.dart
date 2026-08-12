@@ -38,6 +38,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       useDriverStore.fetchMissions();
       useDriverStore.fetchDailyBusRuns();
       useDriverStore.fetchRewardPoints();
+      useDriverStore.fetchTodayKm();
       useDriverStore.fetchPendingFuelEntries();
       useDriverStore.fetchActiveRoutesToComplete();
       useDriverStore.fetchPendingAllowanceCount();
@@ -170,6 +171,8 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
                         _buildHeader(profile?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver"), profile?['profile_photo'], titleColor, subColor, screenWidth, primaryBlue, isTamil),
                         const SizedBox(height: 32),
                         _buildStatCards(primaryBlue, surfaceColor, isDark, isTamil, profile, store),
+                        const SizedBox(height: 16),
+                        _buildKilometerCard(store, surfaceColor, isDark, isTamil),
                         const SizedBox(height: 36),
                         _buildActiveRoutesSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
                         _buildPendingFuelSection(store, titleColor, surfaceColor, primaryBlue, isDark, isTamil),
@@ -326,11 +329,13 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: subColor, letterSpacing: 0.5),
               ),
               const SizedBox(height: 4),
-              Text(
-                name,
-                style: TextStyle(fontSize: width * 0.07, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -0.5, height: 1.1),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  name,
+                  style: TextStyle(fontSize: width * 0.07, fontWeight: FontWeight.w900, color: titleColor, letterSpacing: -0.5, height: 1.1),
+                ),
               ),
             ],
           ),
@@ -401,6 +406,108 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
                 surface: surface,
                 isDark: isDark,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKilometerCard(DriverStore store, Color surface, bool isDark, bool isTamil) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+              : [Colors.white, const Color(0xFFF8FAFC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE2E8F0),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withOpacity(isDark ? 0.15 : 0.06),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF6366F1).withOpacity(0.15),
+                  const Color(0xFF8B5CF6).withOpacity(0.15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: const Icon(
+              Icons.speed_rounded,
+              color: Color(0xFF6366F1),
+              size: 36,
+            ),
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isTamil ? "இன்றைய கி.மீ" : "Today's Distance",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        store.todayTotalKm.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          "KM",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF6366F1),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],

@@ -182,6 +182,40 @@ class DriverStore extends ChangeNotifier {
   // Reward Points State
   int _totalPoints = 0;
   int get totalPoints => _totalPoints;
+
+  double _todayTotalKm = 0.0;
+  double get todayTotalKm => _todayTotalKm;
+
+  Future<void> fetchTodayKm() async {
+    try {
+      final token = await UserStore.getToken();
+      final userId = await UserStore.getUserId();
+      if (token == null || userId == null) return;
+
+      final url = "${ApiConstants.baseUrl}/api/drivers/driver-today-km/$userId";
+      
+      // --- DEBUG LOGGING ---
+      String curl = "curl --location '$url' \\\n";
+      ApiConstants.getHeaders(token).forEach((key, value) {
+        curl += "--header '$key: $value' \\\n";
+      });
+      debugPrint("================= API DEBUG (Today KM) =================");
+      debugPrint("CURL:\n$curl");
+      debugPrint("=========================================================");
+
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.getHeaders(token));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true) {
+          _todayTotalKm = double.tryParse(decoded['today_km'].toString()) ?? 0.0;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching today km: $e");
+    }
+  }
   List<Map<String, dynamic>> _rewardHistory = [];
   List<Map<String, dynamic>> get rewardHistory => _rewardHistory;
   bool _isLoadingRewards = false;

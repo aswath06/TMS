@@ -489,13 +489,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Hello, $name',
-                style: TextStyle(
-                  fontSize: width * 0.075,
-                  fontWeight: FontWeight.w900,
-                  color: titleColor,
-                  letterSpacing: -1.2,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Hello, $name',
+                  style: TextStyle(
+                    fontSize: width * 0.075,
+                    fontWeight: FontWeight.w900,
+                    color: titleColor,
+                    letterSpacing: -1.2,
+                  ),
                 ),
               ),
             ],
