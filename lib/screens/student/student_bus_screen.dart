@@ -9,6 +9,7 @@ import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/components/common/structural_loading.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class StudentBusScreen extends ConsumerStatefulWidget {
   const StudentBusScreen({super.key});
@@ -23,6 +24,9 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
   String? _error;
   String _selectedDateFilter = DateFormat('yyyy-MM-dd').format(DateTime.now()); // Default to today's date
   int? _userId;
+  String? _currentBusLocationStopId;
+  int _maxReachedIndex = -1;
+  IO.Socket? _socket;
 
   // Custom infinite horizontal scrolling calendar controller
   late ScrollController _dateScrollController;
@@ -75,15 +79,44 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToDate(_selectedDateFilter);
       _loadData();
+      _initSocket();
     });
   }
 
   @override
   void dispose() {
+    _socket?.disconnect();
+    _socket?.dispose();
     _dateScrollController.dispose();
     _jumpController.dispose();
     _jumpTimer?.cancel();
     super.dispose();
+  }
+
+  void _initSocket() {
+    try {
+      String baseUrl = ApiConstants.baseUrl;
+      if (baseUrl.endsWith('/api/v1')) {
+        baseUrl = baseUrl.substring(0, baseUrl.length - 7);
+      }
+      _socket = IO.io(baseUrl, IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .setPath('/tms-socket/')
+          .build());
+      _socket?.connect();
+      _socket?.onConnect((_) {
+        debugPrint('WebSocket connected in student screen');
+      });
+      _socket?.on('bus_location_update', (data) {
+        if (mounted) {
+          setState(() {
+            _currentBusLocationStopId = data['currentBusLocationStopId']?.toString();
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error init websocket: $e');
+    }
   }
 
   void _scrollToDate(String dateStr) {
@@ -364,11 +397,14 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
     Color titleColor,
     Color sub,
     bool isPast,
-    bool isCompleted,
-  ) {
-    final Color dotColor = isCompleted
-        ? const Color(0xFF10B981)
-        : (isPast ? blue : const Color(0xFF94A3B8));
+    bool isCompleted, [
+    bool isCurrentLocation = false,
+  ]) {
+    final Color dotColor = isCurrentLocation
+        ? Colors.orange
+        : (isCompleted
+            ? const Color(0xFF10B981)
+            : (isPast ? blue : const Color(0xFF94A3B8)));
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -376,13 +412,18 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
           Column(
             children: [
               Container(
-                width: 12,
-                height: 12,
+                width: isCurrentLocation ? 26 : 12,
+                height: isCurrentLocation ? 26 : 12,
                 decoration: BoxDecoration(
-                  color: dotColor.withValues(alpha: 0.15),
+                  color: isCurrentLocation ? Colors.orange : dotColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(color: dotColor, width: 2),
+                  border: Border.all(color: dotColor, width: isCurrentLocation ? 2 : 2),
                 ),
+                child: isCurrentLocation
+                    ? const Center(
+                        child: Icon(Icons.directions_bus_rounded, size: 14, color: Colors.white),
+                      )
+                    : null,
               ),
               if (!isLast)
                 Expanded(
@@ -390,7 +431,7 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                     width: 2,
                     color: isCompleted
                         ? const Color(0xFF10B981)
-                        : dotColor.withValues(alpha: 0.3),
+                        : (isCurrentLocation ? Colors.orange : dotColor.withValues(alpha: 0.3)),
                   ),
                 ),
             ],
@@ -775,8 +816,12 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
                       ),
                       const SizedBox(height: 16),
                       
-                      _buildSimpleTimelineRow(0, startLoc, false, const Color(0xFF6366F1), titleColor, subColor, true, status.toUpperCase() == 'COMPLETED'),
-                      _buildSimpleTimelineRow(1, haltLoc, true, const Color(0xFF6366F1), titleColor, subColor, status.toUpperCase() == 'COMPLETED', status.toUpperCase() == 'COMPLETED'),
+                      if ((run['runStops'] as List?)?.isNotEmpty ?? false)
+                        Column(children: _buildFullTimeline(run, titleColor, subColor, status))
+                      else ...[
+                        _buildSimpleTimelineRow(0, startLoc, false, const Color(0xFF6366F1), titleColor, subColor, true, status.toUpperCase() == 'COMPLETED'),
+                        _buildSimpleTimelineRow(1, haltLoc, true, const Color(0xFF6366F1), titleColor, subColor, status.toUpperCase() == 'COMPLETED', status.toUpperCase() == 'COMPLETED'),
+                      ],
                     ],
                   ),
                 ),
@@ -787,6 +832,67 @@ class _StudentBusScreenState extends ConsumerState<StudentBusScreen> with Single
         childCount: _runs.length,
       ),
     );
+  }
+
+  List<Widget> _buildFullTimeline(Map<String, dynamic> run, Color titleColor, Color subColor, String status) {
+    List<dynamic> stops = run['runStops'] ?? [];
+    if (stops.isEmpty) return [];
+    
+    bool isEvening = run['shift_code'] == 'EVENING';
+    if (isEvening) {
+      stops = List.from(stops.reversed);
+    }
+
+    List<Widget> rows = [];
+    int currentStopIdx = -1;
+    
+    if (_currentBusLocationStopId != null) {
+      int incomingIdx = stops.indexWhere((s) => s['id']?.toString() == _currentBusLocationStopId || s['stop_id']?.toString() == _currentBusLocationStopId);
+      if (incomingIdx > _maxReachedIndex) {
+        _maxReachedIndex = incomingIdx;
+      }
+      currentStopIdx = _maxReachedIndex;
+    }
+    
+    bool allCompleted = status.toUpperCase() == 'COMPLETED' || (isEvening && ['FN_COMPLETED'].contains(status.toUpperCase()));
+
+    for (int i = 0; i < stops.length; i++) {
+      var s = stops[i];
+      bool isLast = i == stops.length - 1;
+      
+      bool isPast = allCompleted;
+      bool isCompleted = allCompleted;
+      bool isCurrentLocation = false;
+      
+      if (!allCompleted) {
+        if (currentStopIdx != -1) {
+          if (i < currentStopIdx) {
+            isPast = true;
+            isCompleted = true;
+          } else if (i == currentStopIdx) {
+            isCurrentLocation = true;
+            isPast = true;
+          }
+        } else {
+           if (i == 0 && (status == 'STARTED' || status == 'AN_STARTED')) {
+              isPast = true;
+           }
+        }
+      }
+
+      rows.add(_buildSimpleTimelineRow(
+        i,
+        s['stop_name'] ?? 'Stop',
+        isLast,
+        const Color(0xFF6366F1),
+        titleColor,
+        subColor,
+        isPast,
+        isCompleted,
+        isCurrentLocation
+      ));
+    }
+    return rows;
   }
 
   Future<void> _loadRunDetailsAndNavigate(Map<String, dynamic> run) async {

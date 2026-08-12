@@ -1037,11 +1037,14 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
     Color titleColor,
     Color sub,
     bool isPast,
-    bool isCompleted,
-  ) {
-    final Color dotColor = isCompleted
-        ? const Color(0xFF10B981)
-        : (isPast ? blue : const Color(0xFF94A3B8));
+    bool isCompleted, [
+    bool isCurrentLocation = false,
+  ]) {
+    final Color dotColor = isCurrentLocation
+        ? Colors.orange
+        : (isCompleted
+            ? const Color(0xFF10B981)
+            : (isPast ? blue : const Color(0xFF94A3B8)));
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1049,13 +1052,18 @@ class _StudentDashboardScreenState extends ConsumerState<StudentDashboardScreen>
           Column(
             children: [
               Container(
-                width: 12,
-                height: 12,
+                width: isCurrentLocation ? 26 : 12,
+                height: isCurrentLocation ? 26 : 12,
                 decoration: BoxDecoration(
-                  color: dotColor.withValues(alpha: 0.15),
+                  color: isCurrentLocation ? Colors.orange : dotColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(color: dotColor, width: 2),
+                  border: Border.all(color: dotColor, width: isCurrentLocation ? 2 : 2),
                 ),
+                child: isCurrentLocation
+                    ? const Center(
+                        child: Icon(Icons.directions_bus_rounded, size: 14, color: Colors.white),
+                      )
+                    : null,
               ),
               if (!isLast)
                 Expanded(
