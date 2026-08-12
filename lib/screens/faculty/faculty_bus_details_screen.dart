@@ -670,6 +670,287 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
     );
   }
 
+  void _showUnblockStudentModal({
+    required int targetUserId,
+    required String studentName,
+    required String rollNo,
+    required String dept,
+    required String blockReason,
+    dynamic runId,
+    dynamic routeId,
+  }) {
+    final TextEditingController reasonController = TextEditingController();
+    bool isSubmitting = false;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color primaryBlue = const Color(0xFF6366F1);
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Dialog(
+              backgroundColor: bgColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.lock_open_rounded, color: Colors.red, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Unblock Student",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                "Assigned Faculty Access",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: subTextColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, color: subTextColor),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            studentName,
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Roll: $rollNo • $dept",
+                            style: TextStyle(fontSize: 12, color: subTextColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, size: 14, color: Colors.amber),
+                              SizedBox(width: 6),
+                              Text(
+                                "Reason for Block",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            blockReason.isNotEmpty ? blockReason : "Blocked due to policy or manual action",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: textColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Reason for Unblocking *",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: reasonController,
+                      maxLines: 2,
+                      style: TextStyle(color: textColor, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: "Enter the reason for unblocking this student...",
+                        hintStyle: TextStyle(color: subTextColor, fontSize: 13),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        contentPadding: const EdgeInsets.all(12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: subTextColor.withOpacity(0.3)),
+                            ),
+                            child: Text("Cancel", style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () async {
+                                    final reason = reasonController.text.trim();
+                                    if (reason.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Please enter a reason for unblocking"), backgroundColor: Colors.orange),
+                                      );
+                                      return;
+                                    }
+                                    setModalState(() {
+                                      isSubmitting = true;
+                                    });
+                                    try {
+                                      final token = await UserStore.getToken();
+                                      if (token == null) return;
+
+                                      String url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/assigned-faculty/unblock-student";
+                                      final headers = ApiConstants.getHeaders(token);
+                                      final bodyMap = {
+                                        "student_id": targetUserId,
+                                        "unblock_reason": reason,
+                                        "run_id": runId,
+                                        "route_id": routeId,
+                                      };
+                                      final bodyJson = json.encode(bodyMap);
+
+                                      var curlCmd = "curl -X POST '$url' \\\n"
+                                          "  -H 'Authorization: Bearer $token' \\\n"
+                                          "  -H 'Content-Type: application/json' \\\n"
+                                          "  -d '$bodyJson'";
+
+                                      debugPrint("\n=================== UNBLOCK REQUEST cURL ===================");
+                                      debugPrint(curlCmd);
+                                      debugPrint("============================================================\n");
+
+                                      var response = await http.post(
+                                        Uri.parse(url),
+                                        headers: headers,
+                                        body: bodyJson,
+                                      );
+
+                                      debugPrint("\n=================== UNBLOCK RESPONSE ===================");
+                                      debugPrint("Status Code: ${response.statusCode}");
+                                      debugPrint("Response Body: ${response.body}");
+                                      debugPrint("========================================================\n");
+
+                                      final data = json.decode(response.body);
+                                      if (response.statusCode == 200 && data['success'] == true) {
+                                        if (mounted) {
+                                          Navigator.pop(ctx);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Student unblocked successfully!"), backgroundColor: Colors.green),
+                                          );
+                                          _fetchDetails();
+                                        }
+                                      } else {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(data['message'] ?? data['msg'] ?? data['error'] ?? "Failed to unblock student"), backgroundColor: Colors.red),
+                                          );
+                                        }
+                                      }
+                                    } catch (e) {
+                                      debugPrint("UNBLOCK ERROR: $e");
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Error connecting to server: $e"), backgroundColor: Colors.red),
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setModalState(() {
+                                          isSubmitting = false;
+                                        });
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Text("Unblock Student", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildStudentsView(List<dynamic> list, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
     if (list.isEmpty) {
       return Center(
@@ -679,6 +960,9 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
         ),
       );
     }
+    final runData = _detailData ?? {};
+    final runRouteId = runData['daily_bus_route_id'] ?? runData['route_id'] ?? runData['dailyBusRoute']?['id'];
+
     return ListView.builder(
       padding: const EdgeInsets.only(top: 16, bottom: 80),
       physics: const BouncingScrollPhysics(),
@@ -694,54 +978,105 @@ class _FacultyBusDetailsScreenState extends ConsumerState<FacultyBusDetailsScree
         final dept = student?['department']?.toString() ?? 'N/A';
         final boardingStopName = boardingStop?['stop_name']?.toString() ?? 'N/A';
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: primaryBlue.withValues(alpha: 0.08),
-                child: Icon(Icons.school_rounded, color: primaryBlue, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: titleColor)),
-                    const SizedBox(height: 2),
-                    Text("$rollNo • $dept", style: TextStyle(fontSize: 12, color: subColor)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_rounded, size: 12, color: subColor),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            "Boarding: $boardingStopName",
-                            style: TextStyle(fontSize: 12, color: subColor),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+        final String userStatus = user?['status']?.toString().toUpperCase() ?? 'ACTIVE';
+        final bool isBlocked = userStatus == 'BLOCKED';
+
+        final int? targetUserId = student?['user_id'] ?? user?['id'] as int?;
+        final studentRouteId = item['daily_bus_route_id'] ?? student?['daily_bus_route_id'];
+        final bool isMappedToSameRoute = (studentRouteId == null || runRouteId == null || studentRouteId.toString() == runRouteId.toString());
+
+        return GestureDetector(
+          onTap: isBlocked ? () {
+            if (!isMappedToSameRoute) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("You can only unblock students mapped to your assigned bus route."), backgroundColor: Colors.red),
+              );
+              return;
+            }
+            if (targetUserId != null) {
+              final String blockReasonStr = (item['block_reason'] ?? user?['block_reason'] ?? student?['block_reason'] ?? "").toString();
+              _showUnblockStudentModal(
+                targetUserId: targetUserId,
+                studentName: name,
+                rollNo: rollNo,
+                dept: dept,
+                blockReason: blockReasonStr.isNotEmpty ? blockReasonStr : "Auto-blocked due to violation or policy",
+                runId: widget.runId,
+                routeId: runRouteId,
+              );
+            }
+          } : null,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: isBlocked ? Border.all(color: Colors.red.withOpacity(0.4), width: 1.5) : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: isBlocked ? Colors.red.withValues(alpha: 0.1) : primaryBlue.withValues(alpha: 0.08),
+                  child: Icon(isBlocked ? Icons.lock_rounded : Icons.school_rounded, color: isBlocked ? Colors.red : primaryBlue, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: titleColor)),
+                          ),
+                          if (isBlocked) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                              ),
+                              child: const Text(
+                                "BLOCKED - TAP TO UNBLOCK",
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text("$rollNo • $dept", style: TextStyle(fontSize: 12, color: subColor)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_rounded, size: 12, color: subColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              "Boarding: $boardingStopName",
+                              style: TextStyle(fontSize: 12, color: subColor),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
