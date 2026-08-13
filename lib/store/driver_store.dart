@@ -670,6 +670,112 @@ class DriverStore extends ChangeNotifier {
     return null;
   }
 
+  Map<String, dynamic> _asMap(dynamic item) {
+    if (item == null) return {};
+    if (item is Map<String, dynamic>) return item;
+    if (item is Map) {
+      return item.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return {};
+  }
+
+  Future<Map<String, dynamic>?> fetchDriverDashboard(int userId) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return null;
+
+      final url = "${ApiConstants.baseUrl}/api/drivers/driver-dashboard/$userId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          return _asMap(decoded['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching driver dashboard data: $e");
+    }
+    return null;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDriverVehicleHistory(int userId) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return [];
+
+      final url = "${ApiConstants.baseUrl}/api/drivers/driver-vehicles?user_id=$userId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          final List rawList = decoded['data'] is List ? decoded['data'] : [];
+          return rawList.map((item) => _asMap(item)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching driver vehicle history: $e");
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDriverLeaveHistory(int userId) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return [];
+
+      final url = "${ApiConstants.baseUrl}/api/leaves/get-all?user_id=$userId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          final List rawList = decoded['data'] is List ? decoded['data'] : [];
+          return rawList.map((item) => _asMap(item)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching driver leave history: $e");
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDriverWeeklyKm(int userId, String weekStartDate) async {
+    try {
+      final token = await UserStore.getToken();
+      if (token == null) return [];
+
+      final url = "${ApiConstants.baseUrl}/api/drivers/driver-weekly-km/$userId?week_start_date=$weekStartDate";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          final List rawList = decoded['data'] is List ? decoded['data'] : [];
+          return rawList.map((item) => _asMap(item)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching driver weekly km: $e");
+    }
+    return [];
+  }
+
+
+
   Future<Map<String, dynamic>?> checkLicense({
     required String driverName,
     required String frontPath,
