@@ -117,6 +117,10 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     // Fetch Daily Bus Routes for the selected date
     final dailyStore = ref.read(dailyRoutinesStoreProvider);
     await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
+
+    if (!mounted) return;
+    // Fetch API Driver Tasks
+    await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
   }
 
   @override
@@ -258,6 +262,27 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                       ),
                     ),
                   ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedToggleIndex = 3),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _selectedToggleIndex == 3 ? primaryBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isTamil ? "பணிகள்" : "Tasks",
+                          style: TextStyle(
+                            color: _selectedToggleIndex == 3 ? Colors.white : subColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -325,11 +350,13 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
 
           // Main List
           Expanded(
-            child: _selectedToggleIndex == 2
-                ? _buildScheduleList()
-                : (_selectedToggleIndex == 1
-                    ? _buildDailyBusRoutesList()
-                    : _buildRouteList()),
+            child: _selectedToggleIndex == 3
+                ? _buildTaskList()
+                : (_selectedToggleIndex == 2
+                    ? _buildScheduleList()
+                    : (_selectedToggleIndex == 1
+                        ? _buildDailyBusRoutesList()
+                        : _buildRouteList())),
           ),
         ],
       ),
@@ -1606,5 +1633,348 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     } catch (_) {
       return timeStr;
     }
+  }
+
+  Widget _buildTaskList() {
+    final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+    final driverStore = ref.watch(driverStoreProvider);
+    final isTamil = LanguageStore.isTamil;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    final query = driverStore.searchQuery.toLowerCase().trim();
+    final List<Map<String, dynamic>> tasksList = [];
+
+    // 1. Schedules as tasks
+    for (var s in scheduleStore.startedSchedules) {
+      tasksList.add({
+        'type': 'SCHEDULE',
+        'title': s['dutyShift']?['masterDuty']?['category']?['category_name'] ?? (isTamil ? 'கடமைப் பணி' : 'Duty Task'),
+        'subtitle': s['dutyShift']?['shift_name'] ?? 'Shift Task',
+        'status': s['dutyShift']?['status'] ?? 'STARTED',
+        'date': s['dutyShift']?['masterDuty']?['duty_date'] ?? '',
+        'raw': s,
+      });
+    }
+    for (var s in scheduleStore.todaySchedules) {
+      if (!tasksList.any((t) => t['type'] == 'SCHEDULE' && t['raw']['id'] == s['id'])) {
+        tasksList.add({
+          'type': 'SCHEDULE',
+          'title': s['dutyShift']?['masterDuty']?['category']?['category_name'] ?? (isTamil ? 'கடமைப் பணி' : 'Duty Task'),
+          'subtitle': s['dutyShift']?['shift_name'] ?? 'Shift Task',
+          'status': s['dutyShift']?['status'] ?? 'PLANNED',
+          'date': s['dutyShift']?['masterDuty']?['duty_date'] ?? '',
+          'raw': s,
+        });
+      }
+    }
+    for (var s in scheduleStore.schedules) {
+      if (!tasksList.any((t) => t['type'] == 'SCHEDULE' && t['raw']['id'] == s['id'])) {
+        tasksList.add({
+          'type': 'SCHEDULE',
+          'title': s['dutyShift']?['masterDuty']?['category']?['category_name'] ?? (isTamil ? 'கடமைப் பணி' : 'Duty Task'),
+          'subtitle': s['dutyShift']?['shift_name'] ?? 'Shift Task',
+          'status': s['dutyShift']?['status'] ?? 'PLANNED',
+          'date': s['dutyShift']?['masterDuty']?['duty_date'] ?? '',
+          'raw': s,
+        });
+      }
+    }
+
+    // 2. Missions as tasks
+    for (var m in driverStore.missions) {
+      final dtStr = m['start_datetime'] ?? '';
+      String dateStr = '';
+      if (dtStr.isNotEmpty) {
+        try {
+          dateStr = DateFormat('yyyy-MM-dd').format(DateTime.parse(dtStr).toLocal());
+        } catch (_) {}
+      }
+      tasksList.add({
+        'type': 'MISSION',
+        'title': m['title'] ?? (isTamil ? 'பயணப் பணி' : 'Mission Task'),
+        'subtitle': m['destination'] ?? m['purpose'] ?? '',
+        'status': (m['status'] ?? 'PLANNED').toString().toUpperCase(),
+        'date': dateStr,
+        'raw': m,
+      });
+    }
+
+    // 3. Daily bus runs as tasks
+    for (var run in driverStore.dailyBusRuns) {
+      final status = run['status'] ?? 'PLANNED';
+      final runTitle = run['bus_number'] != null ? "Bus ${run['bus_number']} Task" : (isTamil ? "பேருந்து பணி" : "Daily Bus Task");
+      tasksList.add({
+        'type': 'BUS_RUN',
+        'title': runTitle,
+        'subtitle': "${run['start_location_name'] ?? ''} -> ${run['halt_location_name'] ?? ''}",
+        'status': status.toString().toUpperCase(),
+        'date': run['duty_date'] ?? '',
+        'raw': run,
+      });
+    }
+
+    // 4. API Driver Tasks (/api/driver-task/get-all)
+    final driverTaskStore = ref.watch(driverTaskStoreProvider);
+    for (var task in driverTaskStore.tasks) {
+      final startsAt = task['starts_at'] ?? '';
+      String dateStr = '';
+      if (startsAt.isNotEmpty) {
+        try {
+          dateStr = DateFormat('yyyy-MM-dd').format(DateTime.parse(startsAt).toLocal());
+        } catch (_) {}
+      }
+      tasksList.add({
+        'type': 'API_TASK',
+        'title': task['title'] ?? (isTamil ? 'ஓட்டுநர் பணி' : 'Driver Task'),
+        'subtitle': task['description'] ?? task['location_name'] ?? '',
+        'status': (task['status'] ?? 'ASSIGNED').toString().toUpperCase(),
+        'date': dateStr,
+        'raw': task,
+      });
+    }
+
+    // Filter by selected date
+    List<Map<String, dynamic>> filteredList = tasksList.where((t) {
+      if (_selectedDateFilter != 'ALL' && t['date'].isNotEmpty) {
+        if (t['date'] != _selectedDateFilter) return false;
+      }
+      if (query.isNotEmpty) {
+        final title = (t['title'] ?? '').toString().toLowerCase();
+        final sub = (t['subtitle'] ?? '').toString().toLowerCase();
+        final status = (t['status'] ?? '').toString().toLowerCase();
+        return title.contains(query) || sub.contains(query) || status.contains(query);
+      }
+      return true;
+    }).toList();
+
+    if (scheduleStore.isLoading && filteredList.isEmpty) {
+      return _buildSkeletonList(isDark, cardColor);
+    }
+
+    if (filteredList.isEmpty) {
+      return _buildScheduleEmptyState(isSearch: query.isNotEmpty);
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _fetchDataForSelectedDate();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        itemCount: filteredList.length,
+        itemBuilder: (context, index) {
+          final task = filteredList[index];
+          return _buildTaskCard(
+            context: context,
+            task: task,
+            cardColor: cardColor,
+            titleColor: titleColor,
+            subColor: subColor,
+            primaryBlue: primaryBlue,
+            isDark: isDark,
+            isTamil: isTamil,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTaskCard({
+    required BuildContext context,
+    required Map<String, dynamic> task,
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required Color primaryBlue,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final String type = task['type'] ?? 'TASK';
+    final String title = task['title'] ?? 'Task';
+    final String subtitle = task['subtitle'] ?? '';
+    final String status = task['status'] ?? 'PLANNED';
+    final Map<String, dynamic> raw = task['raw'] ?? {};
+
+    IconData typeIcon = Icons.task_alt_rounded;
+    Color iconColor = const Color(0xFF8B5CF6);
+    if (type == 'MISSION') {
+      typeIcon = Icons.explore_rounded;
+      iconColor = const Color(0xFF6366F1);
+    } else if (type == 'BUS_RUN') {
+      typeIcon = Icons.directions_bus_rounded;
+      iconColor = const Color(0xFF3B82F6);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (type == 'SCHEDULE' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScheduleDetailsPage(scheduleId: raw['id']),
+            ),
+          );
+        } else if (type == 'MISSION' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MissionDetailsScreen(
+                missionTitle: raw['title'] ?? 'Mission Task',
+                time: raw['start_datetime'] ?? 'TBD',
+                driverName: "Driver",
+                driverPhone: "",
+                vehicleInfo: raw['vehicle_number'] ?? 'Vehicle',
+                capacity: "N/A",
+                passengerCount: "0",
+                pathType: raw['travel_type'] ?? "One-Way",
+                stops: [
+                  {'location': raw['start_location_name'] ?? 'Start', 'eta': 'Start'},
+                  {'location': raw['halt_location_name'] ?? 'End', 'eta': 'End'},
+                ],
+                status: (raw['status'] ?? 'PLANNED').toString(),
+                statusColor: Colors.indigo,
+                requestId: raw['id'].toString(),
+                rawStatus: 0,
+              ),
+            ),
+          );
+        } else if (type == 'BUS_RUN' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DailyBusRunDetailsPage(runData: raw),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(typeIcon, color: iconColor, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: titleColor,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: subColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: status == 'STARTED' || status == 'ONGOING' || status == 'IN_PROGRESS'
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : (status == 'COMPLETED' || status == 'VERIFIED' ? Colors.grey.withValues(alpha: 0.12) : primaryBlue.withValues(alpha: 0.12)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: status == 'STARTED' || status == 'ONGOING' || status == 'IN_PROGRESS'
+                          ? const Color(0xFF10B981)
+                          : (status == 'COMPLETED' || status == 'VERIFIED' ? Colors.grey : primaryBlue),
+                    ),
+                  ),
+                ),
+                if (type == 'API_TASK' && raw['id'] != null) ...[
+                  const SizedBox(height: 8),
+                  if (status == 'ASSIGNED' || status == 'PLANNED')
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        minimumSize: const Size(60, 30),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () async {
+                        final success = await ref.read(driverTaskStoreProvider).startTask(raw['id']);
+                        if (context.mounted && success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Task started!")),
+                          );
+                        }
+                      },
+                      child: const Text("Start", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                    )
+                  else if (status == 'STARTED' || status == 'IN_PROGRESS')
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        minimumSize: const Size(60, 30),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () async {
+                        final success = await ref.read(driverTaskStoreProvider).completeTask(raw['id']);
+                        if (context.mounted && success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Task completed!")),
+                          );
+                        }
+                      },
+                      child: const Text("Complete", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

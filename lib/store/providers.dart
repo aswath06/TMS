@@ -17,6 +17,7 @@ import 'package:tripzo/services/notification_firebase_service.dart';
 import 'package:tripzo/store/expiration_store.dart';
 import 'package:tripzo/store/daily_routines_store.dart';
 import 'package:tripzo/store/driver_schedules_store.dart';
+import 'package:tripzo/store/driver_task_store.dart';
 
 /// ExpirationStore Provider
 final expirationStoreProvider = ChangeNotifierProvider<ExpirationStore>((ref) {
@@ -94,4 +95,9 @@ final attendanceDashboardStoreProvider = ChangeNotifierProvider<AttendanceDashbo
 /// SecurityBusStore Provider
 final securityBusStoreProvider = ChangeNotifierProvider<SecurityBusStore>((ref) {
   return SecurityBusStore();
+});
+
+/// DriverTaskStore Provider
+final driverTaskStoreProvider = ChangeNotifierProvider<DriverTaskStore>((ref) {
+  return DriverTaskStore();
 });
