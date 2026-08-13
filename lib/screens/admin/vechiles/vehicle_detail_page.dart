@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/admin/vechiles/admin_vehicle_form_screen.dart';
+import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
@@ -13,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io' as io;
 import 'package:open_filex/open_filex.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
+
 
 class VehicleDetailScreen extends StatefulWidget {
   final dynamic vehicleId;
@@ -29,6 +31,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
   Map<String, dynamic>? _vehicleData;
   String? _errorMessage;
   late AnimationController _contentController;
+
+  // Active Tab: 'details' | 'maintenance' | 'fuel' | 'incident' | 'routes'
+  String _activeTab = 'details';
+
+  Map<String, dynamic> _asMap(dynamic item) {
+    if (item == null) return {};
+    if (item is Map<String, dynamic>) return item;
+    if (item is Map) {
+      return item.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return {};
+  }
 
   @override
   void initState() {
@@ -60,23 +74,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         headers: ApiConstants.getHeaders(token),
       );
 
-      // --- DEBUG LOGGING ---
-      String curl = "curl --location '$url' \\\n";
-      ApiConstants.getHeaders(token).forEach((key, value) {
-        curl += "--header '$key: $value' \\\n";
-      });
-      debugPrint("================= API DEBUG =================");
-      debugPrint("CURL:\n$curl");
-      debugPrint(ApiErrorParser.parse(response, fallback: "RESPONSE STATUS"));
-      debugPrint("RESPONSE BODY: ${response.body}");
-      debugPrint("===========================================");
-      // ---------------------
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           setState(() {
-            _vehicleData = data['data'];
+            _vehicleData = _asMap(data['data']);
             _isLoading = false;
           });
           _contentController.forward();
@@ -100,15 +102,65 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     }
   }
 
+  int? _getDaysUntil(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return null;
+    try {
+      final date = DateTime.parse(dateStr);
+      final diff = date.difference(DateTime.now()).inDays;
+      return diff;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _getVehicleAge(String? regDateStr, String? createdAtStr) {
+    final dateStr = (regDateStr != null && regDateStr.isNotEmpty) ? regDateStr : createdAtStr;
+    if (dateStr == null || dateStr.isEmpty) return "N/A";
+    try {
+      final registered = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      int years = now.year - registered.year;
+      int months = now.month - registered.month;
+      if (months < 0 || (months == 0 && now.day < registered.day)) {
+        years--;
+        months += 12;
+      }
+      if (now.day < registered.day && months > 0) {
+        months--;
+      }
+      final finalYears = years < 0 ? 0 : years;
+      final finalMonths = months < 0 ? 0 : months;
+      return "$finalYears yr $finalMonths mo";
+    } catch (_) {
+      return "N/A";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFF1F5F9);
+    final Color bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
     final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final Color primaryBlue = const Color(0xFF6366F1);
     final Color titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
+    final Color subTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    final veh = _asMap(_vehicleData?['vehicleData']);
+    final defaultDriver = _asMap(_vehicleData?['defaultDriver']);
+    final summary = _asMap(_vehicleData?['summary']);
+
+    // Document Alerts
+    final insuranceDays = _getDaysUntil(veh['insurance_expiry_date']);
+    final pollutionDays = _getDaysUntil(veh['pollution_expiry_date']);
+    final fcDays = _getDaysUntil(veh['fc_expiry_date']);
+    final rcDays = _getDaysUntil(veh['rc_expiry_date']);
+
+    final docAlerts = [
+      if (insuranceDays != null && insuranceDays <= 10) {'label': 'Insurance', 'days': insuranceDays},
+      if (pollutionDays != null && pollutionDays <= 10) {'label': 'Pollution (PUC)', 'days': pollutionDays},
+      if (fcDays != null && fcDays <= 10) {'label': 'Fitness Certificate (FC)', 'days': fcDays},
+      if (rcDays != null && rcDays <= 10) {'label': 'Registration Certificate (RC)', 'days': rcDays},
+    ];
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -116,21 +168,25 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: titleColor),
+          icon: Icon(Icons.arrow_back_ios_new, color: titleColor, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Vehicle Details",
-          style: TextStyle(color: titleColor, fontWeight: FontWeight.bold),
+          "Vehicle Dashboard",
+          style: TextStyle(color: titleColor, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         actions: [
-
+          IconButton(
+            icon: Icon(Icons.refresh, color: primaryBlue),
+            tooltip: 'Refresh',
+            onPressed: _fetchVehicleDetails,
+          ),
           if (_vehicleData != null) ...[
             IconButton(
-              icon: const Icon(Icons.settings_backup_restore_rounded, color: Colors.red),
-              tooltip: 'Reset Odometer',
-              onPressed: _showResetOdometerDialog,
+              icon: Icon(Icons.qr_code_2_rounded, color: primaryBlue),
+              tooltip: 'Vehicle QR Code',
+              onPressed: () => _showQrDialog(context, isDark, primaryBlue),
             ),
             IconButton(
               icon: Icon(Icons.edit_rounded, color: primaryBlue),
@@ -140,7 +196,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                   context,
                   MaterialPageRoute(
                     builder: (context) => AdminVehicleFormScreen(
-                      vehicleData: _vehicleData!['vehicleData'],
+                      vehicleData: veh,
                     ),
                   ),
                 );
@@ -157,405 +213,968 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
           ? _buildShimmerLoading(isDark, bgColor)
           : _errorMessage != null
           ? _buildErrorState()
-          : SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  _buildVehicleHero(isDark, surfaceColor, primaryBlue),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle("Specifications", titleColor),
-                        const SizedBox(height: 16),
-                        _buildInfoGrid(
-                          [
-                            _InfoItem(
-                              Icons.airline_seat_recline_normal,
-                              "Capacity",
-                              "${_vehicleData!['vehicleData']['capacity'] ?? 0} Seats",
-                            ),
-                            _InfoItem(
-                              Icons.speed,
-                              "Odometer",
-                              "${_vehicleData!['vehicleData']['current_odometer'] ?? 0} km",
-                            ),
-                            _InfoItem(
-                              Icons.local_gas_station_rounded,
-                              "Fuel Type",
-                              _vehicleData!['vehicleData']['fuel_type'] ??
-                                  'N/A',
-                            ),
-                            _InfoItem(
-                              Icons.business_center_rounded,
-                              "Ownership",
-                              _vehicleData!['vehicleData']['ownership_type'] ??
-                                  'N/A',
-                            ),
-                          ],
-                          surfaceColor,
-                          isDark,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSectionTitle("Technical Details", titleColor),
-                        const SizedBox(height: 16),
-                        _buildInfoGrid(
-                          [
-                            _InfoItem(
-                              Icons.settings_suggest,
-                              "Engine No.",
-                              _vehicleData!['vehicleData']['engine_number'] ?? 'N/A',
-                            ),
-                            _InfoItem(
-                              Icons.qr_code,
-                              "Chassis No.",
-                              _vehicleData!['vehicleData']['chassis_number'] ?? 'N/A',
-                            ),
-                            _InfoItem(
-                              Icons.water_drop,
-                              "Tank Cap.",
-                              _vehicleData!['vehicleData']['fuel_tank_capacity'] != null
-                                  ? "${_vehicleData!['vehicleData']['fuel_tank_capacity']} L"
-                                  : 'N/A',
-                            ),
-                            _InfoItem(
-                              Icons.cake,
-                              "Vehicle Age",
-                              _vehicleData!['vehicleData']['vehicle_age'] ?? 'N/A',
-                            ),
-                          ],
-                          surfaceColor,
-                          isDark,
-                        ),
-                        _buildSectionTitle(
-                          "Registration & Compliance",
-                          titleColor,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildInfoGrid(
-                          [
-                            _InfoItem(
-                              Icons.verified_user,
-                              "Insurance",
-                              _formatDate(
-                                _vehicleData!['vehicleData']['insurance_expiry_date'],
-                              ),
-                            ),
-                            _InfoItem(
-                              Icons.science,
-                              "Pollution",
-                              _formatDate(
-                                _vehicleData!['vehicleData']['pollution_expiry_date'],
-                              ),
-                            ),
-                            _InfoItem(
-                              Icons.description,
-                              "Registration Date",
-                              _formatDate(
-                                _vehicleData!['vehicleData']['registration_date'],
-                              ),
-                            ),
-                            _InfoItem(
-                              Icons.fact_check,
-                              "FC Date",
-                              _formatDate(
-                                _vehicleData!['vehicleData']['fc_expiry_date'],
-                              ),
-                            ),
-                            _InfoItem(
-                              Icons.request_quote,
-                              "Tax Valid",
-                              _formatDate(
-                                _vehicleData!['vehicleData']['tax_valid_upto'],
-                              ),
-                            ),
-                            _InfoItem(
-                              Icons.assignment_turned_in,
-                              "Permit Valid",
-                              _formatDate(
-                                _vehicleData!['vehicleData']['permit_valid_upto'],
-                              ),
-                            ),
-                          ],
-                          surfaceColor,
-                          isDark,
-                        ),
-                        const SizedBox(height: 32),
-                        _buildSectionTitle("Summary Statistics", titleColor),
-                        const SizedBox(height: 16),
-                        _buildSummaryStatistics(surfaceColor, isDark),
-                        if (_vehicleData!['defaultDriver'] != null) ...[
-                          const SizedBox(height: 32),
-                          _buildSectionTitle("Default Driver", titleColor),
-                          const SizedBox(height: 16),
-                          _buildDefaultDriver(
-                            surfaceColor,
-                            isDark,
-                            primaryBlue,
-                          ),
-                        ],
-                        const SizedBox(height: 32),
-                        _buildLogSections(surfaceColor, isDark, titleColor),
-                        const SizedBox(height: 100),
-                      ],
-                    ),
-                  ),
-                ],
+          : RefreshIndicator(
+              onRefresh: _fetchVehicleDetails,
+              color: primaryBlue,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Document Expiry Alert Banners
+                    if (docAlerts.isNotEmpty)
+                      ...docAlerts.map((alert) => _buildDocAlertBanner(alert, isDark)),
+
+                    // Vehicle Hero Card
+                    _buildVehicleHeroCard(isDark, surfaceColor, primaryBlue, titleColor, subTextColor, veh),
+                    const SizedBox(height: 16),
+
+                    // Key Stat Cards Row
+                    _buildTopStatsRow(isDark, surfaceColor, primaryBlue, summary, defaultDriver),
+                    const SizedBox(height: 16),
+
+                    // Sliding Sub-Tabs Bar
+                    _buildSubTabsBar(isDark, surfaceColor, primaryBlue),
+                    const SizedBox(height: 16),
+
+                    // Active Tab Content
+                    if (_activeTab == 'details')
+                      _buildDetailsTabContent(isDark, surfaceColor, primaryBlue, titleColor, subTextColor, veh)
+                    else if (_activeTab == 'maintenance')
+                      _buildMaintenanceTabContent(isDark, surfaceColor, primaryBlue, titleColor, subTextColor)
+                    else if (_activeTab == 'fuel')
+                      _buildFuelTabContent(isDark, surfaceColor, primaryBlue, titleColor, subTextColor)
+                    else if (_activeTab == 'incident')
+                      _buildIncidentTabContent(isDark, surfaceColor, primaryBlue, titleColor, subTextColor)
+                    else if (_activeTab == 'routes')
+                      _buildRoutesTabContent(isDark, surfaceColor, primaryBlue, titleColor, subTextColor),
+
+                    const SizedBox(height: 60),
+                  ],
+                ),
               ),
             ),
     );
   }
 
-  Future<void> _showQrDialog(BuildContext context, bool isDark, Color primaryBlue) async {
-    final GlobalKey qrKey = GlobalKey();
-    final TextEditingController passwordCtrl = TextEditingController();
-    bool obscureText = true;
+  Widget _buildDocAlertBanner(Map<String, dynamic> alert, bool isDark) {
+    final int days = alert['days'] as int;
+    final String label = alert['label'] as String;
 
-    final vehicle = _vehicleData!['vehicleData'];
-    final otpValue = vehicle['id'].toString(); // Using ID as mock OTP
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFECDD3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "$label EXPIRING SOON",
+                  style: const TextStyle(color: Color(0xFFE11D48), fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.5),
+                ),
+                Text(
+                  days <= 0 ? "Document Expired!" : "Expires in $days days",
+                  style: const TextStyle(color: Color(0xFFBE123C), fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
+  Widget _buildVehicleHeroCard(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Color titleColor,
+    Color subTextColor,
+    Map<String, dynamic> veh,
+  ) {
+    final String status = (veh['status'] ?? 'ACTIVE').toString().toUpperCase();
+    final bool isActive = status == 'ACTIVE' || status == '2';
+    final Color statusColor = isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+    final String vNumber = veh['vehicle_number'] ?? 'N/A';
+    final String busNumber = veh['bus_number'] ?? '';
+    final String vType = _asMap(veh['vehicleType'])['name'] ?? veh['vehicle_type'] ?? 'Vehicle';
+    final String capacity = "${veh['capacity'] ?? 0} Seats";
+    final String vehicleAge = _getVehicleAge(veh['registration_date'], veh['created_at']);
+
+    final num currentOdo = veh['current_odometer'] ?? 0;
+    final num lifetimeDist = veh['total_lifetime_distance'] ?? 0;
+    final String? photoUrl = _getVehicleImageUrl(veh);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primaryBlue.withValues(alpha: 0.1),
+                      border: Border.all(color: primaryBlue.withValues(alpha: 0.3), width: 2),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: photoUrl != null
+                        ? Image.network(
+                            ApiConstants.getImageUrl(photoUrl),
+                            headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'},
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(Icons.directions_bus, color: primaryBlue, size: 40),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset('assets/TripZo.png', fit: BoxFit.contain, errorBuilder: (_, error, stack) => Icon(Icons.directions_bus, color: primaryBlue, size: 36)),
+
+                          ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(color: surfaceColor, shape: BoxShape.circle),
+                    child: _AnimatedStatusDot(isActive: isActive),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      busNumber.isNotEmpty ? "$vNumber ($busNumber)" : vNumber,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: titleColor,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            isActive ? "ACTIVE" : "IDLE",
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            vType.toUpperCase(),
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: primaryBlue),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            capacity,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: subTextColor),
+                          ),
+                        ),
+                        if (vehicleAge != "N/A")
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              vehicleAge,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: subTextColor),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Odometer Readings Banner
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      "PHYSICAL ODOMETER",
+                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: isDark ? Colors.white54 : const Color(0xFF94A3B8)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${NumberFormat('#,##0').format(currentOdo)} KM",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: primaryBlue),
+                    ),
+                  ],
+                ),
+                Container(width: 1, height: 30, color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                Column(
+                  children: [
+                    Text(
+                      "LIFETIME DISTANCE",
+                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: isDark ? Colors.white54 : const Color(0xFF94A3B8)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${NumberFormat('#,##0').format(lifetimeDist)} KM",
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Actions Buttons Row
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _showResetOdometerDialog,
+                  icon: const Icon(Icons.speed, size: 14, color: Color(0xFFE11D48)),
+                  label: const Text("Reset Odometer", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE11D48))),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    side: const BorderSide(color: Color(0xFFFECDD3)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showQrDialog(context, isDark, primaryBlue),
+                  icon: const Icon(Icons.qr_code_2, size: 14, color: Colors.white),
+                  label: const Text("Vehicle QR", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopStatsRow(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Map<String, dynamic> summary,
+    Map<String, dynamic> defaultDriver,
+  ) {
+    final driverObj = _asMap(defaultDriver['driver']);
+    final driverName = driverObj['name'] ?? 'Unassigned';
+    final driverPhone = driverObj['phone'] ?? 'N/A';
+
+    final stats = [
+      {'label': 'Fuel Logs Recorded', 'val': '${summary['fuel_history_count'] ?? 0}', 'unit': 'Logs', 'icon': Icons.history, 'color': const Color(0xFF3B82F6)},
+      {'label': 'Total Fuel Volume', 'val': '${summary['total_fuel_volume'] ?? 0}', 'unit': 'Liters', 'icon': Icons.local_gas_station, 'color': const Color(0xFF10B981)},
+      {'label': 'Total Fuel Spent', 'val': '₹${NumberFormat('#,##0').format(summary['total_fuel_amount'] ?? 0)}', 'unit': '', 'icon': Icons.payments_outlined, 'color': const Color(0xFFF59E0B)},
+      {'label': 'Default Driver', 'val': driverName, 'unit': driverPhone, 'icon': Icons.person_outline, 'color': const Color(0xFF8B5CF6)},
+    ];
+
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: stats.length,
+        itemBuilder: (context, index) {
+          final s = stats[index];
+          final Color iconColor = s['color'] as Color;
+
+          return Container(
+            width: 155,
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(s['icon'] as IconData, color: iconColor, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Icon(Icons.qr_code_2, color: Colors.orange.shade400),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Vehicle OTP Management",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.red),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // Dashed Box
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.indigo.withValues(alpha: 0.2),
-                            width: 1.5,
-                            style: BorderStyle.solid,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                ElevatedButton.icon(
-                                  onPressed: () {},
-                                  icon: const Icon(Icons.refresh, color: Color(0xFF6366F1), size: 16),
-                                  label: const Text("Reset", style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  onPressed: () async {
-                                    try {
-                                      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-                                      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-                                      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-                                      final pngBytes = byteData!.buffer.asUint8List();
-
-                                      final directory = await getApplicationDocumentsDirectory();
-                                      final file = io.File('${directory.path}/vehicle_otp_$otpValue.png');
-                                      await file.writeAsBytes(pngBytes);
-                                      
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Branded QR Code Downloaded!"), backgroundColor: Colors.green));
-                                      }
-                                      OpenFilex.open(file.path);
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error saving QR: $e"), backgroundColor: Colors.red));
-                                      }
-                                    }
-                                  },
-                                  icon: const Icon(Icons.download, color: Colors.white, size: 16),
-                                  label: const Text("Download PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6366F1),
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            RepaintBoundary(
-                              key: qrKey,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(0xFF6366F1).withValues(alpha: 0.6),
-                                    width: 2.5,
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      "${vehicle['vehicle_number'] ?? 'N/A'} - ${vehicle['bus_number'] ?? 'N/A'} - TYPE : ${(vehicle['fuel_type'] ?? 'UNKNOWN').toString().toUpperCase()}",
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1.5,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 32),
-                                    QrImageView(
-                                      data: otpValue,
-                                      version: QrVersions.auto,
-                                      size: 220.0,
-                                      backgroundColor: Colors.white,
-                                      embeddedImage: const AssetImage('assets/TripZo.png'),
-                                      embeddedImageStyle: const QrEmbeddedImageStyle(
-                                        size: Size(50, 50),
-                                      ),
-                                      eyeStyle: const QrEyeStyle(
-                                        eyeShape: QrEyeShape.square,
-                                        color: Color(0xFF6366F1),
-                                      ),
-                                      dataModuleStyle: const QrDataModuleStyle(
-                                        dataModuleShape: QrDataModuleShape.circle,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Reset OTP Section
                       Text(
-                        "Generate New OTP",
-                        textAlign: TextAlign.center,
+                        s['label'] as String,
                         style: TextStyle(
+                          fontSize: 8,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDark ? Colors.white : Colors.black87,
+                          color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
+                          letterSpacing: 0.3,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Text(
-                        "Please enter your password to confirm generating a new OTP for this vehicle. This will invalidate the old OTP.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                        s['val'] as String,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        "ADMIN PASSWORD *",
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey.shade500),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: passwordCtrl,
-                        obscureText: obscureText,
-                        decoration: InputDecoration(
-                          hintText: "Enter your password",
-                          filled: true,
-                          fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-                          suffixIcon: IconButton(
-                            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-                            onPressed: () {
-                              setState(() {
-                                obscureText = !obscureText;
-                              });
-                            },
-                          ),
+                      if ((s['unit'] as String).isNotEmpty)
+                        Text(
+                          s['unit'] as String,
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: primaryBlue),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSubTabsBar(bool isDark, Color surfaceColor, Color primaryBlue) {
+    final List<Map<String, String>> tabs = [
+      {'id': 'details', 'label': 'Details'},
+      {'id': 'maintenance', 'label': 'Maintenance'},
+      {'id': 'fuel', 'label': 'Fuel Log'},
+      {'id': 'incident', 'label': 'Incidents'},
+      {'id': 'routes', 'label': 'Routes (Trips)'},
+    ];
+
+    return SizedBox(
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: tabs.length,
+        itemBuilder: (context, index) {
+          final t = tabs[index];
+          final isSelected = _activeTab == t['id'];
+
+          return GestureDetector(
+            onTap: () => setState(() => _activeTab = t['id']!),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? primaryBlue : surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? primaryBlue : (isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  t['label']!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // --- SUB TAB 1: DETAILS ---
+  Widget _buildDetailsTabContent(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Color titleColor,
+    Color subTextColor,
+    Map<String, dynamic> veh,
+  ) {
+    return Column(
+      children: [
+        // Vehicle Specifications
+        _buildSectionCard(
+          title: "Vehicle Specifications",
+          icon: Icons.info_outline,
+          color: const Color(0xFF3B82F6),
+          isDark: isDark,
+          surfaceColor: surfaceColor,
+          items: [
+            _InfoItem(Icons.branding_watermark, "Make", veh['make'] ?? 'N/A'),
+            _InfoItem(Icons.directions_car, "Model", veh['model'] ?? 'N/A'),
+            _InfoItem(Icons.local_gas_station, "Fuel Type", (veh['fuel_type'] ?? 'N/A').toString().toUpperCase()),
+            _InfoItem(Icons.water_drop, "AdBlue Enabled", veh['is_adblue'] == true ? 'Enabled' : 'Disabled'),
+            _InfoItem(Icons.business_center, "Ownership", (veh['ownership_type'] ?? 'N/A').toString().toUpperCase()),
+            _InfoItem(Icons.airline_seat_recline_normal, "Seat Capacity", "${veh['capacity'] ?? 0} Seats"),
+            _InfoItem(Icons.cake, "Vehicle Age", _getVehicleAge(veh['registration_date'], veh['created_at'])),
+            _InfoItem(Icons.speed, "Lifetime Distance", "${veh['total_lifetime_distance'] ?? 0} KM"),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Engine & Chassis Parameters
+        _buildSectionCard(
+          title: "Engine & Chassis Parameters",
+          icon: Icons.tune,
+          color: const Color(0xFF10B981),
+          isDark: isDark,
+          surfaceColor: surfaceColor,
+          items: [
+            _InfoItem(Icons.calendar_month, "Registration Date", _formatDate(veh['registration_date'])),
+            _InfoItem(Icons.settings_suggest, "Engine Number", veh['engine_number'] ?? 'N/A'),
+            _InfoItem(Icons.qr_code, "Chassis Number", veh['chassis_number'] ?? 'N/A'),
+            _InfoItem(Icons.water_drop, "Fuel Tank Capacity", veh['fuel_tank_capacity'] != null ? "${veh['fuel_tank_capacity']} L" : 'N/A'),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Compliance & Document Expiries
+        _buildSectionCard(
+          title: "Compliance & Expiry Dates",
+          icon: Icons.verified_user_outlined,
+          color: const Color(0xFFF59E0B),
+          isDark: isDark,
+          surfaceColor: surfaceColor,
+          items: [
+            _InfoItem(Icons.event, "Registration Date", _formatDate(veh['registration_date'])),
+            _InfoItem(Icons.shield_outlined, "Fitness Certificate (FC)", _formatDate(veh['fc_expiry_date'])),
+            _InfoItem(Icons.request_quote, "Tax Valid Upto", _formatDate(veh['tax_valid_upto'])),
+            _InfoItem(Icons.verified_user, "Insurance Expiry", _formatDate(veh['insurance_expiry_date'])),
+            _InfoItem(Icons.science, "Pollution / PUC", _formatDate(veh['pollution_expiry_date'])),
+            _InfoItem(Icons.assignment_turned_in, "Permit Valid Upto", _formatDate(veh['permit_valid_upto'])),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // --- SUB TAB 2: MAINTENANCE ---
+  Widget _buildMaintenanceTabContent(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Color titleColor,
+    Color subTextColor,
+  ) {
+    final List serviceHistory = _vehicleData?['serviceHistory'] is List ? _vehicleData!['serviceHistory'] : [];
+
+    return Column(
+      children: [
+        if (serviceHistory.isEmpty)
+          _buildEmptyState("No Maintenance History Logs Found", Icons.build_outlined, isDark)
+        else
+          ...serviceHistory.map((rawM) {
+            final m = _asMap(rawM);
+            final title = m['service_title'] ?? 'Maintenance';
+            final shop = m['shop_name'] ?? 'N/A';
+            final cost = m['cost'] ?? 0;
+            final desc = m['description'] ?? 'N/A';
+            final date = _formatDate(m['maintenance_date']);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title.toString().toUpperCase(),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Mocking reset action
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("OTP Reset successfully!"), backgroundColor: Colors.green));
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange.shade500,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text("Reset OTP", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            backgroundColor: isDark ? const Color(0xFF334155) : Colors.grey.shade200,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          ),
-                          child: Text("Close", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          "₹$cost",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primaryBlue),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.store, size: 14, color: subTextColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        "$shop • $date",
+                        style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "\"$desc\"",
+                    style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: subTextColor),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  // --- SUB TAB 3: FUEL LOG ---
+  Widget _buildFuelTabContent(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Color titleColor,
+    Color subTextColor,
+  ) {
+    final List fuelHistory = _vehicleData?['fuelHistory'] is List ? _vehicleData!['fuelHistory'] : [];
+
+    return Column(
+      children: [
+        if (fuelHistory.isEmpty)
+          _buildEmptyState("No Fuel Logs Recorded", Icons.local_gas_station_outlined, isDark)
+        else
+          ...fuelHistory.map((rawF) {
+            final f = _asMap(rawF);
+            final volume = f['volume'] ?? 0;
+            final billAmount = f['bill_amount'] ?? 0;
+            final odo = f['current_odometer'] ?? 0;
+            final bunkName = _asMap(f['bunk'])['name'] ?? 'Gas Station';
+            final filledAt = _formatDate(f['filled_at']);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD1FAE5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.local_gas_station, color: Color(0xFF059669), size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Refuel Session ($volume L)",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: titleColor),
+                            ),
+                            Text(
+                              "₹$billAmount",
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Odo: $odo KM • Bunk: $bunkName",
+                          style: TextStyle(fontSize: 11, color: subTextColor, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Filled Date: $filledAt",
+                          style: TextStyle(fontSize: 10, color: subTextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  // --- SUB TAB 4: INCIDENTS ---
+  Widget _buildIncidentTabContent(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Color titleColor,
+    Color subTextColor,
+  ) {
+    final List incidentHistory = _vehicleData?['incidentHistory'] is List ? _vehicleData!['incidentHistory'] : [];
+
+    if (incidentHistory.isEmpty) {
+      return _buildEmptyState("No Incident Logs Recorded", Icons.warning_amber_outlined, isDark);
+    }
+
+    return Column(
+      children: incidentHistory.map((rawInc) {
+        final inc = _asMap(rawInc);
+        final date = _formatDate(inc['incident_date']);
+        final desc = inc['description'] ?? 'No details provided';
+        final status = inc['status'] ?? 'RECORDED';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "INCIDENT REPORT",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFE11D48), letterSpacing: 0.5),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1F2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      status.toString(),
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFE11D48)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text("Date: $date", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: titleColor)),
+              const SizedBox(height: 4),
+              Text("\"$desc\"", style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: subTextColor)),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // --- SUB TAB 5: ROUTES (TRIPS) ---
+  Widget _buildRoutesTabContent(
+    bool isDark,
+    Color surfaceColor,
+    Color primaryBlue,
+    Color titleColor,
+    Color subTextColor,
+  ) {
+    final List travelHistory = _vehicleData?['travelHistory'] is List ? _vehicleData!['travelHistory'] : [];
+
+    if (travelHistory.isEmpty) {
+      return _buildEmptyState("No Drive History / Trip Logs Found", Icons.map_outlined, isDark);
+    }
+
+    return Column(
+      children: travelHistory.map((rawR) {
+        final r = _asMap(rawR);
+        final tripLeg = _asMap(r['tripLeg']);
+        final tripInstance = _asMap(tripLeg['tripInstance']);
+        final routeReq = _asMap(tripInstance['routeRequest']);
+        final routeName = (r['route_name'] ?? routeReq['route_name'] ?? 'Route Run').toString();
+        final status = (r['status'] ?? 'COMPLETED').toString();
+        final isCompleted = status == 'COMPLETED';
+
+        final startTime = _formatDate(r['assigned_from'] ?? tripLeg['planned_start_at']);
+        final endTime = _formatDate(r['assigned_to'] ?? tripLeg['planned_end_at']);
+        final reqId = (r['route_request_id'] ?? routeReq['id'] ?? r['id'] ?? '').toString();
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MissionDetailsScreen(
+                  missionTitle: routeName,
+                  time: "$startTime - $endTime",
+                  driverName: "Assigned Driver",
+                  driverPhone: "N/A",
+                  vehicleInfo: "Vehicle #${widget.vehicleId}",
+                  capacity: "Passengers",
+                  passengerCount: "0",
+                  pathType: (routeReq['trip_type'] ?? "One-Way").toString(),
+                  stops: const [
+                    {'location': 'Origin', 'eta': 'Start'},
+                    {'location': 'Destination', 'eta': 'End'},
+                  ],
+                  status: status,
+                  statusColor: isCompleted ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                  requestId: reqId,
+                  rawStatus: isCompleted ? 2 : 1,
+                  creatorName: "Transport Admin",
                 ),
               ),
             );
-          }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        routeName,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isCompleted ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.chevron_right, color: subTextColor, size: 18),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Start: $startTime", style: TextStyle(fontSize: 10, color: subTextColor)),
+                    Text("End: $endTime", style: TextStyle(fontSize: 10, color: subTextColor)),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
-      }
+      }).toList(),
+    );
+  }
+
+  // --- HELPERS ---
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+    required Color surfaceColor,
+    required List<_InfoItem> items,
+  }) {
+    final validItems = items.where((i) => i.value != 'N/A' && i.value.isNotEmpty).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: (validItems.isEmpty ? items : validItems).map((item) {
+              return _buildMiniField(item.label, item.value, isDark);
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniField(String label, String value, bool isDark) {
+    return Container(
+      width: 155,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
+              letterSpacing: 0.3,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1E293B),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message, IconData icon, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 40, color: Colors.grey.withValues(alpha: 0.5)),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -572,728 +1191,29 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     return null;
   }
 
-  Widget _buildVehicleHero(bool isDark, Color surfaceColor, Color primaryBlue) {
-    final veh = _vehicleData!['vehicleData'] ?? {};
-    final status = veh['status'] ?? 'ACTIVE';
-    final bool isActive = status == 'ACTIVE' || status.toString() == '2';
-    final Color statusColor = isActive ? Colors.green : Colors.orange;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: primaryBlue.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: primaryBlue.withValues(alpha: 0.06),
-            blurRadius: 30,
-            offset: const Offset(0, 12),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Hero(
-            tag: 'vehicle_plate_${widget.vehicleId}',
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: primaryBlue.withValues(alpha: 0.2), width: 4),
-                gradient: LinearGradient(
-                  colors: [primaryBlue, primaryBlue.withValues(alpha: 0.6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                image: _getVehicleImageUrl(veh) != null
-                    ? DecorationImage(
-                        image: NetworkImage(ApiConstants.getImageUrl(_getVehicleImageUrl(veh)!)),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: _getVehicleImageUrl(veh) == null
-                  ? Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Image.asset(
-                        'assets/TripZo.png',
-                        fit: BoxFit.contain,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            veh['bus_number'] != null && veh['bus_number'].toString().trim().isNotEmpty
-                ? "${veh['vehicle_number'] ?? 'N/A'} (${veh['bus_number']})"
-                : veh['vehicle_number'] ?? 'N/A',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: isDark ? Colors.white : const Color(0xFF1E293B),
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            (veh['make'] != null || veh['model'] != null)
-                ? "${veh['make'] ?? ''} ${veh['model'] ?? ''}".trim()
-                : (veh['vehicleType']?['name'] ??
-                          veh['vehicle_type'] ??
-                          'Vehicle')
-                      .toString()
-                      .toUpperCase(),
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (veh['make'] != null || veh['model'] != null)
-            Text(
-              (veh['vehicleType']?['name'] ?? veh['vehicle_type'] ?? 'Vehicle')
-                  .toString()
-                  .toUpperCase(),
-              style: TextStyle(
-                color: Colors.grey.withValues(alpha: 0.5),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: statusColor.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _AnimatedStatusDot(isActive: isActive),
-                const SizedBox(width: 10),
-                Text(
-                  isActive ? "ACTIVE" : "IDLE",
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            color: const Color(0xFF6366F1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoGrid(
-    List<_InfoItem> items,
-    Color surfaceColor,
-    bool isDark,
-  ) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      item.icon,
-                      size: 14,
-                      color: const Color(0xFF6366F1),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item.label,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                item.value,
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatsRow(Color primaryBlue, Color surfaceColor, bool isDark) {
-    final summary = _vehicleData!['summary'] ?? {};
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            "Fuel Refills",
-            "${summary['fuel_history_count'] ?? 0}",
-            Icons.local_gas_station,
-            Colors.blue,
-            surfaceColor,
-            isDark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            "Completed Trips",
-            "${summary['completed_trip_count'] ?? 0}",
-            Icons.route_rounded,
-            Colors.cyan,
-            surfaceColor,
-            isDark,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-    Color surfaceColor,
-    bool isDark,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: isDark ? Colors.white : const Color(0xFF1E293B),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogSections(Color surface, bool isDark, Color titleColor) {
-    return Column(
-      children: [
-        _buildExpandingSection(
-          "Fuel History",
-          Icons.local_gas_station,
-          _buildFuelList(surface, isDark),
-          titleColor,
-        ),
-        const SizedBox(height: 16),
-        _buildExpandingSection(
-          "Assigned Routes",
-          Icons.route,
-          _buildRoutesList(surface, isDark),
-          titleColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildExpandingSection(
-    String title,
-    IconData icon,
-    Widget content,
-    Color titleColor,
-  ) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.04),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide.none,
-          ),
-          collapsedShape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide.none,
-          ),
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: EdgeInsets.zero,
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF6366F1).withValues(alpha: 0.15),
-                  const Color(0xFF8B5CF6).withValues(alpha: 0.08),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: const Color(0xFF6366F1), size: 20),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: titleColor,
-              fontSize: 15,
-            ),
-          ),
-          trailing: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.grey.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: isDark ? Colors.white54 : Colors.grey,
-              size: 20,
-            ),
-          ),
-          children: [
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.grey.withValues(alpha: 0.1),
-              indent: 16,
-              endIndent: 16,
-            ),
-            Padding(padding: const EdgeInsets.all(16), child: content),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMaintenanceList(Color surface, bool isDark) {
-    final List<dynamic> history = _vehicleData!['serviceHistory'] ?? [];
-    if (history.isEmpty) {
-      return const Center(
-        child: Text(
-          "No maintenance records",
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
+  String _formatDate(dynamic dateStr) {
+    if (dateStr == null || dateStr.toString().isEmpty) return 'N/A';
+    try {
+      final date = DateTime.parse(dateStr.toString());
+      return DateFormat('dd MMM yyyy').format(date);
+    } catch (_) {
+      return dateStr.toString();
     }
-    return Column(
-      children: history
-          .map(
-            (m) => _buildLogCard(
-              m['service_title'] ?? m['service_type'] ?? 'Maintenance',
-              "₹${m['final_cost'] ?? m['estimated_cost'] ?? 0}",
-              _formatTimestamp(m['service_date'] ?? m['created_at']),
-              isDark,
-              Icons.build_circle_rounded,
-              const Color(0xFF6366F1),
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildFuelList(Color surface, bool isDark) {
-    final List<dynamic> history = _vehicleData!['fuelHistory'] ?? [];
-    if (history.isEmpty) {
-      return const Center(
-        child: Text("No fuel records", style: TextStyle(color: Colors.grey)),
-      );
-    }
-    return Column(
-      children: history.map((f) {
-        final String bunkName = f['bunk']?['name'] ?? 'Unknown Bunk';
-        final String cost = "₹${f['bill_amount'] ?? 0}";
-        final String date = _formatTimestamp(f['filled_at']);
-        final String volume = "${f['volume'] ?? 0} L";
-        final String odometer = "${f['current_odometer'] ?? 0} km";
-        final String filledBy = f['filledByUser']?['name'] ?? 'Unknown';
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-            ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.local_gas_station_rounded,
-                            color: Color(0xFF3B82F6),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                bunkName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                date,
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    cost,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF3B82F6),
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildFuelDetail(Icons.water_drop_outlined, "Volume", volume),
-                  _buildFuelDetail(Icons.speed_rounded, "Odometer", odometer),
-                  _buildFuelDetail(
-                    Icons.person_outline_rounded,
-                    "Filled By",
-                    filledBy,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildFuelDetail(IconData icon, String label, String value) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.grey),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogCard(
-    String title,
-    String value,
-    String time,
-    bool isDark,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-        ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  time,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              color: color,
-              fontSize: 16,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildShimmerLoading(bool isDark, Color bg) {
     return Shimmer.fromColors(
-      baseColor: isDark ? Colors.white10 : Colors.grey[300]!,
-      highlightColor: isDark ? Colors.white24 : Colors.grey[100]!,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+      baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+      highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
+            Container(height: 140, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24))),
+            const SizedBox(height: 16),
+            Container(height: 90, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
+            const SizedBox(height: 16),
+            Container(height: 200, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20))),
           ],
         ),
       ),
@@ -1303,41 +1223,21 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
   Widget _buildErrorState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.wifi_off_rounded,
-              size: 80,
-              color: Colors.redAccent,
-            ),
-            const SizedBox(height: 24),
+            const Icon(Icons.error_outline, size: 60, color: Colors.red),
+            const SizedBox(height: 16),
             Text(
-              _errorMessage!,
+              _errorMessage ?? "Error loading vehicle data",
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _fetchVehicleDetails,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: const Text(
-                "RETRY CONNECTION",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text("Retry"),
             ),
           ],
         ),
@@ -1345,736 +1245,6 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
     );
   }
 
-  Widget _buildDefaultDriver(
-    Color surfaceColor,
-    bool isDark,
-    Color primaryBlue,
-  ) {
-    final def = _vehicleData!['defaultDriver'];
-    final driver = def['driver'] ?? {};
-    final t = isDark ? Colors.white : const Color(0xFF1E293B);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: primaryBlue.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: primaryBlue.withValues(alpha: 0.1),
-            child: Icon(Icons.person_rounded, color: primaryBlue, size: 28),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  driver['name'] ?? 'Unknown Driver',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: t,
-                  ),
-                ),
-                Text(
-                  "Emp Code: ${driver['employee_code'] ?? 'N/A'}",
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.phone_rounded, size: 14, color: primaryBlue),
-                    const SizedBox(width: 6),
-                    Text(
-                      driver['phone'] ?? 'No contact',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: t.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  "PRIMARY",
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.green,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "ID: ${driver['id'] ?? ''}",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.withValues(alpha: 0.5),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFuelSummary(Color surfaceColor, bool isDark, Color primaryBlue) {
-    final summary = _vehicleData!['summary'] ?? {};
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            "Total Fuel Cost",
-            "₹${summary['total_fuel_amount'] ?? 0}",
-            Icons.payments_rounded,
-            Colors.green,
-            surfaceColor,
-            isDark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            "Trips Count",
-            "${summary['completed_trip_count'] ?? 0}",
-            Icons.auto_graph_rounded,
-            Colors.purple,
-            surfaceColor,
-            isDark,
-          ),
-        ),
-      ],
-    );
-  }
-
-  IconData _getVehicleIcon(String type) {
-    type = type.toLowerCase();
-    if (type.contains('bus')) return Icons.directions_bus_rounded;
-    if (type.contains('car')) return Icons.directions_car_rounded;
-    if (type.contains('van')) return Icons.airport_shuttle_rounded;
-    return Icons.local_shipping_rounded;
-  }
-
-  String _formatDate(dynamic dateStr) {
-    if (dateStr == null) return 'N/A';
-    try {
-      final date = DateTime.parse(dateStr.toString());
-      return DateFormat('MMM dd, yyyy').format(date);
-    } catch (e) {
-      return dateStr.toString();
-    }
-  }
-
-  String _formatTimestamp(String? timestamp) {
-    if (timestamp == null) return "TBD";
-    try {
-      final dt = DateTime.parse(timestamp);
-      return DateFormat('dd MMM, hh:mm a').format(dt);
-    } catch (_) {
-      return timestamp;
-    }
-  }
-
-  Widget _buildSummaryStatistics(Color surface, bool isDark) {
-    final summary = _vehicleData!['summary'] ?? {};
-
-    final int completedTrips = summary['completed_trip_count'] ?? 0;
-    final int fuelCount = summary['fuel_history_count'] ?? 0;
-    final double fuelAmount = (summary['total_fuel_amount'] ?? 0.0).toDouble();
-    final double mileage = (summary['average_mileage'] ?? 0.0).toDouble();
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildSummaryStatCard(
-                surface,
-                isDark,
-                Icons.route,
-                "Completed Trips",
-                completedTrips.toString(),
-                Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildSummaryStatCard(
-                surface,
-                isDark,
-                Icons.local_gas_station,
-                "Fuel Logs",
-                fuelCount.toString(),
-                Colors.orange,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildSummaryStatCard(
-                surface,
-                isDark,
-                Icons.currency_rupee,
-                "Total Fuel Cost",
-                "₹${fuelAmount.toStringAsFixed(2)}",
-                Colors.green,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildSummaryStatCard(
-                surface,
-                isDark,
-                Icons.speed,
-                "Avg Mileage",
-                "${mileage.toStringAsFixed(2)} km/l",
-                Colors.purple,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSummaryStatCard(
-    Color surface,
-    bool isDark,
-    IconData icon,
-    String title,
-    String value,
-    Color iconColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-        ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoutesList(Color surface, bool isDark) {
-    final List<dynamic> routes = _vehicleData!['travelHistory'] ?? [];
-    if (routes.isEmpty) {
-      return const Center(
-        child: Text("No assigned routes", style: TextStyle(color: Colors.grey)),
-      );
-    }
-
-    return Column(
-      children: routes.asMap().entries.map((entry) {
-        final int index = entry.key;
-        final dynamic r = entry.value;
-        final bool isTopRecord = index == 0;
-
-        final tripLeg = r['tripLeg'] ?? {};
-        final tripInstance = tripLeg['tripInstance'] ?? {};
-        final routeReq = tripInstance['routeRequest'] ?? {};
-
-        final String routeName = r['route_name'] ?? 'Regular Route Run';
-
-        final String startTimeStr = tripLeg['planned_start_at'] ?? '';
-        final String endTimeStr = tripLeg['planned_end_at'] ?? '';
-
-        DateTime? startDt;
-        DateTime? endDt;
-        try {
-          if (startTimeStr.isNotEmpty) startDt = DateTime.parse(startTimeStr);
-          if (endTimeStr.isNotEmpty) endDt = DateTime.parse(endTimeStr);
-        } catch (_) {}
-
-        final String startMonthDay = startDt != null
-            ? DateFormat('d MMM').format(startDt)
-            : '';
-        final String startTimeFormatted = startDt != null
-            ? DateFormat('HH:mm').format(startDt)
-            : '00:00';
-        final String endMonthDay = endDt != null
-            ? DateFormat('d MMM').format(endDt)
-            : 'TBD';
-
-        final String headerDate = startMonthDay;
-
-        final String tripType =
-            routeReq['trip_type']?.toString().replaceAll('_', ' ') ??
-            'ROUND TRIP';
-        final String distance = "${routeReq['approx_distance_km'] ?? 0} KM";
-        final String status = r['status'] ?? 'COMPLETED';
-
-        final List<dynamic> stopsList = tripLeg['stops'] ?? [];
-        stopsList.sort((a, b) => (a['stop_order'] ?? 0).compareTo(b['stop_order'] ?? 0));
-
-        String fromPlace = "BIT Campus";
-        String toPlace = "Destination Point";
-
-        if (stopsList.isNotEmpty) {
-          fromPlace = stopsList.first['stop_name'] ?? fromPlace;
-          toPlace = stopsList.last['stop_name'] ?? toPlace;
-        } else if (routeReq['route_name'] != null) {
-          final parts = routeReq['route_name'].toString().split('&');
-          fromPlace = parts[0].trim();
-          toPlace = parts.length > 1 ? parts[1].trim() : parts[0].trim();
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-            ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      routeName,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? Colors.white : const Color(0xFF1E293B),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text(
-                    headerDate,
-                    style: const TextStyle(
-                      color: Color(0xFF6366F1),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildRouteTag(tripType, const Color(0xFF6366F1)),
-                  _buildRouteTag(distance, const Color(0xFF10B981)),
-                  _buildRouteTag(status, const Color(0xFF10B981)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.black12 : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "FROM",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            fromPlace,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF1E293B),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Icon(
-                        Icons.sync_alt_rounded,
-                        color: Colors.grey.shade400,
-                        size: 20,
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            "TO",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            toPlace,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF1E293B),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return Flex(
-                    direction: Axis.horizontal,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(
-                      (constraints.constrainWidth() / 8).floor(),
-                      (index) => SizedBox(
-                        width: 4,
-                        height: 1,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.3),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14,
-                    color: Colors.grey.shade500,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          startTimeFormatted,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          " until ",
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                        ),
-                        Text(
-                          endMonthDay,
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isTopRecord)
-                    InkWell(
-                      onTap: () {
-                        final tripId = tripInstance['id'] ?? r['id'];
-                        _showAdjustOdometerDialog(tripId, routeName, startTimeFormatted, endMonthDay);
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          "Adjust Odometer",
-                          style: TextStyle(
-                            color: Color(0xFF6366F1),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  void _showAdjustOdometerDialog(dynamic tripId, String routeName, String startedAt, String endedAt) {
-    final readingCtrl = TextEditingController();
-    bool isSubmitting = false;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setStateModal) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final primaryBlue = const Color(0xFF6366F1);
-            final titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
-
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Correct End Odometer",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: titleColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Route: $routeName",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.black12 : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Started - Ended:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
-                          const SizedBox(height: 4),
-                          Text("$startedAt - $endedAt", style: TextStyle(fontSize: 12, color: titleColor)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: readingCtrl,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
-                      decoration: InputDecoration(
-                        labelText: "Closing End Odometer Reading (KM) *",
-                        labelStyle: TextStyle(color: primaryBlue, fontSize: 12),
-                        filled: true,
-                        fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue.withValues(alpha: 0.5)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-                          child: Text("Cancel", style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: isSubmitting ? null : () async {
-                            final reading = readingCtrl.text.trim();
-                            if (reading.isEmpty) return;
-
-                            setStateModal(() => isSubmitting = true);
-                            try {
-                              final token = await UserStore.getToken();
-                              final response = await http.patch(
-                                Uri.parse("${ApiConstants.baseUrl}/api/request/trip/$tripId/end-odometer"),
-                                headers: ApiConstants.getHeaders(token),
-                                body: json.encode({"end_odometer": num.tryParse(reading) ?? 0}),
-                              );
-
-                              if (response.statusCode == 200 || response.statusCode == 201) {
-                                if (mounted) {
-                                  Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Odometer corrected successfully!"), backgroundColor: Colors.green));
-                                  _fetchVehicleDetails();
-                                }
-                              } else {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ApiErrorParser.parse(response, fallback: "Failed to correct odometer")), backgroundColor: Colors.red));
-                                }
-                              }
-                            } catch (e) {
-                              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
-                            } finally {
-                              if (mounted) setStateModal(() => isSubmitting = false);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("Apply Correction", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildRouteTag(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-          fontSize: 10,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
   void _showResetOdometerDialog() {
     final readingCtrl = TextEditingController();
     final passwordCtrl = TextEditingController();
@@ -2103,85 +1273,54 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                     Text(
                       "Reset Odometer",
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: titleColor,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
-                      "Are you sure you want to force reset the base odometer? This action requires a password.",
+                      "Are you sure you want to force reset the base odometer? This action requires an admin password.",
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                        height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     TextField(
                       controller: readingCtrl,
                       keyboardType: TextInputType.number,
                       style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
-                        labelText: "New Odometer Reading",
+                        labelText: "New Odometer Reading (KM)",
                         labelStyle: TextStyle(color: primaryBlue),
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue.withOpacity(0.5)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue, width: 2),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: primaryBlue)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: primaryBlue.withValues(alpha: 0.5))),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     TextField(
                       controller: passwordCtrl,
                       obscureText: true,
                       style: TextStyle(color: titleColor, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
-                        labelText: "Password",
+                        labelText: "Admin Password",
                         labelStyle: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                         filled: true,
                         fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: primaryBlue, width: 2),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
                           onPressed: isResetting ? null : () => Navigator.pop(ctx),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          ),
-                          child: Text(
-                            "Cancel",
-                            style: TextStyle(
-                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
+                          child: Text("Cancel", style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
@@ -2192,7 +1331,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields"), backgroundColor: Colors.orange));
                               return;
                             }
-                            
+
                             setStateModal(() => isResetting = true);
                             try {
                               final token = await UserStore.getToken();
@@ -2204,7 +1343,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                                   "password": pass,
                                 }),
                               );
-                              
+
                               if (response.statusCode == 200 || response.statusCode == 201) {
                                 if (mounted) {
                                   Navigator.pop(ctx);
@@ -2223,17 +1362,14 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEF4444), // Tailwind Red 500
+                            backgroundColor: const Color(0xFFEF4444),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
                           child: isResetting
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("Force Reset", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              : const Text("Force Reset", style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -2242,6 +1378,102 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen>
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  Future<void> _showQrDialog(BuildContext context, bool isDark, Color primaryBlue) async {
+    final GlobalKey qrKey = GlobalKey();
+    final veh = _asMap(_vehicleData?['vehicleData']);
+    final otpValue = veh['id'].toString();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Vehicle QR Code",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                RepaintBoundary(
+                  key: qrKey,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: primaryBlue.withValues(alpha: 0.4), width: 2),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          "${veh['vehicle_number'] ?? 'N/A'} - ${veh['bus_number'] ?? 'N/A'}",
+                          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        const SizedBox(height: 16),
+                        QrImageView(
+                          data: otpValue,
+                          version: QrVersions.auto,
+                          size: 200.0,
+                          backgroundColor: Colors.white,
+                          eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: primaryBlue),
+                          dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.circle, color: Colors.black),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      RenderRepaintBoundary boundary = qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+                      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+                      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                      final pngBytes = byteData!.buffer.asUint8List();
+
+                      final directory = await getApplicationDocumentsDirectory();
+                      final file = io.File('${directory.path}/vehicle_qr_$otpValue.png');
+                      await file.writeAsBytes(pngBytes);
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("QR Code Saved!"), backgroundColor: Colors.green));
+                      }
+                      OpenFilex.open(file.path);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.download, color: Colors.white, size: 16),
+                  label: const Text("Download QR Code", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -2285,11 +1517,10 @@ class _AnimatedStatusDotState extends State<_AnimatedStatusDot>
           height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: widget.isActive ? Colors.green : Colors.orange,
+            color: widget.isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
             boxShadow: [
               BoxShadow(
-                color: (widget.isActive ? Colors.green : Colors.orange)
-                    .withValues(alpha: 0.5),
+                color: (widget.isActive ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.5),
                 blurRadius: 4 + (_controller.value * 4),
                 spreadRadius: _controller.value * 2,
               ),
