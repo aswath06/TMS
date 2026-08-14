@@ -8,4 +8,3 @@ Future<void> downloadFileImpl(List<int> bytes, String fileName) async {
     ..click();
   html.Url.revokeObjectUrl(url);
 }
-
