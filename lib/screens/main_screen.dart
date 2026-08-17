@@ -190,6 +190,8 @@ class MainScreenState extends State<MainScreen> {
     switch (_currentRole) {
       case 'transport admin':
       case 'super admin':
+      case 'transport coordinator':
+      case 'coordinator':
         return [
           const AdminDashboardScreen(),
           const AdminRequestHubScreen(),
@@ -236,6 +238,7 @@ class MainScreenState extends State<MainScreen> {
           const DriverRoutesScreen(),
           const DriverLeaveScreen(),
           const ChatScreen(),
+          const DriverProfileScreen(),
         ];
     }
   }

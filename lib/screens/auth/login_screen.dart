@@ -176,7 +176,9 @@ curl -X POST "$url"
           'intern',
           'security',
           'student',
-          'driver'
+          'driver',
+          'transport coordinator',
+          'coordinator'
         ];
         
         if (!allowedRoles.contains(rawRole.toLowerCase())) {
@@ -275,7 +277,9 @@ curl -X POST "$url"
           'intern',
           'security',
           'student',
-          'driver'
+          'driver',
+          'transport coordinator',
+          'coordinator'
         ];
 
         if (!allowedRoles.contains(rawRole.toLowerCase())) {
@@ -373,7 +377,9 @@ curl -X POST "$url"
           'intern',
           'security',
           'student',
-          'driver'
+          'driver',
+          'transport coordinator',
+          'coordinator'
         ];
 
         if (!allowedRoles.contains(rawRole.toLowerCase())) {

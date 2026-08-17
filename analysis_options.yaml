@@ -13,6 +13,11 @@ analyzer:
   exclude:
     - build/**
     - ios/**
+    - android/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 
 linter:
