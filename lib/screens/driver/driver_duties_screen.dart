@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
+import 'package:tripzo/store/driver_task_store.dart';
+import 'package:tripzo/utils/emergency_task_dialog.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
@@ -29,6 +31,7 @@ class DriverDutiesScreen extends ConsumerStatefulWidget {
 
 class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
   Timer? _timer;
+  Timer? _taskPollTimer;
 
   @override
   void initState() {
@@ -44,21 +47,54 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       useDriverStore.fetchPendingAllowanceCount();
       ref.read(notificationProviderFamily).fetchNotifications();
       ref.read(driverSchedulesStoreProvider).fetchSchedules();
+      _checkPendingEmergencyTask();
     });
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
     });
+
+    _taskPollTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (mounted) {
+        await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
+      }
+    });
+  }
+
+  void _checkPendingEmergencyTask() {
+    final store = ref.read(driverTaskStoreProvider);
+    if (store.pendingEmergencyTaskPopup != null) {
+      final task = store.pendingEmergencyTaskPopup!;
+      store.clearEmergencyTaskPopup();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showEmergencyTaskPopupDialog(context, task);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _taskPollTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<DriverTaskStore>(driverTaskStoreProvider, (previous, next) {
+      if (next.pendingEmergencyTaskPopup != null) {
+        final task = next.pendingEmergencyTaskPopup!;
+        next.clearEmergencyTaskPopup();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            showEmergencyTaskPopupDialog(context, task);
+          }
+        });
+      }
+    });
+
     final bool isTamil = LanguageStore.isTamil;
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -186,21 +222,11 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
                           ],
                         ),
                         const SizedBox(height: 18),
-                        if (store.isLoadingBusRuns && allAssignments.isEmpty && todayMissions.isEmpty && dashboardSchedules.isEmpty)
+                        if (store.isLoadingBusRuns && allAssignments.isEmpty && dashboardSchedules.isEmpty)
                           const Center(child: CircularProgressIndicator())
-                        else if (allAssignments.isEmpty && todayMissions.isEmpty && dashboardSchedules.isEmpty)
+                        else if (allAssignments.isEmpty && dashboardSchedules.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else ...[
-                          ...todayMissions.map((m) => _buildMissionCard(
-                                context: context,
-                                mission: m,
-                                surface: surfaceColor,
-                                primary: primaryBlue,
-                                titleColor: titleColor,
-                                subColor: subColor,
-                                isDark: isDark,
-                                isTamil: isTamil,
-                              )),
                           ...dashboardSchedules.map((s) => _buildScheduleCard(
                                 context: context,
                                 schedule: s,

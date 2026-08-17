@@ -232,6 +232,32 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
+  void addLocalTaskNotification({
+    required int id,
+    required String title,
+    required String message,
+  }) {
+    final newNotif = NotificationModel(
+      id: id,
+      userId: 0,
+      title: title,
+      message: message,
+      type: 'INFO',
+      referenceTable: 'driver_tasks',
+      referenceId: id,
+      isRead: false,
+      createdAt: DateTime.now(),
+    );
+
+    final bool exists = notifications.any((n) => n.id == id || (n.title == title && n.message == message));
+    if (!exists) {
+      notifications.insert(0, newNotif);
+      unreadCount += 1;
+      totalCount += 1;
+      notifyListeners();
+    }
+  }
+
   // ... rest of the markAsRead and markAllAsRead methods ...
   Future<void> markAsRead(int notificationId) async {
     try {
