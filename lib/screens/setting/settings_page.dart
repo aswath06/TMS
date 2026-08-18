@@ -4,6 +4,8 @@ import 'package:tripzo/screens/setting/user_session_management_page.dart';
 import 'package:tripzo/screens/setting/support_tickets_screen.dart';
 import 'package:tripzo/screens/setting/auto_block_dashboard_page.dart';
 import 'package:tripzo/screens/setting/backup/backup_settings_page.dart';
+import 'package:tripzo/screens/setting/organization_management_page.dart';
+import 'package:tripzo/screens/setting/organization_switcher_sheet.dart';
 import 'package:tripzo/screens/security/security_vehicle_screen.dart';
 import 'package:tripzo/store/istamil.dart';
 import 'package:tripzo/store/isdark.dart';
@@ -411,6 +413,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => const BackupSettingsPage(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _settingsTile(
+                        Icons.business_rounded,
+                        "Organization Management",
+                        "Manage app organizations, statuses, and setups",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        const Color(0xFF6366F1), // Indigo color
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OrganizationManagementPage(),
                           ),
                         ),
                       ),
@@ -920,7 +938,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         ),
-        _buildTopIcon(Icons.tune_outlined, titleColor),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                showOrganizationSwitcherSheet(context);
+              },
+              child: _buildTopIcon(Icons.business_rounded, titleColor),
+            ),
+            const SizedBox(width: 8),
+            _buildTopIcon(Icons.tune_outlined, titleColor),
+          ],
+        ),
       ],
     );
   }

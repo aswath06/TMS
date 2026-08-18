@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ServerConfig extends ChangeNotifier {
   static const String _keyIsProduction = 'server_is_production';
 
-  static const String productionUrl = "https://kccf2vfk-4004.inc1.devtunnels.ms";
-  static const String devTunnelUrl = "https://kccf2vfk-4004.inc1.devtunnels.ms";
+  static const String productionUrl = "https://d2b4pqbm-8055.inc1.devtunnels.ms";
+  static const String devTunnelUrl = "https://d2b4pqbm-8055.inc1.devtunnels.ms";
 
   // Singleton131432
   static final ServerConfig _instance = ServerConfig._internal();
