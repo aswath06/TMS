@@ -3,6 +3,8 @@ import 'package:tripzo/screens/admin/request/request_list_page.dart';
 import 'package:tripzo/screens/admin/request/daily_routines_page.dart';
 import 'package:tripzo/screens/admin/fuel/fuel_page.dart';
 import 'package:tripzo/screens/admin/admin_allowance_screen.dart';
+import 'package:tripzo/screens/admin/request/admin_driver_tasks_page.dart';
+import 'package:tripzo/screens/driver/driver_duties_screen.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
@@ -37,6 +39,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       ref.read(driverStoreProvider).fetchPendingFuelEntries();
       ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
       ref.read(attendanceDashboardStoreProvider).refresh();
+      ref.read(driverSchedulesStoreProvider).fetchSchedules();
       UIConfig().load();
     });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
@@ -89,7 +92,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   void didChangeDependencies() {
     super.didChangeDependencies();
     
-    if (!_initialized) {
+    final bool hasDriverTasks = _initialized && _cardsData.any((card) => card['id'] == 'driver_tasks');
+    if (!_initialized || !hasDriverTasks) {
       _initialized = true;
       final Color primaryBlue = const Color(0xFF6366F1);
 
@@ -122,6 +126,16 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'color': const Color(0xFFEF4444),
           'onTap': () {
             // Navigator.push(context, MaterialPageRoute(builder: (context) => const DutyAllocationScreen()));
+          },
+        },
+        {
+          'id': 'driver_tasks',
+          'title': "Driver Tasks",
+          'description': "View and manage assigned driver tasks and schedules.",
+          'icon': Icons.task_alt_rounded,
+          'color': const Color(0xFF8B5CF6),
+          'onTap': () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDriverTasksPage()));
           },
         },
         {
@@ -250,6 +264,10 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           _buildCountBadge("Ready to start", fleetStore.insideCount, const Color(0xFF3B82F6)),
         ],
       );
+    } else if (id == 'driver_tasks') {
+      final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+      final activeTasksCount = scheduleStore.todaySchedules.length + scheduleStore.startedSchedules.length;
+      extraWidget = _buildCountBadge("Driver Tasks", activeTasksCount > 0 ? activeTasksCount : 1, const Color(0xFF8B5CF6));
     } else if (id == 'fuels') {
       final driverStore = ref.watch(driverStoreProvider);
       extraWidget = _buildCountBadge("Fuel Pendings", driverStore.pendingFuelEntries.length, const Color(0xFFF59E0B));
@@ -568,31 +586,31 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
   }
 
   Widget _buildAlternativeCards(bool isDark, Color primaryBlue) {
+    List<Widget> rows = [];
+    for (int i = 0; i < _cardsData.length; i += 3) {
+      rows.add(
+        Row(
+          children: [
+            _buildAlternativeCardItem(_cardsData[i], isDark, i),
+            const SizedBox(width: 15),
+            i + 1 < _cardsData.length
+                ? _buildAlternativeCardItem(_cardsData[i + 1], isDark, i + 1)
+                : const Expanded(child: SizedBox()),
+            const SizedBox(width: 15),
+            i + 2 < _cardsData.length
+                ? _buildAlternativeCardItem(_cardsData[i + 2], isDark, i + 2)
+                : const Expanded(child: SizedBox()),
+          ],
+        ),
+      );
+      if (i + 3 < _cardsData.length) {
+        rows.add(const SizedBox(height: 15));
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildAlternativeCardItem(_cardsData[0], isDark, 0),
-              const SizedBox(width: 15),
-              _buildAlternativeCardItem(_cardsData[1], isDark, 1),
-              const SizedBox(width: 15),
-              _buildAlternativeCardItem(_cardsData[2], isDark, 2),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              _buildAlternativeCardItem(_cardsData[3], isDark, 3),
-              const SizedBox(width: 15),
-              _cardsData.length > 4 ? _buildAlternativeCardItem(_cardsData[4], isDark, 4) : Expanded(child: const SizedBox()),
-              const SizedBox(width: 15),
-              Expanded(child: const SizedBox()),
-            ],
-          ),
-        ],
-      ),
+      child: Column(children: rows),
     );
   }
 
@@ -697,6 +715,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               return _buildMissionStats(isDark, primaryBlue);
             case 'routines':
               return _buildRoutineStats(isDark, primaryBlue);
+            case 'driver_tasks':
+              return _buildDriverTaskStats(isDark, primaryBlue);
             case 'fuels':
               return _buildFuelStats(isDark, primaryBlue);
             case 'allowance':
@@ -816,6 +836,32 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDriverTaskStats(bool isDark, Color primaryBlue) {
+    final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+    final driverStore = ref.watch(driverStoreProvider);
+
+    final startedCount = scheduleStore.startedSchedules.length;
+    final todayCount = scheduleStore.todaySchedules.length;
+    final totalMissions = driverStore.missions.length;
+    final totalRuns = driverStore.dailyBusRuns.length;
+
+    final tiles = [
+      _buildStatTile("In Progress Tasks", "$startedCount", Icons.play_circle_fill_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Today's Schedules", "$todayCount", Icons.calendar_today_rounded, primaryBlue, isDark),
+      _buildStatTile("Active Missions", "$totalMissions", Icons.explore_rounded, const Color(0xFF3B82F6), isDark),
+      _buildStatTile("Daily Bus Runs", "$totalRuns", Icons.directions_bus_rounded, const Color(0xFFF59E0B), isDark),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Driver Task Statistics", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
     );
   }
 
