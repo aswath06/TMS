@@ -47,27 +47,59 @@ class _AccountBlockedScreenState extends ConsumerState<AccountBlockedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.block, color: Colors.redAccent, size: 100),
-              const SizedBox(height: 24),
-              const Text(
-                'ACCOUNT BLOCKED',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.redAccent,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Your account has been blocked by the administrator. Please contact support for more information.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.gpp_bad_rounded, color: Colors.redAccent, size: 80),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'ACCOUNT BLOCKED',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.redAccent,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Your account has been blocked by the administrator.\n\nPlease meet the assigned faculty of your bus or the transport office for more information to restore your access.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.black87,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
               if (_errorMessage != null)
@@ -75,6 +107,7 @@ class _AccountBlockedScreenState extends ConsumerState<AccountBlockedScreen> {
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
                     _errorMessage!,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
                   ),
                 ),
