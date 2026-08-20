@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tripzo/components/assigned_faculty_cards.dart';
 
@@ -972,8 +973,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                         ),
                                       );
                                       return;
-                                    }
-                                    setState(() => isSubmitting = true);
+                                    }setState(() => isSubmitting = true);
                                     final double odo =
                                         double.tryParse(
                                           odometerController.text.trim(),
@@ -1121,6 +1121,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     Map<int, int> allowanceCounts = {};
     Map<int, TextEditingController> allowanceAmounts = {};
     Map<int, bool> isEditingAmount = {};
+    DateTime? tripStartDate = _parseTimestamp(run['actual_start_at'] ?? run['created_at']);
+    if (tripStartDate == null) tripStartDate = DateTime.now();
+    Map<int, List<Map<String, dynamic>>> dynamicEntries = {};
     File? proofImage;
 
     showModalBottomSheet(
@@ -1146,8 +1149,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             : [
                                 {'id': 1, 'name': 'BUS FARE', 'amount': '0.00'},
                                 {'id': 2, 'name': 'FOOD ALLOWANCE', 'amount': '0.00'},
-                                {'id': 3, 'name': 'OTHER', 'amount': '0.00'},
+                                
                               ];
+                        allowanceTypes.removeWhere((e) => (e['type_name'] ?? e['name'] ?? '').toString().toUpperCase() == 'OTHER');
                         hasFetchedAllowances = true;
                         isFetchingAllowances = false;
                       });
@@ -1539,7 +1543,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     }
                                     selectedAllowanceTypes.add(type['id']);
                                     if (!allowanceAmounts.containsKey(type['id'])) {
-                                      allowanceAmounts[type['id']] = TextEditingController(text: (type['amount'] ?? "0.00").toString());
+                                      allowanceAmounts[type['id']] = TextEditingController(text: "");
                                     }
                                   }
                               });
@@ -1575,432 +1579,273 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             final name = (type['type_name'] ?? type['name'] ?? "").toString();
                             final count = allowanceCounts[id] ?? 1;
                             
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 16, bottom: 8),
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.02),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        Builder(
-                                          builder: (context) {
-                                            final double amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
-                                            final double tot = amt * count;
-                                            final String totalStr = tot % 1 == 0 ? tot.toInt().toString() : tot.toStringAsFixed(2);
-                                            return Text(
-                                              "Total: ₹$totalStr",
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 14,
-                                                color: const Color(0xFF6366F1),
-                                              ),
-                                            );
-                                          }
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Expanded(
-                                          flex: 3,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Amount",
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                height: 48,
-                                                decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(left: 12),
-                                                      child: Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 16)),
-                                                    ),
-                                                    Expanded(
-                                                      child: TextField(
-                                                        controller: allowanceAmounts[id],
-                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        readOnly: true,
-                                                        style: GoogleFonts.plusJakartaSans(
-                                                          fontSize: 14,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                        ),
-                                                        decoration: const InputDecoration(
-                                                          isDense: true,
-                                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                                          border: InputBorder.none,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        final String capitalizedName = name.split(' ').map((str) => str.isEmpty ? '' : str[0].toUpperCase() + str.substring(1).toLowerCase()).join(' ');
-                                                        showModalBottomSheet(
-                                                          context: context,
-                                                          isScrollControlled: true,
-                                                          backgroundColor: Colors.transparent,
-                                                          builder: (BuildContext sheetContext) {
-                                                            final tempController = TextEditingController(text: allowanceAmounts[id]?.text ?? "");
-                                                            return StatefulBuilder(
-                                                              builder: (BuildContext context, StateSetter setSheetState) {
-                                                                return Padding(
-                                                                  padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-                                                                  child: Container(
-                                                                    padding: const EdgeInsets.all(24),
-                                                                    decoration: BoxDecoration(
-                                                                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                                                                    ),
-                                                                    child: Column(
-                                                                      mainAxisSize: MainAxisSize.min,
-                                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                                      children: [
-                                                                        Center(
-                                                                          child: Container(
-                                                                            width: 40,
-                                                                            height: 5,
-                                                                            decoration: BoxDecoration(
-                                                                              color: Colors.grey.withOpacity(0.3),
-                                                                              borderRadius: BorderRadius.circular(10),
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(height: 24),
-                                                                        Text(
-                                                                          "Edit $capitalizedName",
-                                                                          style: GoogleFonts.plusJakartaSans(
-                                                                            fontWeight: FontWeight.bold,
-                                                                            fontSize: 20,
-                                                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(height: 16),
-                                                                        Container(
-                                                                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                                                                          decoration: BoxDecoration(
-                                                                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                                            borderRadius: BorderRadius.circular(12),
-                                                                            border: Border.all(
-                                                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                                                            ),
-                                                                          ),
-                                                                          child: Row(
-                                                                            children: [
-                                                                              Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 18)),
-                                                                              const SizedBox(width: 8),
-                                                                              Expanded(
-                                                                                child: TextField(
-                                                                                  controller: tempController,
-                                                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                                                  autofocus: true,
-                                                                                  style: GoogleFonts.plusJakartaSans(
-                                                                                    fontSize: 16,
-                                                                                    fontWeight: FontWeight.w600,
-                                                                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                                                  ),
-                                                                                  decoration: const InputDecoration(
-                                                                                    border: InputBorder.none,
-                                                                                    contentPadding: EdgeInsets.symmetric(vertical: 16),
-                                                                                  ),
-                                                                                ),
-                                                                              ),
-                                                                            ],
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(height: 24),
-                                                                        Row(
-                                                                          mainAxisAlignment: MainAxisAlignment.end,
-                                                                          children: [
-                                                                            TextButton(
-                                                                              onPressed: () => Navigator.pop(sheetContext),
-                                                                              child: Text(
-                                                                                "Cancel",
-                                                                                style: GoogleFonts.plusJakartaSans(
-                                                                                  color: Colors.grey,
-                                                                                  fontWeight: FontWeight.bold,
-                                                                                  fontSize: 16,
-                                                                                ),
-                                                                              ),
-                                                                            ),
-                                                                            const SizedBox(width: 16),
-                                                                            ElevatedButton(
-                                                                              onPressed: () {
-                                                                                setState(() {
-                                                                                  allowanceAmounts[id]?.text = tempController.text;
-                                                                                });
-                                                                                Navigator.pop(sheetContext);
-                                                                              },
-                                                                              style: ElevatedButton.styleFrom(
-                                                                                backgroundColor: const Color(0xFF6366F1),
-                                                                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                              ),
-                                                                              child: Text(
-                                                                                "Submit",
-                                                                                style: GoogleFonts.plusJakartaSans(
-                                                                                  color: Colors.white,
-                                                                                  fontWeight: FontWeight.bold,
-                                                                                  fontSize: 16,
-                                                                                ),
-                                                                              ),
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              }
-                                                            );
-                                                          },
-                                                        );
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                                                        color: Colors.transparent,
-                                                        child: const Icon(
-                                                          Icons.edit_rounded,
-                                                          color: Color(0xFF6366F1),
-                                                          size: 20,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Quantity",
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                height: 48,
-                                                decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                  children: [
-                                                    GestureDetector(
-                                                      onTap: count > 1 ? () {
-                                                        setState(() {
-                                                          allowanceCounts[id] = count - 1;
-                                                        });
-                                                      } : null,
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          color: count > 1 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
-                                                          borderRadius: BorderRadius.circular(6),
-                                                          boxShadow: count > 1 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
-                                                        ),
-                                                        child: Icon(Icons.remove_rounded, color: count > 1 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      "$count",
-                                                      style: GoogleFonts.plusJakartaSans(
-                                                        fontWeight: FontWeight.w700,
-                                                        fontSize: 16,
-                                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                      ),
-                                                    ),
-                                                    GestureDetector(
-                                                      onTap: count < 6 ? () {
-                                                        setState(() {
-                                                          allowanceCounts[id] = count + 1;
-                                                        });
-                                                      } : null,
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          color: count < 6 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
-                                                          borderRadius: BorderRadius.circular(6),
-                                                          boxShadow: count < 6 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
-                                                        ),
-                                                        child: Icon(Icons.add_rounded, color: count < 6 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        if (selectedAllowanceTypes.isNotEmpty)
-                          Builder(
-                            builder: (context) {
-                              double total = 0.0;
-                              for (var id in selectedAllowanceTypes) {
-                                final amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
-                                final cnt = allowanceCounts[id] ?? 1;
-                                total += amt * cnt;
-                              }
+
                               
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 16),
-                                  if (total > 300) ...[
-                                    Text("Image proof (Mandatory)", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
-                                    const SizedBox(height: 8),
-                                  ] else ...[
-                                    Text("Image proof (Optional)", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold, fontSize: 12)),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  GestureDetector(
-                                    onTap: () async {
-                                      final Color primaryBlue = const Color(0xFF6366F1);
-                                      final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-                                      showModalBottomSheet(
-                                        context: context,
-                                        backgroundColor: Colors.transparent,
-                                        builder: (ctx) => Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                                          ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(width: 40, height: 4, decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
-                                              const SizedBox(height: 24),
-                                              Text("Select Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor)),
-                                              const SizedBox(height: 32),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: GestureDetector(
-                                                      onTap: () async {
-                                                        Navigator.pop(ctx);
-                                                        final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
-                                                        if (picked != null) setState(() => proofImage = File(picked.path));
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(vertical: 24),
-                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
-                                                        child: Column(children: [Icon(Icons.camera_alt_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 16),
-                                                  Expanded(
-                                                    child: GestureDetector(
-                                                      onTap: () async {
-                                                        Navigator.pop(ctx);
-                                                        final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-                                                        if (picked != null) setState(() => proofImage = File(picked.path));
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(vertical: 24),
-                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
-                                                        child: Column(children: [Icon(Icons.photo_library_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 24),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
+                            if (dynamicEntries[id] == null) {
+                              if (name.toLowerCase().contains('food')) {
+                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                              } else {
+                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                              }
+                            }
+                            
+                            final bool isFood = name.toLowerCase().contains('food');
+                            final String capitalizedName = name.split(' ').map((str) => str.isEmpty ? '' : str[0].toUpperCase() + str.substring(1).toLowerCase()).join(' ');
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ...dynamicEntries[id]!.asMap().entries.map((mapEntry) {
+                                  int index = mapEntry.key;
+                                  var entry = mapEntry.value;
+                                  List<String> meals = isFood ? (entry['meals'] as List<String>) : [];
+                                  TextEditingController amtCtrl = entry['amount'] as TextEditingController;
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 16, bottom: 8),
                                     child: Container(
-                                      height: 120,
-                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
-                                        image: proofImage != null ? DecorationImage(image: FileImage(proofImage!), fit: BoxFit.cover) : null,
+                                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                          width: 1.5,
+                                        ),
                                       ),
-                                      child: proofImage == null ? Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
-                                          const SizedBox(height: 8),
-                                          Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(dynamicEntries[id]!.length > 1 ? "$capitalizedName ${index + 1}" : capitalizedName, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : const Color(0xFF0F172A))),
+                                              if (index > 0)
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      dynamicEntries[id]!.removeAt(index);
+                                                      double sum = 0;
+                                                      for (var e in dynamicEntries[id]!) { sum += double.tryParse((e['amount'] as TextEditingController).text) ?? 0; }
+                                                      allowanceAmounts[id]?.text = sum.toString();
+                                                    });
+                                                  },
+                                                  child: const Icon(Icons.close, color: Colors.red, size: 20),
+                                                ),
+                                            ]
+                                          ),
+                                          if (isFood) ...[
+                                            const SizedBox(height: 12),
+                                            Text("Meals", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                            const SizedBox(height: 8),
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: ["Breakfast", "Lunch", "Dinner"].map((meal) {
+                                                final isSel = meals.contains(meal);
+                                                return GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      if (isSel) meals.remove(meal);
+                                                      else { meals.clear(); meals.add(meal); }
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                    decoration: BoxDecoration(
+                                                      color: isSel ? const Color(0xFF6366F1).withOpacity(0.1) : Colors.transparent,
+                                                      borderRadius: BorderRadius.circular(20),
+                                                      border: Border.all(color: isSel ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                                    ),
+                                                    child: Text(meal, style: TextStyle(color: isSel ? const Color(0xFF6366F1) : (isDark ? Colors.white70 : Colors.black87), fontSize: 12, fontWeight: FontWeight.bold)),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                          ],
+                                          ...[
+                                            const SizedBox(height: 16),
+                                            Text("Date", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                            const SizedBox(height: 6),
+                                            GestureDetector(
+                                              onTap: () async {
+                                                final selectedDate = await CustomDateTimePicker.show(
+                                                  context,
+                                                  initialDate: entry['date'] ?? DateTime.now(),
+                                                  minDate: DateTime(2000),
+                                                  maxDate: DateTime.now(),
+                                                  showTime: false,
+                                                );
+                                                if (selectedDate != null) {
+                                                  setState(() { entry['date'] = selectedDate; });
+                                                }
+                                              },
+                                              child: Container(
+                                                height: 48,
+                                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                decoration: BoxDecoration(
+                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      entry['date'] != null 
+                                                          ? "${entry['date'].day}/${entry['date'].month}/${entry['date'].year}" 
+                                                          : "Select Date",
+                                                      style: TextStyle(
+                                                        color: entry['date'] != null ? (isDark ? Colors.white : const Color(0xFF0F172A)) : Colors.grey,
+                                                      ),
+                                                    ),
+                                                    const Icon(Icons.calendar_today, color: Colors.grey, size: 20),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 16),
+                                          Text("Amount", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Padding(padding: const EdgeInsets.only(left: 12), child: Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 16))),
+                                                Expanded(
+                                                  child: TextField(
+                                                    controller: amtCtrl,
+                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                                                    decoration: InputDecoration(hintText: "Enter the amount", hintStyle: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 13, fontWeight: FontWeight.normal), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), border: InputBorder.none),
+                                                    onChanged: (v) {
+                                                      double sum = 0;
+                                                      for (var e in dynamicEntries[id]!) { sum += double.tryParse((e['amount'] as TextEditingController).text) ?? 0; }
+                                                      allowanceAmounts[id]?.text = sum.toString();
+                                                      setState((){});
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text("Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                          const SizedBox(height: 6),
+                                          GestureDetector(
+                                            onTap: () async {
+                                              final Color primaryBlue = const Color(0xFF6366F1);
+                                              final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+                                              showModalBottomSheet(
+                                                context: context,
+                                                backgroundColor: Colors.transparent,
+                                                builder: (ctx) => Container(
+                                                  padding: const EdgeInsets.all(24),
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Container(width: 40, height: 4, decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
+                                                      const SizedBox(height: 24),
+                                                      Text("Select Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor)),
+                                                      const SizedBox(height: 32),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: GestureDetector(
+                                                              onTap: () async {
+                                                                Navigator.pop(ctx);
+                                                                final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                              },
+                                                              child: Container(
+                                                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                                child: Column(children: [Icon(Icons.camera_alt_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 16),
+                                                          Expanded(
+                                                            child: GestureDetector(
+                                                              onTap: () async {
+                                                                Navigator.pop(ctx);
+                                                                final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
+                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                              },
+                                                              child: Container(
+                                                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                                child: Column(children: [Icon(Icons.photo_library_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 24),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              height: 120,
+                                              width: double.infinity,
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                                image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
+                                              ),
+                                              child: entry['proof'] == null ? Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
+                                                  const SizedBox(height: 8),
+                                                  Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ) : Container(
+                                                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
+                                                child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
+                                              ),
+                                            ),
+                                          ),
                                         ],
-                                      ) : Container(
-                                        decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
-                                        child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
                                       ),
                                     ),
+                                  );
+                                }).toList(),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                      });
+                                    },
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.add_circle_outline, color: Color(0xFF6366F1), size: 20),
+                                        const SizedBox(width: 8),
+                                        Text("Add Another $capitalizedName", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF6366F1), fontWeight: FontWeight.w600, fontSize: 13)),
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              );
-                            },
-                          ),
-                      ],
+                                ),
+                              ],
+                            );
+                            }),
+                        ],
                     ],
 
                     const SizedBox(height: 32),
@@ -2066,8 +1911,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     if (allowanceNeeded == null) {
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select DA/TA requirement"), backgroundColor: Colors.red));
                                       return;
-                                    }
-                                    setState(() => isSubmitting = true);
+                                    }setState(() => isSubmitting = true);
                                     final int odo =
                                         int.tryParse(
                                           odometerController.text.trim(),
@@ -2096,7 +1940,46 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
 
-                                    final Map<int, String> amountMap = allowanceAmounts.map(
+                                    
+                                    // NEW VALIDATION LOGIC
+                                    bool hasValidationError = false;
+                                    for (var id in selectedAllowanceTypes) {
+                                      final type = allowanceTypes.firstWhere((e) => e['id'] == id, orElse: () => {'name': ''});
+                                      final isFood = (type['type_name'] ?? type['name'] ?? '').toString().toLowerCase().contains('food');
+                                      
+                                      if (dynamicEntries[id] != null) {
+                                        for (var i = 0; i < dynamicEntries[id]!.length; i++) {
+                                          var e = dynamicEntries[id]![i];
+                                          // 0. Amount mandatory
+                                          if ((e['amount'] as TextEditingController).text.trim().isEmpty) {
+                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Amount is mandatory for all allowances (${type['name'] ?? type['type_name']})"), backgroundColor: Colors.red));
+                                            hasValidationError = true;
+                                            break;
+                                          }
+                                          // 1. Proof mandatory
+                                          if (e['proof'] == null) {
+                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image proof is mandatory for all allowances (${type['name'] ?? type['type_name']})"), backgroundColor: Colors.red));
+                                            hasValidationError = true;
+                                            break;
+                                          }
+                                          // 2. Date mandatory for Food if > 3 cards
+                                          if (isFood && dynamicEntries[id]!.length > 3) {
+                                            if (e['date'] == null) {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Date is mandatory when adding more than 3 Food allowances"), backgroundColor: Colors.red));
+                                              hasValidationError = true;
+                                              break;
+                                            }
+                                          }
+                                        }
+                                      }
+                                      if (hasValidationError) break;
+                                    }
+                                    if (hasValidationError) {
+                                      setState(() => isSubmitting = false);
+                                      return;
+                                    }
+                                    // END VALIDATION LOGIC
+final Map<int, String> amountMap = allowanceAmounts.map(
                                       (id, controller) => MapEntry(id, controller.text.trim()),
                                     );
 
@@ -2108,7 +1991,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       allowanceTypeIds: selectedAllowanceTypes,
                                       allowanceCounts: allowanceCounts,
                                       allowanceAmounts: amountMap,
-                                      proofImage: proofImage,
+                                      proofImage: dynamicEntries.values.expand((list) => list).firstWhere((e) => e['proof'] != null, orElse: () => {'proof': null})['proof'] as File?,
                                     );
 
                                     if (result['success'] == true) {
@@ -3102,8 +2985,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                         ),
                                       );
                                       return;
-                                    }
-                                    setState(() => isSubmitting = true);
+                                    }setState(() => isSubmitting = true);
                                     final double odo =
                                         double.tryParse(odometerController.text) ??
                                         0;
@@ -3266,6 +3148,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     Map<int, int> allowanceCounts = {};
     Map<int, TextEditingController> allowanceAmounts = {};
     Map<int, bool> isEditingAmount = {};
+    DateTime? tripStartDate = _parseTimestamp(run['actual_start_at'] ?? run['created_at']);
+    if (tripStartDate == null) tripStartDate = DateTime.now();
+    Map<int, List<Map<String, dynamic>>> dynamicEntries = {};
     File? proofImage;
 
     showModalBottomSheet(
@@ -3291,8 +3176,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             : [
                                 {'id': 1, 'name': 'BUS FARE', 'amount': '0.00'},
                                 {'id': 2, 'name': 'FOOD ALLOWANCE', 'amount': '0.00'},
-                                {'id': 3, 'name': 'OTHER', 'amount': '0.00'},
+                                
                               ];
+                        allowanceTypes.removeWhere((e) => (e['type_name'] ?? e['name'] ?? '').toString().toUpperCase() == 'OTHER');
                         hasFetchedAllowances = true;
                         isFetchingAllowances = false;
                       });
@@ -3617,7 +3503,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     }
                                     selectedAllowanceTypes.add(type['id']);
                                     if (!allowanceAmounts.containsKey(type['id'])) {
-                                      allowanceAmounts[type['id']] = TextEditingController(text: (type['amount'] ?? "0.00").toString());
+                                      allowanceAmounts[type['id']] = TextEditingController(text: "");
                                     }
                                   }
                               });
@@ -3653,432 +3539,273 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             final name = (type['type_name'] ?? type['name'] ?? "").toString();
                             final count = allowanceCounts[id] ?? 1;
                             
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 16, bottom: 8),
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.02),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        Builder(
-                                          builder: (context) {
-                                            final double amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
-                                            final double tot = amt * count;
-                                            final String totalStr = tot % 1 == 0 ? tot.toInt().toString() : tot.toStringAsFixed(2);
-                                            return Text(
-                                              "Total: ₹$totalStr",
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 14,
-                                                color: const Color(0xFF6366F1),
-                                              ),
-                                            );
-                                          }
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Expanded(
-                                          flex: 3,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Amount",
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                height: 48,
-                                                decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(left: 12),
-                                                      child: Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 16)),
-                                                    ),
-                                                    Expanded(
-                                                      child: TextField(
-                                                        controller: allowanceAmounts[id],
-                                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                        readOnly: true,
-                                                        style: GoogleFonts.plusJakartaSans(
-                                                          fontSize: 14,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                        ),
-                                                        decoration: const InputDecoration(
-                                                          isDense: true,
-                                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                                                          border: InputBorder.none,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        final String capitalizedName = name.split(' ').map((str) => str.isEmpty ? '' : str[0].toUpperCase() + str.substring(1).toLowerCase()).join(' ');
-                                                        showModalBottomSheet(
-                                                          context: context,
-                                                          isScrollControlled: true,
-                                                          backgroundColor: Colors.transparent,
-                                                          builder: (BuildContext sheetContext) {
-                                                            final tempController = TextEditingController(text: allowanceAmounts[id]?.text ?? "");
-                                                            return StatefulBuilder(
-                                                              builder: (BuildContext context, StateSetter setSheetState) {
-                                                                return Padding(
-                                                                  padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-                                                                  child: Container(
-                                                                    padding: const EdgeInsets.all(24),
-                                                                    decoration: BoxDecoration(
-                                                                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                                                                    ),
-                                                                    child: Column(
-                                                                      mainAxisSize: MainAxisSize.min,
-                                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                                      children: [
-                                                                        Center(
-                                                                          child: Container(
-                                                                            width: 40,
-                                                                            height: 5,
-                                                                            decoration: BoxDecoration(
-                                                                              color: Colors.grey.withOpacity(0.3),
-                                                                              borderRadius: BorderRadius.circular(10),
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(height: 24),
-                                                                        Text(
-                                                                          "Edit $capitalizedName",
-                                                                          style: GoogleFonts.plusJakartaSans(
-                                                                            fontWeight: FontWeight.bold,
-                                                                            fontSize: 20,
-                                                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(height: 16),
-                                                                        Container(
-                                                                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                                                                          decoration: BoxDecoration(
-                                                                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                                            borderRadius: BorderRadius.circular(12),
-                                                                            border: Border.all(
-                                                                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                                                            ),
-                                                                          ),
-                                                                          child: Row(
-                                                                            children: [
-                                                                              Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 18)),
-                                                                              const SizedBox(width: 8),
-                                                                              Expanded(
-                                                                                child: TextField(
-                                                                                  controller: tempController,
-                                                                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                                                  autofocus: true,
-                                                                                  style: GoogleFonts.plusJakartaSans(
-                                                                                    fontSize: 16,
-                                                                                    fontWeight: FontWeight.w600,
-                                                                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                                                  ),
-                                                                                  decoration: const InputDecoration(
-                                                                                    border: InputBorder.none,
-                                                                                    contentPadding: EdgeInsets.symmetric(vertical: 16),
-                                                                                  ),
-                                                                                ),
-                                                                              ),
-                                                                            ],
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(height: 24),
-                                                                        Row(
-                                                                          mainAxisAlignment: MainAxisAlignment.end,
-                                                                          children: [
-                                                                            TextButton(
-                                                                              onPressed: () => Navigator.pop(sheetContext),
-                                                                              child: Text(
-                                                                                "Cancel",
-                                                                                style: GoogleFonts.plusJakartaSans(
-                                                                                  color: Colors.grey,
-                                                                                  fontWeight: FontWeight.bold,
-                                                                                  fontSize: 16,
-                                                                                ),
-                                                                              ),
-                                                                            ),
-                                                                            const SizedBox(width: 16),
-                                                                            ElevatedButton(
-                                                                              onPressed: () {
-                                                                                setState(() {
-                                                                                  allowanceAmounts[id]?.text = tempController.text;
-                                                                                });
-                                                                                Navigator.pop(sheetContext);
-                                                                              },
-                                                                              style: ElevatedButton.styleFrom(
-                                                                                backgroundColor: const Color(0xFF6366F1),
-                                                                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                              ),
-                                                                              child: Text(
-                                                                                "Submit",
-                                                                                style: GoogleFonts.plusJakartaSans(
-                                                                                  color: Colors.white,
-                                                                                  fontWeight: FontWeight.bold,
-                                                                                  fontSize: 16,
-                                                                                ),
-                                                                              ),
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              }
-                                                            );
-                                                          },
-                                                        );
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                                                        color: Colors.transparent,
-                                                        child: const Icon(
-                                                          Icons.edit_rounded,
-                                                          color: Color(0xFF6366F1),
-                                                          size: 20,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          flex: 2,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Quantity",
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                height: 48,
-                                                decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                  children: [
-                                                    GestureDetector(
-                                                      onTap: count > 1 ? () {
-                                                        setState(() {
-                                                          allowanceCounts[id] = count - 1;
-                                                        });
-                                                      } : null,
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          color: count > 1 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
-                                                          borderRadius: BorderRadius.circular(6),
-                                                          boxShadow: count > 1 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
-                                                        ),
-                                                        child: Icon(Icons.remove_rounded, color: count > 1 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      "$count",
-                                                      style: GoogleFonts.plusJakartaSans(
-                                                        fontWeight: FontWeight.w700,
-                                                        fontSize: 16,
-                                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                                      ),
-                                                    ),
-                                                    GestureDetector(
-                                                      onTap: count < 6 ? () {
-                                                        setState(() {
-                                                          allowanceCounts[id] = count + 1;
-                                                        });
-                                                      } : null,
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          color: count < 6 ? (isDark ? const Color(0xFF1E293B) : Colors.white) : Colors.transparent,
-                                                          borderRadius: BorderRadius.circular(6),
-                                                          boxShadow: count < 6 ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)] : [],
-                                                        ),
-                                                        child: Icon(Icons.add_rounded, color: count < 6 ? const Color(0xFF6366F1) : Colors.grey, size: 18),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        if (selectedAllowanceTypes.isNotEmpty)
-                          Builder(
-                            builder: (context) {
-                              double total = 0.0;
-                              for (var id in selectedAllowanceTypes) {
-                                final amt = double.tryParse(allowanceAmounts[id]?.text ?? "0.0") ?? 0.0;
-                                final cnt = allowanceCounts[id] ?? 1;
-                                total += amt * cnt;
-                              }
+
                               
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 16),
-                                  if (total > 300) ...[
-                                    Text("Image proof (Mandatory)", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 12)),
-                                    const SizedBox(height: 8),
-                                  ] else ...[
-                                    Text("Image proof (Optional)", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold, fontSize: 12)),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  GestureDetector(
-                                    onTap: () async {
-                                      final Color primaryBlue = const Color(0xFF6366F1);
-                                      final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-                                      showModalBottomSheet(
-                                        context: context,
-                                        backgroundColor: Colors.transparent,
-                                        builder: (ctx) => Container(
-                                          padding: const EdgeInsets.all(24),
-                                          decoration: BoxDecoration(
-                                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                                          ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(width: 40, height: 4, decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
-                                              const SizedBox(height: 24),
-                                              Text("Select Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor)),
-                                              const SizedBox(height: 32),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: GestureDetector(
-                                                      onTap: () async {
-                                                        Navigator.pop(ctx);
-                                                        final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
-                                                        if (picked != null) setState(() => proofImage = File(picked.path));
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(vertical: 24),
-                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
-                                                        child: Column(children: [Icon(Icons.camera_alt_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 16),
-                                                  Expanded(
-                                                    child: GestureDetector(
-                                                      onTap: () async {
-                                                        Navigator.pop(ctx);
-                                                        final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-                                                        if (picked != null) setState(() => proofImage = File(picked.path));
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(vertical: 24),
-                                                        decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
-                                                        child: Column(children: [Icon(Icons.photo_library_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 24),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
+                            if (dynamicEntries[id] == null) {
+                              if (name.toLowerCase().contains('food')) {
+                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                              } else {
+                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                              }
+                            }
+                            
+                            final bool isFood = name.toLowerCase().contains('food');
+                            final String capitalizedName = name.split(' ').map((str) => str.isEmpty ? '' : str[0].toUpperCase() + str.substring(1).toLowerCase()).join(' ');
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ...dynamicEntries[id]!.asMap().entries.map((mapEntry) {
+                                  int index = mapEntry.key;
+                                  var entry = mapEntry.value;
+                                  List<String> meals = isFood ? (entry['meals'] as List<String>) : [];
+                                  TextEditingController amtCtrl = entry['amount'] as TextEditingController;
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 16, bottom: 8),
                                     child: Container(
-                                      height: 120,
-                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
-                                        image: proofImage != null ? DecorationImage(image: FileImage(proofImage!), fit: BoxFit.cover) : null,
+                                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                          width: 1.5,
+                                        ),
                                       ),
-                                      child: proofImage == null ? Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
-                                          const SizedBox(height: 8),
-                                          Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(dynamicEntries[id]!.length > 1 ? "$capitalizedName ${index + 1}" : capitalizedName, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : const Color(0xFF0F172A))),
+                                              if (index > 0)
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      dynamicEntries[id]!.removeAt(index);
+                                                      double sum = 0;
+                                                      for (var e in dynamicEntries[id]!) { sum += double.tryParse((e['amount'] as TextEditingController).text) ?? 0; }
+                                                      allowanceAmounts[id]?.text = sum.toString();
+                                                    });
+                                                  },
+                                                  child: const Icon(Icons.close, color: Colors.red, size: 20),
+                                                ),
+                                            ]
+                                          ),
+                                          if (isFood) ...[
+                                            const SizedBox(height: 12),
+                                            Text("Meals", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                            const SizedBox(height: 8),
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: ["Breakfast", "Lunch", "Dinner"].map((meal) {
+                                                final isSel = meals.contains(meal);
+                                                return GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      if (isSel) meals.remove(meal);
+                                                      else { meals.clear(); meals.add(meal); }
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                    decoration: BoxDecoration(
+                                                      color: isSel ? const Color(0xFF6366F1).withOpacity(0.1) : Colors.transparent,
+                                                      borderRadius: BorderRadius.circular(20),
+                                                      border: Border.all(color: isSel ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                                    ),
+                                                    child: Text(meal, style: TextStyle(color: isSel ? const Color(0xFF6366F1) : (isDark ? Colors.white70 : Colors.black87), fontSize: 12, fontWeight: FontWeight.bold)),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                          ],
+                                          ...[
+                                            const SizedBox(height: 16),
+                                            Text("Date", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                            const SizedBox(height: 6),
+                                            GestureDetector(
+                                              onTap: () async {
+                                                final selectedDate = await CustomDateTimePicker.show(
+                                                  context,
+                                                  initialDate: entry['date'] ?? DateTime.now(),
+                                                  minDate: DateTime(2000),
+                                                  maxDate: DateTime.now(),
+                                                  showTime: false,
+                                                );
+                                                if (selectedDate != null) {
+                                                  setState(() { entry['date'] = selectedDate; });
+                                                }
+                                              },
+                                              child: Container(
+                                                height: 48,
+                                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                decoration: BoxDecoration(
+                                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      entry['date'] != null 
+                                                          ? "${entry['date'].day}/${entry['date'].month}/${entry['date'].year}" 
+                                                          : "Select Date",
+                                                      style: TextStyle(
+                                                        color: entry['date'] != null ? (isDark ? Colors.white : const Color(0xFF0F172A)) : Colors.grey,
+                                                      ),
+                                                    ),
+                                                    const Icon(Icons.calendar_today, color: Colors.grey, size: 20),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 16),
+                                          Text("Amount", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Padding(padding: const EdgeInsets.only(left: 12), child: Text("₹", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, fontSize: 16))),
+                                                Expanded(
+                                                  child: TextField(
+                                                    controller: amtCtrl,
+                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                    style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                                                    decoration: InputDecoration(hintText: "Enter the amount", hintStyle: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 13, fontWeight: FontWeight.normal), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), border: InputBorder.none),
+                                                    onChanged: (v) {
+                                                      double sum = 0;
+                                                      for (var e in dynamicEntries[id]!) { sum += double.tryParse((e['amount'] as TextEditingController).text) ?? 0; }
+                                                      allowanceAmounts[id]?.text = sum.toString();
+                                                      setState((){});
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text("Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
+                                          const SizedBox(height: 6),
+                                          GestureDetector(
+                                            onTap: () async {
+                                              final Color primaryBlue = const Color(0xFF6366F1);
+                                              final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+                                              showModalBottomSheet(
+                                                context: context,
+                                                backgroundColor: Colors.transparent,
+                                                builder: (ctx) => Container(
+                                                  padding: const EdgeInsets.all(24),
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Container(width: 40, height: 4, decoration: BoxDecoration(color: titleColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
+                                                      const SizedBox(height: 24),
+                                                      Text("Select Proof Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: titleColor)),
+                                                      const SizedBox(height: 32),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: GestureDetector(
+                                                              onTap: () async {
+                                                                Navigator.pop(ctx);
+                                                                final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                              },
+                                                              child: Container(
+                                                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                                child: Column(children: [Icon(Icons.camera_alt_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 16),
+                                                          Expanded(
+                                                            child: GestureDetector(
+                                                              onTap: () async {
+                                                                Navigator.pop(ctx);
+                                                                final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
+                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                              },
+                                                              child: Container(
+                                                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                decoration: BoxDecoration(color: primaryBlue.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: primaryBlue.withValues(alpha: 0.1))),
+                                                                child: Column(children: [Icon(Icons.photo_library_rounded, color: primaryBlue, size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: titleColor, fontWeight: FontWeight.bold))]),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 24),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              height: 120,
+                                              width: double.infinity,
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                                image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
+                                              ),
+                                              child: entry['proof'] == null ? Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
+                                                  const SizedBox(height: 8),
+                                                  Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ) : Container(
+                                                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
+                                                child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
+                                              ),
+                                            ),
+                                          ),
                                         ],
-                                      ) : Container(
-                                        decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
-                                        child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
                                       ),
                                     ),
+                                  );
+                                }).toList(),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                      });
+                                    },
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.add_circle_outline, color: Color(0xFF6366F1), size: 20),
+                                        const SizedBox(width: 8),
+                                        Text("Add Another $capitalizedName", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF6366F1), fontWeight: FontWeight.w600, fontSize: 13)),
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              );
-                            },
-                          ),
-                      ],
+                                ),
+                              ],
+                            );
+                            }),
+                        ],
                     ],
 
                     const SizedBox(height: 32),
@@ -4130,8 +3857,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     if (allowanceNeeded == null) {
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select DA/TA requirement"), backgroundColor: Colors.red));
                                       return;
-                                    }
-                                    setState(() => isSubmitting = true);
+                                    }setState(() => isSubmitting = true);
                                     final int odo =
                                         int.tryParse(
                                           odometerController.text.trim(),
@@ -4153,7 +3879,46 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
 
-                                    final Map<int, String> amountMap = allowanceAmounts.map(
+                                    
+                                    // NEW VALIDATION LOGIC
+                                    bool hasValidationError = false;
+                                    for (var id in selectedAllowanceTypes) {
+                                      final type = allowanceTypes.firstWhere((e) => e['id'] == id, orElse: () => {'name': ''});
+                                      final isFood = (type['type_name'] ?? type['name'] ?? '').toString().toLowerCase().contains('food');
+                                      
+                                      if (dynamicEntries[id] != null) {
+                                        for (var i = 0; i < dynamicEntries[id]!.length; i++) {
+                                          var e = dynamicEntries[id]![i];
+                                          // 0. Amount mandatory
+                                          if ((e['amount'] as TextEditingController).text.trim().isEmpty) {
+                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Amount is mandatory for all allowances (${type['name'] ?? type['type_name']})"), backgroundColor: Colors.red));
+                                            hasValidationError = true;
+                                            break;
+                                          }
+                                          // 1. Proof mandatory
+                                          if (e['proof'] == null) {
+                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image proof is mandatory for all allowances (${type['name'] ?? type['type_name']})"), backgroundColor: Colors.red));
+                                            hasValidationError = true;
+                                            break;
+                                          }
+                                          // 2. Date mandatory for Food if > 3 cards
+                                          if (isFood && dynamicEntries[id]!.length > 3) {
+                                            if (e['date'] == null) {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Date is mandatory when adding more than 3 Food allowances"), backgroundColor: Colors.red));
+                                              hasValidationError = true;
+                                              break;
+                                            }
+                                          }
+                                        }
+                                      }
+                                      if (hasValidationError) break;
+                                    }
+                                    if (hasValidationError) {
+                                      setState(() => isSubmitting = false);
+                                      return;
+                                    }
+                                    // END VALIDATION LOGIC
+final Map<int, String> amountMap = allowanceAmounts.map(
                                       (id, controller) => MapEntry(id, controller.text.trim()),
                                     );
 
@@ -4164,7 +3929,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       allowanceTypeIds: selectedAllowanceTypes,
                                       allowanceCounts: allowanceCounts,
                                       allowanceAmounts: amountMap,
-                                      proofImage: proofImage,
+                                      proofImage: dynamicEntries.values.expand((list) => list).firstWhere((e) => e['proof'] != null, orElse: () => {'proof': null})['proof'] as File?,
                                     );
 
                                     if (result['success'] == true) {
@@ -4963,3 +4728,4 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     );
   }
 }
+

@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../screens/driver/driver_task_details_page.dart';
 import '../utils/routes.dart';
 
 // Top-level callback for background notification taps.
@@ -10,8 +11,6 @@ import '../utils/routes.dart';
 void notificationTapBackground(NotificationResponse notificationResponse) {
   debugPrint(
       '🔔 [BG] Notification tapped in background: ${notificationResponse.payload}');
-  // Note: You cannot navigate here because the Flutter engine may not be ready.
-  // Navigation on tap is handled in the foreground handler below.
 }
 
 class NotificationLocalService {
@@ -23,20 +22,11 @@ class NotificationLocalService {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // ── iOS Settings ────────────────────────────────────────────────────────
-    // Set request*Permission to false here because we request permissions
-    // via Firebase Messaging (requestPermission()) which is more reliable
-    // and gives us the authorization status. Setting these to true here would
-    // show a SECOND permission dialog which is confusing for users.
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
-      // IMPORTANT: These default presentation options control how
-      // flutter_local_notifications shows notifications when the app is
-      // in the FOREGROUND on iOS. Setting all to true ensures banners,
-      // sounds and badge updates appear even while the app is open.
       defaultPresentAlert: true,
       defaultPresentBadge: true,
       defaultPresentSound: true,
@@ -49,17 +39,20 @@ class NotificationLocalService {
 
     await _notificationsPlugin.initialize(
       initSettings,
-      // Foreground tap handler — called when user taps a notification while
-      // the app is in the foreground.
       onDidReceiveNotificationResponse: (NotificationResponse details) {
         debugPrint(
             '🔔 [FG] Notification tapped (foreground): ${details.payload}');
-        // Navigate to the notifications screen
-        AppRoutes.navigatorKey.currentState?.pushNamed(AppRoutes.notifications);
+        final payload = details.payload;
+        if (payload != null && payload.isNotEmpty) {
+          AppRoutes.navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => DriverTaskDetailsPage(taskId: payload),
+            ),
+          );
+        } else {
+          AppRoutes.navigatorKey.currentState?.pushNamed(AppRoutes.notifications);
+        }
       },
-      // Background tap handler — called when user taps a notification while
-      // the app is in the background or terminated.
-      // MUST be a top-level function annotated with @pragma('vm:entry-point').
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
@@ -93,9 +86,13 @@ class NotificationLocalService {
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(assignmentChannel);
 
+    // ── Android 13+ (API 33+): Request runtime POST_NOTIFICATIONS permission ──
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+
     // ── iOS: Request local notification permission if not already granted ───
-    // This is a belt-and-suspenders check — Firebase already requests it,
-    // but this ensures flutter_local_notifications also has the entitlement.
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>()
@@ -128,9 +125,6 @@ class NotificationLocalService {
       ledOffMs: 500,
     );
 
-    // iOS notification details — presentAlert/presentBadge/presentSound
-    // tell iOS to show the banner + play sound + update badge even when
-    // the app is in the FOREGROUND (essential for WhatsApp-style behaviour).
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
@@ -159,53 +153,60 @@ class NotificationLocalService {
     required String body,
     String? payload,
   }) async {
-    final Int32List additionalFlags =
-        Int32List.fromList(<int>[4]); // FLAG_INSISTENT
+    try {
+      final Int32List additionalFlags =
+          Int32List.fromList(<int>[4]); // FLAG_INSISTENT
 
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'route_assignment_channel_v3',
-      'Route Assignments',
-      channelDescription: 'Critical alerts for new route assignments',
-      importance: Importance.max,
-      priority: Priority.high,
-      sound: const RawResourceAndroidNotificationSound('alerttone'),
-      additionalFlags: additionalFlags,
-      color: const Color(0xFFEF4444), // Critical Alert Red
-      enableLights: true,
-      ledColor: const Color(0xFFEF4444),
-      ledOnMs: 1000,
-      ledOffMs: 500,
-      actions: <AndroidNotificationAction>[
-        const AndroidNotificationAction(
-          'acknowledge_action',
-          'Acknowledge',
-          cancelNotification: true,
-        ),
-      ],
-    );
+      final AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'route_assignment_channel_v3',
+        'Route Assignments',
+        channelDescription: 'Critical alerts for new route assignments',
+        importance: Importance.max,
+        priority: Priority.high,
+        sound: const RawResourceAndroidNotificationSound('alerttone'),
+        additionalFlags: additionalFlags,
+        color: const Color(0xFFEF4444), // Critical Alert Red
+        enableLights: true,
+        ledColor: const Color(0xFFEF4444),
+        ledOnMs: 1000,
+        ledOffMs: 500,
+        actions: <AndroidNotificationAction>[
+          const AndroidNotificationAction(
+            'acknowledge_action',
+            'Acknowledge',
+            cancelNotification: true,
+          ),
+        ],
+      );
 
-    // Critical iOS alert — time-sensitive interruption level ensures it
-    // breaks through Focus modes (like WhatsApp calls / critical alerts).
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'alerttone.mp3',
-      interruptionLevel: InterruptionLevel.timeSensitive,
-    );
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'alerttone.mp3',
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      );
 
-    final NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      final NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
 
-    await _notificationsPlugin.show(
-      id,
-      title,
-      body,
-      notificationDetails,
-      payload: payload,
-    );
+      await _notificationsPlugin.show(
+        id,
+        title,
+        body,
+        notificationDetails,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint("🔔 Primary notification alert error: $e. Retrying standard notification...");
+      try {
+        await showNotification(id: id, title: title, body: body, payload: payload);
+      } catch (err) {
+        debugPrint("🔔 Notification fallback error: $err");
+      }
+    }
   }
 }

@@ -2,13 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';import 'package:tripzo/store/providers.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:tripzo/store/driver_task_store.dart';
+import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/utils/emergency_task_dialog.dart';
 import 'package:tripzo/store/istamil.dart'; 
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_details_page.dart';
 import 'package:tripzo/screens/driver/schedule_details_page.dart';
+import 'package:tripzo/screens/driver/driver_task_details_page.dart';
+import 'package:tripzo/utils/task_icon_helper.dart';
 import 'package:shimmer/shimmer.dart';
 
 
@@ -36,6 +42,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
   late AnimationController _jumpController;
   late Animation<double> _jumpAnimation;
   Timer? _jumpTimer;
+  Timer? _taskPollTimer;
   bool _isScrolledFarFromToday = false;
 
   @override
@@ -78,6 +85,12 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
       }
     });
 
+    _taskPollTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (mounted) {
+        await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToDate(_selectedDateFilter);
       _fetchDataForSelectedDate();
@@ -117,6 +130,10 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     // Fetch Daily Bus Routes for the selected date
     final dailyStore = ref.read(dailyRoutinesStoreProvider);
     await dailyStore.fetchDailyRoutines(isRefresh: true, date: _selectedDateFilter);
+
+    if (!mounted) return;
+    // Fetch API Driver Tasks
+    await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
   }
 
   @override
@@ -125,11 +142,24 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     _dateScrollController.dispose();
     _jumpController.dispose();
     _jumpTimer?.cancel();
+    _taskPollTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<DriverTaskStore>(driverTaskStoreProvider, (previous, next) {
+      if (next.pendingEmergencyTaskPopup != null) {
+        final task = next.pendingEmergencyTaskPopup!;
+        next.clearEmergencyTaskPopup();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            showEmergencyTaskPopupDialog(context, task);
+          }
+        });
+      }
+    });
+
     final bool isTamil = LanguageStore.isTamil;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -258,6 +288,27 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
                       ),
                     ),
                   ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedToggleIndex = 3),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _selectedToggleIndex == 3 ? primaryBlue : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isTamil ? "பணிகள்" : "Tasks",
+                          style: TextStyle(
+                            color: _selectedToggleIndex == 3 ? Colors.white : subColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -325,11 +376,13 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
 
           // Main List
           Expanded(
-            child: _selectedToggleIndex == 2
-                ? _buildScheduleList()
-                : (_selectedToggleIndex == 1
-                    ? _buildDailyBusRoutesList()
-                    : _buildRouteList()),
+            child: _selectedToggleIndex == 3
+                ? _buildTaskList()
+                : (_selectedToggleIndex == 2
+                    ? _buildScheduleList()
+                    : (_selectedToggleIndex == 1
+                        ? _buildDailyBusRoutesList()
+                        : _buildRouteList())),
           ),
         ],
       ),
@@ -1606,5 +1659,1223 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
     } catch (_) {
       return timeStr;
     }
+  }
+
+  Widget _buildTaskList() {
+    final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+    final driverStore = ref.watch(driverStoreProvider);
+    final isTamil = LanguageStore.isTamil;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+
+    final query = driverStore.searchQuery.toLowerCase().trim();
+    final List<Map<String, dynamic>> tasksList = [];
+
+    // 1. Schedules as tasks
+    for (var s in scheduleStore.startedSchedules) {
+      tasksList.add({
+        'type': 'SCHEDULE',
+        'title': s['dutyShift']?['masterDuty']?['category']?['category_name'] ?? (isTamil ? 'கடமைப் பணி' : 'Duty Task'),
+        'subtitle': s['dutyShift']?['shift_name'] ?? 'Shift Task',
+        'status': s['dutyShift']?['status'] ?? 'STARTED',
+        'date': s['dutyShift']?['masterDuty']?['duty_date'] ?? '',
+        'raw': s,
+      });
+    }
+    for (var s in scheduleStore.todaySchedules) {
+      if (!tasksList.any((t) => t['type'] == 'SCHEDULE' && t['raw']['id'] == s['id'])) {
+        tasksList.add({
+          'type': 'SCHEDULE',
+          'title': s['dutyShift']?['masterDuty']?['category']?['category_name'] ?? (isTamil ? 'கடமைப் பணி' : 'Duty Task'),
+          'subtitle': s['dutyShift']?['shift_name'] ?? 'Shift Task',
+          'status': s['dutyShift']?['status'] ?? 'PLANNED',
+          'date': s['dutyShift']?['masterDuty']?['duty_date'] ?? '',
+          'raw': s,
+        });
+      }
+    }
+    for (var s in scheduleStore.schedules) {
+      if (!tasksList.any((t) => t['type'] == 'SCHEDULE' && t['raw']['id'] == s['id'])) {
+        tasksList.add({
+          'type': 'SCHEDULE',
+          'title': s['dutyShift']?['masterDuty']?['category']?['category_name'] ?? (isTamil ? 'கடமைப் பணி' : 'Duty Task'),
+          'subtitle': s['dutyShift']?['shift_name'] ?? 'Shift Task',
+          'status': s['dutyShift']?['status'] ?? 'PLANNED',
+          'date': s['dutyShift']?['masterDuty']?['duty_date'] ?? '',
+          'raw': s,
+        });
+      }
+    }
+
+    // 3. Daily bus runs as tasks
+    for (var run in driverStore.dailyBusRuns) {
+      final status = run['status'] ?? 'PLANNED';
+      final runTitle = run['bus_number'] != null ? "Bus ${run['bus_number']} Task" : (isTamil ? "பேருந்து பணி" : "Daily Bus Task");
+      tasksList.add({
+        'type': 'BUS_RUN',
+        'title': runTitle,
+        'subtitle': "${run['start_location_name'] ?? ''} -> ${run['halt_location_name'] ?? ''}",
+        'status': status.toString().toUpperCase(),
+        'date': run['duty_date'] ?? '',
+        'raw': run,
+      });
+    }
+
+    // 4. API Driver Tasks (/api/driver-task/get-all)
+    final driverTaskStore = ref.watch(driverTaskStoreProvider);
+    for (var task in driverTaskStore.tasks) {
+      final startsAt = task['starts_at'] ?? '';
+      String dateStr = '';
+      if (startsAt.isNotEmpty) {
+        try {
+          dateStr = DateFormat('yyyy-MM-dd').format(DateTime.parse(startsAt).toLocal());
+        } catch (_) {}
+      }
+      tasksList.add({
+        'type': 'API_TASK',
+        'title': task['title'] ?? (isTamil ? 'ஓட்டுநர் பணி' : 'Driver Task'),
+        'subtitle': task['description'] ?? task['location_name'] ?? '',
+        'status': getEffectiveTaskStatus(task),
+        'date': dateStr,
+        'raw': task,
+      });
+    }
+
+    // Filter by selected date (keep active tasks like ASSIGNED / IN_PROGRESS / STARTED / PLANNED / OVERDUE always visible)
+    List<Map<String, dynamic>> filteredList = tasksList.where((t) {
+      final status = (t['status'] ?? '').toString().toUpperCase();
+      final bool isActive = status == 'ASSIGNED' || status == 'IN_PROGRESS' || status == 'STARTED' || status == 'PLANNED' || status == 'ONGOING' || status == 'OVERDUE';
+
+      if (!isActive && _selectedDateFilter != 'ALL' && t['date'].isNotEmpty) {
+        if (t['date'] != _selectedDateFilter) return false;
+      }
+      if (query.isNotEmpty) {
+        final title = (t['title'] ?? '').toString().toLowerCase();
+        final sub = (t['subtitle'] ?? '').toString().toLowerCase();
+        final st = status.toLowerCase();
+        return title.contains(query) || sub.contains(query) || st.contains(query);
+      }
+      return true;
+    }).toList();
+
+    if (scheduleStore.isLoading && filteredList.isEmpty) {
+      return _buildSkeletonList(isDark, cardColor);
+    }
+
+    if (filteredList.isEmpty) {
+      return _buildScheduleEmptyState(isSearch: query.isNotEmpty);
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _fetchDataForSelectedDate();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        itemCount: filteredList.length,
+        itemBuilder: (context, index) {
+          final task = filteredList[index];
+          return _buildTaskCard(
+            context: context,
+            task: task,
+            cardColor: cardColor,
+            titleColor: titleColor,
+            subColor: subColor,
+            primaryBlue: primaryBlue,
+            isDark: isDark,
+            isTamil: isTamil,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTaskCard({
+    required BuildContext context,
+    required Map<String, dynamic> task,
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required Color primaryBlue,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final String type = task['type'] ?? 'TASK';
+    if (type == 'API_TASK') {
+      return _buildApiRouteTaskCard(
+        context: context,
+        task: task,
+        cardColor: cardColor,
+        titleColor: titleColor,
+        subColor: subColor,
+        primaryBlue: primaryBlue,
+        isDark: isDark,
+        isTamil: isTamil,
+      );
+    }
+    final String title = task['title'] ?? 'Task';
+    final String subtitle = task['subtitle'] ?? '';
+    final String status = task['status'] ?? 'PLANNED';
+    final Map<String, dynamic> raw = task['raw'] ?? {};
+
+    IconData typeIcon = Icons.task_alt_rounded;
+    Color iconColor = const Color(0xFF8B5CF6);
+    if (type == 'MISSION') {
+      typeIcon = Icons.explore_rounded;
+      iconColor = const Color(0xFF6366F1);
+    } else if (type == 'BUS_RUN') {
+      typeIcon = Icons.directions_bus_rounded;
+      iconColor = const Color(0xFF3B82F6);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (type == 'SCHEDULE' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScheduleDetailsPage(scheduleId: raw['id']),
+            ),
+          );
+        } else if (type == 'MISSION' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MissionDetailsScreen(
+                missionTitle: raw['title'] ?? 'Mission Task',
+                time: raw['start_datetime'] ?? 'TBD',
+                driverName: "Driver",
+                driverPhone: "",
+                vehicleInfo: raw['vehicle_number'] ?? 'Vehicle',
+                capacity: "N/A",
+                passengerCount: "0",
+                pathType: raw['travel_type'] ?? "One-Way",
+                stops: [
+                  {'location': raw['start_location_name'] ?? 'Start', 'eta': 'Start'},
+                  {'location': raw['halt_location_name'] ?? 'End', 'eta': 'End'},
+                ],
+                status: (raw['status'] ?? 'PLANNED').toString(),
+                statusColor: Colors.indigo,
+                requestId: raw['id'].toString(),
+                rawStatus: 0,
+              ),
+            ),
+          );
+        } else if (type == 'BUS_RUN' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DailyBusRunDetailsPage(runData: raw),
+            ),
+          );
+        } else if (type == 'API_TASK' && raw['id'] != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DriverTaskDetailsPage(
+                taskId: raw['id'],
+                initialTaskData: raw,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(typeIcon, color: iconColor, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: titleColor,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: subColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: status == 'STARTED' || status == 'ONGOING' || status == 'IN_PROGRESS'
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : (status == 'COMPLETED' || status == 'VERIFIED' ? Colors.grey.withValues(alpha: 0.12) : primaryBlue.withValues(alpha: 0.12)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: status == 'STARTED' || status == 'ONGOING' || status == 'IN_PROGRESS'
+                          ? const Color(0xFF10B981)
+                          : (status == 'COMPLETED' || status == 'VERIFIED' ? Colors.grey : primaryBlue),
+                    ),
+                  ),
+                ),
+                if (type == 'API_TASK' && raw['id'] != null) ...[
+                  const SizedBox(height: 8),
+                  if (status == 'ASSIGNED' || status == 'PLANNED')
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
+                      label: const Text("Start Task", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: const Size(90, 34),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        _showStartOdometerDialog(context, ref, raw['id'], raw);
+                      },
+                    )
+                  else if (status == 'STARTED' || status == 'IN_PROGRESS')
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.check_circle_rounded, size: 16, color: Colors.white),
+                      label: const Text("Complete", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: const Size(90, 34),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                        _showCompleteOdometerDialog(context, ref, raw['id'], raw);
+                      },
+                    ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDriverTaskDetailModal(BuildContext context, dynamic taskId) async {
+    final taskDetails = await ref.read(driverTaskStoreProvider).getTaskById(taskId);
+    if (!context.mounted || taskDetails == null) return;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final String status = (taskDetails['status'] ?? 'ASSIGNED').toString().toUpperCase();
+    final String taskNo = taskDetails['task_number'] ?? "DT-${taskDetails['id']}";
+    final String title = taskDetails['title'] ?? "Driver Task";
+    final String description = taskDetails['description'] ?? "No description provided.";
+    final String location = taskDetails['location_name'] ?? "Main Bunk";
+    final String duration = "${taskDetails['duration_minutes'] ?? 60} mins";
+    final String remarks = taskDetails['remarks'] ?? "None";
+    final taskType = taskDetails['task_type']?['name'] ?? "General Task";
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.outfit(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: titleColor,
+                          ),
+                        ),
+                        Text(
+                          "$taskNo • $taskType",
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: subColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      status,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              _buildDetailRow(Icons.description_rounded, "Description", description, titleColor, subColor),
+              const SizedBox(height: 12),
+              _buildDetailRow(Icons.location_on_rounded, "Location", location, titleColor, subColor),
+              const SizedBox(height: 12),
+              _buildDetailRow(Icons.timer_rounded, "Duration", duration, titleColor, subColor),
+              const SizedBox(height: 12),
+              _buildDetailRow(Icons.notes_rounded, "Remarks", remarks, titleColor, subColor),
+              const SizedBox(height: 24),
+              if (status == 'ASSIGNED' || status == 'PLANNED')
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                    label: const Text("Start Task", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final success = await ref.read(driverTaskStoreProvider).startTask(taskId);
+                      if (context.mounted && success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Task started!")),
+                        );
+                      }
+                    },
+                  ),
+                )
+              else if (status == 'STARTED' || status == 'IN_PROGRESS')
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.check_circle_rounded, color: Colors.white),
+                    label: const Text("Complete Task", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final success = await ref.read(driverTaskStoreProvider).completeTask(taskId);
+                      if (context.mounted && success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Task completed!")),
+                        );
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, Color titleColor, Color subColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF6366F1)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subColor)),
+              const SizedBox(height: 2),
+              Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: titleColor)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showStartOdometerDialog(BuildContext context, WidgetRef ref, dynamic taskId, Map<String, dynamic> task) {
+    final rawTask = task['raw'] is Map ? task['raw'] : task;
+    final vehicleObj = rawTask['vehicle'] ?? task['vehicle'];
+    num vehicleOdo = 0;
+    if (vehicleObj is Map) {
+      vehicleOdo = num.tryParse((vehicleObj['odometer'] ?? vehicleObj['current_odometer'] ?? vehicleObj['last_odometer'] ?? 0).toString()) ?? 0;
+    } else if (rawTask['vehicle_odometer'] != null || task['vehicle_odometer'] != null) {
+      vehicleOdo = num.tryParse((rawTask['vehicle_odometer'] ?? task['vehicle_odometer']).toString()) ?? 0;
+    }
+
+    final odoController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgSurface = isDark ? const Color(0xFF1E293B) : Colors.white;
+        final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+        final inputBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: bgSurface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  "Start Mission Information",
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Please enter the starting details before continuing.",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: inputBg,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  child: TextField(
+                    controller: odoController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: titleColor),
+                    decoration: InputDecoration(
+                      hintText: "Start Odometer",
+                      hintStyle: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                      ),
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Icon(Icons.speed_rounded, color: Color(0xFF6366F1), size: 22),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 48),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text(
+                          "Close",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final odoVal = num.tryParse(odoController.text.trim());
+                          if (odoVal == null || odoVal <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please enter a valid Start Odometer reading."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (vehicleOdo > 0 && odoVal < vehicleOdo) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Start odometer ($odoVal km) cannot be less than vehicle's current odometer ($vehicleOdo km)."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          Navigator.pop(ctx);
+                          final success = await ref.read(driverTaskStoreProvider).startTask(
+                            taskId,
+                            startOdometer: odoVal,
+                          );
+                          if (context.mounted && success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Task started with Start Odometer: $odoVal km!"),
+                                backgroundColor: const Color(0xFF10B981),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          "SUBMIT",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCompleteOdometerDialog(BuildContext context, WidgetRef ref, dynamic taskId, Map<String, dynamic> task) {
+    final rawTask = task['raw'] is Map ? task['raw'] : task;
+    num startOdo = 0;
+    final startOdoRaw = rawTask['start_odometer'] ?? rawTask['startOdometer'] ?? task['start_odometer'] ?? task['startOdometer'];
+    if (startOdoRaw != null) {
+      startOdo = num.tryParse(startOdoRaw.toString()) ?? 0;
+    }
+
+    final vehicleObj = rawTask['vehicle'] ?? task['vehicle'];
+    num vehicleOdo = 0;
+    if (vehicleObj is Map) {
+      vehicleOdo = num.tryParse((vehicleObj['odometer'] ?? vehicleObj['current_odometer'] ?? vehicleObj['last_odometer'] ?? 0).toString()) ?? 0;
+    } else if (rawTask['vehicle_odometer'] != null || task['vehicle_odometer'] != null) {
+      vehicleOdo = num.tryParse((rawTask['vehicle_odometer'] ?? task['vehicle_odometer']).toString()) ?? 0;
+    }
+
+    final odoController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgSurface = isDark ? const Color(0xFF1E293B) : Colors.white;
+        final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+        final inputBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: bgSurface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  "Complete Mission Information",
+                  style: GoogleFonts.outfit(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Please enter the ending details before completing.",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    color: inputBg,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  child: TextField(
+                    controller: odoController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    ],
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: titleColor),
+                    decoration: InputDecoration(
+                      hintText: "End Odometer",
+                      hintStyle: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                      ),
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Icon(Icons.speed_rounded, color: Color(0xFF10B981), size: 22),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 48),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text(
+                          "Close",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final odoVal = num.tryParse(odoController.text.trim());
+                          if (odoVal == null || odoVal <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please enter a valid End Odometer reading."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (startOdo > 0 && odoVal < startOdo) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("End odometer ($odoVal km) cannot be less than start odometer ($startOdo km)."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (vehicleOdo > 0 && odoVal < vehicleOdo) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("End odometer ($odoVal km) cannot be less than vehicle's current odometer ($vehicleOdo km)."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          Navigator.pop(ctx);
+                          final success = await ref.read(driverTaskStoreProvider).completeTask(
+                            taskId,
+                            endOdometer: odoVal,
+                          );
+                          if (context.mounted && success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Task completed with End Odometer: $odoVal km!"),
+                                backgroundColor: const Color(0xFF10B981),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          "SUBMIT",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildApiRouteTaskCard({
+    required BuildContext context,
+    required Map<String, dynamic> task,
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required Color primaryBlue,
+    required bool isDark,
+    required bool isTamil,
+  }) {
+    final Map<String, dynamic> raw = task['raw'] ?? task;
+    final dynamic taskId = raw['id'];
+    final String title = raw['title'] ?? (isTamil ? 'ஓட்டுநர் பணி' : 'Driver Task');
+    final String description = raw['description'] ?? 'Perform assigned driver task';
+    final String location = raw['location_name'] ?? 'Main Bunk';
+    final String status = (raw['status'] ?? 'ASSIGNED').toString().toUpperCase();
+    final String startsAtStr = raw['starts_at'] ?? '';
+    final v = raw['vehicle'];
+    final String vehicleNo = v is Map ? (v['vehicle_number'] ?? 'Vehicle 56').toString() : (raw['vehicle_id'] != null ? "Vehicle #${raw['vehicle_id']}" : (v != null ? "Vehicle #$v" : "Vehicle 56"));
+    final String taskNo = raw['task_number'] ?? (taskId != null ? "DT-$taskId" : "DT-TASK");
+    final tt = raw['task_type'] ?? raw['taskType'] ?? raw['category'] ?? raw['category_name'] ?? raw['task_category'];
+    String taskType = 'Driver Task';
+    if (tt is Map) {
+      taskType = (tt['name'] ?? tt['category_name'] ?? tt['title'] ?? 'Driver Task').toString();
+    } else if (tt != null && tt.toString().isNotEmpty) {
+      taskType = tt.toString();
+    }
+
+    String startTimeText = "10:00 AM";
+    DateTime? startDateTime;
+    if (startsAtStr.isNotEmpty) {
+      try {
+        startDateTime = DateTime.parse(startsAtStr).toLocal();
+        startTimeText = DateFormat('hh:mm a').format(startDateTime);
+      } catch (_) {}
+    }
+
+    // Enable Start Task button according to start time
+    bool canStart = true;
+    String startTimeMessage = "";
+    if (startDateTime != null && (status == 'ASSIGNED' || status == 'PLANNED')) {
+      final now = DateTime.now();
+      if (now.isBefore(startDateTime)) {
+        canStart = false;
+        startTimeMessage = "Starts at $startTimeText";
+      }
+    }
+
+    Color statusColor = primaryBlue;
+    if (status == 'STARTED' || status == 'IN_PROGRESS') {
+      statusColor = const Color(0xFF10B981);
+    } else if (status == 'COMPLETED' || status == 'VERIFIED') {
+      statusColor = Colors.grey;
+    } else if (status == 'CANCELLED') {
+      statusColor = const Color(0xFFEF4444);
+    }
+
+    final taskTheme = getTaskThemeInfo(title, taskType, "$description $location");
+
+    return GestureDetector(
+      onTap: () {
+        if (taskId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DriverTaskDetailsPage(
+                taskId: taskId,
+                initialTaskData: raw,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row: Content Icon, Title, Task Number, Status Badge
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: taskTheme.bgTint,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(taskTheme.icon, color: taskTheme.color, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                taskType,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: taskTheme.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Location Card UI (In-Campus vs Outer Route Start & End Locations)
+              Builder(
+                builder: (context) {
+                  final String fromLoc = (raw['from_location'] ?? '').toString();
+                  final String toLoc = (raw['to_location'] ?? '').toString();
+                  final String inCampus = (raw['in_campus'] ?? '').toString();
+                  final bool isInCampus = inCampus.isNotEmpty || (fromLoc.isEmpty && toLoc.isEmpty);
+
+                  if (isInCampus) {
+                    final String campusLocName = inCampus.isNotEmpty ? inCampus : location;
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(getLocationOrGoalIcon(campusLocName, isStart: true), color: const Color(0xFF6366F1), size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF6366F1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "IN-CAMPUS LOCATION",
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: const Color(0xFF6366F1), letterSpacing: 0.5),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  campusLocName,
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: titleColor),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final String startLoc = fromLoc.isNotEmpty ? fromLoc : location;
+                  final String endLoc = toLoc.isNotEmpty ? toLoc : description;
+
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Start Location Pin
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(getLocationOrGoalIcon(startLoc, isStart: true), color: Colors.white, size: 12),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "START LOCATION",
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: subColor),
+                                  ),
+                                  Text(
+                                    startLoc,
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: titleColor),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Timeline connector
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 2,
+                                height: 16,
+                                color: primaryBlue.withValues(alpha: 0.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // End Location Pin
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(getLocationOrGoalIcon(endLoc, isStart: false), color: Colors.white, size: 12),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "END LOCATION",
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: subColor),
+                                  ),
+                                  Text(
+                                    endLoc,
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: titleColor),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Bottom Bar: Time & Vehicle
+              Row(
+                children: [
+                  Icon(Icons.access_time_filled_rounded, size: 14, color: subColor),
+                  const SizedBox(width: 4),
+                  Text(startTimeText, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subColor)),
+                  const SizedBox(width: 12),
+                  Icon(Icons.directions_bus_rounded, size: 14, color: subColor),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      vehicleNo,
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

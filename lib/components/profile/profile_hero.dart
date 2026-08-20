@@ -84,18 +84,57 @@ class ProfileHero extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: subColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          const SizedBox(height: 6),
+          _buildSubtitleWidget(),
         ],
       ),
+    );
+  }
+
+  Widget _buildSubtitleWidget() {
+    if (subtitle.contains(' • ')) {
+      final parts = subtitle.split(' • ');
+      final role = parts[0].trim();
+      final detail = parts.sublist(1).join(' • ').trim();
+
+      if (role.isNotEmpty && detail.isNotEmpty) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              role,
+              style: TextStyle(
+                color: subColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              detail,
+              style: TextStyle(
+                color: subColor.withValues(alpha: 0.8),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      }
+    }
+
+    return Text(
+      subtitle,
+      style: TextStyle(
+        color: subColor,
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+      ),
+      textAlign: TextAlign.center,
     );
   }
 

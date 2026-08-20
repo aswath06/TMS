@@ -99,7 +99,7 @@ class RequestStore extends ChangeNotifier {
       // Append user email for faculty requests
       final String? role = await UserStore.getRole();
       final String? email = await UserStore.getEmail();
-      if (role != null && !role.toLowerCase().contains('admin') && email != null) {
+      if (role != null && !role.toLowerCase().contains('admin') && !role.toLowerCase().contains('coordinator') && email != null) {
         url += "&user=$email";
       }
 

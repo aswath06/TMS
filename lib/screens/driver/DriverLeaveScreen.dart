@@ -1184,19 +1184,23 @@ final store = ref.watch(driverStoreProvider);
               ),
             ),
             if (canRevoke)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  isTamil ? "ரத்து செய்" : "Cancel",
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+              GestureDetector(
+                onTap: () => _showStudentLeaveDetailsPopup(context, leave, isTamil, isDark),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    isTamil ? "ரத்து செய்" : "Cancel",
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),

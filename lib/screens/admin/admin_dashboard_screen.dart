@@ -216,7 +216,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       setState(() {
         _userRole = role ?? "";
       });
-      if (_userRole.toLowerCase() == 'transport admin' || _userRole.toLowerCase() == 'super admin') {
+      if (_userRole.toLowerCase().contains('admin') || _userRole.toLowerCase().contains('coordinator')) {
         ref.read(expirationStoreProvider).fetchExpirations();
         _fetchAdminDailyBusRuns();
       }
@@ -411,7 +411,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 36),
-                  if (_userRole.toLowerCase() == 'transport admin' || _userRole.toLowerCase() == 'super admin') ...[
+                  if (_userRole.toLowerCase().contains('admin') || _userRole.toLowerCase().contains('coordinator')) ...[
                     FadeInUp(
                       index: 6,
                       child: _buildExpirationSection(primaryBlue, surfaceColor, isDark, titleColor, subColor),
@@ -992,7 +992,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   // ---------------------------------------------------------------------
 
   Widget _buildExpirationSection(Color primaryBlue, Color surface, bool isDark, Color titleColor, Color subColor) {
-    if (_userRole.toLowerCase() != 'transport admin' && _userRole.toLowerCase() != 'super admin') {
+    if (!_userRole.toLowerCase().contains('admin') && !_userRole.toLowerCase().contains('coordinator')) {
       return const SizedBox.shrink();
     }
 

@@ -13,6 +13,8 @@ import 'package:tripzo/screens/setting/scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/utils/api_constants.dart';
 
+import 'package:tripzo/store/user_store.dart';
+
 class DriverProfileScreen extends ConsumerStatefulWidget {
   const DriverProfileScreen({super.key});
 
@@ -29,6 +31,42 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
         useDriverStore.fetchProfile();
       }
     });
+  }
+
+  String _getRoleDisplayName(Map<String, dynamic>? data, bool isTamil) {
+    String roleStr = '';
+    if (data != null && data['role'] != null) {
+      final r = data['role'];
+      if (r is Map && r['name'] != null && r['name'].toString().isNotEmpty) {
+        roleStr = r['name'].toString();
+      } else if (r is String && r.isNotEmpty) {
+        roleStr = r;
+      }
+    }
+    if (roleStr.isEmpty) {
+      final storeRole = UserStore.role;
+      if (storeRole != null && storeRole.isNotEmpty) {
+        roleStr = storeRole;
+      }
+    }
+    if (roleStr.isEmpty) {
+      return isTamil ? 'ஓட்டுநர்' : 'Driver';
+    }
+
+    roleStr = roleStr.replaceAll('_', ' ').trim();
+    final lower = roleStr.toLowerCase();
+
+    if (isTamil) {
+      if (lower == 'driver') return 'ஓட்டுநர்';
+      if (lower.contains('coordinator')) return 'போக்குவரத்து ஒருங்கிணைப்பாளர்';
+      return roleStr;
+    }
+
+    final words = roleStr.split(RegExp(r'\s+'));
+    return words.map((w) {
+      if (w.isEmpty) return '';
+      return w[0].toUpperCase() + w.substring(1).toLowerCase();
+    }).join(' ');
   }
 
   @override
@@ -65,37 +103,50 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     ),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _buildHeader(context, titleColor, isTamil),
-                        const SizedBox(height: 30),
                         Consumer(
-builder: (context, ref, _) {
-final store = ref.watch(driverStoreProvider);
-                            if (store.profileError != null) {
-                              return _buildErrorState(
-                                store.profileError!,
-                                titleColor,
-                                isTamil,
-                              );
-                            }
+                          builder: (context, ref, _) {
+                            final store = ref.watch(driverStoreProvider);
                             return ValueListenableBuilder(
                               valueListenable: store.profileData,
                               builder: (context, profile, _) {
+                                final roleDisplayName = _getRoleDisplayName(profile, isTamil);
+                                if (store.profileError != null) {
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildHeader(context, titleColor, isTamil, roleDisplayName),
+                                      const SizedBox(height: 30),
+                                      _buildErrorState(
+                                        store.profileError!,
+                                        titleColor,
+                                        isTamil,
+                                      ),
+                                    ],
+                                  );
+                                }
                                 return ValueListenableBuilder(
                                   valueListenable: store.ongoingTask,
                                   builder: (context, task, _) {
                                     return ValueListenableBuilder(
                                       valueListenable: store.upcomingRoutes,
                                       builder: (context, routes, _) {
-                                        return _buildProfileContent(
-                                          profile,
-                                          store.isLoading,
-                                          isDark,
-                                          titleColor,
-                                          cardColor,
-                                          subTitleColor,
-                                          isTamil,
-                                          task,
-                                          routes,
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            _buildHeader(context, titleColor, isTamil, roleDisplayName),
+                                            const SizedBox(height: 30),
+                                            _buildProfileContent(
+                                              profile,
+                                              store.isLoading,
+                                              isDark,
+                                              titleColor,
+                                              cardColor,
+                                              subTitleColor,
+                                              isTamil,
+                                              task,
+                                              routes,
+                                            ),
+                                          ],
                                         );
                                       },
                                     );
@@ -131,6 +182,7 @@ final store = ref.watch(driverStoreProvider);
     List<dynamic> routes,
   ) {
     final bool showTyping = isLoading && data == null;
+    final String roleDisplayName = _getRoleDisplayName(data, isTamil);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,10 +190,10 @@ final store = ref.watch(driverStoreProvider);
         ProfileHero(
           name: showTyping
               ? "..."
-              : (data?['name'] ?? (isTamil ? "ஓட்டுநர்" : "Driver")),
+              : (data?['name'] ?? roleDisplayName),
           subtitle: showTyping
               ? (isTamil ? "புதுப்பிக்கிறது..." : "Updating...")
-              : "${isTamil ? 'ஓட்டுநர்' : 'Driver'} • ${data?['email'] ?? ''}",
+              : "$roleDisplayName • ${data?['email'] ?? ''}",
           cardColor: cardColor,
           titleColor: titleColor,
           subColor: subColor,
@@ -161,7 +213,7 @@ final store = ref.watch(driverStoreProvider);
         ],
 
         _buildSectionTitle(
-          isTamil ? "ஓட்டுநர் விவரங்கள்" : "Driver Details",
+          isTamil ? "$roleDisplayName விவரங்கள்" : "$roleDisplayName Details",
           titleColor,
         ),
         const SizedBox(height: 16),
@@ -408,7 +460,7 @@ final store = ref.watch(driverStoreProvider);
       },
       {
         'title': isTamil ? 'பணியாளர் குறியீடு' : 'Employee Code',
-        'val': data?['driverProfile']?['employee_code'],
+        'val': data?['driverProfile']?['employee_code'] ?? data?['employee_code'] ?? data?['employee_id'] ?? data?['code'],
         'icon': Icons.badge_outlined,
         'color': Colors.blueGrey,
       },
@@ -420,7 +472,7 @@ final store = ref.watch(driverStoreProvider);
       },
       {
         'title': isTamil ? 'இரத்த வகை' : 'Blood Group',
-        'val': data?['driverProfile']?['blood_group'],
+        'val': data?['driverProfile']?['blood_group'] ?? data?['blood_group'],
         'icon': Icons.bloodtype_rounded,
         'color': Colors.redAccent,
       },
@@ -438,13 +490,13 @@ final store = ref.watch(driverStoreProvider);
       },
       {
         'title': isTamil ? 'சேர்ந்த தேதி' : 'Joining Date',
-        'val': _formatDate(data?['driverProfile']?['joining_date']),
+        'val': _formatDate(data?['driverProfile']?['joining_date'] ?? data?['created_at']),
         'icon': Icons.login_rounded,
         'color': Colors.cyan,
       },
       {
         'title': isTamil ? 'முகவரி' : 'Address',
-        'val': data?['driverProfile']?['address'],
+        'val': data?['driverProfile']?['address'] ?? data?['address'],
         'icon': Icons.location_on_rounded,
         'color': Colors.deepOrange,
       },
@@ -871,48 +923,54 @@ final store = ref.watch(driverStoreProvider);
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color titleColor, bool isTamil) {
+  Widget _buildHeader(BuildContext context, Color titleColor, bool isTamil, String roleDisplayName) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+        Expanded(
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 2),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 20),
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 2),
-                    child: Icon(Icons.arrow_back_ios_new_rounded, color: titleColor, size: 20),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              isTamil ? "ஓட்டுநர் விவரம்" : "Driver Profile",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: titleColor,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isTamil ? "$roleDisplayName விவரம்" : "$roleDisplayName Profile",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: titleColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         IconButton(
           onPressed: () async {

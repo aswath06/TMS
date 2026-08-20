@@ -26,6 +26,15 @@ class ApiConstants {
   static String get logoutMe => "$baseUrl/auth/logout-me";
   static String get fcmToken => "$baseUrl/auth/user/fcm-token";
 
+  // Organization
+  static String get getOrganizations => "$baseUrl/auth/organizations";
+  static String get createOrganization => "$baseUrl/auth/organizations";
+  static String editOrganization(dynamic orgId) => "$baseUrl/auth/organizations/$orgId";
+  static String deleteOrganization(dynamic orgId) => "$baseUrl/auth/organizations/$orgId";
+  static String get switchOrganization => "$baseUrl/auth/organizations/switch-token";
+  static String get verifyPin => "$baseUrl/auth/verify-pin";
+  static String updateOrganizationStatus(dynamic orgId) => "$baseUrl/auth/organizations/$orgId/status";
+
   // Vehicles
   static String get getAllVehicles => "$baseUrl/api/vehicles/get-all";
   static String get getAllVehiclesWithoutPagination => "$baseUrl/api/vehicles/get-all-without-pagination";
@@ -161,6 +170,18 @@ class ApiConstants {
   static String get getAutoBlockSettings => "$baseUrl/daily-bus/auto-block-settings";
   static String get updateAutoBlockSettings => "$baseUrl/daily-bus/auto-block-settings";
   static String unblockUser(dynamic id) => "$baseUrl/auth/users/$id/unblock";
+
+  // Driver Tasks API
+  static String get driverTaskType => "$baseUrl/api/driver-task/task-type";
+  static String get driverTaskCreate => "$baseUrl/api/driver-task/create";
+  static String get driverTaskGetAll => "$baseUrl/api/driver-task/get-all";
+  static String driverTaskGetById(dynamic id) => "$baseUrl/api/driver-task/get-by-id/$id";
+  static String driverTaskUpdate(dynamic id) => "$baseUrl/api/driver-task/update/$id";
+  static String driverTaskStart(dynamic id) => "$baseUrl/api/driver-task/start/$id";
+  static String driverTaskComplete(dynamic id) => "$baseUrl/api/driver-task/complete/$id";
+  static String driverTaskVerify(dynamic id) => "$baseUrl/api/driver-task/verify/$id";
+  static String driverTaskCancel(dynamic id) => "$baseUrl/api/driver-task/cancel/$id";
+  static String driverTaskDelete(dynamic id) => "$baseUrl/api/driver-task/delete/$id";
 
   static const Map<String, int> DRIVER_STATUS = {
     'AVAILABLE': 1,

@@ -98,6 +98,8 @@ class CustomBottomBar extends StatelessWidget {
     switch (userRole.toLowerCase()) {
       case 'transport admin':
       case 'super admin':
+      case 'transport coordinator':
+      case 'coordinator':
         return [
           _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Home'),
           _NavItem(
@@ -203,6 +205,11 @@ class CustomBottomBar extends StatelessWidget {
             Icons.forum_outlined,
             Icons.forum_rounded,
             'Chat',
+          ),
+          _NavItem(
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+            'Profile',
           ),
         ];
     }
