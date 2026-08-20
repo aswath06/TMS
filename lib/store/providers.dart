@@ -99,7 +99,7 @@ final securityBusStoreProvider = ChangeNotifierProvider<SecurityBusStore>((ref) 
 
 /// DriverTaskStore Provider
 final driverTaskStoreProvider = ChangeNotifierProvider<DriverTaskStore>((ref) {
-  final notifProvider = ref.watch(notificationProviderFamily);
+  final notifProvider = ref.read(notificationProviderFamily);
   final store = DriverTaskStore();
   store.notificationProvider = notifProvider;
   return store;
