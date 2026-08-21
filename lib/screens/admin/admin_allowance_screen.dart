@@ -957,7 +957,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                             Consumer(
 builder: (context, ref, _) {
 final store = ref.watch(adminAllowanceStoreProvider);
-                                if (store.pendingCreations.isEmpty) return const SizedBox.shrink();
+                                if (store.totalPendingCount == 0) return const SizedBox.shrink();
                                 return Container(
                                   margin: const EdgeInsets.only(left: 6),
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -966,7 +966,7 @@ final store = ref.watch(adminAllowanceStoreProvider);
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    "${store.pendingCreations.length}",
+                                    "${store.totalPendingCount}",
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,

@@ -1113,6 +1113,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
     final passengerController = TextEditingController();
     bool? allowanceNeeded;
     bool isSubmitting = false;
+    bool triedSubmit = false;
     
     bool isFetchingAllowances = false;
     bool hasFetchedAllowances = false;
@@ -1226,9 +1227,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                         color: isDark ? const Color(0xFF0F172A) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
+                          color: (triedSubmit && odometerController.text.trim().isEmpty)
+                              ? Colors.redAccent
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                           width: 1.5,
                         ),
                       ),
@@ -1416,9 +1417,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                           : Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isDark
-                                            ? const Color(0xFF334155)
-                                            : const Color(0xFFE2E8F0),
+                                        color: (triedSubmit && allowanceNeeded == null)
+                                            ? Colors.redAccent
+                                            : (isDark
+                                                ? const Color(0xFF334155)
+                                                : const Color(0xFFE2E8F0)),
+                                        width: (triedSubmit && allowanceNeeded == null) ? 1.5 : 1.0,
                                       ),
                                     ),
                                     child: Row(
@@ -1462,9 +1466,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                           : Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isDark
-                                            ? const Color(0xFF334155)
-                                            : const Color(0xFFE2E8F0),
+                                        color: (triedSubmit && allowanceNeeded == null)
+                                            ? Colors.redAccent
+                                            : (isDark
+                                                ? const Color(0xFF334155)
+                                                : const Color(0xFFE2E8F0)),
+                                        width: (triedSubmit && allowanceNeeded == null) ? 1.5 : 1.0,
                                       ),
                                     ),
                                     child: Row(
@@ -1529,6 +1536,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                             return t != null && (t['type_name'] ?? t['name'] ?? "").toString().toUpperCase() == 'OTHER';
                           });
                           final isDisabled = isOtherSelected && !isOther;
+                          final String typeName = (type['type_name'] ?? type['name'] ?? "").toString().toLowerCase();
 
                           return GestureDetector(
                             onTap: isDisabled ? null : () {
@@ -1558,13 +1566,33 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                   color: isSelected ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                                 ),
                               ),
-                              child: Text(
-                                (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (typeName.contains('food')) ...[
+                                    Icon(
+                                      Icons.restaurant_rounded,
+                                      size: 16,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ] else if (typeName.contains('bus') || typeName.contains('fare')) ...[
+                                    Icon(
+                                      Icons.directions_bus_rounded,
+                                      size: 16,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -1713,7 +1741,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                             decoration: BoxDecoration(
                                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                               borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                              border: Border.all(
+                                                color: (triedSubmit && amtCtrl.text.trim().isEmpty)
+                                                    ? Colors.redAccent
+                                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                width: (triedSubmit && amtCtrl.text.trim().isEmpty) ? 1.5 : 1.0,
+                                              ),
                                             ),
                                             child: Row(
                                               children: [
@@ -1803,7 +1836,12 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                               decoration: BoxDecoration(
                                                 color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                                 borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                                border: Border.all(
+                                                  color: (triedSubmit && entry['proof'] == null)
+                                                      ? Colors.redAccent
+                                                      : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
+                                                  width: (triedSubmit && entry['proof'] == null) ? 1.5 : 1.0,
+                                                ),
                                                 image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
                                               ),
                                               child: entry['proof'] == null ? Column(
@@ -1881,6 +1919,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     if (odometerController.text
                                         .trim()
                                         .isEmpty) {
+                                      setState(() {
+                                        triedSubmit = true;
+                                      });
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -1895,6 +1936,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     }
                                     if (_userRole != 'driver' &&
                                         passengerController.text.isEmpty) {
+                                      setState(() {
+                                        triedSubmit = true;
+                                      });
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -1909,9 +1953,14 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                     }
 
                                     if (allowanceNeeded == null) {
+                                      setState(() {
+                                        triedSubmit = true;
+                                      });
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select DA/TA requirement"), backgroundColor: Colors.red));
                                       return;
-                                    }setState(() => isSubmitting = true);
+                                    }
+                                    
+                                    setState(() => isSubmitting = true);
                                     final int odo =
                                         int.tryParse(
                                           odometerController.text.trim(),
@@ -1936,7 +1985,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
 
                                     if (runId == 0) {
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Run ID is missing"), backgroundColor: Colors.red));
-                                      setState(() => isSubmitting = false);
+                                      setState(() {
+                                        isSubmitting = false;
+                                        triedSubmit = true;
+                                      });
                                       return;
                                     }
 
@@ -1975,7 +2027,10 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       if (hasValidationError) break;
                                     }
                                     if (hasValidationError) {
-                                      setState(() => isSubmitting = false);
+                                      setState(() {
+                                        isSubmitting = false;
+                                        triedSubmit = true;
+                                      });
                                       return;
                                     }
                                     // END VALIDATION LOGIC
@@ -3140,6 +3195,7 @@ final Map<int, String> amountMap = allowanceAmounts.map(
 
     bool? allowanceNeeded;
     bool isSubmitting = false;
+    bool triedSubmit = false;
     
     bool isFetchingAllowances = false;
     bool hasFetchedAllowances = false;
@@ -3253,9 +3309,9 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                         color: isDark ? const Color(0xFF0F172A) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
+                          color: (triedSubmit && odometerController.text.trim().isEmpty)
+                              ? Colors.redAccent
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                           width: 1.5,
                         ),
                       ),
@@ -3376,9 +3432,12 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                           : Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isDark
-                                            ? const Color(0xFF334155)
-                                            : const Color(0xFFE2E8F0),
+                                        color: (triedSubmit && allowanceNeeded == null)
+                                            ? Colors.redAccent
+                                            : (isDark
+                                                ? const Color(0xFF334155)
+                                                : const Color(0xFFE2E8F0)),
+                                        width: (triedSubmit && allowanceNeeded == null) ? 1.5 : 1.0,
                                       ),
                                     ),
                                     child: Row(
@@ -3422,9 +3481,12 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                           : Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isDark
-                                            ? const Color(0xFF334155)
-                                            : const Color(0xFFE2E8F0),
+                                        color: (triedSubmit && allowanceNeeded == null)
+                                            ? Colors.redAccent
+                                            : (isDark
+                                                ? const Color(0xFF334155)
+                                                : const Color(0xFFE2E8F0)),
+                                        width: (triedSubmit && allowanceNeeded == null) ? 1.5 : 1.0,
                                       ),
                                     ),
                                     child: Row(
@@ -3489,6 +3551,7 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                             return t != null && (t['type_name'] ?? t['name'] ?? "").toString().toUpperCase() == 'OTHER';
                           });
                           final isDisabled = isOtherSelected && !isOther;
+                          final String typeName = (type['type_name'] ?? type['name'] ?? "").toString().toLowerCase();
 
                           return GestureDetector(
                             onTap: isDisabled ? null : () {
@@ -3518,13 +3581,33 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                   color: isSelected ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                                 ),
                               ),
-                              child: Text(
-                                (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (typeName.contains('food')) ...[
+                                    Icon(
+                                      Icons.restaurant_rounded,
+                                      size: 16,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ] else if (typeName.contains('bus') || typeName.contains('fare')) ...[
+                                    Icon(
+                                      Icons.directions_bus_rounded,
+                                      size: 16,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -3673,7 +3756,12 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                             decoration: BoxDecoration(
                                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                               borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                              border: Border.all(
+                                                color: (triedSubmit && amtCtrl.text.trim().isEmpty)
+                                                    ? Colors.redAccent
+                                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                width: (triedSubmit && amtCtrl.text.trim().isEmpty) ? 1.5 : 1.0,
+                                              ),
                                             ),
                                             child: Row(
                                               children: [
@@ -3763,7 +3851,12 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                               decoration: BoxDecoration(
                                                 color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                                 borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                                border: Border.all(
+                                                  color: (triedSubmit && entry['proof'] == null)
+                                                      ? Colors.redAccent
+                                                      : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
+                                                  width: (triedSubmit && entry['proof'] == null) ? 1.5 : 1.0,
+                                                ),
                                                 image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
                                               ),
                                               child: entry['proof'] == null ? Column(
@@ -3841,6 +3934,9 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                     if (odometerController.text
                                         .trim()
                                         .isEmpty) {
+                                      setState(() {
+                                        triedSubmit = true;
+                                      });
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -3855,9 +3951,14 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                     }
 
                                     if (allowanceNeeded == null) {
+                                      setState(() {
+                                        triedSubmit = true;
+                                      });
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select DA/TA requirement"), backgroundColor: Colors.red));
                                       return;
-                                    }setState(() => isSubmitting = true);
+                                    }
+                                    
+                                    setState(() => isSubmitting = true);
                                     final int odo =
                                         int.tryParse(
                                           odometerController.text.trim(),
@@ -3875,7 +3976,10 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                               0;
                                     if (runId == 0) {
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: Run ID is missing"), backgroundColor: Colors.red));
-                                      setState(() => isSubmitting = false);
+                                      setState(() {
+                                        isSubmitting = false;
+                                        triedSubmit = true;
+                                      });
                                       return;
                                     }
 
@@ -3914,7 +4018,10 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                       if (hasValidationError) break;
                                     }
                                     if (hasValidationError) {
-                                      setState(() => isSubmitting = false);
+                                      setState(() {
+                                        isSubmitting = false;
+                                        triedSubmit = true;
+                                      });
                                       return;
                                     }
                                     // END VALIDATION LOGIC

@@ -27,6 +27,7 @@ class RequestStore extends ChangeNotifier {
   int _leavesCurrentPage = 1;
   bool _hasMoreLeaves = true;
   String _currentSearch = "";
+  String _leavesSearch = "";
   String _currentStatuses = "";
   String _currentRouteDate = "";
 
@@ -291,8 +292,11 @@ class RequestStore extends ChangeNotifier {
     }
   }
 
-  /// Fetches all leaves with optional pagination and role filtering
-  Future<void> fetchLeaves({String? role, bool reset = false}) async {
+  /// Fetches all leaves with optional pagination, search and role filtering
+  Future<void> fetchLeaves({String? role, String? search, bool reset = false}) async {
+    if (search != null) {
+      _leavesSearch = search;
+    }
     if (reset) {
       _leavesCurrentPage = 1;
       _hasMoreLeaves = true;
@@ -320,6 +324,10 @@ class RequestStore extends ChangeNotifier {
           
       if (role != null && role.isNotEmpty && role != 'All') {
         url += "&role=${Uri.encodeComponent(role)}";
+      }
+
+      if (_leavesSearch.isNotEmpty) {
+        url += "&search=${Uri.encodeComponent(_leavesSearch)}";
       }
 
       final response = await http.get(
@@ -630,6 +638,53 @@ class RequestStore extends ChangeNotifier {
     } catch (e) {
       _leavesErrorMessage = "Connection error.";
       debugPrint("Update Leave Status Error: $e");
+    } finally {
+      _isLoadingLeaves = false;
+      notifyListeners();
+    }
+    return false;
+  }
+
+  Future<bool> deleteLeaveByAdmin(int leaveId, String role) async {
+    _isLoadingLeaves = true;
+    _leavesErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final String? token = await UserStore.getToken();
+      if (token == null) {
+        _leavesErrorMessage = "Session expired.";
+        return false;
+      }
+
+      final isDriver = role.toLowerCase() == 'driver';
+      final url = isDriver
+          ? "${ApiConstants.baseUrl}/api/leaves/delete/$leaveId"
+          : "${ApiConstants.baseUrl}/transport-leaves/admin/revoke/$leaveId";
+
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success'] == true) {
+          _leaves.removeWhere((l) => l['id'] == leaveId);
+          notifyListeners();
+          return true;
+        } else {
+          _leavesErrorMessage = data['message'] ?? "Failed to delete leave.";
+        }
+      } else if (response.statusCode == 401) {
+        await UserStore.forceLogout();
+        _leavesErrorMessage = "Session expired. Please login again.";
+      } else {
+        _leavesErrorMessage = ApiErrorParser.parse(response, fallback: "Server error");
+      }
+    } catch (e) {
+      _leavesErrorMessage = "Connection error.";
+      debugPrint("Delete Leave By Admin Error: $e");
     } finally {
       _isLoadingLeaves = false;
       notifyListeners();

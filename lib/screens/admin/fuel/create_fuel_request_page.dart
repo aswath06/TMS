@@ -1429,7 +1429,10 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
     }
 
     if (!_isBITBunk) {
-      if (_odometerController.text.isEmpty || _amountController.text.isEmpty || _billImage == null) {
+      final bool hasBill = _billImage != null || 
+                           widget.isCompletedEditMode || 
+                           (widget.initialFuelData != null && widget.initialFuelData!['bill_file_url'] != null);
+      if (_odometerController.text.isEmpty || _amountController.text.isEmpty || !hasBill) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields and upload bill image for Non-BIT bunk"), backgroundColor: Colors.red));
         return;
       }

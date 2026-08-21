@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
@@ -22,13 +23,14 @@ class _ViewAllLeavesPageState extends ConsumerState<ViewAllLeavesPage> {
   final ScrollController _scrollController = ScrollController();
   String _selectedFilter = 'All'; // All, Pending, Approved, Rejected
   String _selectedRole = 'Driver';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(requestStoreProvider).fetchLeaves(role: _selectedRole, reset: true);
+      ref.read(requestStoreProvider).fetchLeaves(role: _selectedRole, search: "", reset: true);
     });
   }
 
@@ -43,6 +45,7 @@ class _ViewAllLeavesPageState extends ConsumerState<ViewAllLeavesPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -120,7 +123,7 @@ final store = ref.watch(requestStoreProvider);
 
           return RefreshIndicator(
             onRefresh: () async {
-              await store.fetchLeaves(role: _selectedRole, reset: true);
+              await store.fetchLeaves(role: _selectedRole, search: _searchController.text, reset: true);
               // Also refresh dashboard stats to keep counts accurate
               await useAdminDashboardStore.fetchTodayDriverCount();
             },
@@ -141,7 +144,7 @@ final store = ref.watch(requestStoreProvider);
                             setState(() {
                               _selectedRole = role;
                             });
-                            store.fetchLeaves(role: _selectedRole, reset: true);
+                            store.fetchLeaves(role: _selectedRole, search: _searchController.text, reset: true);
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -202,12 +205,22 @@ final store = ref.watch(requestStoreProvider);
                           ),
                           child: TextField(
                             controller: _searchController,
-                            onChanged: (val) => setState(
-                              () {},
-                            ), // Trigger UI update for local filtering
+                            onChanged: (val) {
+                              setState(() {}); // Instant local filter update
+                              if (_debounce?.isActive ?? false) _debounce!.cancel();
+                              _debounce = Timer(const Duration(milliseconds: 500), () {
+                                if (mounted) {
+                                  ref.read(requestStoreProvider).fetchLeaves(
+                                        role: _selectedRole,
+                                        search: val,
+                                        reset: true,
+                                      );
+                                }
+                              });
+                            },
                             style: TextStyle(color: titleColor),
                             decoration: InputDecoration(
-                              hintText: "Search driver name or date...",
+                              hintText: "Search by name, email or date...",
                               hintStyle: TextStyle(
                                 color: titleColor.withValues(alpha: 0.4),
                                 fontSize: 14,
@@ -230,6 +243,11 @@ final store = ref.watch(requestStoreProvider);
                                       onPressed: () {
                                         _searchController.clear();
                                         setState(() {});
+                                        ref.read(requestStoreProvider).fetchLeaves(
+                                              role: _selectedRole,
+                                              search: "",
+                                              reset: true,
+                                            );
                                       },
                                     )
                                   : null,

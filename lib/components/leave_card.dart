@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
 
@@ -168,6 +169,9 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
     final Color titleColor = widget.isDark ? Colors.white : const Color(0xFF1E293B);
     final Color subColor = widget.isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final Color cardColor = widget.isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+
+    final String currentRole = (UserStore.role ?? '').toLowerCase().trim();
+    final bool isAdmin = currentRole == 'super admin' || currentRole == 'transport admin';
 
     final rawStatus = widget.leaf['rawStatus'];
     final bool isPending = rawStatus == 1 || widget.leaf['status'] == 'Pending';
@@ -383,6 +387,30 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
                 ],
               ),
           ],
+
+          if (isAdmin) ...[
+            const SizedBox(height: 16),
+            if (_isUpdating)
+              const Center(child: CircularProgressIndicator())
+            else
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () => _deleteLeaveByAdmin(context),
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                  label: const Text("CANCEL & DELETE LEAVE", style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.red.withValues(alpha: 0.1),
+                    foregroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.2)),
+                    ),
+                  ),
+                ),
+              ),
+          ],
           
           const SizedBox(height: 12),
           Text(
@@ -392,6 +420,30 @@ class _LeaveDetailBottomSheetState extends ConsumerState<_LeaveDetailBottomSheet
         ],
       ),
     );
+  }
+
+  Future<void> _deleteLeaveByAdmin(BuildContext context) async {
+    setState(() => _isUpdating = true);
+
+    final navigator = Navigator.of(context);
+    final store = ref.read(requestStoreProvider);
+    final String role = widget.leaf['role']?.toString() ?? 'Driver';
+
+    final success = await store.deleteLeaveByAdmin(widget.leaf['id'], role);
+
+    if (mounted) {
+      setState(() => _isUpdating = false);
+      if (success) {
+        showTopToast(context, "Leave cancelled and deleted successfully");
+        navigator.pop(); // Close detail view
+      } else {
+        showTopToast(
+          context,
+          store.leavesErrorMessage ?? "Failed to delete leave",
+          isError: true,
+        );
+      }
+    }
   }
 
   Future<void> _updateStatus(BuildContext context, int status) async {

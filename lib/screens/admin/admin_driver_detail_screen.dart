@@ -981,29 +981,41 @@ class _AdminDriverDetailScreenState extends ConsumerState<AdminDriverDetailScree
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.show_chart, color: primaryIndigo, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Weekly Distance & Runs",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: titleColor),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.show_chart, color: primaryIndigo, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Weekly Distance & Runs",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 4),
               Row(
                 children: [
                   IconButton(
                     icon: Icon(Icons.chevron_left, color: titleColor),
                     onPressed: () => _handleWeekChange(false),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
+                  const SizedBox(width: 4),
                   Text(
                     DateFormat('dd MMM').format(_currentWeekMonday),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: primaryIndigo),
                   ),
+                  const SizedBox(width: 4),
                   IconButton(
                     icon: Icon(Icons.chevron_right, color: isNextDisabled ? Colors.grey : titleColor),
                     onPressed: isNextDisabled ? null : () => _handleWeekChange(true),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
