@@ -127,7 +127,7 @@ class RequestStore extends ChangeNotifier {
           _hasMore = formattedItems.length >= limit;
         }
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
         _errorMessage = "Session expired. Please login again.";
       } else {
         _errorMessage = ApiErrorParser.parse(response, fallback: "Server Error");
@@ -173,7 +173,7 @@ class RequestStore extends ChangeNotifier {
           _errorMessage = data['message'] ?? "Failed to fetch request details.";
         }
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
         _errorMessage = "Session expired.";
       } else {
         _errorMessage = ApiErrorParser.parse(response, fallback: "Server Error");
@@ -344,7 +344,7 @@ class RequestStore extends ChangeNotifier {
           _leavesErrorMessage = "Failed to fetch leaves.";
         }
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
         _leavesErrorMessage = "Session expired. Please login again.";
       } else {
         _leavesErrorMessage = ApiErrorParser.parse(response, fallback: "Server Error");
@@ -560,7 +560,7 @@ class RequestStore extends ChangeNotifier {
           debugPrint("[createLeave] API reported failure: $_leavesErrorMessage");
         }
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
         _leavesErrorMessage = "Session expired. Please login again.";
         return false;
       } else {
@@ -622,7 +622,7 @@ class RequestStore extends ChangeNotifier {
           _leavesErrorMessage = data['message'] ?? "Failed to update status.";
         }
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
         _leavesErrorMessage = "Session expired. Please login again.";
       } else {
         _leavesErrorMessage = ApiErrorParser.parse(response, fallback: "Server error");

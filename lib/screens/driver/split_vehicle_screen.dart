@@ -65,7 +65,7 @@ class _SplitVehicleScreenState extends State<SplitVehicleScreen> {
           Navigator.pop(context, true);
         }
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
       } else {
         final resBody = json.decode(response.body);
         if (mounted) {

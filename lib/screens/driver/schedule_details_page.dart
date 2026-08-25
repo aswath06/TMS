@@ -309,7 +309,7 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
     final String shiftStart = dutyShift['shift_start'] ?? '06:00:00';
     final String shiftEnd = dutyShift['shift_end'] ?? '14:00:00';
     final String shiftTime = "${_formatTimeOfDay(shiftStart)} - ${_formatTimeOfDay(shiftEnd)}";
-    final String dutyStatus = dutyShift['status'] ?? 'PLANNED';
+    String dutyStatus = dutyShift['status'] ?? 'PLANNED';
     final String? actualStartTime = dutyShift['actual_start_time'];
     final String? actualEndTime = dutyShift['actual_end_time'];
 
@@ -322,11 +322,28 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
     final int spareRequired = dutyShift['spare_required'] ?? 0;
 
     final vehicles = dutyShift['vehicles'] as List? ?? [];
-
-    final bool allStartOdoEntered = vehicles.isNotEmpty && vehicles.every((v) {
+    final int assignedVehicles = vehicles.length;
+    final int vehiclesWithOdometer = vehicles.where((v) {
       final odo = v['odometer'] as Map<String, dynamic>?;
       return odo != null && odo['start_odometer'] != null && odo['start_odometer'].toString().isNotEmpty;
-    });
+    }).length;
+    final drivers = dutyShift['drivers'] as List? ?? [];
+    final bool anyDriverStarted = drivers.any((d) => d['assignment_status'] == 'STARTED' || d['assignment_status'] == 'COMPLETED');
+    final bool allDriversStarted = drivers.isNotEmpty && drivers.every((d) => d['assignment_status'] == 'STARTED' || d['assignment_status'] == 'COMPLETED');
+
+    if (dutyStatus == 'STARTED') {
+      if (!allDriversStarted) {
+        dutyStatus = 'ONGOING';
+      }
+    } else if (dutyStatus == 'PLANNED') {
+      if (anyDriverStarted) {
+        dutyStatus = 'ONGOING';
+      } else {
+        dutyStatus = 'PENDING';
+      }
+    }
+
+    final bool hasDriverStartedAnyVehicle = vehicles.isNotEmpty && vehicles.any((v) => v['is_my_responsibility'] == true);
 
     final bool allEndOdoEntered = vehicles.isNotEmpty && vehicles.every((v) {
       final odo = v['odometer'] as Map<String, dynamic>?;
@@ -656,6 +673,26 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
               ),
             ],
           ),
+          if (vehicles.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              "Progress: $vehiclesWithOdometer / $assignedVehicles vehicles ready",
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: vehiclesWithOdometer == assignedVehicles ? Colors.green : Colors.orange,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              "Duty Status: $dutyStatus",
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: titleColor,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           if (vehicles.isEmpty)
             Container(
@@ -678,7 +715,7 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
       ),
     ),
     if (vehicles.isNotEmpty && 
-        ((dutyStatus != 'STARTED' && dutyStatus != 'COMPLETED' && allStartOdoEntered) || 
+        ((dutyStatus != 'STARTED' && dutyStatus != 'COMPLETED' && hasDriverStartedAnyVehicle) || 
          (dutyStatus == 'STARTED' && allEndOdoEntered)))
       Positioned(
         bottom: 20,
@@ -1178,7 +1215,7 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
   String _formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return "";
     try {
-      final date = DateTime.parse(dateStr);
+      final date = DateTime.parse(dateStr).toLocal();
       final months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       return "${date.day} ${months[date.month - 1]} ${date.year}";
     } catch (_) {
@@ -1310,12 +1347,22 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
         throw "Authentication token not found.";
       }
 
-      final String typePath = isStart ? "start-odometer" : "end-odometer";
-      final url = Uri.parse("${ApiConstants.baseUrl}/schedule-duty/master/shift/$shiftId/vehicle/$vehicleId/$typePath");
-
-      final bodyData = isStart 
-          ? jsonEncode({"start_odometer": reading})
-          : jsonEncode({"end_odometer": reading});
+      Uri url;
+      String bodyData;
+      
+      if (isStart) {
+        final driverId = await UserStore.getDriverId();
+        url = Uri.parse("${ApiConstants.baseUrl}/api/duties/$shiftId/vehicles/$vehicleId/start");
+        bodyData = jsonEncode({
+          "driverId": driverId,
+          "odometerStart": reading,
+        });
+      } else {
+        url = Uri.parse("${ApiConstants.baseUrl}/schedule-duty/master/shift/$shiftId/vehicle/$vehicleId/end-odometer");
+        bodyData = jsonEncode({
+          "end_odometer": reading,
+        });
+      }
 
       final headers = ApiConstants.getHeaders(token);
       final curlHeaders = headers.entries.map((e) => "--header '${e.key}: ${e.value}'").join(" \\\n  ");

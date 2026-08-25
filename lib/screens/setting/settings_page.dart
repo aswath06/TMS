@@ -940,13 +940,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         Row(
           children: [
-            GestureDetector(
-              onTap: () {
-                showOrganizationSwitcherSheet(context);
-              },
-              child: _buildTopIcon(Icons.business_rounded, titleColor),
-            ),
-            const SizedBox(width: 8),
+            if (_userRole.toLowerCase() == "super admin") ...[
+              GestureDetector(
+                onTap: () {
+                  showOrganizationSwitcherSheet(context);
+                },
+                child: _buildTopIcon(Icons.business_rounded, titleColor),
+              ),
+              const SizedBox(width: 8),
+            ],
             _buildTopIcon(Icons.tune_outlined, titleColor),
           ],
         ),

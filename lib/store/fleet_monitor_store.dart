@@ -63,7 +63,7 @@ class FleetMonitorStore extends ChangeNotifier {
         _outsideVehicles = List.from(vehicleSummary['outside_vehicles'] ?? []);
         _hasFetchedInitialData = true;
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
       } else {
         _error = 'Failed to load fleet data';
       }

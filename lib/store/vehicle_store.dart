@@ -132,7 +132,7 @@ class VehicleStore extends ChangeNotifier {
         _syncCategories();
         _applyFilters(); // Apply local category filtering on top of server results
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
       }
     } catch (e) {
       debugPrint("Fetch Page Request Error: $e");
@@ -156,7 +156,7 @@ class VehicleStore extends ChangeNotifier {
         await fetchVehicles();
         return true;
       } else if (response.statusCode == 401) {
-        await UserStore.forceLogout();
+        // await UserStore.forceLogout();
         return false;
       } else {
         debugPrint("Add Vehicle Failed: ${response.body}");
