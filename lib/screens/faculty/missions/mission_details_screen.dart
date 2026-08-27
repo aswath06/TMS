@@ -554,6 +554,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
   void _showEndInformationPopup() {
     final TextEditingController odometerController = TextEditingController();
     bool? allowanceNeeded;
+    bool triedSubmit = false;
     List<dynamic> allowanceTypes = [
       {'id': 1, 'name': 'BUS FARE', 'amount': '0.00'},
       {'id': 2, 'name': 'FOOD ALLOWANCE', 'amount': '0.00'},
@@ -679,7 +680,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          color: (triedSubmit && odometerController.text.trim().isEmpty)
+                              ? Colors.redAccent
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                           width: 1.5,
                         ),
                         boxShadow: [
@@ -721,7 +724,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          color: (triedSubmit && allowanceNeeded == null)
+                              ? Colors.redAccent
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                           width: 1.5,
                         ),
                       ),
@@ -838,6 +843,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                             return t != null && (t['type_name'] ?? t['name'] ?? "").toString().toUpperCase() == 'OTHER';
                           });
                           final isDisabled = isOtherSelected && !isOther;
+                          final String typeName = (type['type_name'] ?? type['name'] ?? "").toString().toLowerCase();
 
                           return GestureDetector(
                             onTap: isDisabled ? null : () {
@@ -867,13 +873,33 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                   color: isSelected ? const Color(0xFF6366F1) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                                 ),
                               ),
-                              child: Text(
-                                (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (typeName.contains('food')) ...[
+                                    Icon(
+                                      Icons.restaurant_rounded,
+                                      size: 16,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ] else if (typeName.contains('bus') || typeName.contains('fare')) ...[
+                                    Icon(
+                                      Icons.directions_bus_rounded,
+                                      size: 16,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    (type['type_name'] ?? type['name'] ?? "").toString().toUpperCase(),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected ? Colors.white : (isDark ? (isDisabled ? Colors.white30 : Colors.white) : (isDisabled ? Colors.grey : const Color(0xFF334155))),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -1022,7 +1048,12 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                             decoration: BoxDecoration(
                                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                               borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                              border: Border.all(
+                                                color: (triedSubmit && amtCtrl.text.trim().isEmpty)
+                                                    ? Colors.redAccent
+                                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                                width: (triedSubmit && amtCtrl.text.trim().isEmpty) ? 1.5 : 1.0,
+                                              ),
                                             ),
                                             child: Row(
                                               children: [
@@ -1112,7 +1143,12 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                               decoration: BoxDecoration(
                                                 color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                                 borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05)),
+                                                border: Border.all(
+                                                  color: (triedSubmit && entry['proof'] == null)
+                                                      ? Colors.redAccent
+                                                      : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
+                                                  width: (triedSubmit && entry['proof'] == null) ? 1.5 : 1.0,
+                                                ),
                                                 image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
                                               ),
                                               child: entry['proof'] == null ? Column(
@@ -1176,18 +1212,27 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                             onPressed: () {
                               final odo = odometerController.text;
                               if (odo.trim().isEmpty) {
+                                setModalState(() {
+                                  triedSubmit = true;
+                                });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text("Please enter the end odometer reading"), backgroundColor: Colors.orange),
                                 );
                                 return;
                               }
                               if (allowanceNeeded == null) {
+                                setModalState(() {
+                                  triedSubmit = true;
+                                });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text("Please select whether DA/TA is required"), backgroundColor: Colors.orange),
                                 );
                                 return;
                               }
-                                    if (allowanceNeeded == true && selectedAllowanceTypes.isEmpty) {
+                              if (allowanceNeeded == true && selectedAllowanceTypes.isEmpty) {
+                                setModalState(() {
+                                  triedSubmit = true;
+                                });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text("Please select at least one allowance type"), backgroundColor: Colors.orange),
                                 );
@@ -1229,7 +1274,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                       if (hasValidationError) break;
                                     }
                                     if (hasValidationError) {
-                                      
+                                      setModalState(() {
+                                        triedSubmit = true;
+                                      });
                                       return;
                                     }
                                     // END VALIDATION LOGIC

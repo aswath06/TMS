@@ -17,6 +17,8 @@ class AdminAllowanceStore extends ChangeNotifier {
   // Pending creations state
   List<Map<String, dynamic>> _pendingCreations = [];
   List<Map<String, dynamic>> get pendingCreations => _pendingCreations;
+  int _totalPendingCount = 0;
+  int get totalPendingCount => _totalPendingCount;
   bool _isLoadingPendingCreations = false;
   bool get isLoadingPendingCreations => _isLoadingPendingCreations;
   
@@ -185,9 +187,11 @@ class AdminAllowanceStore extends ChangeNotifier {
 
           final pagination = decoded['pagination'];
           if (pagination != null) {
+            _totalPendingCount = pagination['totalItems'] ?? 0;
             _hasMorePending = _pendingPage < (pagination['totalPages'] ?? 1);
           } else {
-             _hasMorePending = false;
+            _totalPendingCount = _pendingCreations.length;
+            _hasMorePending = false;
           }
         }
       }
