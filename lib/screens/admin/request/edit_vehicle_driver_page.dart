@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/admin/request/edit_run_data_tab.dart';
+import 'package:tripzo/components/assigned_faculty_cards.dart';
 
 class EditVehicleDriverPage extends StatefulWidget {
   final Map<String, dynamic> run;
@@ -37,6 +38,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
   String _selectedDriverName = 'Select Driver';
   int? _selectedFacultyId;
   String _selectedFacultyName = 'Select Assigned Faculty';
+  String? _selectedFacultyRole;
 
   String _selectedShift = 'BOTH'; // 'MORNING', 'EVENING', 'BOTH'
 
@@ -51,6 +53,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
   int? _selectedMorningFacultyId;
   String _selectedMorningFacultyName = 'Select Assigned Faculty';
+  String? _selectedMorningFacultyRole;
   int? _initialMorningFacultyId;
 
   // Tracks for EVENING shift
@@ -64,6 +67,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
 
   int? _selectedEveningFacultyId;
   String _selectedEveningFacultyName = 'Select Assigned Faculty';
+  String? _selectedEveningFacultyRole;
   int? _initialEveningFacultyId;
 
   String? _morningFacultyRemarks;
@@ -168,6 +172,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
     if (morningFaculty != null) {
       _selectedMorningFacultyId = morningFaculty['id'];
       _selectedMorningFacultyName = morningFaculty['name'] ?? 'Select Assigned Faculty';
+      _selectedMorningFacultyRole = StaffRoleHelper.getRoleName(Map<String, dynamic>.from(morningFaculty));
       _initialMorningFacultyId = morningFaculty['id'];
     }
 
@@ -175,6 +180,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
     if (eveningFaculty != null) {
       _selectedEveningFacultyId = eveningFaculty['id'];
       _selectedEveningFacultyName = eveningFaculty['name'] ?? 'Select Assigned Faculty';
+      _selectedEveningFacultyRole = StaffRoleHelper.getRoleName(Map<String, dynamic>.from(eveningFaculty));
       _initialEveningFacultyId = eveningFaculty['id'];
     }
 
@@ -190,6 +196,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
       _selectedDriverName = _selectedMorningDriverName;
       _selectedFacultyId = _selectedMorningFacultyId;
       _selectedFacultyName = _selectedMorningFacultyName;
+      _selectedFacultyRole = _selectedMorningFacultyRole;
     } else if (_selectedShift == 'EVENING') {
       _selectedVehicleId = _selectedEveningVehicleId;
       _selectedVehicleNum = _selectedEveningVehicleNum;
@@ -197,6 +204,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
       _selectedDriverName = _selectedEveningDriverName;
       _selectedFacultyId = _selectedEveningFacultyId;
       _selectedFacultyName = _selectedEveningFacultyName;
+      _selectedFacultyRole = _selectedEveningFacultyRole;
     } else {
       // BOTH - defaults to morning assignment for visual display,
       // but selects are synchronized
@@ -212,6 +220,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
       _selectedFacultyName = _selectedMorningFacultyName != 'Select Assigned Faculty' 
           ? _selectedMorningFacultyName 
           : (_selectedEveningFacultyName != 'Select Assigned Faculty' ? _selectedEveningFacultyName : 'Select Assigned Faculty');
+      _selectedFacultyRole = _selectedMorningFacultyRole ?? _selectedEveningFacultyRole;
     }
   }
 
@@ -781,28 +790,34 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                           Navigator.pop(ctx);
                           
                           setState(() {
-                            final int userId = f['user_id'];
+                            final int userId = f['user_id'] ?? f['id'];
                             final String name = f['name'] ?? 'N/A';
+                            final String role = StaffRoleHelper.getRoleName(Map<String, dynamic>.from(f));
                             _selectedFacultyId = userId;
                             _selectedFacultyName = name;
+                            _selectedFacultyRole = role;
 
                             if (_selectedShift == 'BOTH') {
                               _selectedMorningFacultyId = userId;
                               _selectedMorningFacultyName = name;
+                              _selectedMorningFacultyRole = role;
                               _morningFacultyRemarks = remarks;
                               _morningFacultyMarkLeave = localMarkLeave;
                               _selectedEveningFacultyId = userId;
                               _selectedEveningFacultyName = name;
+                              _selectedEveningFacultyRole = role;
                               _eveningFacultyRemarks = remarks;
                               _eveningFacultyMarkLeave = localMarkLeave;
                             } else if (_selectedShift == 'MORNING') {
                               _selectedMorningFacultyId = userId;
                               _selectedMorningFacultyName = name;
+                              _selectedMorningFacultyRole = role;
                               _morningFacultyRemarks = remarks;
                               _morningFacultyMarkLeave = localMarkLeave;
                             } else {
                               _selectedEveningFacultyId = userId;
                               _selectedEveningFacultyName = name;
+                              _selectedEveningFacultyRole = role;
                               _eveningFacultyRemarks = remarks;
                               _eveningFacultyMarkLeave = localMarkLeave;
                             }
@@ -860,9 +875,12 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
               if (searchQuery.isEmpty) return true;
               final q = searchQuery.toLowerCase();
               if (isFaculty) {
-                final name = (item['name'] ?? '').toString().toLowerCase();
-                final code = (item['employee_code'] ?? '').toString().toLowerCase();
-                return name.contains(q) || code.contains(q);
+                final name = (item['name'] ?? item['user']?['name'] ?? '').toString().toLowerCase();
+                final code = (item['employee_code'] ?? item['roll_number'] ?? item['user']?['employee_code'] ?? '').toString().toLowerCase();
+                final dept = (item['department'] ?? item['dept'] ?? item['user']?['department'] ?? '').toString().toLowerCase();
+                final role = (item is Map ? StaffRoleHelper.getRoleName(Map<String, dynamic>.from(item)) : '').toLowerCase();
+                final des = (item['designation'] ?? item['user']?['designation'] ?? '').toString().toLowerCase();
+                return name.contains(q) || code.contains(q) || dept.contains(q) || role.contains(q) || des.contains(q);
               } else if (isVehicle) {
                 final vNum = (item['vehicle_number'] ?? '').toString().toLowerCase();
                 final bNum = (item['bus_number'] ?? '').toString().toLowerCase();
@@ -941,7 +959,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                         ),
                         decoration: InputDecoration(
                           hintText: isFaculty
-                              ? "Search faculty name or department..."
+                              ? "Search name, role (faculty/intern/staff), dept..."
                               : (isVehicle ? "Search vehicle number or type..." : "Search driver name or phone..."),
                           hintStyle: TextStyle(
                             color: Colors.grey.shade400,
@@ -971,7 +989,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                                 Icon(Icons.search_off_rounded, size: 48, color: t.withValues(alpha: 0.2)),
                                 const SizedBox(height: 16),
                                 Text(
-                                  "No matching ${isFaculty ? 'faculties' : (isVehicle ? 'vehicles' : 'drivers')} found",
+                                  "No matching ${isFaculty ? 'staff members' : (isVehicle ? 'vehicles' : 'drivers')} found",
                                   style: TextStyle(
                                     color: t.withValues(alpha: 0.5),
                                     fontWeight: FontWeight.w600,
@@ -986,20 +1004,32 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                             separatorBuilder: (context, index) => const SizedBox(height: 12),
                             itemBuilder: (context, i) {
                               final item = currentFilteredList[i];
-                              final int? itemId = isFaculty ? item['user_id'] : item['id'];
+                              final int? itemId = isFaculty ? (item['user_id'] ?? item['id']) : item['id'];
                               final bool isSelected = selectedId != null && (itemId == selectedId);
 
+                              final String facultyRole = isFaculty && item is Map
+                                  ? StaffRoleHelper.getRoleName(Map<String, dynamic>.from(item))
+                                  : 'Faculty';
+                              final Color facultyRoleColor = isFaculty
+                                  ? StaffRoleHelper.getRoleColor(facultyRole)
+                                  : p;
+                              final IconData facultyRoleIcon = isFaculty
+                                  ? StaffRoleHelper.getRoleIcon(facultyRole)
+                                  : Icons.school_rounded;
+
                               String main = isFaculty
-                                  ? (item['name'] ?? 'Unknown')
+                                  ? (item['name'] ?? item['user']?['name'] ?? 'Unknown')
                                   : (isVehicle
                                       ? (item['vehicle_number'] ?? 'Unknown')
                                       : (item['user']?['name'] ?? item['name'] ?? "Unknown"));
                               String sub = isFaculty
-                                  ? (item['department'] ?? 'Faculty')
+                                  ? (item['department'] ?? item['dept'] ?? item['user']?['department'] ?? '')
                                   : (isVehicle
                                       ? "Bus - ${item['bus_number'] ?? 'N/A'} • ${item['make'] ?? ''} ${item['model'] ?? ''}".trim()
                                       : "${item['user']?['username'] ?? item['username'] ?? 'N/A'} - ${item['user']?['phone'] ?? item['phone'] ?? 'N/A'}");
-                              if (sub.isEmpty) sub = isVehicle ? "Vehicle" : "Driver";
+                              final String empCode = isFaculty
+                                  ? (item['employee_code'] ?? item['roll_number'] ?? item['user']?['employee_code'] ?? '')
+                                  : '';
                               int cap = isVehicle ? (int.tryParse(item['capacity']?.toString() ?? "0") ?? 0) : 0;
 
                               return GestureDetector(
@@ -1012,11 +1042,11 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? p.withValues(alpha: 0.1)
+                                        ? (isFaculty ? facultyRoleColor : p).withValues(alpha: 0.1)
                                         : t.withValues(alpha: 0.05),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: isSelected ? p : Colors.transparent,
+                                      color: isSelected ? (isFaculty ? facultyRoleColor : p) : Colors.transparent,
                                       width: 1.5,
                                     ),
                                   ),
@@ -1025,15 +1055,15 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: (isSelected ? p : t).withValues(alpha: 0.1),
+                                          color: (isSelected ? (isFaculty ? facultyRoleColor : p) : (isFaculty ? facultyRoleColor : t)).withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(14),
                                         ),
                                         child: Icon(
                                           isFaculty
-                                              ? Icons.school_rounded
+                                              ? facultyRoleIcon
                                               : (isVehicle ? Icons.directions_bus_rounded : Icons.person_rounded),
                                           size: 20,
-                                          color: isSelected ? p : t.withValues(alpha: 0.5),
+                                          color: isSelected ? (isFaculty ? facultyRoleColor : p) : (isFaculty ? facultyRoleColor : t.withValues(alpha: 0.5)),
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -1052,15 +1082,28 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                                             const SizedBox(height: 4),
                                             Wrap(
                                               spacing: 8,
+                                              crossAxisAlignment: WrapCrossAlignment.center,
                                               children: [
-                                                Text(
-                                                  sub,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: t.withValues(alpha: 0.4),
-                                                    fontWeight: FontWeight.w600,
+                                                if (isFaculty)
+                                                  StaffRoleHelper.buildRoleBadge(facultyRole, fontSize: 9.5, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5)),
+                                                if (sub.isNotEmpty)
+                                                  Text(
+                                                    sub,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: t.withValues(alpha: 0.5),
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
                                                   ),
-                                                ),
+                                                if (isFaculty && empCode.isNotEmpty && empCode != 'null')
+                                                  Text(
+                                                    "• $empCode",
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: t.withValues(alpha: 0.4),
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
                                                 if (isVehicle && cap > 0)
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1099,7 +1142,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                                         ),
                                       ),
                                       if (isSelected)
-                                        Icon(Icons.check_circle_rounded, color: p, size: 20),
+                                        Icon(Icons.check_circle_rounded, color: isFaculty ? facultyRoleColor : p, size: 20),
                                     ],
                                   ),
                                 ),
@@ -1468,7 +1511,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                       Row(
                         children: [
                           Text(
-                            "SELECT ASSIGNED FACULTY",
+                            "SELECT ASSIGNED IN-CHARGE / FACULTY",
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
                           ),
                           const SizedBox(width: 8),
@@ -1496,7 +1539,7 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                       const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () => _showSelectionSheet(
-                          title: "Select Assigned Faculty",
+                          title: "Select Assigned In-Charge",
                           isVehicle: false,
                           isFaculty: true,
                           items: _faculties,
@@ -1506,21 +1549,26 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                               setState(() {
                                 _selectedFacultyId = null;
                                 _selectedFacultyName = 'Select Assigned Faculty';
+                                _selectedFacultyRole = null;
 
                                 if (_selectedShift == 'BOTH') {
                                   _selectedMorningFacultyId = null;
                                   _selectedMorningFacultyName = 'Select Assigned Faculty';
+                                  _selectedMorningFacultyRole = null;
                                   _morningFacultyRemarks = null;
                                   _selectedEveningFacultyId = null;
                                   _selectedEveningFacultyName = 'Select Assigned Faculty';
+                                  _selectedEveningFacultyRole = null;
                                   _eveningFacultyRemarks = null;
                                 } else if (_selectedShift == 'MORNING') {
                                   _selectedMorningFacultyId = null;
                                   _selectedMorningFacultyName = 'Select Assigned Faculty';
+                                  _selectedMorningFacultyRole = null;
                                   _morningFacultyRemarks = null;
                                 } else {
                                   _selectedEveningFacultyId = null;
                                   _selectedEveningFacultyName = 'Select Assigned Faculty';
+                                  _selectedEveningFacultyRole = null;
                                   _eveningFacultyRemarks = null;
                                 }
                               });
@@ -1534,20 +1582,42 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                           decoration: BoxDecoration(
                             color: cardBg,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.purple.withValues(alpha: 0.08)),
+                            border: Border.all(
+                              color: (_selectedFacultyRole != null
+                                      ? StaffRoleHelper.getRoleColor(_selectedFacultyRole!)
+                                      : Colors.purple)
+                                  .withValues(alpha: 0.15),
+                            ),
                             boxShadow: [
                               BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 10, offset: const Offset(0, 4)),
                             ],
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.supervisor_account_rounded, color: Colors.purple, size: 20),
+                              Icon(
+                                _selectedFacultyRole != null
+                                    ? StaffRoleHelper.getRoleIcon(_selectedFacultyRole!)
+                                    : Icons.supervisor_account_rounded,
+                                color: _selectedFacultyRole != null
+                                    ? StaffRoleHelper.getRoleColor(_selectedFacultyRole!)
+                                    : Colors.purple,
+                                size: 20,
+                              ),
                               const SizedBox(width: 14),
                               Expanded(
-                                child: Text(
-                                  _selectedFacultyName,
-                                  style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold, color: titleColor),
-                                  overflow: TextOverflow.ellipsis,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedFacultyName,
+                                      style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.bold, color: titleColor),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (_selectedFacultyRole != null && _selectedFacultyId != null) ...[
+                                      const SizedBox(height: 3),
+                                      StaffRoleHelper.buildRoleBadge(_selectedFacultyRole!, fontSize: 9.5, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1)),
+                                    ],
+                                  ],
                                 ),
                               ),
                               Icon(Icons.keyboard_arrow_down_rounded, color: subColor),

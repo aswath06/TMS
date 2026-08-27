@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
 import 'package:tripzo/screens/admin/request/daily_bus_run_download_modal.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:tripzo/components/assigned_faculty_cards.dart';
 
 class DailyRoutinesListPage extends ConsumerStatefulWidget {
   const DailyRoutinesListPage({super.key});
@@ -857,69 +858,71 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     final dynamic eveningFacultyObj = run['eveningAssignedFaculty'] ?? run['evening_faculty'] ?? run['evening_assigned_faculty'];
     final dynamic generalFacultyObj = run['assignedFaculty'] ?? run['assigned_faculty'] ?? run['faculty'];
 
-    String? extractFacultyName(dynamic fObj) {
+    Map<String, String>? extractFacultyInfo(dynamic fObj) {
       if (fObj == null) return null;
       if (fObj is Map<String, dynamic> || fObj is Map) {
-        String? name = fObj['name']?.toString() ?? fObj['user']?['name']?.toString();
+        final mapObj = Map<String, dynamic>.from(fObj);
+        String? name = mapObj['name']?.toString() ?? mapObj['user']?['name']?.toString();
         if (name != null && name.trim().isNotEmpty && name.trim() != 'N/A') {
-          return name.trim();
+          final role = StaffRoleHelper.getRoleName(mapObj);
+          return {'name': name.trim(), 'role': role};
         }
       } else if (fObj is String && fObj.trim().isNotEmpty && fObj.trim() != 'N/A') {
-        return fObj.trim();
+        return {'name': fObj.trim(), 'role': 'Faculty'};
       }
       return null;
     }
 
-    final String? morningName = extractFacultyName(morningFacultyObj);
-    final String? eveningName = extractFacultyName(eveningFacultyObj);
-    final String? generalName = extractFacultyName(generalFacultyObj);
+    final morningInfo = extractFacultyInfo(morningFacultyObj);
+    final eveningInfo = extractFacultyInfo(eveningFacultyObj);
+    final generalInfo = extractFacultyInfo(generalFacultyObj);
 
-    String? morningAssignName;
-    String? eveningAssignName;
+    Map<String, String>? morningAssignInfo;
+    Map<String, String>? eveningAssignInfo;
     final assignments = run['assignment'] as List? ?? [];
     for (var a in assignments) {
       final f = a['faculty'] ?? a['assigned_faculty'];
       final shift = (a['shift'] ?? a['run_shift'] ?? '').toString().toUpperCase();
-      final String? name = extractFacultyName(f);
-      if (name != null) {
+      final info = extractFacultyInfo(f);
+      if (info != null) {
         if (shift.contains('MORNING') || shift.contains('FN')) {
-          morningAssignName ??= name;
+          morningAssignInfo ??= info;
         } else if (shift.contains('EVENING') || shift.contains('AN')) {
-          eveningAssignName ??= name;
+          eveningAssignInfo ??= info;
         }
       }
     }
 
-    final String? mName = morningName ?? morningAssignName ?? generalName;
-    final String? eName = eveningName ?? eveningAssignName ?? generalName;
+    final mInfo = morningInfo ?? morningAssignInfo ?? generalInfo;
+    final eInfo = eveningInfo ?? eveningAssignInfo ?? generalInfo;
 
     List<Widget> facultyChips = [];
 
-    if (mName != null && eName != null) {
-      if (mName.toUpperCase() == eName.toUpperCase()) {
+    if (mInfo != null && eInfo != null) {
+      if (mInfo['name']?.toUpperCase() == eInfo['name']?.toUpperCase()) {
         facultyChips.add(
-          _buildFacultyChip(mName, null, primaryBlue, titleColor, subColor),
+          _buildFacultyChip(mInfo['name']!, null, primaryBlue, titleColor, subColor, role: mInfo['role']),
         );
       } else {
         facultyChips.add(
-          _buildFacultyChip(mName, "FN", primaryBlue, titleColor, subColor),
+          _buildFacultyChip(mInfo['name']!, "FN", primaryBlue, titleColor, subColor, role: mInfo['role']),
         );
         facultyChips.add(const SizedBox(height: 4));
         facultyChips.add(
-          _buildFacultyChip(eName, "AN", primaryBlue, titleColor, subColor),
+          _buildFacultyChip(eInfo['name']!, "AN", primaryBlue, titleColor, subColor, role: eInfo['role']),
         );
       }
-    } else if (mName != null) {
+    } else if (mInfo != null) {
       facultyChips.add(
-        _buildFacultyChip(mName, "FN", primaryBlue, titleColor, subColor),
+        _buildFacultyChip(mInfo['name']!, "FN", primaryBlue, titleColor, subColor, role: mInfo['role']),
       );
-    } else if (eName != null) {
+    } else if (eInfo != null) {
       facultyChips.add(
-        _buildFacultyChip(eName, "AN", primaryBlue, titleColor, subColor),
+        _buildFacultyChip(eInfo['name']!, "AN", primaryBlue, titleColor, subColor, role: eInfo['role']),
       );
-    } else if (generalName != null) {
+    } else if (generalInfo != null) {
       facultyChips.add(
-        _buildFacultyChip(generalName, null, primaryBlue, titleColor, subColor),
+        _buildFacultyChip(generalInfo['name']!, null, primaryBlue, titleColor, subColor, role: generalInfo['role']),
       );
     }
 
@@ -936,18 +939,22 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     );
   }
 
-  Widget _buildFacultyChip(String name, String? shiftPrefix, Color primaryBlue, Color titleColor, Color subColor) {
+  Widget _buildFacultyChip(String name, String? shiftPrefix, Color primaryBlue, Color titleColor, Color subColor, {String? role}) {
+    final String roleStr = role ?? 'Faculty';
+    final Color roleColor = StaffRoleHelper.getRoleColor(roleStr);
+    final IconData roleIcon = StaffRoleHelper.getRoleIcon(roleStr);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: primaryBlue.withValues(alpha: 0.06),
+        color: roleColor.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primaryBlue.withValues(alpha: 0.12)),
+        border: Border.all(color: roleColor.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.school_rounded, size: 13, color: primaryBlue),
+          Icon(roleIcon, size: 13, color: roleColor),
           const SizedBox(width: 5),
           if (shiftPrefix != null) ...[
             Container(
@@ -979,6 +986,8 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
               ),
             ),
           ),
+          const SizedBox(width: 6),
+          StaffRoleHelper.buildRoleBadge(roleStr, fontSize: 8.5, padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1)),
         ],
       ),
     );

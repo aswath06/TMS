@@ -2203,18 +2203,43 @@ final Map<int, String> amountMap = allowanceAmounts.map(
     if (faculty == null) return const SizedBox.shrink();
 
     final String name = faculty['name'] ?? faculty['user']?['name'] ?? 'N/A';
-    final String rawPhone = faculty['phone']?.toString() ?? faculty['user']?['phone']?.toString() ?? '';
-    final String phone = rawPhone.isNotEmpty ? rawPhone : '9876543210';
+    final String rawPhone = faculty['phone']?.toString() ??
+        faculty['user']?['phone']?.toString() ??
+        faculty['mobile']?.toString() ??
+        faculty['role_details']?['phone_number']?.toString() ??
+        '';
+    final String phone = rawPhone.isNotEmpty && rawPhone != 'null' ? rawPhone : '';
+    final String role = StaffRoleHelper.getRoleName(faculty);
+    final String dept = faculty['department']?.toString() ??
+        faculty['dept']?.toString() ??
+        faculty['user']?['department']?.toString() ??
+        '';
+    final String designation = faculty['designation']?.toString() ??
+        faculty['user']?['designation']?.toString() ??
+        '';
+
+    String subInfo = '';
+    if (designation.isNotEmpty && designation != 'null' && designation != 'N/A') {
+      subInfo = designation;
+      if (dept.isNotEmpty && dept != 'null' && dept != 'N/A') {
+        subInfo = "$subInfo • $dept";
+      }
+    } else if (dept.isNotEmpty && dept != 'null' && dept != 'N/A') {
+      subInfo = dept;
+    }
+
+    final Color roleColor = StaffRoleHelper.getRoleColor(role);
+    final IconData roleIcon = StaffRoleHelper.getRoleIcon(role);
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: primaryColor.withOpacity( 0.1)),
+        border: Border.all(color: primaryColor.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: primaryColor.withOpacity( 0.05),
+            color: primaryColor.withOpacity(0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -2228,7 +2253,7 @@ final Map<int, String> amountMap = allowanceAmounts.map(
               Icon(Icons.person_outline_rounded, color: primaryColor, size: 24),
               const SizedBox(width: 10),
               Text(
-                "Assigned Faculty",
+                "Assigned In-Charge",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -2242,38 +2267,60 @@ final Map<int, String> amountMap = allowanceAmounts.map(
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: primaryColor.withOpacity( 0.1),
-                child: Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : 'F',
-                  style: TextStyle(
-                    color: primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
+                backgroundColor: roleColor.withOpacity(0.12),
+                child: Icon(roleIcon, color: roleColor, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: titleColor,
-                      ),
-                    ),
-                    if (phone.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        phone,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: subColor,
-                          fontWeight: FontWeight.w500,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: titleColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 8),
+                        StaffRoleHelper.buildRoleBadge(role),
+                      ],
+                    ),
+                    if (subInfo.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subInfo,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: subColor.withOpacity(0.85),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (phone.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.phone_outlined, size: 13, color: subColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            phone,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: subColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -2293,7 +2340,7 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                   icon: const Icon(Icons.call_rounded),
                   color: Colors.green,
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.green.withOpacity( 0.1),
+                    backgroundColor: Colors.green.withOpacity(0.1),
                     padding: const EdgeInsets.all(12),
                   ),
                 ),

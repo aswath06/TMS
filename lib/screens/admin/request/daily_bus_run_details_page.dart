@@ -4075,7 +4075,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                           Text(
 
-                            "Assigned Faculty",
+                            "Assigned Faculty / Staff",
 
                             style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
 
@@ -4587,11 +4587,13 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
+    final String rLower = _userRole?.toLowerCase() ?? '';
+
     final bool isNormalUser = _userRole != null &&
 
-        ((_userRole!.toLowerCase() == 'faculty' && !isAssignedFaculty) ||
+        (((rLower == 'faculty' || rLower == 'intern' || rLower == 'non teaching' || rLower == 'non teaching faculty' || rLower.contains('teaching')) && !isAssignedFaculty) ||
 
-         _userRole!.toLowerCase() == 'student');
+         rLower == 'student');
 
 
 
@@ -4741,7 +4743,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
               Text(
 
-                "Assigned Faculties",
+                "Assigned Faculty / Staff",
 
                 style: GoogleFonts.outfit(
 
@@ -12300,6 +12302,10 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     if (facultyDetails == null) return const SizedBox.shrink();
     final String name = facultyDetails['name']?.toString() ?? 'Unknown';
     final String phone = facultyDetails['phone']?.toString() ?? facultyDetails['role_details']?['phone_number']?.toString() ?? facultyDetails['mobile']?.toString() ?? '';
+    final String role = StaffRoleHelper.getRoleName(facultyDetails);
+    final String dept = facultyDetails['department']?.toString() ?? facultyDetails['dept']?.toString() ?? facultyDetails['role_details']?['department']?.toString() ?? '';
+    final Color roleColor = StaffRoleHelper.getRoleColor(role);
+    final IconData roleIcon = StaffRoleHelper.getRoleIcon(role);
     
     return Container(
       padding: const EdgeInsets.all(12),
@@ -12320,20 +12326,35 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: primaryBlue.withOpacity(0.1),
-                child: Icon(Icons.person_rounded, color: primaryBlue, size: 20),
+                backgroundColor: roleColor.withOpacity(0.12),
+                child: Icon(roleIcon, color: roleColor, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        StaffRoleHelper.buildRoleBadge(role, fontSize: 8.5, padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1)),
+                      ],
                     ),
+                    if (dept.isNotEmpty && dept != 'null' && dept != 'N/A')
+                      Text(
+                        dept,
+                        style: TextStyle(fontSize: 11, color: subColor.withOpacity(0.85), fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     if (phone.isNotEmpty)
                       Text(
                         phone,
