@@ -6,10 +6,18 @@ class ApiConstants {
 
   static String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
-    if (path.startsWith('http')) return path;
-    final base = baseUrl;
+    if (path.startsWith('http')) {
+      if (path.contains('/uploads/')) {
+        final uri = Uri.tryParse(path);
+        if (uri != null) {
+          final relativePath = uri.path;
+          return '$baseUrl/api/media?path=${Uri.encodeComponent(relativePath)}';
+        }
+      }
+      return path;
+    }
     final relative = path.startsWith('/') ? path : '/$path';
-    return '$base$relative';
+    return '$baseUrl/api/media?path=${Uri.encodeComponent(relative)}';
   }
 
   // DevTunnels bypass header

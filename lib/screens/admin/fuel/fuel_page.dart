@@ -1405,7 +1405,7 @@ class _FuelPageState extends State<FuelPage> {
           if (billImage.isNotEmpty) ...[
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () => _showFullScreenImage("${ApiConstants.baseUrl}$billImage", titleColor, isDark),
+              onTap: () => _showFullScreenImage(ApiConstants.getImageUrl(billImage), titleColor, isDark),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(color: primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
@@ -2005,18 +2005,14 @@ class _FuelPageState extends State<FuelPage> {
                 const SizedBox(height: 12),
                 GestureDetector(
                   onTap: () => _showFullScreenImage(
-                    item['bill_file_url'].startsWith('/') 
-                        ? "${ApiConstants.baseUrl}${item['bill_file_url']}" 
-                        : item['bill_file_url'],
+                    ApiConstants.getImageUrl(item['bill_file_url']),
                     titleColor,
                     isDark
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      item['bill_file_url'].startsWith('/') 
-                          ? "${ApiConstants.baseUrl}${item['bill_file_url']}" 
-                          : item['bill_file_url'],
+                      ApiConstants.getImageUrl(item['bill_file_url']),
                       height: 150,
                       width: double.infinity,
                       fit: BoxFit.cover,

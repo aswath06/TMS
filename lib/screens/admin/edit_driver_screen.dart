@@ -395,7 +395,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                       child: _profileImage != null
                           ? Image.file(File(_profileImage!.path), fit: BoxFit.cover)
                           : _existingProfilePhotoUrl != null
-                              ? Image.network(_existingProfilePhotoUrl!, fit: BoxFit.cover, headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'})
+                              ? Image.network(ApiConstants.getImageUrl(_existingProfilePhotoUrl!), fit: BoxFit.cover, headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'})
                               : Icon(Icons.person, size: 60, color: Colors.grey[400]),
                     ),
                   ),
@@ -692,7 +692,7 @@ class _EditDriverScreenState extends ConsumerState<EditDriverScreen> {
                     child: currentImage != null
                         ? Image.file(File(currentImage.path), fit: BoxFit.cover)
                         : existingUrl != null
-                            ? Image.network(existingUrl, fit: BoxFit.cover, headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'}, errorBuilder: (c, e, s) => Icon(Icons.broken_image, color: Colors.grey[400]))
+                            ? Image.network(ApiConstants.getImageUrl(existingUrl), fit: BoxFit.cover, headers: const {'X-Tunnel-Skip-Anti-Phishing-Page': 'true'}, errorBuilder: (c, e, s) => Icon(Icons.broken_image, color: Colors.grey[400]))
                             : Icon(Icons.description, color: Colors.grey[400], size: 30),
                   ),
                 ),
