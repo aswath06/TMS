@@ -85,7 +85,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen> with Si
       }
     });
 
-    _taskPollTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+    _taskPollTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
       if (mounted) {
         await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
       }

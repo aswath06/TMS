@@ -54,7 +54,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       if (mounted) setState(() {});
     });
 
-    _taskPollTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+    _taskPollTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
       if (mounted) {
         await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
       }
@@ -1580,7 +1580,7 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
     final String assignmentType = schedule['assignment_type'] ?? 'PRIMARY';
     
     final dutyShift = schedule['dutyShift'] as Map<String, dynamic>? ?? {};
-    final String shiftStatus = dutyShift['status'] ?? 'PLANNED';
+    String shiftStatus = dutyShift['status'] ?? 'PLANNED';
     final String shiftName = dutyShift['shift_name'] ?? 'FN';
     final String shiftCode = dutyShift['shift_code'] ?? 'FN';
     final String shiftStart = dutyShift['shift_start'] ?? '06:00:00';
@@ -1593,6 +1593,28 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
     final String categoryName = category['category_name'] ?? (isTamil ? 'கடமை அட்டவணை' : 'Duty Schedule');
 
     final vehicles = dutyShift['vehicles'] as List? ?? [];
+    final int assignedVehicles = vehicles.length;
+    final int vehiclesWithOdometer = vehicles.where((v) {
+      final odo = v['odometer'] as Map<String, dynamic>?;
+      return odo != null && odo['start_odometer'] != null && odo['start_odometer'].toString().isNotEmpty;
+    }).length;
+
+    final drivers = dutyShift['drivers'] as List? ?? [];
+    final bool anyDriverStarted = drivers.any((d) => d['assignment_status'] == 'STARTED' || d['assignment_status'] == 'COMPLETED');
+    final bool allDriversStarted = drivers.isNotEmpty && drivers.every((d) => d['assignment_status'] == 'STARTED' || d['assignment_status'] == 'COMPLETED');
+
+    if (shiftStatus == 'STARTED') {
+      if (!allDriversStarted) {
+        shiftStatus = 'ONGOING';
+      }
+    } else if (shiftStatus == 'PLANNED') {
+      if (anyDriverStarted) {
+        shiftStatus = 'ONGOING';
+      } else {
+        shiftStatus = 'PENDING';
+      }
+    }
+
 
     Color accentColor = primaryBlue;
     if (shiftCode == 'FN') {
@@ -1948,3 +1970,4 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
     }
   }
 }
+
