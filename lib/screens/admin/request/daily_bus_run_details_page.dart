@@ -570,53 +570,48 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
   bool _getIsAssignedFaculty() {
-
     if (_loggedInUserId == null) {
-
       return false;
-
     }
 
-
-
     final int? morningFacultyUserId = _run['morning_assigned_faculty_id'] != null
-
         ? int.tryParse(_run['morning_assigned_faculty_id'].toString())
-
         : (_run['morningAssignedFaculty']?['id'] != null
-
             ? int.tryParse(_run['morningAssignedFaculty']['id'].toString())
-
             : null);
-
-
 
     final int? eveningFacultyUserId = _run['evening_assigned_faculty_id'] != null
-
         ? int.tryParse(_run['evening_assigned_faculty_id'].toString())
-
         : (_run['eveningAssignedFaculty']?['id'] != null
-
             ? int.tryParse(_run['eveningAssignedFaculty']['id'].toString())
-
             : null);
 
-
-
     final int? assignedFacultyUserId = _run['assigned_faculty_user_id'] != null
-
         ? int.tryParse(_run['assigned_faculty_user_id'].toString())
-
         : null;
 
+    final int? routeMorningFacId = _run['dailyBusRoute']?['morning_assigned_faculty_id'] != null
+        ? int.tryParse(_run['dailyBusRoute']['morning_assigned_faculty_id'].toString())
+        : (_run['dailyBusRoute']?['morningAssignedFaculty']?['id'] != null
+            ? int.tryParse(_run['dailyBusRoute']['morningAssignedFaculty']['id'].toString())
+            : null);
 
+    final int? routeEveningFacId = _run['dailyBusRoute']?['evening_assigned_faculty_id'] != null
+        ? int.tryParse(_run['dailyBusRoute']['evening_assigned_faculty_id'].toString())
+        : (_run['dailyBusRoute']?['eveningAssignedFaculty']?['id'] != null
+            ? int.tryParse(_run['dailyBusRoute']['eveningAssignedFaculty']['id'].toString())
+            : null);
+
+    final int? routeGenFacId = _run['dailyBusRoute']?['assigned_faculty_user_id'] != null
+        ? int.tryParse(_run['dailyBusRoute']['assigned_faculty_user_id'].toString())
+        : null;
 
     return morningFacultyUserId == _loggedInUserId ||
-
         eveningFacultyUserId == _loggedInUserId ||
-
-        assignedFacultyUserId == _loggedInUserId;
-
+        assignedFacultyUserId == _loggedInUserId ||
+        routeMorningFacId == _loggedInUserId ||
+        routeEveningFacId == _loggedInUserId ||
+        routeGenFacId == _loggedInUserId;
   }
 
 
@@ -7683,82 +7678,78 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-    final attendanceList = _run['attendanceRecords'] as List? ?? [];
-
+    final rawAttendanceList = _run['attendanceRecords'] as List? ?? [];
+    List attendanceList = rawAttendanceList;
     if (attendanceList.isEmpty) {
-
-      return SingleChildScrollView(
-
-        physics: const AlwaysScrollableScrollPhysics(),
-
-        child: Container(
-
-          height: MediaQuery.of(context).size.height * 0.5,
-
-          alignment: Alignment.center,
-
-          child: Column(
-
-            mainAxisSize: MainAxisSize.min,
-
-            children: [
-
-              Icon(Icons.rule_rounded, size: 48, color: subColor.withOpacity( 0.2)),
-
-              const SizedBox(height: 12),
-
-              Text("No attendance records found", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
-
-            ],
-
-          ),
-
-        ),
-
-      );
-
+      final List sList = (_run['students'] as List? ?? []).map((s) => {
+        if (s is Map) ...Map<String, dynamic>.from(s),
+        'type': 'STUDENT',
+      }).toList();
+      final List fList = (_run['faculties'] as List? ?? []).map((f) => {
+        if (f is Map) ...Map<String, dynamic>.from(f),
+        'type': 'FACULTY',
+      }).toList();
+      final List iList = (_run['interns'] as List? ?? []).map((i) => {
+        if (i is Map) ...Map<String, dynamic>.from(i),
+        'type': 'INTERN',
+      }).toList();
+      final List ntList = (_run['nonTeachingStaffs'] as List? ?? []).map((nt) => {
+        if (nt is Map) ...Map<String, dynamic>.from(nt),
+        'type': 'NON_TEACHING',
+      }).toList();
+      attendanceList = [...sList, ...fList, ...iList, ...ntList];
     }
 
-
+    if (attendanceList.isEmpty) {
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.5,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.rule_rounded, size: 48, color: subColor.withOpacity( 0.2)),
+              const SizedBox(height: 12),
+              Text("No attendance records found", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
 
     // Filter by search query, type, status, and department
-
     final filteredRecords = attendanceList.where((rec) {
-
       final type = (rec['type'] ?? '').toString().toUpperCase();
-
       String name = '';
-
       String roll = '';
-
       String reg = '';
-
       String code = '';
-
       String dept = '';
 
       if (type == 'STUDENT') {
-
         final s = rec['student'] as Map?;
-
-        name = s?['user']?['name']?.toString() ?? '';
-
+        name = s?['user']?['name']?.toString() ?? rec['user']?['name']?.toString() ?? '';
         roll = s?['roll_number']?.toString() ?? '';
-
         reg = s?['register_number']?.toString() ?? '';
-
         dept = s?['department']?.toString() ?? '';
-
       } else if (type == 'FACULTY') {
-
         final f = rec['faculty'] as Map?;
-
-        name = f?['user']?['name']?.toString() ?? '';
-
+        name = f?['user']?['name']?.toString() ?? rec['user']?['name']?.toString() ?? '';
         code = f?['employee_code']?.toString() ?? '';
-
         dept = f?['department']?.toString() ?? '';
-
+      } else if (type == 'INTERN') {
+        final i = rec['intern'] as Map?;
+        name = i?['user']?['name']?.toString() ?? rec['user']?['name']?.toString() ?? '';
+        code = i?['roll_number']?.toString() ?? i?['employee_code']?.toString() ?? '';
+        dept = i?['department']?.toString() ?? '';
+      } else if (type == 'NON_TEACHING' || type == 'NON-TEACHING' || type == 'NON_TEACHING_STAFF') {
+        final nt = (rec['non_teaching'] ?? rec['nonTeaching'] ?? rec['nonTeachingStaff']) as Map?;
+        name = nt?['user']?['name']?.toString() ?? rec['user']?['name']?.toString() ?? '';
+        code = nt?['employee_code']?.toString() ?? '';
+        dept = nt?['department']?.toString() ?? '';
+      } else {
+        name = rec['user']?['name']?.toString() ?? rec['name']?.toString() ?? '';
       }
 
 
@@ -9729,35 +9720,52 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                       ),
 
                       ChoiceChip(
-
                         label: const Text("Faculty"),
-
                         selected: _selectedAttendanceTypeFilter == 'FACULTY',
-
                         onSelected: (selected) {
-
                           setModalState(() {
-
                             _selectedAttendanceTypeFilter = selected ? 'FACULTY' : null;
-
                           });
-
                           setState(() {});
-
                         },
-
                         selectedColor: primaryBlue.withOpacity( 0.15),
-
                         labelStyle: TextStyle(
-
                           color: _selectedAttendanceTypeFilter == 'FACULTY' ? primaryBlue : t,
-
                           fontWeight: FontWeight.bold,
-
                           fontSize: 12,
-
                         ),
-
+                      ),
+                      ChoiceChip(
+                        label: const Text("Intern"),
+                        selected: _selectedAttendanceTypeFilter == 'INTERN',
+                        onSelected: (selected) {
+                          setModalState(() {
+                            _selectedAttendanceTypeFilter = selected ? 'INTERN' : null;
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: primaryBlue.withOpacity( 0.15),
+                        labelStyle: TextStyle(
+                          color: _selectedAttendanceTypeFilter == 'INTERN' ? primaryBlue : t,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Non-Teaching"),
+                        selected: _selectedAttendanceTypeFilter == 'NON_TEACHING',
+                        onSelected: (selected) {
+                          setModalState(() {
+                            _selectedAttendanceTypeFilter = selected ? 'NON_TEACHING' : null;
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: primaryBlue.withOpacity( 0.15),
+                        labelStyle: TextStyle(
+                          color: _selectedAttendanceTypeFilter == 'NON_TEACHING' ? primaryBlue : t,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
 
                     ],
@@ -13086,99 +13094,65 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-    if (_userRole != null && (_userRole!.toLowerCase() == 'faculty' || _userRole!.toLowerCase() == 'student')) {
-
-      final String typeToSearch = _userRole!.toLowerCase() == 'faculty' ? 'FACULTY' : 'STUDENT';
-
-      final String entityKey = _userRole!.toLowerCase() == 'faculty' ? 'faculty' : 'student';
-
-      final List attendanceList = _run['attendanceRecords'] as List? ?? [];
-
-      for (var rec in attendanceList) {
-
-        if (rec['type']?.toString().toUpperCase() == typeToSearch) {
-
-          final pMap = rec[entityKey] as Map?;
-
-          final int? pUserId = pMap?['user']?['id'] != null ? int.tryParse(pMap!['user']['id'].toString()) : null;
-
-          if (pUserId != null && pUserId == _loggedInUserId) {
-
-            myFacultyRecord = Map<String, dynamic>.from(rec);
-
-            break;
-
-          }
-
-        }
-
+    if (_userRole != null) {
+      final String rLower = _userRole!.toLowerCase();
+      String typeToSearch = 'STUDENT';
+      String entityKey = 'student';
+      if (rLower == 'faculty') {
+        typeToSearch = 'FACULTY';
+        entityKey = 'faculty';
+      } else if (rLower == 'intern') {
+        typeToSearch = 'INTERN';
+        entityKey = 'intern';
+      } else if (rLower == 'non teaching' || rLower == 'non teaching faculty' || rLower.contains('teaching')) {
+        typeToSearch = 'NON_TEACHING';
+        entityKey = 'non_teaching';
       }
 
+      final List attendanceList = _run['attendanceRecords'] as List? ?? [];
+      for (var rec in attendanceList) {
+        final recType = rec['type']?.toString().toUpperCase();
+        if (recType == typeToSearch || recType == 'FACULTY' || recType == 'INTERN' || recType == 'NON_TEACHING' || recType == 'STUDENT') {
+          final pMap = (rec[entityKey] ?? rec['faculty'] ?? rec['intern'] ?? rec['non_teaching'] ?? rec['nonTeaching'] ?? rec['student'] ?? rec['user']) as Map?;
+          final int? pUserId = pMap?['user']?['id'] != null ? int.tryParse(pMap!['user']['id'].toString()) : (pMap?['id'] != null ? int.tryParse(pMap!['id'].toString()) : null);
+          if (pUserId != null && pUserId == _loggedInUserId) {
+            myFacultyRecord = Map<String, dynamic>.from(rec);
+            break;
+          }
+        }
+      }
     }
 
-
-
     final myDetails = _run['my_details'] as Map<String, dynamic>?;
-
     final String morningStatus = (myFacultyRecord != null
-
         ? (myFacultyRecord['morning_attendance_status'] ?? 'ABSENT')
-
         : (myDetails?['morning_attendance_status'] ?? 'ABSENT')).toString().toUpperCase();
-
     final String eveningStatus = (myFacultyRecord != null
-
         ? (myFacultyRecord['evening_attendance_status'] ?? 'ABSENT')
-
         : (myDetails?['evening_attendance_status'] ?? 'ABSENT')).toString().toUpperCase();
 
-
-
     // Morning condition: started or ARRIVED_CAMPUS, and not already marked PRESENT.
-
     final bool isMorningScanEligible = (s == 'STARTED' || s == 'ARRIVED_CAMPUS') && morningStatus != 'PRESENT';
 
-
-
     // Evening condition: show when FN_COMPLETED, close when AN_STARTED or marked PRESENT.
-
     final bool isEveningScanEligible = s == 'FN_COMPLETED' && eveningStatus != 'PRESENT';
-
-
 
     final bool showScanOtpButton = isAssignedFaculty && (isMorningScanEligible || isEveningScanEligible);
 
-
-
     // Active status based on shift
-
     final bool isAn = s.contains('AN') || s == 'FN_COMPLETED' || s == 'DEPARTED_CAMPUS' || s == 'HALTED';
-
     final String activeStatus = isAn ? eveningStatus : morningStatus;
-
     final bool isPresent = activeStatus == 'PRESENT';
 
-
-
     final bool isMorningConfirmed = _run['is_morning_attendance_confirmed'] == true ||
-
         _run['is_morning_attendance_confirmed']?.toString() == 'true' ||
-
         _run['morning_attendance_confirmed'] == true ||
-
         _run['morning_attendance_confirmed']?.toString() == 'true';
 
-
-
     final bool isEveningConfirmed = _run['is_evening_attendance_confirmed'] == true ||
-
         _run['is_evening_attendance_confirmed']?.toString() == 'true' ||
-
         _run['evening_attendance_confirmed'] == true ||
-
         _run['evening_attendance_confirmed']?.toString() == 'true';
-
-
 
     final int? mFacId = _run['morning_assigned_faculty_id'] != null
         ? int.tryParse(_run['morning_assigned_faculty_id'].toString())
@@ -13190,8 +13164,18 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
         ? int.tryParse(_run['assigned_faculty_user_id'].toString())
         : null;
 
-    final bool isMorningFaculty = _loggedInUserId != null && (mFacId == _loggedInUserId || genFacId == _loggedInUserId);
-    final bool isEveningFaculty = _loggedInUserId != null && (eFacId == _loggedInUserId || genFacId == _loggedInUserId);
+    final int? routeMFacId = _run['dailyBusRoute']?['morning_assigned_faculty_id'] != null
+        ? int.tryParse(_run['dailyBusRoute']['morning_assigned_faculty_id'].toString())
+        : (_run['dailyBusRoute']?['morningAssignedFaculty']?['id'] != null ? int.tryParse(_run['dailyBusRoute']['morningAssignedFaculty']['id'].toString()) : null);
+    final int? routeEFacId = _run['dailyBusRoute']?['evening_assigned_faculty_id'] != null
+        ? int.tryParse(_run['dailyBusRoute']['evening_assigned_faculty_id'].toString())
+        : (_run['dailyBusRoute']?['eveningAssignedFaculty']?['id'] != null ? int.tryParse(_run['dailyBusRoute']['eveningAssignedFaculty']['id'].toString()) : null);
+    final int? routeGenFacId = _run['dailyBusRoute']?['assigned_faculty_user_id'] != null
+        ? int.tryParse(_run['dailyBusRoute']['assigned_faculty_user_id'].toString())
+        : null;
+
+    final bool isMorningFaculty = _loggedInUserId != null && (mFacId == _loggedInUserId || genFacId == _loggedInUserId || routeMFacId == _loggedInUserId || routeGenFacId == _loggedInUserId);
+    final bool isEveningFaculty = _loggedInUserId != null && (eFacId == _loggedInUserId || genFacId == _loggedInUserId || routeEFacId == _loggedInUserId || routeGenFacId == _loggedInUserId);
 
     final bool checkMorningConfirm = (s == 'ARRIVED_CAMPUS') && !isMorningConfirmed;
     final bool checkEveningConfirm = (s == 'FN_COMPLETED' || s == 'AN_STARTED' || s == 'DEPARTED_CAMPUS' || s == 'HALTED') && !isEveningConfirmed;
@@ -13199,9 +13183,9 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
     bool showConfirmAttendance = false;
     if (!_localAttendanceConfirmed) {
       if (checkMorningConfirm) {
-        showConfirmAttendance = isSuperOrTransportAdmin || (isMorningFaculty && morningStatus == 'PRESENT');
+        showConfirmAttendance = isSuperOrTransportAdmin || (isAssignedFaculty && (isMorningFaculty || morningStatus == 'PRESENT'));
       } else if (checkEveningConfirm) {
-        showConfirmAttendance = isSuperOrTransportAdmin || (isEveningFaculty && eveningStatus == 'PRESENT');
+        showConfirmAttendance = isSuperOrTransportAdmin || (isAssignedFaculty && (isEveningFaculty || eveningStatus == 'PRESENT'));
       }
     }
 
