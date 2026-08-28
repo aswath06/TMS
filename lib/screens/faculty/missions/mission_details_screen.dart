@@ -5570,7 +5570,7 @@ Map<int, String> amountMap = {};
               ),
               children: [
                 TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                 ),
                 if (_routePoints.isNotEmpty)

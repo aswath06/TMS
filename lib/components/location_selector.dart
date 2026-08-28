@@ -204,7 +204,7 @@ class _LocationSelectorState extends State<LocationSelector> {
                   options: const MapOptions(initialCenter: LatLng(20.5937, 78.9629), initialZoom: 4),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       subdomains: const ['a', 'b', 'c', 'd'],
                       userAgentPackageName: 'com.yourdomain.tmsapp',
                     ),
