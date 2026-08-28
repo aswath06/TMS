@@ -32,8 +32,17 @@ void onStart(ServiceInstance service) async {
     // 2. Initialize Notification Plugin
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('ic_launcher');
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+    );
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     debugPrint("[BackgroundService] Isolate initialized successfully");
