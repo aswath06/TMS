@@ -136,7 +136,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     if (mounted) {
       setState(() {
         _userRole = role?.toLowerCase() ?? 'faculty';
-        _totalSteps = _userRole.contains('admin') ? 5 : 3;
+        _totalSteps = _userRole.contains('admin') || _userRole.contains('coordinator') ? 5 : 3;
       });
     }
   }
@@ -1000,7 +1000,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     setState(() => _isSubmitting = true);
     try {
       final token = await UserStore.getToken();
-      final bool isAdmin = _userRole.toLowerCase().contains('admin');
+      final bool isAdmin = _userRole.toLowerCase().contains('admin') || _userRole.toLowerCase().contains('coordinator');
 
       // Constructing passengers list
       int pLimit = int.tryParse(_passengerCountController.text) ?? 1;
@@ -1427,7 +1427,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   );
 
   Widget _buildCurrentStage(Color p, bool d) {
-    bool isAdmin = _userRole.toLowerCase().contains('admin');
+    bool isAdmin = _userRole.toLowerCase().contains('admin') || _userRole.toLowerCase().contains('coordinator');
     if (isAdmin) {
       switch (_currentStep) {
         case 0: return _stageRouteDetails(p, d);
@@ -3492,7 +3492,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   Widget _stageReview(Color p, bool d) {
     Color c = d ? const Color(0xFF1E293B) : Colors.white;
     Color t = d ? Colors.white : const Color(0xFF0F172A);
-    bool isAdmin = _userRole.toLowerCase().contains('admin');
+    bool isAdmin = _userRole.toLowerCase().contains('admin') || _userRole.toLowerCase().contains('coordinator');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3827,7 +3827,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   }
 
   Widget _buildActionToolbar(Color p) {
-    final bool isAdmin = _userRole.toLowerCase().contains('admin');
+    final bool isAdmin = _userRole.toLowerCase().contains('admin') || _userRole.toLowerCase().contains('coordinator');
     bool isL = _currentStep == _totalSteps - 1;
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
