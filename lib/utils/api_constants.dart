@@ -102,6 +102,11 @@ class ApiConstants {
   static String getDriverSchedules(String date) => "$baseUrl/schedule-duty/master-driver/schedules?duty_date=$date";
   static String getDriverScheduleDetails(int id) => "$baseUrl/schedule-duty/master-driver/schedules/$id";
 
+  // Admin Master Schedules
+  static String get getMasterSchedules => "$baseUrl/schedule-duty/master/schedules";
+  static String getMasterScheduleById(int id) => "$baseUrl/schedule-duty/master/schedules/$id";
+  static String get generateMasterSchedule => "$baseUrl/schedule-duty/master/generate";
+
   // Trip actions
   static String updateTripTime(dynamic tripId) => "$baseUrl/request/trips/$tripId/update-time";
   static String getStartOtp(dynamic tripId) => "$baseUrl/request/trips/$tripId/start-otp";

@@ -1,0 +1,1688 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
+import 'package:tripzo/screens/faculty/schedules/schedule_details_screen.dart';
+import 'package:intl/intl.dart';
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:tripzo/store/user_store.dart';
+import 'package:tripzo/components/common/custom_date_time_picker.dart';
+import 'package:tripzo/utils/api_error_parser.dart';
+
+class DutyAllocationScreen extends ConsumerStatefulWidget {
+  const DutyAllocationScreen({super.key});
+
+  @override
+  ConsumerState<DutyAllocationScreen> createState() => _DutyAllocationScreenState();
+}
+
+class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> with SingleTickerProviderStateMixin {
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  String _selectedFilter = 'ALL';
+  String _selectedDateFilter = 'ALL';
+  final List<DateTime> _scrollDates = [];
+
+  final int _infiniteScrollMiddle = 100000;
+  late ScrollController _dateScrollController;
+
+  late AnimationController _jumpController;
+  late Animation<double> _jumpAnimation;
+  Timer? _jumpTimer;
+  bool _isScrolledFarFromToday = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    
+    final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final store = ref.read(scheduleDutyStoreProvider);
+    _selectedDateFilter = store.currentRouteDate.isNotEmpty ? store.currentRouteDate : todayStr;
+    
+    // Approximate initial offset
+    _dateScrollController = ScrollController(initialScrollOffset: (_infiniteScrollMiddle * 68.0) - 100);
+    _dateScrollController.addListener(() {
+      if (!mounted) return;
+      final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
+      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
+      final bool isFar = (_dateScrollController.offset - todayOffset).abs() > (15 * 68.0);
+      
+      if (_isScrolledFarFromToday != isFar) {
+        setState(() {
+          _isScrolledFarFromToday = isFar;
+        });
+      }
+    });
+
+    _jumpController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    
+    _jumpAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -8.0).chain(CurveTween(curve: Curves.easeOut)), weight: 50.0),
+      TweenSequenceItem(tween: Tween(begin: -8.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50.0),
+    ]).animate(_jumpController);
+
+    _jumpTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted && _selectedDateFilter != DateFormat('yyyy-MM-dd').format(DateTime.now())) {
+        _jumpController.forward(from: 0.0);
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
+      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34; // 34 is half item width (60 width + 8 margin)
+      
+      DateTime selectedDate;
+      try {
+        selectedDate = DateFormat('yyyy-MM-dd').parse(_selectedDateFilter);
+      } catch (e) {
+        selectedDate = DateTime.now();
+      }
+      
+      final DateTime now = DateTime.now();
+      final DateTime todayDate = DateTime(now.year, now.month, now.day);
+      final DateTime selDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final int diffDays = selDate.difference(todayDate).inDays;
+      
+      _dateScrollController.jumpTo(todayOffset + (diffDays * 68.0));
+      
+      final store = ref.read(scheduleDutyStoreProvider);
+      if (store.masterSchedules.isEmpty && !store.isLoading) {
+        store.fetchMasterSchedules(isRefresh: true, routeDate: _selectedDateFilter);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _jumpTimer?.cancel();
+    _jumpController.dispose();
+    _scrollController.dispose();
+    _dateScrollController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(scheduleDutyStoreProvider).fetchNextPage();
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, search: query);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color subColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+    final Color primaryBlue = const Color(0xFF6366F1);
+    final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final Color bgColor = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF8FAFC);
+
+    final store = ref.watch(scheduleDutyStoreProvider);
+    
+    final schedules = store.masterSchedules.where((req) {
+      final String s = (req['status'] ?? "").toString().toUpperCase();
+      
+      if (_selectedFilter == 'ALL') return true;
+      if (_selectedFilter == 'APPROVED') {
+        return (s == 'APPROVED' || s == 'VEHICLE APPROVED' || s == 'PLANNED') && 
+               s != 'STARTED' && s != 'ONGOING';
+      }
+      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || s == 'SUBMITTED';
+      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING';
+      if (_selectedFilter == 'COMPLETED') return s == 'COMPLETED';
+      
+      return true;
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: titleColor,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.explore_rounded,
+                            color: primaryBlue,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Duty Allocation",
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                              letterSpacing: -0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () async {
+                              final refresh = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NewRequestScreen(),
+                                ),
+                              );
+                              if (refresh == true) {
+                                if (context.mounted) {
+                                  ref.read(scheduleDutyStoreProvider).fetchRequests();
+                                }
+                              }
+                            },
+                            icon: Icon(
+                              Icons.add_circle_outline_rounded,
+                              color: primaryBlue,
+                              size: 26,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _showReportGenerationSheet(primaryBlue, titleColor, subColor, isDark),
+                            icon: Icon(
+                              Icons.file_download_outlined,
+                              color: subColor,
+                              size: 26,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Manage and monitor all duty schedules",
+                    style: TextStyle(
+                      color: subColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: _buildSearchBar(isDark, primaryBlue, subColor)),
+                      const SizedBox(width: 12),
+                      _buildFilterButton(primaryBlue, titleColor, isDark),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "Mission Dates",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: titleColor,
+                            ),
+                          ),
+                          if (_selectedFilter != 'ALL') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: primaryBlue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _selectedFilter,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: primaryBlue,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Builder(
+                        builder: (context) {
+                          final bool shouldShowJump = (_selectedDateFilter != DateFormat('yyyy-MM-dd').format(DateTime.now())) || _isScrolledFarFromToday;
+                          return AnimatedOpacity(
+                            duration: const Duration(milliseconds: 300),
+                            opacity: shouldShowJump ? 1.0 : 0.0,
+                            child: AnimatedBuilder(
+                              animation: _jumpAnimation,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, _jumpAnimation.value),
+                                  child: child,
+                                );
+                              },
+                              child: IgnorePointer(
+                                ignoring: !shouldShowJump,
+                                child: GestureDetector(
+                              onTap: () {
+                                final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                                if (_selectedDateFilter != todayStr) {
+                                  setState(() => _selectedDateFilter = todayStr);
+                                  ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, routeDate: todayStr);
+                                }
+                                
+                                final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
+                                final double offset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
+                                _dateScrollController.animateTo(offset, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.fast_rewind_rounded, size: 14, color: primaryBlue),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "Jump to Today",
+                                      style: TextStyle(
+                                        color: primaryBlue,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: primaryBlue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDateScroller(primaryBlue, titleColor, subColor, isDark),
+                ],
+              ),
+            ),
+            Expanded(
+              child: store.isLoading && schedules.isEmpty
+                  ? _buildRequestsSkeleton(isDark, cardColor)
+                  : RefreshIndicator(
+                      onRefresh: () => store.fetchMasterSchedules(isRefresh: true),
+                      child: schedules.isEmpty
+                          ? ListView(
+                              children: [
+                                SizedBox(
+                                  height: MediaQuery.of(context).size.height * 0.3,
+                                ),
+                                Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.auto_awesome_motion_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        _selectedFilter == 'ALL' ? "No active schedules" : "No $_selectedFilter schedules found",
+                                        style: TextStyle(
+                                          color: subColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          : _buildGroupedDuty AllocationList(schedules, cardColor, titleColor, subColor, primaryBlue),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    final s = status.toUpperCase();
+    if (s == 'STARTED' || s == 'ONGOING') return const Color(0xFF6366F1);
+    if (s == 'COMPLETED') return const Color(0xFF10B981);
+    if (s == 'CANCELLED' || s == 'REJECTED') return const Color(0xFF64748B);
+    if (s == 'DRAFT') return const Color(0xFFF59E0B);
+    return const Color(0xFFEC4899); // Pink for Approved/Planned
+  }
+
+  Widget _buildStatusBadge(String status) {
+    final String s = status.toUpperCase();
+    final Map<String, Map<String, Color>> statusStyles = {
+      'DRAFT': {
+        'bg': const Color(0xFFFFFBEB),
+        'text': const Color(0xFFF59E0B),
+        'border': const Color(0xFFFDE68A),
+      },
+      'SUBMITTED': {
+        'bg': const Color(0xFFFAF5FF),
+        'text': const Color(0xFFA855F7),
+        'border': const Color(0xFFE9D5FF),
+      },
+      'PLANNED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'REJECTED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'APPROVED': {
+        'bg': const Color(0xFFFDF2F8),
+        'text': const Color(0xFFEC4899),
+        'border': const Color(0xFFFBCFE8),
+      },
+      'STARTED': {
+        'bg': const Color(0xFFDBEAFE),
+        'text': const Color(0xFF2563EB),
+        'border': const Color(0xFF93C5FD),
+      },
+      'ONGOING': {
+        'bg': const Color(0xFFEEF2FF),
+        'text': const Color(0xFF6366F1),
+        'border': const Color(0xFFC7D2FE),
+      },
+      'COMPLETED': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
+      'CANCELLED': {
+        'bg': const Color(0xFFF8FAFC),
+        'text': const Color(0xFF64748B),
+        'border': const Color(0xFFE2E8F0),
+      },
+    };
+
+    final style = statusStyles[s] ??
+        {
+          'bg': Colors.grey.withValues(alpha: 0.1),
+          'text': Colors.grey,
+          'border': Colors.grey.withValues(alpha: 0.2),
+        };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: style['bg'],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: style['border']!, width: 1),
+      ),
+      child: Text(
+        s,
+        style: TextStyle(
+          color: style['text'],
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAllowanceBadge(bool allowanceNeeded) {
+    if (!allowanceNeeded) return const SizedBox.shrink();
+    return Tooltip(
+      message: "Allowance Required",
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: const Icon(
+          Icons.payments_outlined,
+          color: Colors.green,
+          size: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMissionCard(
+    BuildContext context, {
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required String scheduleTitle,
+    required String time,
+    required List<dynamic> drivers,
+    required String vehicleInfo,
+    required String capacity,
+    required String pathType,
+    required List<Map<String, String>> detailedStops,
+    required String status,
+    required Widget statusBadge,
+    required Color statusColor,
+    required Color primaryBlue,
+    required String requestId,
+    required int rawStatus,
+    required String creatorName,
+    bool? allowanceNeeded,
+  }) {
+    // Determine primary driver or list
+    String driverNameHead = "Driver Assigned";
+    String driverPhoneHead = "N/A";
+
+    final bool isDraftCard = status.toUpperCase() == 'DRAFT' || rawStatus == 1 || rawStatus == 10;
+
+    if (isDraftCard) {
+      driverNameHead = "No Driver Assigned";
+    } else if (drivers.isNotEmpty) {
+      driverNameHead = drivers.map((d) => d['name'] ?? "Driver").join(", ");
+      driverPhoneHead = drivers.map((d) => d['phone'] ?? "N/A").join(", ");
+    }
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MissionDetailsScreen(
+            scheduleTitle: scheduleTitle,
+            time: time,
+            driverName: driverNameHead,
+            driverPhone: driverPhoneHead,
+            vehicleInfo: vehicleInfo,
+            capacity: capacity, // Keep for vehicle capacity label if needed
+            passengerCount: capacity, // Using the capacity variable which stores passengers count here
+            pathType: pathType,
+            stops: detailedStops,
+            status: status,
+            statusColor: statusColor,
+            requestId: requestId,
+            rawStatus: rawStatus,
+            creatorName: creatorName,
+          ),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 18, color: primaryBlue),
+                    const SizedBox(width: 6),
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (status.toUpperCase() == 'COMPLETED' && allowanceNeeded != null) ...[
+                      _buildAllowanceBadge(allowanceNeeded),
+                      const SizedBox(width: 8),
+                    ],
+                    statusBadge,
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              scheduleTitle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 14, color: subColor),
+                const SizedBox(width: 4),
+                Text(
+                  "Created by: ",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  creatorName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: primaryBlue,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildDriverMinimal(primaryBlue, driverNameHead, vehicleInfo, subColor),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "STOP SEQUENCE",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.grey,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                Text(
+                  pathType.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: primaryBlue,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...detailedStops
+                .asMap()
+                .entries
+                .map(
+                  (entry) {
+                    bool isReached = status.toUpperCase() == 'COMPLETED' || entry.key == 0;
+                    bool isNextReached = status.toUpperCase() == 'COMPLETED';
+                    return _buildSimpleTimelineRow(
+                      entry.key,
+                      entry.value['location']!,
+                      entry.key == detailedStops.length - 1,
+                      primaryBlue,
+                      titleColor,
+                      subColor,
+                      isReached,
+                      isNextReached,
+                    );
+                  },
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDriverMinimal(Color blue, String name, String info, Color sub) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: blue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: blue.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: blue,
+            child: const Icon(Icons.person, size: 18, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(info, style: TextStyle(fontSize: 12, color: sub)),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: sub.withValues(alpha: 0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleTimelineRow(
+    int idx,
+    String stop,
+    bool isLast,
+    Color blue,
+    Color title,
+    Color sub,
+    bool isReached,
+    bool isNextReached,
+  ) {
+    return IntrinsicHeight(
+      child: Row(
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isReached ? blue : Colors.transparent,
+                  border: Border.all(
+                    color: isReached ? blue : Colors.grey.shade400,
+                    width: 2.5,
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(width: 2, color: isNextReached ? blue.withValues(alpha: 0.3) : Colors.grey.shade300),
+                ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
+              child: Text(
+                stop,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isReached ? title : sub,
+                  fontWeight: isReached ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(bool isDark, Color primaryBlue, Color subColor) {
+    return Container(
+      height: 54,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        style: TextStyle(
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: "Search by vehicle, faculty, or route...",
+          hintStyle: TextStyle(
+            color: subColor.withValues(alpha: 0.6),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(Icons.search_rounded, color: primaryBlue, size: 22),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close_rounded, color: subColor, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged('');
+                    setState(() {});
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(Color p, Color t, bool d) {
+    return GestureDetector(
+      onTap: () => _showFilterBottomSheet(p, t, d),
+      child: Container(
+        height: 54,
+        width: 54,
+        decoration: BoxDecoration(
+          color: d ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(
+            color: d ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Icon(Icons.tune_rounded, color: p, size: 24),
+      ),
+    );
+  }
+
+  void _showFilterBottomSheet(Color p, Color t, bool d) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: d ? const Color(0xFF0F172A) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Filter Duty Allocation",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: t,
+                ),
+              ),
+              const SizedBox(height: 24),
+              StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 12,
+                    children: ['ALL', 'APPROVED', 'DRAFT', 'STARTED', 'COMPLETED'].map((label) {
+                      bool isS = _selectedFilter == label;
+                      return GestureDetector(
+                        onTap: () {
+                          if (_selectedFilter == label) return;
+                          setState(() => _selectedFilter = label);
+                          setModalState(() {});
+                          
+                          String mappedStatus = "";
+                          if (label == 'APPROVED') {
+                            mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
+                          } else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
+                          else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
+                          else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
+                          
+                          ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, statuses: mappedStatus);
+                          Navigator.pop(context);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isS ? p : (d ? const Color(0xFF1E293B) : Colors.white),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: isS ? p : t.withValues(alpha: 0.1), width: 1.5),
+                            boxShadow: isS ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: isS ? Colors.white : t.withValues(alpha: 0.6),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDateScroller(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    return Row(
+      children: [
+        // Fixed ALL option
+        GestureDetector(
+          onTap: () {
+            if (_selectedDateFilter == 'ALL') return;
+            setState(() => _selectedDateFilter = 'ALL');
+            ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, routeDate: 'ALL');
+          },
+          child: Container(
+            width: 65,
+            height: 70,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: _selectedDateFilter == 'ALL' ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _selectedDateFilter == 'ALL' ? primaryBlue : titleColor.withValues(alpha: 0.1),
+              ),
+              boxShadow: _selectedDateFilter == 'ALL' ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 20, color: _selectedDateFilter == 'ALL' ? Colors.white : subColor),
+                const SizedBox(height: 4),
+                Text(
+                  "ALL",
+                  style: TextStyle(
+                    color: _selectedDateFilter == 'ALL' ? Colors.white : titleColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Scrolling dates
+        Expanded(
+          child: SizedBox(
+            height: 70,
+            child: ListView.builder(
+              itemExtent: 68.0,
+              controller: _dateScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemBuilder: (context, index) {
+                final date = DateTime.now().add(Duration(days: index - _infiniteScrollMiddle));
+                final formattedDateStr = DateFormat('yyyy-MM-dd').format(date);
+                final isSelected = _selectedDateFilter == formattedDateStr;
+                return GestureDetector(
+                  onTap: () {
+                    if (_selectedDateFilter == formattedDateStr) return;
+                    setState(() => _selectedDateFilter = formattedDateStr);
+                    ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, routeDate: formattedDateStr);
+                  },
+                  child: Container(
+                    width: 60,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? primaryBlue : titleColor.withValues(alpha: 0.1),
+                      ),
+                      boxShadow: isSelected ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat('E').format(date).toUpperCase(), // e.g., SAT
+                          style: TextStyle(
+                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          DateFormat('dd').format(date), // e.g., 06
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : titleColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('MMM').format(date).toUpperCase(), // e.g., JUN
+                          style: TextStyle(
+                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  void _showReportGenerationSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+    DateTime selectedDate = DateTime.now();
+    DateTime fromDate = DateTime.now().subtract(const Duration(days: 7));
+    DateTime toDate = DateTime.now();
+    bool isRangeReport = true;
+    String selectedFormat = 'pdf';
+    bool downloading = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: primaryBlue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Download Report",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: titleColor,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              "Select date range and format to generate report",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: subColor.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Segmented Toggle control
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "From - To Date",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isRangeReport = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                color: !isRangeReport ? primaryBlue : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Date-wise",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: !isRangeReport
+                                      ? Colors.white
+                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (!isRangeReport) ...[
+                    Text(
+                      "REPORT DATE",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: subColor.withValues(alpha: 0.6),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await CustomDateTimePicker.show(
+                          context,
+                          initialDate: selectedDate,
+                          showTime: false,
+                          accent: primaryBlue,
+                        );
+                        if (picked != null) {
+                          setModalState(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 22),
+                            const SizedBox(width: 16),
+                            Text(
+                              DateFormat('MMMM dd, yyyy').format(selectedDate),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: titleColor,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "FROM DATE",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor.withValues(alpha: 0.6),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
+                                    initialDate: fromDate,
+                                    showTime: false,
+                                    accent: primaryBlue,
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() => fromDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_available_rounded, color: primaryBlue, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(fromDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "TO DATE",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor.withValues(alpha: 0.6),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await CustomDateTimePicker.show(
+                                    context,
+                                    initialDate: toDate,
+                                    showTime: false,
+                                    accent: primaryBlue,
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() => toDate = picked);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_busy_rounded, color: primaryBlue, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('dd MMM yyyy').format(toDate),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: titleColor,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                  Text(
+                    "REPORT FORMAT",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: subColor.withValues(alpha: 0.6),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildFormatRadio(
+                        "PDF",
+                        selectedFormat == 'pdf',
+                        () => setModalState(() => selectedFormat = 'pdf'),
+                        primaryBlue,
+                        titleColor,
+                        isDark,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildFormatRadio(
+                        "Excel",
+                        selectedFormat == 'excel',
+                        () => setModalState(() => selectedFormat = 'excel'),
+                        primaryBlue,
+                        titleColor,
+                        isDark,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: subColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: downloading
+                              ? null
+                              : () async {
+                                  setModalState(() => downloading = true);
+                                  try {
+                                    final String? token = await UserStore.getToken();
+                                    String startStr;
+                                    String endStr;
+
+                                    if (isRangeReport) {
+                                      startStr = DateFormat('yyyy-MM-dd').format(fromDate);
+                                      endStr = DateFormat('yyyy-MM-dd').format(toDate);
+                                    } else {
+                                      startStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                      endStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                    }
+
+                                    final String url =
+                                        "${ApiConstants.baseUrl}/request/reports/date-wise?start_date=$startStr&end_date=$endStr&format=$selectedFormat";
+
+                                    // ── DEBUG LOGS ──────────────────────────────────────────────────
+                                    debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
+                                    debugPrint("URL: $url");
+                                    debugPrint(
+                                      "curl --location '$url' \\\n"
+                                      "  --header 'Authorization: TMS $token' \\\n"
+                                      "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
+                                    );
+                                    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                                    final response = await http.get(
+                                      Uri.parse(url),
+                                      headers: ApiConstants.getHeaders(token),
+                                    );
+
+                                    if (response.statusCode == 200) {
+                                      final bytes = response.bodyBytes;
+                                      final tempDir = await getTemporaryDirectory();
+                                      final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
+                                      final fileName = isRangeReport ? "Transport_Report_${startStr}_to_$endStr.$ext" : "Transport_Report_$startStr.$ext";
+                                      final file = File("${tempDir.path}/$fileName");
+                                      await file.writeAsBytes(bytes);
+
+                                      await OpenFilex.open(file.path);
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
+                                            backgroundColor: const Color(0xFF10B981),
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      debugPrint(ApiErrorParser.parse(response, fallback: "Report Download Error"));
+                                      debugPrint("Body: ${response.body}");
+                                      String message = "Failed to generate report";
+                                      try {
+                                        final data = json.decode(response.body);
+                                        message = data['message'] ?? message;
+                                      } catch (_) {}
+                                      throw Exception(message);
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(e.toString().replaceAll("Exception: ", "")),
+                                          backgroundColor: Colors.redAccent,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    if (context.mounted) {
+                                      setModalState(() => downloading = false);
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            elevation: 0,
+                            shadowColor: primaryBlue.withValues(alpha: 0.4),
+                          ),
+                          child: downloading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : Text(
+                                  "Generate ${selectedFormat.toUpperCase()}",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFormatRadio(String label, bool isSelected, VoidCallback onTap, Color primaryBlue, Color titleColor, bool isDark) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isSelected ? primaryBlue.withValues(alpha: 0.08) : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? primaryBlue : Colors.grey.withValues(alpha: 0.15),
+              width: 2,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  color: isSelected ? primaryBlue : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(width: 10),
+                Icon(Icons.check_circle_rounded, color: primaryBlue, size: 20),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupedDuty AllocationList(List<dynamic> schedules, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+    // Group schedules by date
+    final Map<String, List<dynamic>> grouped = {};
+    for (var m in schedules) {
+      final String date = m['date'] ?? "TBD";
+      if (!grouped.containsKey(date)) grouped[date] = [];
+      grouped[date]!.add(m);
+    }
+
+    final List<String> sortedDates = grouped.keys.toList();
+    final store = ref.read(scheduleDutyStoreProvider);
+
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: sortedDates.length + (store.hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == sortedDates.length) {
+          return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 24), child: CircularProgressIndicator()));
+        }
+
+        final date = sortedDates[index];
+        final dayDuty Allocation = grouped[date]!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDateHeader(date, primaryBlue),
+            const SizedBox(height: 16),
+            ...dayDuty Allocation.map((schedule) => _buildMissionCard(
+              context,
+              cardColor: cardColor,
+              titleColor: titleColor,
+              subColor: subColor,
+              requestId: schedule['dbId']?.toString() ?? schedule['id']?.toString() ?? "",
+              rawStatus: schedule['rawStatus'] ?? 0,
+              scheduleTitle: schedule['vehicle'] ?? "Transport Request",
+              time: schedule['date'] ?? "TBD",
+              drivers: schedule['drivers'] ?? [],
+              vehicleInfo: schedule['vehicleInfo'] ?? schedule['vehicle'] ?? "Pending",
+              capacity: schedule['passengers'].toString(),
+              pathType: "Admin View",
+              detailedStops: [
+                {
+                  'location': schedule['pickup'] ?? "Start",
+                  'eta': "Start",
+                  'type': 'Pickup',
+                },
+                if (schedule['intermediateStops'] is List)
+                ... (schedule['intermediateStops'] as List).map((s) => {
+                  'location': s.toString(),
+                  'eta': "Transit",
+                  'type': 'Transit',
+                }),
+                {
+                  'location': schedule['drop'] ?? "Destination",
+                  'eta': "End",
+                  'type': 'Drop',
+                },
+              ],
+              status: schedule['status'] ?? "Active",
+              statusBadge: _buildStatusBadge(schedule['status'] ?? "Active"),
+              statusColor: _getStatusColor(schedule['status'] ?? "Active"),
+              primaryBlue: primaryBlue,
+              creatorName: schedule['faculty'] ?? "Unknown Faculty",
+              allowanceNeeded: schedule['allowance_needed'],
+            )),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDateHeader(String date, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            date.toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(child: Divider(thickness: 1, height: 1)),
+      ],
+    );
+  }
+
+  Widget _buildRequestsSkeleton(bool isDark, Color cardColor) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: 3,
+      itemBuilder: (context, index) => Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(width: 80, height: 16, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+                Container(width: 60, height: 24, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(width: 200, height: 20, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+            const SizedBox(height: 12),
+            Container(width: 140, height: 14, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

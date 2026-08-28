@@ -5,6 +5,7 @@ import 'package:tripzo/screens/admin/fuel/fuel_page.dart';
 import 'package:tripzo/screens/admin/admin_allowance_screen.dart';
 import 'package:tripzo/screens/admin/request/admin_driver_tasks_page.dart';
 import 'package:tripzo/screens/driver/driver_duties_screen.dart';
+import 'package:tripzo/screens/admin/request/duty_allocation_screen.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
@@ -125,7 +126,7 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'icon': Icons.assignment_ind_rounded,
           'color': const Color(0xFFEF4444),
           'onTap': () {
-            // Navigator.push(context, MaterialPageRoute(builder: (context) => const DutyAllocationScreen()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const DutyAllocationScreen()));
           },
         },
         {
@@ -715,6 +716,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               return _buildMissionStats(isDark, primaryBlue);
             case 'routines':
               return _buildRoutineStats(isDark, primaryBlue);
+            case 'duty_allocation':
+              return _buildDutyAllocationStats(isDark, primaryBlue);
             case 'driver_tasks':
               return _buildDriverTaskStats(isDark, primaryBlue);
             case 'fuels':
@@ -859,6 +862,40 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader("Driver Task Statistics", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
+    );
+  }
+
+  Widget _buildDutyAllocationStats(bool isDark, Color primaryBlue) {
+    final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+    final todayCount = scheduleStore.todaySchedules.length;
+    final startedCount = scheduleStore.startedSchedules.length;
+
+    int totalShifts = 0;
+    int totalDrivers = 0;
+
+    for (var schedule in scheduleStore.todaySchedules) {
+      final shifts = schedule['masterShifts'] as List<dynamic>? ?? [];
+      totalShifts += shifts.length;
+      for (var shift in shifts) {
+        final drivers = shift['drivers'] as List<dynamic>? ?? [];
+        totalDrivers += drivers.length;
+      }
+    }
+
+    final tiles = [
+      _buildStatTile("Today's Duties", "$todayCount", Icons.assignment_rounded, const Color(0xFFEF4444), isDark),
+      _buildStatTile("Total Shifts", "$totalShifts", Icons.swap_calls_rounded, const Color(0xFF8B5CF6), isDark),
+      _buildStatTile("Drivers Assigned", "$totalDrivers", Icons.people_alt_rounded, const Color(0xFF10B981), isDark),
+      _buildStatTile("Active Duties", "$startedCount", Icons.play_circle_fill_rounded, primaryBlue, isDark),
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Duty Allocation Statistics", isDark, hasPagination: true),
         const SizedBox(height: 8),
         _buildPaginatedStats(tiles, isDark),
       ],

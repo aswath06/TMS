@@ -18,6 +18,7 @@ import 'package:tripzo/store/expiration_store.dart';
 import 'package:tripzo/store/daily_routines_store.dart';
 import 'package:tripzo/store/driver_schedules_store.dart';
 import 'package:tripzo/store/driver_task_store.dart';
+import 'package:tripzo/store/schedule_duty_store.dart';
 
 /// ExpirationStore Provider
 final expirationStoreProvider = ChangeNotifierProvider<ExpirationStore>((ref) {
@@ -103,4 +104,9 @@ final driverTaskStoreProvider = ChangeNotifierProvider<DriverTaskStore>((ref) {
   final store = DriverTaskStore();
   store.notificationProvider = notifProvider;
   return store;
+});
+
+/// ScheduleDutyStore Provider
+final scheduleDutyStoreProvider = ChangeNotifierProvider<ScheduleDutyStore>((ref) {
+  return ScheduleDutyStore();
 });
