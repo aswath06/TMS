@@ -35,6 +35,7 @@ import 'package:tripzo/models/notification_model.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
 import 'package:tripzo/components/common/custom_date_time_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http_parser/http_parser.dart';
 
 class MissionDetailsScreen extends ConsumerStatefulWidget {
   final String missionTitle,
@@ -552,9 +553,11 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
   }
 
   void _showEndInformationPopup() {
+    debugPrint("DEBUG: _showEndInformationPopup clicked!");
     final TextEditingController odometerController = TextEditingController();
     bool? allowanceNeeded;
     bool triedSubmit = false;
+    bool isSubmitting = false;
     List<dynamic> allowanceTypes = [
       {'id': 1, 'name': 'BUS FARE', 'amount': '0.00'},
       {'id': 2, 'name': 'FOOD ALLOWANCE', 'amount': '0.00'},
@@ -582,10 +585,13 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
             if (!hasFetched && !isFetching) {
               isFetching = true;
               UserStore.getToken().then((token) {
+                debugPrint("DEBUG: Fetching allowance types from: ${ApiConstants.getAllowanceTypes}");
                 http.get(
-                  Uri.parse('${ApiConstants.baseUrl}/api/allowance/allowance-types'),
+                  Uri.parse(ApiConstants.getAllowanceTypes),
                   headers: ApiConstants.getHeaders(token),
                 ).then((response) {
+                  debugPrint("DEBUG: getAllowanceTypes Status: ${response.statusCode}");
+                  debugPrint("DEBUG: getAllowanceTypes Body: ${response.body}");
                   if (response.statusCode == 200) {
                     final data = json.decode(response.body);
                     if (data['success'] == true) {
@@ -1006,8 +1012,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                               onTap: () async {
                                                 final selectedDate = await CustomDateTimePicker.show(
                                                   context,
-                                                  initialDate: entry['date'] ?? DateTime.now(),
-                                                  minDate: DateTime(2000),
+                                                  initialDate: entry['date'] ?? tripStartDate ?? DateTime.now(),
+                                                  minDate: tripStartDate ?? DateTime(2000),
                                                   maxDate: DateTime.now(),
                                                   showTime: false,
                                                 );
@@ -1209,7 +1215,7 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                         Expanded(
                           flex: 2,
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
                               final odo = odometerController.text;
                               if (odo.trim().isEmpty) {
                                 setModalState(() {
@@ -1293,16 +1299,74 @@ Map<int, String> amountMap = {};
                                 }
                                 }
 
-                              Navigator.pop(context);
-                              _submitEndInformation(
-                                odo, 
-                                "0", 
-                                allowanceNeeded: allowanceNeeded ?? false, 
-                                allowanceTypeIds: selectedAllowanceTypes,
-                                allowanceCounts: allowanceCounts,
-                                allowanceAmounts: amountMap,
-                                proofImage: dynamicEntries.values.expand((list) => list).firstWhere((e) => e['proof'] != null, orElse: () => {'proof': null})['proof'] as File?,
-                              );
+                              setModalState(() => isSubmitting = true);
+                              try {
+                                final List<Map<String, dynamic>> itemsList = [];
+                                final Map<int, File> itemProofsMap = {};
+                                int itemIndex = 0;
+
+                                for (var id in selectedAllowanceTypes) {
+                                  final entriesForId = dynamicEntries[id];
+                                  if (entriesForId != null) {
+                                    for (var entry in entriesForId) {
+                                      final controller = entry['amount'] as TextEditingController?;
+                                      final amt = double.tryParse(controller?.text ?? "") ?? 0.0;
+                                      final dateVal = entry['date'] as DateTime? ?? DateTime.now();
+                                      final file = entry['proof'] as File?;
+
+                                      String subType = "";
+                                      if (entry.containsKey('meals')) {
+                                        final mealsList = entry['meals'] as List<String>?;
+                                        if (mealsList != null && mealsList.isNotEmpty) {
+                                          subType = mealsList.join(', ');
+                                        }
+                                      }
+
+                                      itemsList.add({
+                                        "type_id": id,
+                                        "amount": amt,
+                                        "date": DateFormat('yyyy-MM-dd').format(dateVal),
+                                        if (subType.isNotEmpty) "sub_type": subType,
+                                      });
+
+                                      if (file != null) {
+                                        itemProofsMap[itemIndex] = file;
+                                      }
+                                      itemIndex++;
+                                    }
+                                  }
+                                }
+
+                                final dist = await _submitEndInformation(
+                                  odo, 
+                                  "0", 
+                                  allowanceNeeded: allowanceNeeded ?? false, 
+                                  allowanceItems: itemsList,
+                                  itemProofs: itemProofsMap,
+                                );
+                                if (context.mounted) {
+                                  Navigator.pop(context); // Close bottom sheet
+                                }
+                                if (this.context.mounted) {
+                                  Navigator.push(
+                                    this.context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RunEndedGreetingScreen(
+                                        distance: dist,
+                                        points: dist.toInt(),
+                                        onComplete: () {
+                                          Navigator.pop(this.context);
+                                          _fetchMissionDetails();
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  setModalState(() => isSubmitting = false);
+                                }
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF10B981), // Green for end
@@ -1310,7 +1374,13 @@ Map<int, String> amountMap = {};
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               elevation: 0,
                             ),
-                            child: const Text("SUBMIT", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+                            child: isSubmitting 
+                              ? const SizedBox(
+                                  width: 20, 
+                                  height: 20, 
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                ) 
+                              : const Text("SUBMIT", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
                           ),
                         ),
                       ],
@@ -1481,15 +1551,18 @@ Map<int, String> amountMap = {};
     }
   }
 
-  Future<void> _submitEndInformation(String odometer, String capacity, {
+  Future<double> _submitEndInformation(String odometer, String capacity, {
     bool allowanceNeeded = false, 
-    List<int>? allowanceTypeIds,
-    Map<int, int>? allowanceCounts,
-    Map<int, String>? allowanceAmounts,
-    File? proofImage,
+    List<Map<String, dynamic>>? allowanceItems,
+    Map<int, File>? itemProofs,
   }) async {
     setState(() => _isApproving = true);
     try {
+      debugPrint("DEBUG: _submitEndInformation called!");
+      debugPrint("DEBUG: Odometer: $odometer, Capacity: $capacity, AllowanceNeeded: $allowanceNeeded");
+      debugPrint("DEBUG: allowanceItems count: ${allowanceItems?.length}");
+      debugPrint("DEBUG: itemProofs count: ${itemProofs?.length}");
+
       final token = await UserStore.getToken();
       final tripInstances = _missionData?['trip_instances'] as List?;
       final tripId = tripInstances != null && tripInstances.isNotEmpty ? tripInstances[0]['id'] : null;
@@ -1505,52 +1578,58 @@ Map<int, String> amountMap = {};
       request.headers.addAll(headers);
       request.fields['end_odometer'] = odometer;
       request.fields['allowance_needed'] = allowanceNeeded.toString();
-      if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
-        request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
-      }
-      if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
-        request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
-      }
-      if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
-        request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts.map((k, v) => MapEntry(k.toString(), v)));
+      
+      if (allowanceItems != null && allowanceItems.isNotEmpty) {
+        request.fields['allowance_items'] = jsonEncode(allowanceItems);
+        debugPrint("DEBUG: formatted allowance_items JSON: ${request.fields['allowance_items']}");
+        
+        if (itemProofs != null) {
+          for (final entry in itemProofs.entries) {
+            final idx = entry.key;
+            final file = entry.value;
+            final ext = file.path.split('.').last.toLowerCase();
+            MediaType mediaType;
+            if (ext == 'pdf') {
+              mediaType = MediaType('application', 'pdf');
+            } else if (ext == 'png') {
+              mediaType = MediaType('image', 'png');
+            } else if (ext == 'webp') {
+              mediaType = MediaType('image', 'webp');
+            } else {
+              mediaType = MediaType('image', 'jpeg');
+            }
+            request.files.add(await http.MultipartFile.fromPath(
+              'item_proof_$idx',
+              file.path,
+              contentType: mediaType,
+            ));
+            debugPrint("DEBUG: Attached file ${file.path} as item_proof_$idx");
+          }
+        }
       }
       
-      if (proofImage != null) {
-        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
-      }
-      
+      debugPrint("DEBUG: Sending Multipart POST to $url");
       final streamedResponse = await request.send();
       response = await http.Response.fromStream(streamedResponse);
-
+ 
+      debugPrint("DEBUG: End Register Response Status: ${response.statusCode}");
+      debugPrint("DEBUG: End Register Response Body: ${response.body}");
       debugPrint(ApiErrorParser.parse(response, fallback: "DEBUG: End Register Response"));
-
+ 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> resultData = jsonDecode(response.body);
         final double dist = (resultData['data']?['actual_km'] as num?)?.toDouble() ?? 0.0;
-        
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RunEndedGreetingScreen(
-              distance: dist,
-              points: dist.toInt(),
-              onComplete: () {
-                Navigator.pop(context);
-                _fetchMissionDetails();
-              },
-            ),
-          ),
-        );
+        return dist;
       } else {
         final error = jsonDecode(response.body);
         throw error['message'] ?? "Failed to register end reading";
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) rethrow;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
       );
+      rethrow;
     } finally {
       if (mounted) setState(() => _isApproving = false);
     }

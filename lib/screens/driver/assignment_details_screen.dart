@@ -1138,7 +1138,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
               isFetchingAllowances = true;
               UserStore.getToken().then((token) {
                 http.get(
-                  Uri.parse('${ApiConstants.baseUrl}/api/allowance/allowance-types'),
+                  Uri.parse(ApiConstants.getAllowanceTypes),
                   headers: ApiConstants.getHeaders(token),
                 ).then((response) {
                   if (response.statusCode == 200) {
@@ -3267,7 +3267,7 @@ final Map<int, String> amountMap = allowanceAmounts.map(
               isFetchingAllowances = true;
               UserStore.getToken().then((token) {
                 http.get(
-                  Uri.parse('${ApiConstants.baseUrl}/api/allowance/allowance-types'),
+                  Uri.parse(ApiConstants.getAllowanceTypes),
                   headers: ApiConstants.getHeaders(token),
                 ).then((response) {
                   if (response.statusCode == 200) {

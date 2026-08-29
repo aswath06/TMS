@@ -15,6 +15,8 @@ class ScheduleDutyStore extends ChangeNotifier {
   List<Map<String, dynamic>> get masterSchedules => _masterSchedules;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String get fromDate => _fromDate;
+  String get toDate => _toDate;
 
   Future<void> fetchMasterSchedules({
     bool isRefresh = false,

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
-import 'package:tripzo/screens/faculty/schedules/schedule_details_screen.dart';
+import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:tripzo/utils/api_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -29,7 +29,6 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
   Timer? _debounce;
   String _selectedFilter = 'ALL';
   String _selectedDateFilter = 'ALL';
-  final List<DateTime> _scrollDates = [];
 
   final int _infiniteScrollMiddle = 100000;
   late ScrollController _dateScrollController;
@@ -46,7 +45,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
     
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final store = ref.read(scheduleDutyStoreProvider);
-    _selectedDateFilter = store.currentRouteDate.isNotEmpty ? store.currentRouteDate : todayStr;
+    _selectedDateFilter = store.fromDate.isNotEmpty ? store.fromDate : todayStr;
     
     // Approximate initial offset
     _dateScrollController = ScrollController(initialScrollOffset: (_infiniteScrollMiddle * 68.0) - 100);
@@ -99,7 +98,11 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
       
       final store = ref.read(scheduleDutyStoreProvider);
       if (store.masterSchedules.isEmpty && !store.isLoading) {
-        store.fetchMasterSchedules(isRefresh: true, routeDate: _selectedDateFilter);
+        if (_selectedDateFilter != 'ALL') {
+          store.fetchMasterSchedules(isRefresh: true, fromDate: _selectedDateFilter, toDate: _selectedDateFilter);
+        } else {
+          store.fetchMasterSchedules(isRefresh: true);
+        }
       }
     });
   }
@@ -116,17 +119,14 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      ref.read(scheduleDutyStoreProvider).fetchNextPage();
-    }
+    // No-op for now, since master schedules are fetched in a single request.
   }
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
-        ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, search: query);
+        ref.read(scheduleDutyStoreProvider).fetchMasterSchedules(isRefresh: true, search: query);
       }
     });
   }
@@ -217,7 +217,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
                               );
                               if (refresh == true) {
                                 if (context.mounted) {
-                                  ref.read(scheduleDutyStoreProvider).fetchRequests();
+                                  ref.read(scheduleDutyStoreProvider).fetchMasterSchedules();
                                 }
                               }
                             },
@@ -311,7 +311,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
                                 final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
                                 if (_selectedDateFilter != todayStr) {
                                   setState(() => _selectedDateFilter = todayStr);
-                                  ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, routeDate: todayStr);
+                                  ref.read(scheduleDutyStoreProvider).fetchMasterSchedules(isRefresh: true, fromDate: todayStr, toDate: todayStr);
                                 }
                                 
                                 final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
@@ -379,7 +379,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
                                 ),
                               ],
                             )
-                          : _buildGroupedDuty AllocationList(schedules, cardColor, titleColor, subColor, primaryBlue),
+                          : _buildGroupedDutyAllocationList(schedules, cardColor, titleColor, subColor, primaryBlue),
                     ),
             ),
           ],
@@ -534,7 +534,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
         context,
         MaterialPageRoute(
           builder: (context) => MissionDetailsScreen(
-            scheduleTitle: scheduleTitle,
+            missionTitle: scheduleTitle,
             time: time,
             driverName: driverNameHead,
             driverPhone: driverPhoneHead,
@@ -884,11 +884,15 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
                           String mappedStatus = "";
                           if (label == 'APPROVED') {
                             mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
-                          } else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
-                          else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
-                          else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
+                          } else if (label == 'DRAFT') {
+                            mappedStatus = "DRAFT,PENDING,SUBMITTED";
+                          } else if (label == 'STARTED') {
+                            mappedStatus = "STARTED,ONGOING";
+                          } else if (label == 'COMPLETED') {
+                            mappedStatus = "COMPLETED";
+                          }
                           
-                          ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, statuses: mappedStatus);
+                          ref.read(scheduleDutyStoreProvider).fetchMasterSchedules(isRefresh: true, status: mappedStatus);
                           Navigator.pop(context);
                         },
                         child: AnimatedContainer(
@@ -931,7 +935,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
           onTap: () {
             if (_selectedDateFilter == 'ALL') return;
             setState(() => _selectedDateFilter = 'ALL');
-            ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, routeDate: 'ALL');
+            ref.read(scheduleDutyStoreProvider).fetchMasterSchedules(isRefresh: true, fromDate: '', toDate: '');
           },
           child: Container(
             width: 65,
@@ -979,7 +983,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
                   onTap: () {
                     if (_selectedDateFilter == formattedDateStr) return;
                     setState(() => _selectedDateFilter = formattedDateStr);
-                    ref.read(scheduleDutyStoreProvider).fetchRequests(isRefresh: true, routeDate: formattedDateStr);
+                    ref.read(scheduleDutyStoreProvider).fetchMasterSchedules(isRefresh: true, fromDate: formattedDateStr, toDate: formattedDateStr);
                   },
                   child: Container(
                     width: 60,
@@ -1554,7 +1558,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
     );
   }
 
-  Widget _buildGroupedDuty AllocationList(List<dynamic> schedules, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+  Widget _buildGroupedDutyAllocationList(List<dynamic> schedules, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
     // Group schedules by date
     final Map<String, List<dynamic>> grouped = {};
     for (var m in schedules) {
@@ -1564,27 +1568,22 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
     }
 
     final List<String> sortedDates = grouped.keys.toList();
-    final store = ref.read(scheduleDutyStoreProvider);
 
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      itemCount: sortedDates.length + (store.hasMore ? 1 : 0),
+      itemCount: sortedDates.length,
       itemBuilder: (context, index) {
-        if (index == sortedDates.length) {
-          return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 24), child: CircularProgressIndicator()));
-        }
-
         final date = sortedDates[index];
-        final dayDuty Allocation = grouped[date]!;
+        final dayDutyAllocation = grouped[date]!;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDateHeader(date, primaryBlue),
             const SizedBox(height: 16),
-            ...dayDuty Allocation.map((schedule) => _buildMissionCard(
+            ...dayDutyAllocation.map((schedule) => _buildMissionCard(
               context,
               cardColor: cardColor,
               titleColor: titleColor,

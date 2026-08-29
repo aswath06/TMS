@@ -8,6 +8,7 @@ import 'package:tripzo/utils/crypto_utils.dart';
 import 'package:tripzo/services/location_service.dart';
 import 'package:tripzo/services/api_service.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
+import 'package:http_parser/http_parser.dart';
 
 final useDriverStore = DriverStore();
 
@@ -1338,7 +1339,22 @@ class DriverStore extends ChangeNotifier {
       }
       
       if (proofImage != null) {
-        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
+        final ext = proofImage.path.split('.').last.toLowerCase();
+        MediaType mediaType;
+        if (ext == 'pdf') {
+          mediaType = MediaType('application', 'pdf');
+        } else if (ext == 'png') {
+          mediaType = MediaType('image', 'png');
+        } else if (ext == 'webp') {
+          mediaType = MediaType('image', 'webp');
+        } else {
+          mediaType = MediaType('image', 'jpeg');
+        }
+        request.files.add(await http.MultipartFile.fromPath(
+          'item_proof_0',
+          proofImage.path,
+          contentType: mediaType,
+        ));
       }
       
       final streamedResponse = await request.send();
@@ -1420,7 +1436,22 @@ class DriverStore extends ChangeNotifier {
       }
       
       if (proofImage != null) {
-        request.files.add(await http.MultipartFile.fromPath('proof_image', proofImage.path));
+        final ext = proofImage.path.split('.').last.toLowerCase();
+        MediaType mediaType;
+        if (ext == 'pdf') {
+          mediaType = MediaType('application', 'pdf');
+        } else if (ext == 'png') {
+          mediaType = MediaType('image', 'png');
+        } else if (ext == 'webp') {
+          mediaType = MediaType('image', 'webp');
+        } else {
+          mediaType = MediaType('image', 'jpeg');
+        }
+        request.files.add(await http.MultipartFile.fromPath(
+          'item_proof_0',
+          proofImage.path,
+          contentType: mediaType,
+        ));
       }
       
       final streamedResponse = await request.send();
