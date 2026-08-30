@@ -1406,7 +1406,7 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
     final activeRoutes = store.activeRoutesToComplete;
     if (activeRoutes.isEmpty) return const SizedBox.shrink();
 
-    // Filter routes based on the 15-minute rule
+    // Filter routes based on the 25-minute rule
     final validRoutes = activeRoutes.where((route) {
       final tripInstances = route['trip_instances'] as List<dynamic>? ?? [];
       final firstTrip = tripInstances.isNotEmpty ? tripInstances[0] : null;
@@ -1415,8 +1415,8 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
       if (endedAtStr != null) {
         final endedAt = DateTime.tryParse(endedAtStr);
         if (endedAt == null) return false;
-        // If ended, show only until 15 minutes after the actual end time
-        return DateTime.now().isBefore(endedAt.add(const Duration(minutes: 15)));
+        // If ended, show only until 25 minutes after the actual end time
+        return DateTime.now().isBefore(endedAt.add(const Duration(minutes: 25)));
       } else {
         // If not ended yet (active), show based on planned end time (if available)
         final legs = route['legs'] as List<dynamic>? ?? [];
@@ -1424,8 +1424,8 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
         final lastLeg = legs.last;
         final plannedEndAt = DateTime.tryParse(lastLeg['planned_end_at'] ?? '');
         if (plannedEndAt == null) return true;
-        // For ongoing trips, show until planned end + 15 mins (grace period)
-        return DateTime.now().isBefore(plannedEndAt.add(const Duration(minutes: 15)));
+        // For ongoing trips, show until planned end + 25 mins (grace period)
+        return DateTime.now().isBefore(plannedEndAt.add(const Duration(minutes: 25)));
       }
     }).toList();
 
@@ -1453,11 +1453,11 @@ final scheduleStore = ref.watch(driverSchedulesStoreProvider);
     
     DateTime? referenceTime;
     if (endedAtStr != null) {
-      referenceTime = DateTime.tryParse(endedAtStr)?.add(const Duration(minutes: 15));
+      referenceTime = DateTime.tryParse(endedAtStr)?.add(const Duration(minutes: 25));
     } else {
       final lastLeg = legs.isNotEmpty ? legs.last : null;
       if (lastLeg != null) {
-        referenceTime = DateTime.tryParse(lastLeg['planned_end_at'] ?? '')?.add(const Duration(minutes: 15));
+        referenceTime = DateTime.tryParse(lastLeg['planned_end_at'] ?? '')?.add(const Duration(minutes: 25));
       }
     }
     

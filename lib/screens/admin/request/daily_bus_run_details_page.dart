@@ -1613,7 +1613,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-  Future<void> _submitMorningOdometer(int odometer, int? passengerCount, bool allowanceNeeded) async {
+  Future<void> _submitMorningOdometer(num odometer, int? passengerCount, bool allowanceNeeded) async {
 
     setState(() => _isLoadingAction = true);
 
@@ -10271,7 +10271,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-  Future<void> _startMorningRun(int startOdometer, String datetime, String remarks) async {
+  Future<void> _startMorningRun(num startOdometer, String datetime, String remarks) async {
     setState(() => _isLoadingAction = true);
     try {
       final String? token = await UserStore.getToken();
@@ -10322,7 +10322,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-  Future<void> _submitEveningStart(int startOdometer, int passengerCount) async {
+  Future<void> _submitEveningStart(num startOdometer, int passengerCount) async {
 
     setState(() => _isLoadingAction = true);
 
@@ -10400,7 +10400,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
 
 
-  Future<void> _submitEveningOdometer(int endOdometer, bool allowanceNeeded) async {
+  Future<void> _submitEveningOdometer(num endOdometer, bool allowanceNeeded) async {
 
     setState(() => _isLoadingAction = true);
 
@@ -10689,7 +10689,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    final int? odo = double.tryParse(odometerController.text)?.toInt();
+                    final num? odo = num.tryParse(odometerController.text);
                     final String dt = selectedDateTime.toIso8601String();
                     final String rm = remarksController.text.trim();
                     if (odo != null && dt.isNotEmpty) {
@@ -11010,7 +11010,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                   onPressed: () {
 
-                    final int? odo = double.tryParse(odometerController.text)?.toInt();
+                    final num? odo = num.tryParse(odometerController.text);
 
                     if (odo != null) {
 
@@ -11296,7 +11296,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                     onPressed: () {
 
-                      final int? odo = int.tryParse(odometerController.text);
+                      final num? odo = num.tryParse(odometerController.text);
 
                       if (odo != null) {
 
@@ -11690,7 +11690,7 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
 
                           }
 
-                          final int? odometerVal = int.tryParse(oStr);
+                          final num? odometerVal = num.tryParse(oStr);
 
                           final int? paxVal = int.tryParse(campusInCount);
 
@@ -13817,35 +13817,21 @@ class _DailyBusRunDetailsPageState extends State<DailyBusRunDetailsPage> with Ti
       ];
 
     } else {
-
-      tabsList = const [
-
-        Tab(text: "Assignments"),
-
-        Tab(text: "Timeline"),
-
-        Tab(text: "Passengers"),
-
-        Tab(text: "Attendance"),
-
-        Tab(text: "Requests"),
-
+      final bool isPlanned = status.toUpperCase() == 'PLANNED';
+      tabsList = [
+        const Tab(text: "Assignments"),
+        const Tab(text: "Timeline"),
+        if (!isPlanned) const Tab(text: "Passengers"),
+        const Tab(text: "Attendance"),
+        const Tab(text: "Requests"),
       ];
-
       tabViews = [
-
         _buildAssignmentsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-
         _buildTimelineTab(isDark, titleColor, subColor, primaryBlue),
-
-        _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-
+        if (!isPlanned) _buildPassengersTab(isDark, titleColor, subColor, primaryBlue, cardColor),
         _buildAttendanceTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-
         _buildRequestsTab(isDark, titleColor, subColor, primaryBlue, cardColor),
-
       ];
-
     }
 
 

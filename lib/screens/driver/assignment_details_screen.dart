@@ -1611,9 +1611,9 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                               
                             if (dynamicEntries[id] == null) {
                               if (name.toLowerCase().contains('food')) {
-                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': <File>[], 'date': tripStartDate}];
                               } else {
-                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': <File>[], 'date': tripStartDate}];
                               }
                             }
                             
@@ -1798,7 +1798,11 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                               onTap: () async {
                                                                 Navigator.pop(ctx);
                                                                 final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
-                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                                if (picked != null) {
+                                                                  setState(() {
+                                                                    (entry['proof'] as List<File>).add(File(picked.path));
+                                                                  });
+                                                                }
                                                               },
                                                               child: Container(
                                                                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1812,8 +1816,14 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                             child: GestureDetector(
                                                               onTap: () async {
                                                                 Navigator.pop(ctx);
-                                                                final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                                final pickedList = await ImagePicker().pickMultiImage(imageQuality: 70);
+                                                                if (pickedList.isNotEmpty) {
+                                                                  setState(() {
+                                                                    for (var x in pickedList) {
+                                                                      (entry['proof'] as List<File>).add(File(x.path));
+                                                                    }
+                                                                  });
+                                                                }
                                                               },
                                                               child: Container(
                                                                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1830,32 +1840,150 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                 ),
                                               );
                                             },
-                                            child: Container(
-                                              height: 120,
-                                              width: double.infinity,
-                                              decoration: BoxDecoration(
-                                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: (triedSubmit && entry['proof'] == null)
-                                                      ? Colors.redAccent
-                                                      : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
-                                                  width: (triedSubmit && entry['proof'] == null) ? 1.5 : 1.0,
+                                            child: (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty) ? Container(
+                                                  height: 120,
+                                                  width: double.infinity,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                    borderRadius: BorderRadius.circular(20),
+                                                    border: Border.all(
+                                                      color: (triedSubmit && (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty))
+                                                          ? Colors.redAccent
+                                                          : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
+                                                      width: (triedSubmit && (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty)) ? 1.5 : 1.0,
+                                                    ),
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
+                                                      const SizedBox(height: 8),
+                                                      Text("Tap to upload proof image(s)", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                                    ],
+                                                  ),
+                                                ) : SingleChildScrollView(
+                                                  scrollDirection: Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      ...(entry['proof'] as List<File>).asMap().entries.map((m) {
+                                                        int idx = m.key;
+                                                        File file = m.value;
+                                                        return Padding(
+                                                          padding: const EdgeInsets.only(right: 12.0),
+                                                          child: Stack(
+                                                            children: [
+                                                              ClipRRect(
+                                                                borderRadius: BorderRadius.circular(16),
+                                                                child: Image.file(
+                                                                  file,
+                                                                  height: 120,
+                                                                  width: 120,
+                                                                  fit: BoxFit.cover,
+                                                                ),
+                                                              ),
+                                                              Positioned(
+                                                                top: 8, right: 8,
+                                                                child: GestureDetector(
+                                                                  onTap: () => setState(() => (entry['proof'] as List<File>).removeAt(idx)),
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.all(4),
+                                                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                                                    child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                      GestureDetector(
+                                                        onTap: () async {
+                                                          showModalBottomSheet(
+                                                            context: context,
+                                                            backgroundColor: Colors.transparent,
+                                                            builder: (ctx) => Container(
+                                                              padding: const EdgeInsets.all(24),
+                                                              decoration: BoxDecoration(
+                                                                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                                              ),
+                                                              child: Column(
+                                                                mainAxisSize: MainAxisSize.min,
+                                                                children: [
+                                                                  Container(width: 40, height: 4, decoration: BoxDecoration(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
+                                                                  const SizedBox(height: 24),
+                                                                  Text("Add Another Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A))),
+                                                                  const SizedBox(height: 32),
+                                                                  Row(
+                                                                    children: [
+                                                                      Expanded(
+                                                                        child: GestureDetector(
+                                                                          onTap: () async {
+                                                                            Navigator.pop(ctx);
+                                                                            final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                                                                            if (picked != null) {
+                                                                              setState(() {
+                                                                                (entry['proof'] as List<File>).add(File(picked.path));
+                                                                              });
+                                                                            }
+                                                                          },
+                                                                          child: Container(
+                                                                            padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                            decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1))),
+                                                                            child: Column(children: [Icon(Icons.camera_alt_rounded, color: const Color(0xFF6366F1), size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold))]),
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                      const SizedBox(width: 16),
+                                                                      Expanded(
+                                                                        child: GestureDetector(
+                                                                          onTap: () async {
+                                                                            Navigator.pop(ctx);
+                                                                            final pickedList = await ImagePicker().pickMultiImage(imageQuality: 70);
+                                                                            if (pickedList.isNotEmpty) {
+                                                                              setState(() {
+                                                                                for (var x in pickedList) {
+                                                                                  (entry['proof'] as List<File>).add(File(x.path));
+                                                                                }
+                                                                              });
+                                                                            }
+                                                                          },
+                                                                          child: Container(
+                                                                            padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                            decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1))),
+                                                                            child: Column(children: [Icon(Icons.photo_library_rounded, color: const Color(0xFF6366F1), size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold))]),
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                  const SizedBox(height: 24),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          height: 120,
+                                                          width: 80,
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.1)),
+                                                          ),
+                                                          child: Column(
+                                                            mainAxisAlignment: MainAxisAlignment.center,
+                                                            children: [
+                                                              Icon(Icons.add, color: const Color(0xFF6366F1), size: 28),
+                                                              const SizedBox(height: 4),
+                                                              Text("Add", style: TextStyle(color: const Color(0xFF6366F1), fontSize: 12, fontWeight: FontWeight.w600)),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
-                                              ),
-                                              child: entry['proof'] == null ? Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
-                                                  const SizedBox(height: 8),
-                                                  Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
-                                                ],
-                                              ) : Container(
-                                                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
-                                                child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
-                                              ),
-                                            ),
                                           ),
                                         ],
                                       ),
@@ -1867,8 +1995,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
-                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
-                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': <File>[], 'date': tripStartDate});
+                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': <File>[], 'date': tripStartDate});
                                       });
                                     },
                                     child: Row(
@@ -2034,9 +2162,44 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                       return;
                                     }
                                     // END VALIDATION LOGIC
-final Map<int, String> amountMap = allowanceAmounts.map(
-                                      (id, controller) => MapEntry(id, controller.text.trim()),
-                                    );
+                                    List<Map<String, dynamic>> itemsList = [];
+                                    List<File> proofFiles = [];
+                                    dynamicEntries.forEach((typeId, entries) {
+                                      for (var entry in entries) {
+                                        String amtStr = (entry['amount'] as TextEditingController).text.trim();
+                                        if (amtStr.isEmpty) amtStr = "0";
+                                        
+                                        List<int> proofIndices = [];
+                                        if (entry['proof'] != null) {
+                                          List<File> files = entry['proof'] as List<File>;
+                                          for (var file in files) {
+                                            proofIndices.add(proofFiles.length);
+                                            proofFiles.add(file);
+                                          }
+                                        }
+                                        
+                                        if (entry['meals'] != null && (entry['meals'] as List).isNotEmpty) {
+                                          for (String meal in entry['meals']) {
+                                            itemsList.add({
+                                              "type_id": typeId.toString(),
+                                              "amount": amtStr,
+                                              "date": (entry['date'] as DateTime?)?.toIso8601String() ?? DateTime.now().toIso8601String(),
+                                              "sub_type": meal,
+                                              "proof_indices": proofIndices
+                                            });
+                                            amtStr = "0"; // Only apply amount to the first meal to prevent duplication
+                                          }
+                                        } else {
+                                          itemsList.add({
+                                            "type_id": typeId.toString(),
+                                            "amount": amtStr,
+                                            "date": (entry['date'] as DateTime?)?.toIso8601String() ?? DateTime.now().toIso8601String(),
+                                            "proof_indices": proofIndices
+                                          });
+                                        }
+                                      }
+                                    });
+                                    String? allowanceItemsJson = itemsList.isNotEmpty ? jsonEncode(itemsList) : null;
 
                                     final result = await useDriverStore.endMorningBusRun(
                                       runId: runId,
@@ -2045,8 +2208,8 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                       allowanceNeeded: allowanceNeeded ?? false,
                                       allowanceTypeIds: selectedAllowanceTypes,
                                       allowanceCounts: allowanceCounts,
-                                      allowanceAmounts: amountMap,
-                                      proofImage: dynamicEntries.values.expand((list) => list).firstWhere((e) => e['proof'] != null, orElse: () => {'proof': null})['proof'] as File?,
+                                      allowanceItemsJson: allowanceItemsJson,
+                                      allowanceProofs: proofFiles,
                                     );
 
                                     if (result['success'] == true) {
@@ -3673,9 +3836,9 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                               
                             if (dynamicEntries[id] == null) {
                               if (name.toLowerCase().contains('food')) {
-                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': <File>[], 'date': tripStartDate}];
                               } else {
-                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': <File>[], 'date': tripStartDate}];
                               }
                             }
                             
@@ -3860,7 +4023,11 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                                               onTap: () async {
                                                                 Navigator.pop(ctx);
                                                                 final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
-                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                                if (picked != null) {
+                                                                  setState(() {
+                                                                    (entry['proof'] as List<File>).add(File(picked.path));
+                                                                  });
+                                                                }
                                                               },
                                                               child: Container(
                                                                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -3874,8 +4041,14 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                                             child: GestureDetector(
                                                               onTap: () async {
                                                                 Navigator.pop(ctx);
-                                                                final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-                                                                if (picked != null) setState(() => entry['proof'] = File(picked.path));
+                                                                final pickedList = await ImagePicker().pickMultiImage(imageQuality: 70);
+                                                                if (pickedList.isNotEmpty) {
+                                                                  setState(() {
+                                                                    for (var x in pickedList) {
+                                                                      (entry['proof'] as List<File>).add(File(x.path));
+                                                                    }
+                                                                  });
+                                                                }
                                                               },
                                                               child: Container(
                                                                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -3892,32 +4065,150 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                                 ),
                                               );
                                             },
-                                            child: Container(
-                                              height: 120,
-                                              width: double.infinity,
-                                              decoration: BoxDecoration(
-                                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                                borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: (triedSubmit && entry['proof'] == null)
-                                                      ? Colors.redAccent
-                                                      : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
-                                                  width: (triedSubmit && entry['proof'] == null) ? 1.5 : 1.0,
+                                            child: (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty) ? Container(
+                                                  height: 120,
+                                                  width: double.infinity,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                    borderRadius: BorderRadius.circular(20),
+                                                    border: Border.all(
+                                                      color: (triedSubmit && (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty))
+                                                          ? Colors.redAccent
+                                                          : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
+                                                      width: (triedSubmit && (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty)) ? 1.5 : 1.0,
+                                                    ),
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
+                                                      const SizedBox(height: 8),
+                                                      Text("Tap to upload proof image(s)", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
+                                                    ],
+                                                  ),
+                                                ) : SingleChildScrollView(
+                                                  scrollDirection: Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      ...(entry['proof'] as List<File>).asMap().entries.map((m) {
+                                                        int idx = m.key;
+                                                        File file = m.value;
+                                                        return Padding(
+                                                          padding: const EdgeInsets.only(right: 12.0),
+                                                          child: Stack(
+                                                            children: [
+                                                              ClipRRect(
+                                                                borderRadius: BorderRadius.circular(16),
+                                                                child: Image.file(
+                                                                  file,
+                                                                  height: 120,
+                                                                  width: 120,
+                                                                  fit: BoxFit.cover,
+                                                                ),
+                                                              ),
+                                                              Positioned(
+                                                                top: 8, right: 8,
+                                                                child: GestureDetector(
+                                                                  onTap: () => setState(() => (entry['proof'] as List<File>).removeAt(idx)),
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.all(4),
+                                                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                                                    child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                      GestureDetector(
+                                                        onTap: () async {
+                                                          showModalBottomSheet(
+                                                            context: context,
+                                                            backgroundColor: Colors.transparent,
+                                                            builder: (ctx) => Container(
+                                                              padding: const EdgeInsets.all(24),
+                                                              decoration: BoxDecoration(
+                                                                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                                                              ),
+                                                              child: Column(
+                                                                mainAxisSize: MainAxisSize.min,
+                                                                children: [
+                                                                  Container(width: 40, height: 4, decoration: BoxDecoration(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
+                                                                  const SizedBox(height: 24),
+                                                                  Text("Add Another Image", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A))),
+                                                                  const SizedBox(height: 32),
+                                                                  Row(
+                                                                    children: [
+                                                                      Expanded(
+                                                                        child: GestureDetector(
+                                                                          onTap: () async {
+                                                                            Navigator.pop(ctx);
+                                                                            final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
+                                                                            if (picked != null) {
+                                                                              setState(() {
+                                                                                (entry['proof'] as List<File>).add(File(picked.path));
+                                                                              });
+                                                                            }
+                                                                          },
+                                                                          child: Container(
+                                                                            padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                            decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1))),
+                                                                            child: Column(children: [Icon(Icons.camera_alt_rounded, color: const Color(0xFF6366F1), size: 32), const SizedBox(height: 12), Text("Camera", style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold))]),
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                      const SizedBox(width: 16),
+                                                                      Expanded(
+                                                                        child: GestureDetector(
+                                                                          onTap: () async {
+                                                                            Navigator.pop(ctx);
+                                                                            final pickedList = await ImagePicker().pickMultiImage(imageQuality: 70);
+                                                                            if (pickedList.isNotEmpty) {
+                                                                              setState(() {
+                                                                                for (var x in pickedList) {
+                                                                                  (entry['proof'] as List<File>).add(File(x.path));
+                                                                                }
+                                                                              });
+                                                                            }
+                                                                          },
+                                                                          child: Container(
+                                                                            padding: const EdgeInsets.symmetric(vertical: 24),
+                                                                            decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1))),
+                                                                            child: Column(children: [Icon(Icons.photo_library_rounded, color: const Color(0xFF6366F1), size: 32), const SizedBox(height: 12), Text("Gallery", style: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.bold))]),
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                  const SizedBox(height: 24),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          height: 120,
+                                                          width: 80,
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                                            borderRadius: BorderRadius.circular(16),
+                                                            border: Border.all(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.1)),
+                                                          ),
+                                                          child: Column(
+                                                            mainAxisAlignment: MainAxisAlignment.center,
+                                                            children: [
+                                                              Icon(Icons.add, color: const Color(0xFF6366F1), size: 28),
+                                                              const SizedBox(height: 4),
+                                                              Text("Add", style: TextStyle(color: const Color(0xFF6366F1), fontSize: 12, fontWeight: FontWeight.w600)),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
-                                              ),
-                                              child: entry['proof'] == null ? Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
-                                                  const SizedBox(height: 8),
-                                                  Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
-                                                ],
-                                              ) : Container(
-                                                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
-                                                child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
-                                              ),
-                                            ),
                                           ),
                                         ],
                                       ),
@@ -3929,8 +4220,8 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
-                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
-                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': <File>[], 'date': tripStartDate});
+                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': <File>[], 'date': tripStartDate});
                                       });
                                     },
                                     child: Row(
@@ -4072,9 +4363,44 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                       return;
                                     }
                                     // END VALIDATION LOGIC
-final Map<int, String> amountMap = allowanceAmounts.map(
-                                      (id, controller) => MapEntry(id, controller.text.trim()),
-                                    );
+                                    List<Map<String, dynamic>> itemsList = [];
+                                    List<File> proofFiles = [];
+                                    dynamicEntries.forEach((typeId, entries) {
+                                      for (var entry in entries) {
+                                        String amtStr = (entry['amount'] as TextEditingController).text.trim();
+                                        if (amtStr.isEmpty) amtStr = "0";
+                                        
+                                        List<int> proofIndices = [];
+                                        if (entry['proof'] != null) {
+                                          List<File> files = entry['proof'] as List<File>;
+                                          for (var file in files) {
+                                            proofIndices.add(proofFiles.length);
+                                            proofFiles.add(file);
+                                          }
+                                        }
+                                        
+                                        if (entry['meals'] != null && (entry['meals'] as List).isNotEmpty) {
+                                          for (String meal in entry['meals']) {
+                                            itemsList.add({
+                                              "type_id": typeId.toString(),
+                                              "amount": amtStr,
+                                              "date": (entry['date'] as DateTime?)?.toIso8601String() ?? DateTime.now().toIso8601String(),
+                                              "sub_type": meal,
+                                              "proof_indices": proofIndices
+                                            });
+                                            amtStr = "0"; // Only apply amount to the first meal to prevent duplication
+                                          }
+                                        } else {
+                                          itemsList.add({
+                                            "type_id": typeId.toString(),
+                                            "amount": amtStr,
+                                            "date": (entry['date'] as DateTime?)?.toIso8601String() ?? DateTime.now().toIso8601String(),
+                                            "proof_indices": proofIndices
+                                          });
+                                        }
+                                      }
+                                    });
+                                    String? allowanceItemsJson = itemsList.isNotEmpty ? jsonEncode(itemsList) : null;
 
                                     final result = await useDriverStore.endEveningOdometer(
                                       runId: runId,
@@ -4082,8 +4408,8 @@ final Map<int, String> amountMap = allowanceAmounts.map(
                                       allowanceNeeded: allowanceNeeded ?? false,
                                       allowanceTypeIds: selectedAllowanceTypes,
                                       allowanceCounts: allowanceCounts,
-                                      allowanceAmounts: amountMap,
-                                      proofImage: dynamicEntries.values.expand((list) => list).firstWhere((e) => e['proof'] != null, orElse: () => {'proof': null})['proof'] as File?,
+                                      allowanceItemsJson: allowanceItemsJson,
+                                      allowanceProofs: proofFiles,
                                     );
 
                                     if (result['success'] == true) {

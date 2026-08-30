@@ -78,6 +78,7 @@ class MissionDetailsScreen extends ConsumerStatefulWidget {
 
 class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     with SingleTickerProviderStateMixin {
+  int? _lastProcessedNotificationId;
   late AnimationController _pulseController;
   final MapController _mapController = MapController();
   bool _isLoadingOtp = false;
@@ -139,6 +140,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
     if (provider != null && provider.notifications.isNotEmpty) {
       final NotificationModel latestNotification = provider.notifications.first;
       debugPrint("[SOCKET REFRESH] Driver details screen detected notification: '${latestNotification.title}' | '${latestNotification.message}'");
+      
+      if (_lastProcessedNotificationId == latestNotification.id) return;
+      _lastProcessedNotificationId = latestNotification.id;
       
       // Let's inspect the notification message and reference ID
       final currentRequestIdInt = int.tryParse(widget.requestId);
@@ -924,9 +928,9 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                               
                             if (dynamicEntries[id] == null) {
                               if (name.toLowerCase().contains('food')) {
-                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                                dynamicEntries[id] = [{'meals': <String>[], 'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': <File>[], 'date': tripStartDate}];
                               } else {
-                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': null, 'date': tripStartDate}];
+                                dynamicEntries[id] = [{'amount': TextEditingController(text: allowanceAmounts[id]?.text ?? ''), 'proof': <File>[], 'date': tripStartDate}];
                               }
                             }
                             
@@ -1111,7 +1115,11 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                                               onTap: () async {
                                                                 Navigator.pop(ctx);
                                                                 final picked = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 70);
-                                                                if (picked != null) setModalState(() => entry['proof'] = File(picked.path));
+                                                                if (picked != null && context.mounted) {
+                                                                  setModalState(() {
+                                                                    (entry['proof'] as List<File>).add(File(picked.path));
+                                                                  });
+                                                                }
                                                               },
                                                               child: Container(
                                                                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1125,8 +1133,14 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                                             child: GestureDetector(
                                                               onTap: () async {
                                                                 Navigator.pop(ctx);
-                                                                final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 70);
-                                                                if (picked != null) setModalState(() => entry['proof'] = File(picked.path));
+                                                                final pickedList = await ImagePicker().pickMultiImage(imageQuality: 70);
+                                                                if (pickedList.isNotEmpty && context.mounted) {
+                                                                  setModalState(() {
+                                                                    for (var x in pickedList) {
+                                                                      (entry['proof'] as List<File>).add(File(x.path));
+                                                                    }
+                                                                  });
+                                                                }
                                                               },
                                                               child: Container(
                                                                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1143,30 +1157,93 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                                 ),
                                               );
                                             },
-                                            child: Container(
+                                            child: (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty) ? Container(
                                               height: 120,
                                               width: double.infinity,
                                               decoration: BoxDecoration(
                                                 color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
                                                 borderRadius: BorderRadius.circular(20),
                                                 border: Border.all(
-                                                  color: (triedSubmit && entry['proof'] == null)
+                                                  color: (triedSubmit && (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty))
                                                       ? Colors.redAccent
                                                       : (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.05),
-                                                  width: (triedSubmit && entry['proof'] == null) ? 1.5 : 1.0,
+                                                  width: (triedSubmit && (entry['proof'] == null || (entry['proof'] as List<File>).isEmpty)) ? 1.5 : 1.0,
                                                 ),
-                                                image: entry['proof'] != null ? DecorationImage(image: FileImage(entry['proof']), fit: BoxFit.cover) : null,
                                               ),
-                                              child: entry['proof'] == null ? Column(
+                                              child: Column(
                                                 mainAxisAlignment: MainAxisAlignment.center,
                                                 children: [
                                                   Icon(Icons.add_a_photo_rounded, color: const Color(0xFF6366F1).withValues(alpha: 0.5), size: 32),
                                                   const SizedBox(height: 8),
                                                   Text("Tap to upload proof image", style: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 12, fontWeight: FontWeight.bold)),
                                                 ],
-                                              ) : Container(
-                                                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(20)),
-                                                child: const Center(child: Icon(Icons.edit_rounded, color: Colors.white)),
+                                              ),
+                                            ) : SizedBox(
+                                              height: 120,
+                                              child: SingleChildScrollView(
+                                                scrollDirection: Axis.horizontal,
+                                                child: Row(
+                                                  children: [
+                                                    ...(entry['proof'] as List<File>).asMap().entries.map((imgEntry) {
+                                                      int imgIdx = imgEntry.key;
+                                                      File imgFile = imgEntry.value;
+                                                      return Container(
+                                                        width: 120,
+                                                        height: 120,
+                                                        margin: const EdgeInsets.only(right: 12),
+                                                        decoration: BoxDecoration(
+                                                          borderRadius: BorderRadius.circular(20),
+                                                          image: DecorationImage(image: FileImage(imgFile), fit: BoxFit.cover),
+                                                        ),
+                                                        child: Stack(
+                                                          children: [
+                                                            Positioned(
+                                                              top: 8,
+                                                              right: 8,
+                                                              child: GestureDetector(
+                                                                onTap: () {
+                                                                  setModalState(() {
+                                                                    (entry['proof'] as List<File>).removeAt(imgIdx);
+                                                                  });
+                                                                },
+                                                                child: Container(
+                                                                  padding: const EdgeInsets.all(4),
+                                                                  decoration: const BoxDecoration(
+                                                                    color: Colors.black54,
+                                                                    shape: BoxShape.circle,
+                                                                  ),
+                                                                  child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    }),
+                                                    GestureDetector(
+                                                      onTap: () async {
+                                                        final pickedList = await ImagePicker().pickMultiImage(imageQuality: 70);
+                                                        if (pickedList.isNotEmpty && context.mounted) {
+                                                          setModalState(() {
+                                                            for (var x in pickedList) {
+                                                              (entry['proof'] as List<File>).add(File(x.path));
+                                                            }
+                                                          });
+                                                        }
+                                                      },
+                                                      child: Container(
+                                                        width: 80,
+                                                        height: 120,
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF6366F1).withValues(alpha: 0.05),
+                                                          borderRadius: BorderRadius.circular(20),
+                                                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.1)),
+                                                        ),
+                                                        child: Icon(Icons.add, color: const Color(0xFF6366F1), size: 32),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -1180,8 +1257,8 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                   child: GestureDetector(
                                     onTap: () {
                                       setModalState(() {
-                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
-                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': null, 'date': tripStartDate});
+                                        if (isFood) dynamicEntries[id]!.add({'meals': <String>[], 'amount': TextEditingController(), 'proof': <File>[], 'date': tripStartDate});
+                                        else dynamicEntries[id]!.add({'amount': TextEditingController(), 'proof': <File>[], 'date': tripStartDate});
                                       });
                                     },
                                     child: Row(
@@ -1312,7 +1389,16 @@ Map<int, String> amountMap = {};
                                       final controller = entry['amount'] as TextEditingController?;
                                       final amt = double.tryParse(controller?.text ?? "") ?? 0.0;
                                       final dateVal = entry['date'] as DateTime? ?? DateTime.now();
-                                      final file = entry['proof'] as File?;
+                                      
+                                      List<int> proofIndices = [];
+                                      if (entry['proof'] != null) {
+                                        List<File> files = entry['proof'] as List<File>;
+                                        for (var file in files) {
+                                          proofIndices.add(itemIndex);
+                                          itemProofsMap[itemIndex] = file;
+                                          itemIndex++;
+                                        }
+                                      }
 
                                       String subType = "";
                                       if (entry.containsKey('meals')) {
@@ -1327,12 +1413,8 @@ Map<int, String> amountMap = {};
                                         "amount": amt,
                                         "date": DateFormat('yyyy-MM-dd').format(dateVal),
                                         if (subType.isNotEmpty) "sub_type": subType,
+                                        "proof_indices": proofIndices,
                                       });
-
-                                      if (file != null) {
-                                        itemProofsMap[itemIndex] = file;
-                                      }
-                                      itemIndex++;
                                     }
                                   }
                                 }
@@ -1512,7 +1594,7 @@ Map<int, String> amountMap = {};
 
       final url = ApiConstants.startRegister(tripId);
       final body = {
-        "start_odometer": int.tryParse(odometer) ?? 0,
+        "start_odometer": num.tryParse(odometer) ?? 0,
         "start_capacity": int.tryParse(capacity) ?? 0,
       };
 
@@ -7057,7 +7139,7 @@ class _EndButtonWithTimerState extends ConsumerState<_EndButtonWithTimer> {
       final now = DateTime.now().toUtc();
       final diff = now.difference(endedTime);
       final elapsedSeconds = diff.inSeconds;
-      final rem = (15 * 60) - elapsedSeconds;
+      final rem = (25 * 60) - elapsedSeconds;
       if (mounted) {
         setState(() {
           _remainingSeconds = rem > 0 ? rem : 0;
