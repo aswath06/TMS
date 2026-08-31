@@ -101,25 +101,80 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
                   itemCount: store.locations.length,
                   itemBuilder: (context, index) {
                     final loc = store.locations[index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        loc['name'] ?? 'Unknown',
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
+                    final bool isSelected = isFrom ? _fromLocationId == loc['id'] : _toLocationId == loc['id'];
+                    final primaryColor = Theme.of(context).primaryColor;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? primaryColor.withValues(alpha: 0.1) 
+                            : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade200),
+                          width: 1.5,
+                        ),
+                        boxShadow: isDark || isSelected ? [] : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            setState(() {
+                              if (isFrom) {
+                                _fromLocationId = loc['id'];
+                              } else {
+                                _toLocationId = loc['id'];
+                              }
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade100),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isFrom ? Icons.trip_origin_rounded : Icons.location_on_rounded,
+                                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey.shade600),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    loc['name'] ?? 'Unknown',
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 16,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: primaryColor,
+                                    size: 24,
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      onTap: () {
-                        setState(() {
-                          if (isFrom) {
-                            _fromLocationId = loc['id'];
-                          } else {
-                            _toLocationId = loc['id'];
-                          }
-                        });
-                        Navigator.pop(context);
-                      },
                     );
                   },
                 ),
@@ -177,21 +232,76 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
                   itemCount: _departments.length,
                   itemBuilder: (context, index) {
                     final dep = _departments[index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        dep,
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
+                    final bool isSelected = _department == dep;
+                    final primaryColor = Theme.of(context).primaryColor;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? primaryColor.withValues(alpha: 0.1) 
+                            : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade200),
+                          width: 1.5,
+                        ),
+                        boxShadow: isDark || isSelected ? [] : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            setState(() {
+                              _department = dep;
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade100),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.business_rounded,
+                                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey.shade600),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    dep,
+                                    style: TextStyle(
+                                      color: textColor,
+                                      fontSize: 16,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: primaryColor,
+                                    size: 24,
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      onTap: () {
-                        setState(() {
-                          _department = dep;
-                        });
-                        Navigator.pop(context);
-                      },
                     );
                   },
                 ),

@@ -983,6 +983,11 @@ class _AdminBatteryVehiclesPageState
                                   subtitle: Text(d['phone'] ?? '-'),
                                   onTap: () async {
                                     Navigator.pop(context);
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (c) => const Center(child: CircularProgressIndicator()),
+                                    );
                                     try {
                                       await ref
                                           .read(batteryVehicleStoreProvider)
@@ -990,7 +995,8 @@ class _AdminBatteryVehiclesPageState
                                             bookingId.toString(),
                                             int.parse(d['id'].toString()),
                                           );
-                                      if (mounted)
+                                      if (mounted) {
+                                        Navigator.pop(context);
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -998,13 +1004,16 @@ class _AdminBatteryVehiclesPageState
                                             content: Text("Driver Assigned"),
                                           ),
                                         );
+                                      }
                                     } catch (e) {
-                                      if (mounted)
+                                      if (mounted) {
+                                        Navigator.pop(context);
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
                                           SnackBar(content: Text("Error: $e")),
                                         );
+                                      }
                                     }
                                   },
                                 );

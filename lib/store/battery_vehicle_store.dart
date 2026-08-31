@@ -399,6 +399,17 @@ class BatteryVehicleStore extends ChangeNotifier {
     }
   }
 
+  void expireBookingLocally(String bookingId) {
+    for (var b in driverBookings) {
+      final id = (b['id'] ?? b['booking_id'])?.toString();
+      if (id == bookingId) {
+        b['status'] = 'EXPIRED';
+        break;
+      }
+    }
+    notifyListeners();
+  }
+
   Future<void> acceptRide(String bookingId) async {
     _setLoading(true);
     try {
@@ -417,6 +428,21 @@ class BatteryVehicleStore extends ChangeNotifier {
       await _api.rejectRide(bookingId);
       await fetchDriverBookings();
     } catch (e) {
+      rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Faculty submits OTP to start the ride (moves status STARTED → ONGOING)
+  Future<void> submitOtp(String bookingId, String otp) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _api.sendOtpForRide(bookingId, otp);
+      await fetchPassengerBookings();
+    } catch (e) {
+      _setError(e.toString());
       rethrow;
     } finally {
       _setLoading(false);

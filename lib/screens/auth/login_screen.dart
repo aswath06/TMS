@@ -18,6 +18,7 @@ import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import '../main_screen.dart' show MainScreen;
 import 'package:tripzo/utils/api_error_parser.dart';
+import 'package:tripzo/services/notification_firebase_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -126,10 +127,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final url = ApiConstants.login;
 
       final String? deviceModel = await _getDeviceModel();
+      String? fcmToken;
+      try {
+        fcmToken = await NotificationFirebaseService().getToken();
+      } catch (e) {
+        debugPrint("Could not fetch FCM token for login body: $e");
+      }
+
       final body = {
         "identifier": _emailController.text.trim(),
         "password": _passwordController.text.trim(),
         if (deviceModel != null) "device_model": deviceModel,
+        if (fcmToken != null && fcmToken.isNotEmpty) "fcm_token": fcmToken,
       };
 
       // ✅ PRINT CURL
@@ -243,9 +252,17 @@ curl -X POST "$url"
       if (idToken == null) throw "Failed to retrieve ID Token.";
       
       final String? deviceModel = await _getDeviceModel();
+      String? fcmToken;
+      try {
+        fcmToken = await NotificationFirebaseService().getToken();
+      } catch (e) {
+        debugPrint("Could not fetch FCM token for Google login body: $e");
+      }
+
       final body = {
         "idToken": idToken,
         if (deviceModel != null) "device_model": deviceModel,
+        if (fcmToken != null && fcmToken.isNotEmpty) "fcm_token": fcmToken,
       };
 
       final response = await client.post(
@@ -343,9 +360,17 @@ curl -X POST "$url"
       if (idToken == null) throw "Failed to retrieve Apple Identity Token.";
 
       final String? deviceModel = await _getDeviceModel();
+      String? fcmToken;
+      try {
+        fcmToken = await NotificationFirebaseService().getToken();
+      } catch (e) {
+        debugPrint("Could not fetch FCM token for Apple login body: $e");
+      }
+
       final body = {
         "idToken": idToken,
         if (deviceModel != null) "device_model": deviceModel,
+        if (fcmToken != null && fcmToken.isNotEmpty) "fcm_token": fcmToken,
       };
 
       final response = await client.post(

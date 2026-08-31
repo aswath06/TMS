@@ -236,17 +236,25 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                 return RefreshIndicator(
                   onRefresh: () async {
                     await store.fetchProfile();
+                    if (!mounted) return;
                     await store.fetchMissions();
+                    if (!mounted) return;
                     await store.fetchDailyBusRuns();
+                    if (!mounted) return;
                     await store.fetchPendingFuelEntries();
+                    if (!mounted) return;
                     await store.fetchActiveRoutesToComplete();
+                    if (!mounted) return;
                     await store.fetchPendingAllowanceCount();
+                    if (!mounted) return;
                     await ref
                         .read(driverSchedulesStoreProvider)
                         .fetchSchedules(isRefresh: true);
+                    if (!mounted) return;
                     await ref
                         .read(batteryVehicleStoreProvider)
                         .fetchEvSchedules();
+                    if (!mounted) return;
                     ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
                   },
                   child: SingleChildScrollView(
@@ -2219,14 +2227,20 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                       if (bookingId != null) {
                         try {
                           await ref.read(batteryVehicleStoreProvider).acceptRide(bookingId);
-                          showTopToast(
-                            context,
-                            isTamil ? "EV Booking !" : "EV Booking accepted!",
-                          );
+                          if (mounted) {
+                            showTopToast(
+                              context,
+                              isTamil ? "EV Booking !" : "EV Booking accepted!",
+                            );
+                          }
                         } catch (e) {
-                          showTopToast(context, e.toString(), isError: true);
+                          if (mounted) {
+                            showTopToast(context, e.toString(), isError: true);
+                          }
                         }
-                        ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                        if (mounted) {
+                          ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -2254,14 +2268,20 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                       if (bookingId != null) {
                         try {
                           await ref.read(batteryVehicleStoreProvider).rejectRide(bookingId);
-                          showTopToast(
-                            context,
-                            isTamil ? "EV Booking !" : "EV Booking rejected!",
-                          );
+                          if (mounted) {
+                            showTopToast(
+                              context,
+                              isTamil ? "EV Booking !" : "EV Booking rejected!",
+                            );
+                          }
                         } catch (e) {
-                          showTopToast(context, e.toString(), isError: true);
+                          if (mounted) {
+                            showTopToast(context, e.toString(), isError: true);
+                          }
                         }
-                        ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                        if (mounted) {
+                          ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                        }
                       }
                     },
                     style: OutlinedButton.styleFrom(

@@ -163,25 +163,12 @@ class NotificationFirebaseService {
   });
 }
 
-  /// Returns a fresh FCM token, deleting any stale cached token first.
-  ///
-  /// The old `APA91b…` format tokens are legacy FCM tokens that cannot
-  /// authenticate with the FCM v1 API. Calling [deleteToken] forces Firebase
-  /// to generate a brand-new v1-compatible token on the next [getToken] call.
+  /// Returns a fresh FCM token.
   Future<String?> getToken() async {
-    try {
-      // Delete any potentially stale / legacy token cached on the device.
-      await _firebaseMessaging.deleteToken();
-      debugPrint('🔔 Deleted old FCM token (if any). Fetching fresh token…');
-    } catch (e) {
-      // deleteToken can fail if there was no token; that is fine.
-      debugPrint('🔔 deleteToken skipped (no previous token): $e');
-    }
-
     // After deletion, getToken() always contacts Firebase and returns a
-    // brand-new, v1-API-compatible token (looks like "fGxq3…" not "APA91b…").
+    // brand-new, v1-API-compatible token.
     final token = await _firebaseMessaging.getToken();
-    debugPrint('🔔 Fresh FCM token obtained: $token');
+    debugPrint('🔔 FCM token obtained: $token');
     return token;
   }
 }

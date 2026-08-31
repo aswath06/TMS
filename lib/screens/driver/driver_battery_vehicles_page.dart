@@ -66,6 +66,7 @@ class _DriverBatteryVehiclesPageState
               color: primaryBlue,
               onRefresh: () async {
                 await ref.read(batteryVehicleStoreProvider).fetchEvSchedules();
+                if (!mounted) return;
                 ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
               },
               child: _buildRequestsListRaw(
@@ -167,6 +168,7 @@ class _DriverBatteryVehiclesPageState
                       children: [
                         if (status == 'PENDING')
                           EvCountdownTimer(
+                            durationSeconds: b['driver_id'] == null ? 120 : 60,
                             timestampStr: (b['notified_at'] ??
                                     b['assigned_at'] ??
                                     b['updated_at'] ??
@@ -174,7 +176,8 @@ class _DriverBatteryVehiclesPageState
                                     DateTime.now().toIso8601String())
                                 .toString(),
                             onExpire: () {
-                              ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
+                              final id = (b['id'] ?? b['booking_id'])?.toString();
+                              if (id != null) ref.read(batteryVehicleStoreProvider).expireBookingLocally(id);
                             },
                           ),
                         if (status == 'PENDING') const SizedBox(width: 8),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/utils/api_constants.dart';
@@ -197,7 +198,7 @@ class BatteryVehicleApi {
   Future<void> scanDriverQr(String bookingId, String qrCodeData) async {
     final response = await http.post(
       Uri.parse(
-        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/start',
+        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/start-scan',
       ),
       headers: await _getHeaders(),
       body: jsonEncode({"qr_code_data": qrCodeData}),
@@ -205,6 +206,20 @@ class BatteryVehicleApi {
     if (response.statusCode >= 400)
       throw Exception(
         'Failed to scan QR code: ${response.statusCode} ${response.body}',
+      );
+  }
+
+  Future<void> sendOtpForRide(String bookingId, String otp) async {
+    final response = await http.post(
+      Uri.parse(
+        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/start-scan',
+      ),
+      headers: await _getHeaders(),
+      body: jsonEncode({"otp": otp}),
+    );
+    if (response.statusCode >= 400)
+      throw Exception(
+        'Failed to submit OTP: ${response.statusCode} ${response.body}',
       );
   }
 
@@ -244,30 +259,26 @@ class BatteryVehicleApi {
   }
 
   Future<List<dynamic>> getMyBookings() async {
-    final response = await http.get(
-      Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings'),
-      headers: await _getHeaders(),
-    );
-    if (response.statusCode == 200) {
-      final data = _extractData(response.body);
-      if (data is List) {
-        return data;
-      }
-      if (data is Map) {
-        if (data.containsKey('bookings'))
-          return data['bookings'] is List ? data['bookings'] : [];
-        if (data.containsKey('data'))
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/my-bookings'),
+        headers: await _getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final data = _extractData(response.body);
+        if (data is List) return data;
+        if (data is Map && data.containsKey('data')) {
           return data['data'] is List ? data['data'] : [];
-        // Just find the first list in the map if the key is weird
-        for (var value in data.values) {
-          if (value is List) return value;
         }
+        return [];
       }
+      throw Exception(
+        'Failed to fetch my bookings: ${response.statusCode} ${response.body}',
+      );
+    } catch (e) {
+      debugPrint('getMyBookings error: $e');
       return [];
     }
-    throw Exception(
-      'Failed to fetch my bookings: ${response.statusCode} ${response.body}',
-    );
   }
 
   Future<List<dynamic>> getBookings() async {
