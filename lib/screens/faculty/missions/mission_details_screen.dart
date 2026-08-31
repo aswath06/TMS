@@ -5733,6 +5733,7 @@ Map<int, String> amountMap = {};
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.yourdomain.tmsapp',
                 ),
                 if (_routePoints.isNotEmpty)
                   PolylineLayer(
