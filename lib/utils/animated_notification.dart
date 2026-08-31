@@ -226,5 +226,8 @@ void showPremiumInAppNotification({
     ),
   );
 
-  Overlay.of(context).insert(overlayEntry);
+  final overlayState = AppRoutes.navigatorKey.currentState?.overlay;
+  if (overlayState != null) {
+    overlayState.insert(overlayEntry);
+  }
 }

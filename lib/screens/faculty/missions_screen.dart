@@ -218,9 +218,17 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
             : (b['status'] == 'COMPLETED' ? 10 : 2),
         'vehicle': "Battery Vehicle",
         'vehicleInfo': b['reason'] ?? "Transport Request",
-        'date': b['created_at'] != null
-            ? b['created_at'].toString().split('T')[0]
-            : "TBD",
+        'date': () {
+          final d = b['created_at'] ?? b['updated_at'];
+          if (d != null) {
+            try {
+              final dt = DateTime.parse(d.toString()).toLocal();
+              return "\${dt.year}-\${dt.month.toString().padLeft(2, '0')}-\${dt.day.toString().padLeft(2, '0')}";
+            } catch (_) {}
+            return d.toString().split('T')[0].split(' ')[0];
+          }
+          return "TBD";
+        }(),
         'pickup': fromName,
         'drop': toName,
         'passengers': 1,

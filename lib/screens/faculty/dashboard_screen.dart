@@ -493,7 +493,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const NewBatteryVehicleRequestScreen()),
-                          );
+                          ).then((value) {
+                            if (value == true) {
+                              ref.read(batteryVehicleStoreProvider).fetchPassengerBookings();
+                            }
+                          });
                         },
                       ),
                     ],
