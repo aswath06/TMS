@@ -168,7 +168,7 @@ class _DriverBatteryVehiclesPageState
                       children: [
                         if (status == 'PENDING')
                           EvCountdownTimer(
-                            durationSeconds: b['driver_id'] == null ? 120 : 60,
+                            durationSeconds: 60,
                             timestampStr: (b['notified_at'] ??
                                     b['assigned_at'] ??
                                     b['updated_at'] ??
@@ -376,36 +376,7 @@ class _DriverBatteryVehiclesPageState
                         ),
                       ),
                     ],
-                    if (status == 'ACCEPTED' || status == 'STARTED') ...[
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            if (context.mounted) {
-                              showTopToast(
-                                context,
-                                "Trip can only be started after the passenger entered the otp..",
-                                isError: true,
-                              );
-                            }
-                          },
-                          child: const Text(
-                            'Start Trip',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+
                     if (status == 'ONGOING') ...[
                       Expanded(
                         child: ElevatedButton(
