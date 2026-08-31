@@ -1314,8 +1314,8 @@ class DriverStore extends ChangeNotifier {
     required bool allowanceNeeded,
     List<int>? allowanceTypeIds,
     Map<int, int>? allowanceCounts,
-    Map<int, String>? allowanceAmounts,
-    File? proofImage,
+    String? allowanceItemsJson,
+    List<File>? allowanceProofs,
   }) async {
     try {
       final token = await UserStore.getToken();
@@ -1334,27 +1334,25 @@ class DriverStore extends ChangeNotifier {
       if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
         request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
       }
-      if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
-        request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts.map((k, v) => MapEntry(k.toString(), v)));
+      if (allowanceItemsJson != null) {
+        request.fields['allowance_items'] = allowanceItemsJson;
       }
       
-      if (proofImage != null) {
-        final ext = proofImage.path.split('.').last.toLowerCase();
-        MediaType mediaType;
-        if (ext == 'pdf') {
-          mediaType = MediaType('application', 'pdf');
-        } else if (ext == 'png') {
-          mediaType = MediaType('image', 'png');
-        } else if (ext == 'webp') {
-          mediaType = MediaType('image', 'webp');
-        } else {
-          mediaType = MediaType('image', 'jpeg');
+      if (allowanceProofs != null) {
+        for (int i = 0; i < allowanceProofs.length; i++) {
+          final File proof = allowanceProofs[i];
+          final ext = proof.path.split('.').last.toLowerCase();
+          MediaType mediaType;
+          if (ext == 'pdf') mediaType = MediaType('application', 'pdf');
+          else if (ext == 'png') mediaType = MediaType('image', 'png');
+          else if (ext == 'webp') mediaType = MediaType('image', 'webp');
+          else mediaType = MediaType('image', 'jpeg');
+          request.files.add(await http.MultipartFile.fromPath(
+            'item_proof_$i',
+            proof.path,
+            contentType: mediaType,
+          ));
         }
-        request.files.add(await http.MultipartFile.fromPath(
-          'item_proof_0',
-          proofImage.path,
-          contentType: mediaType,
-        ));
       }
       
       final streamedResponse = await request.send();
@@ -1408,8 +1406,8 @@ class DriverStore extends ChangeNotifier {
     required bool allowanceNeeded,
     List<int>? allowanceTypeIds,
     Map<int, int>? allowanceCounts,
-    Map<int, String>? allowanceAmounts,
-    File? proofImage,
+    String? allowanceItemsJson,
+    List<File>? allowanceProofs,
   }) async {
     try {
       final token = await UserStore.getToken();
@@ -1431,27 +1429,25 @@ class DriverStore extends ChangeNotifier {
       if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
         request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
       }
-      if (allowanceAmounts != null && allowanceAmounts.isNotEmpty) {
-        request.fields['allowance_amounts'] = jsonEncode(allowanceAmounts.map((k, v) => MapEntry(k.toString(), v)));
+      if (allowanceItemsJson != null) {
+        request.fields['allowance_items'] = allowanceItemsJson;
       }
       
-      if (proofImage != null) {
-        final ext = proofImage.path.split('.').last.toLowerCase();
-        MediaType mediaType;
-        if (ext == 'pdf') {
-          mediaType = MediaType('application', 'pdf');
-        } else if (ext == 'png') {
-          mediaType = MediaType('image', 'png');
-        } else if (ext == 'webp') {
-          mediaType = MediaType('image', 'webp');
-        } else {
-          mediaType = MediaType('image', 'jpeg');
+      if (allowanceProofs != null) {
+        for (int i = 0; i < allowanceProofs.length; i++) {
+          final File proof = allowanceProofs[i];
+          final ext = proof.path.split('.').last.toLowerCase();
+          MediaType mediaType;
+          if (ext == 'pdf') mediaType = MediaType('application', 'pdf');
+          else if (ext == 'png') mediaType = MediaType('image', 'png');
+          else if (ext == 'webp') mediaType = MediaType('image', 'webp');
+          else mediaType = MediaType('image', 'jpeg');
+          request.files.add(await http.MultipartFile.fromPath(
+            'item_proof_$i',
+            proof.path,
+            contentType: mediaType,
+          ));
         }
-        request.files.add(await http.MultipartFile.fromPath(
-          'item_proof_0',
-          proofImage.path,
-          contentType: mediaType,
-        ));
       }
       
       final streamedResponse = await request.send();
