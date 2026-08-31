@@ -1,3 +1,5 @@
+import 'package:tripzo/screens/faculty/request/passenger_booking_history_screen.dart';
+import 'package:tripzo/screens/faculty/request/new_battery_vehicle_request_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
@@ -436,18 +438,69 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Icons.add_box_rounded,
           primaryBlue,
           surface,
-          onTap: () async {
-            final refresh = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const NewRequestScreen()),
-            );
-            if (refresh == true) {
-              if (mounted) {
-                ref.read(requestStoreProvider).fetchRequests();
-                dashboardStore.fetchStats();
-              }
-            }
-          },
+          onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (context) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Create New Request",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          child: const Icon(Icons.directions_bus_rounded, color: Color(0xFF6366F1)),
+                        ),
+                        title: Text("Bus/Route Request", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600)),
+                        subtitle: Text("Request a standard bus or route", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 12)),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final refresh = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const NewRequestScreen()),
+                          );
+                          if (refresh == true) {
+                            if (mounted) {
+                              ref.read(requestStoreProvider).fetchRequests();
+                              dashboardStore.fetchStats();
+                            }
+                          }
+                        },
+                      ),
+                      const Divider(),
+                      ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.green.withValues(alpha: 0.1),
+                          child: const Icon(Icons.electric_car_rounded, color: Colors.green),
+                        ),
+                        title: Text("Battery Vehicle", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.w600)),
+                        subtitle: Text("Request an EV for campus transport", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 12)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const NewBatteryVehicleRequestScreen()),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
         ),
         const SizedBox(width: 15),
         _buildActionBtn(

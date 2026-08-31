@@ -14,13 +14,18 @@ import 'package:tripzo/utils/toast_utils.dart';
 class FacultyScanOtpScreen extends StatefulWidget {
   final int runId;
   final String otpType;
-  const FacultyScanOtpScreen({super.key, required this.runId, required this.otpType});
+  const FacultyScanOtpScreen({
+    super.key,
+    required this.runId,
+    required this.otpType,
+  });
 
   @override
   State<FacultyScanOtpScreen> createState() => _FacultyScanOtpScreenState();
 }
 
-class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with SingleTickerProviderStateMixin {
+class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen>
+    with SingleTickerProviderStateMixin {
   final MobileScannerController cameraController = MobileScannerController(
     detectionSpeed: DetectionSpeed.unrestricted,
     returnImage: false,
@@ -49,7 +54,10 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -100,26 +108,43 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
         return;
       }
 
-      final url = "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/verify-boarding-otp";
+      String url;
+      Map<String, dynamic> body;
+
+      if (widget.otpType == 'EV') {
+        url =
+            "${ApiConstants.baseUrl}/api/battery-vehicle-booking/${widget.runId}/start-scan";
+        body = {"qr_code_data": otp};
+      } else {
+        url =
+            "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/verify-boarding-otp";
+        body = {"otp_code": otp};
+      }
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({
-          "otp_code": otp,
-        }),
+        body: jsonEncode(body),
       );
 
       if (!mounted) return;
       Navigator.pop(context); // Dismiss loading dialog
 
-      final isSuccess = response.statusCode == 200;
-      String message = isSuccess ? "Attendance marked successfully." : "Verification failed.";
+      final isSuccess =
+          response.statusCode == 200 || response.statusCode == 201;
+      String message = isSuccess
+          ? (widget.otpType == 'EV'
+                ? "Scan successful."
+                : "Attendance marked successfully.")
+          : "Verification failed.";
 
       try {
         final Map<String, dynamic> data = json.decode(response.body);
-        if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+        if (data['message'] != null &&
+            data['message'].toString().trim().isNotEmpty) {
           message = data['message'].toString();
-        } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+        } else if (data['error'] != null &&
+            data['error'].toString().trim().isNotEmpty) {
           message = data['error'].toString();
         }
       } catch (_) {}
@@ -151,7 +176,9 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color bgColor = isDark ? const Color(0xFF070A13) : const Color(0xFFEDF2F7);
+    final Color bgColor = isDark
+        ? const Color(0xFF070A13)
+        : const Color(0xFFEDF2F7);
     const Color primaryBlue = Color(0xFF6366F1);
 
     return Scaffold(
@@ -173,9 +200,7 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
               child: Stack(
                 children: [
                   Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.transparent,
-                    ),
+                    decoration: const BoxDecoration(color: Colors.transparent),
                   ),
                   Align(
                     alignment: Alignment.center,
@@ -199,7 +224,10 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
               height: 250,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(40),
-                border: Border.all(color: primaryBlue.withValues(alpha: 0.3), width: 2),
+                border: Border.all(
+                  color: primaryBlue.withValues(alpha: 0.3),
+                  width: 2,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: primaryBlue.withValues(alpha: 0.1),
@@ -284,7 +312,10 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
                   child: BackdropFilter(
                     filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(30),
@@ -327,7 +358,9 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
                           builder: (context, state, child) {
                             final isOn = state.torchState == TorchState.on;
                             return Icon(
-                              isOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                              isOn
+                                  ? Icons.flash_on_rounded
+                                  : Icons.flash_off_rounded,
                               color: isOn ? Colors.yellowAccent : Colors.white,
                               size: 18,
                             );
@@ -352,11 +385,16 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
                   child: BackdropFilter(
                     filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 18,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
                       ),
                       child: Text(
                         "Align the student's boarding QR code inside the frame scanner to verify arrival.",
@@ -404,7 +442,11 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
                         cameraController.start();
                       }
                     },
-                    icon: const Icon(Icons.keyboard_rounded, color: Colors.white, size: 20),
+                    icon: const Icon(
+                      Icons.keyboard_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     label: const Text(
                       "ENTER OTP CODE",
                       style: TextStyle(
@@ -417,7 +459,9 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
                       elevation: 0,
                     ),
                   ),
@@ -434,14 +478,46 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
     const double size = 20;
     const double thickness = 3.5;
     return [
-      Positioned(top: 8, left: 8, child: Container(width: size, height: thickness, color: color)),
-      Positioned(top: 8, left: 8, child: Container(width: thickness, height: size, color: color)),
-      Positioned(top: 8, right: 8, child: Container(width: size, height: thickness, color: color)),
-      Positioned(top: 8, right: 8, child: Container(width: thickness, height: size, color: color)),
-      Positioned(bottom: 8, left: 8, child: Container(width: size, height: thickness, color: color)),
-      Positioned(bottom: 8, left: 8, child: Container(width: thickness, height: size, color: color)),
-      Positioned(bottom: 8, right: 8, child: Container(width: size, height: thickness, color: color)),
-      Positioned(bottom: 8, right: 8, child: Container(width: thickness, height: size, color: color)),
+      Positioned(
+        top: 8,
+        left: 8,
+        child: Container(width: size, height: thickness, color: color),
+      ),
+      Positioned(
+        top: 8,
+        left: 8,
+        child: Container(width: thickness, height: size, color: color),
+      ),
+      Positioned(
+        top: 8,
+        right: 8,
+        child: Container(width: size, height: thickness, color: color),
+      ),
+      Positioned(
+        top: 8,
+        right: 8,
+        child: Container(width: thickness, height: size, color: color),
+      ),
+      Positioned(
+        bottom: 8,
+        left: 8,
+        child: Container(width: size, height: thickness, color: color),
+      ),
+      Positioned(
+        bottom: 8,
+        left: 8,
+        child: Container(width: thickness, height: size, color: color),
+      ),
+      Positioned(
+        bottom: 8,
+        right: 8,
+        child: Container(width: size, height: thickness, color: color),
+      ),
+      Positioned(
+        bottom: 8,
+        right: 8,
+        child: Container(width: thickness, height: size, color: color),
+      ),
     ];
   }
 }
@@ -460,7 +536,11 @@ class _FacultyScanOtpScreenState extends State<FacultyScanOtpScreen> with Single
 class FacultyEnterOtpScreen extends StatefulWidget {
   final int runId;
   final String otpType;
-  const FacultyEnterOtpScreen({super.key, required this.runId, required this.otpType});
+  const FacultyEnterOtpScreen({
+    super.key,
+    required this.runId,
+    required this.otpType,
+  });
 
   @override
   State<FacultyEnterOtpScreen> createState() => _FacultyEnterOtpScreenState();
@@ -492,7 +572,9 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
     super.initState();
 
     _controller.addListener(_onTextChanged);
-    _focusNode.addListener(() { if (mounted) setState(() {}); });
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
 
     _shakeController = AnimationController(
       vsync: this,
@@ -553,7 +635,10 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -579,31 +664,51 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
       if (token == null) {
         _showSnackBar("Session expired. Please log in again.", Colors.red);
         if (context.mounted) {
-          showTopToast(context, "Session expired. Please log in again.", isError: true);
+          showTopToast(
+            context,
+            "Session expired. Please log in again.",
+            isError: true,
+          );
         }
         setState(() => _isProcessing = false);
         _focusNode.requestFocus();
         return;
       }
 
-      final url =
-          "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/verify-boarding-otp";
+      String url;
+      Map<String, dynamic> body;
+      if (widget.otpType == 'EV') {
+        url =
+            "${ApiConstants.baseUrl}/api/battery-vehicle-booking/${widget.runId}/start-scan";
+        body = {"otp": otp};
+      } else {
+        url =
+            "${ApiConstants.baseUrl}/daily-bus/daily-bus-runs/operations/${widget.runId}/verify-boarding-otp";
+        body = {"otp_code": otp};
+      }
+
       final response = await http.post(
         Uri.parse(url),
         headers: ApiConstants.getHeaders(token),
-        body: jsonEncode({"otp_code": otp}),
+        body: jsonEncode(body),
       );
 
       if (!mounted) return;
 
-      final isSuccess = response.statusCode == 200;
-      String message =
-          isSuccess ? "Attendance marked successfully" : "Invalid OTP check the QR code";
+      final isSuccess =
+          response.statusCode == 200 || response.statusCode == 201;
+      String message = isSuccess
+          ? (widget.otpType == 'EV'
+                ? "Ride started successfully"
+                : "Attendance marked successfully")
+          : "Invalid OTP check the QR code";
       try {
         final Map<String, dynamic> data = json.decode(response.body);
-        if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
+        if (data['message'] != null &&
+            data['message'].toString().trim().isNotEmpty) {
           message = data['message'].toString();
-        } else if (data['error'] != null && data['error'].toString().trim().isNotEmpty) {
+        } else if (data['error'] != null &&
+            data['error'].toString().trim().isNotEmpty) {
           message = data['error'].toString();
         }
       } catch (_) {}
@@ -639,7 +744,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
     } catch (e) {
       if (!mounted) return;
       _showSnackBar("Connection error: $e", Colors.red);
-      if (context.mounted) showTopToast(context, "Connection error: $e", isError: true);
+      if (context.mounted)
+        showTopToast(context, "Connection error: $e", isError: true);
       _controller.clear();
       setState(() {
         _isProcessing = false;
@@ -653,8 +759,9 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color subColor =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final Color subColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF475569);
     const Color primaryBlue = Color(0xFF6366F1);
 
     final bgGradient = isDark
@@ -684,7 +791,10 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
         title: Text(
           "OTP Entry",
           style: GoogleFonts.outfit(
-              color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+            color: textColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
       ),
@@ -701,7 +811,9 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 20.0),
+                    horizontal: 24.0,
+                    vertical: 20.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -709,9 +821,10 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                       Text(
                         "Enter Verification Code",
                         style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: textColor),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: textColor,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Padding(
@@ -739,7 +852,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                               gradient: RadialGradient(
                                 colors: [
                                   primaryBlue.withValues(
-                                      alpha: isDark ? 0.16 : 0.08),
+                                    alpha: isDark ? 0.16 : 0.08,
+                                  ),
                                   primaryBlue.withValues(alpha: 0.0),
                                 ],
                               ),
@@ -751,8 +865,10 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                                   MediaQuery.of(context).size.width * 0.85,
                               maxHeight: 250,
                             ),
-                            child: Lottie.asset('assets/bus.json',
-                                fit: BoxFit.contain),
+                            child: Lottie.asset(
+                              'assets/bus.json',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ],
                       ),
@@ -764,15 +880,18 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                       Text(
                         "${_controller.text.length}/6 digits entered",
                         style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: subColor),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: subColor,
+                        ),
                       ),
 
                       const SizedBox(height: 60),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: isDark
                               ? const Color(0xFF1E293B).withValues(alpha: 0.5)
@@ -787,8 +906,11 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.shield_rounded,
-                                color: primaryBlue, size: 18),
+                            const Icon(
+                              Icons.shield_rounded,
+                              color: primaryBlue,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               "Secured with Tripzo Fleet Gateway",
@@ -808,10 +930,11 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
               if (_isProcessing)
                 Positioned.fill(
                   child: Container(
-                    color: (isDark
-                            ? const Color(0xFF0F172A)
-                            : const Color(0xFFF8FAFC))
-                        .withValues(alpha: 0.7),
+                    color:
+                        (isDark
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFFF8FAFC))
+                            .withValues(alpha: 0.7),
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.all(24),
@@ -829,7 +952,8 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                           ],
                         ),
                         child: const CircularProgressIndicator(
-                            color: primaryBlue),
+                          color: primaryBlue,
+                        ),
                       ),
                     ),
                   ),
@@ -841,8 +965,7 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
     );
   }
 
-  Widget _buildPasscodeBoxes(
-      Color textColor, Color primaryBlue, bool isDark) {
+  Widget _buildPasscodeBoxes(Color textColor, Color primaryBlue, bool isDark) {
     return SizedBox(
       height: 80,
       child: Stack(
@@ -875,17 +998,14 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
 
           // ── Six visual digit boxes ───────────────────────────────────────
           AnimatedBuilder(
-            animation:
-                Listenable.merge([_shakeAnimation, _mergeAnimation]),
+            animation: Listenable.merge([_shakeAnimation, _mergeAnimation]),
             builder: (context, child) {
               final double shakeOffset = _shakeAnimation.value * 12.0;
               final double mergeVal = _mergeAnimation.value;
 
-              final double screenWidth =
-                  MediaQuery.of(context).size.width;
+              final double screenWidth = MediaQuery.of(context).size.width;
               final double availableWidth = screenWidth - 48;
-              double baseBoxWidth =
-                  (availableWidth - (5 * 12)) / 6;
+              double baseBoxWidth = (availableWidth - (5 * 12)) / 6;
               baseBoxWidth = baseBoxWidth.clamp(35.0, 55.0);
               final double baseBoxHeight = baseBoxWidth * 1.35;
 
@@ -900,15 +1020,14 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                     children: List.generate(6, (index) {
                       final bool hasDigit = index < otp.length;
                       // Highlight the next empty slot as "active".
-                      final bool isCurrent = !_isProcessing &&
+                      final bool isCurrent =
+                          !_isProcessing &&
                           !_isSuccess &&
                           index == otp.length &&
                           _focusNode.hasFocus;
 
                       final double translationX =
-                          -(index - 2.5) *
-                              (baseBoxWidth + 12.0) *
-                              mergeVal;
+                          -(index - 2.5) * (baseBoxWidth + 12.0) * mergeVal;
 
                       Color bgCol = isDark
                           ? const Color(0xFF1E293B)
@@ -922,48 +1041,46 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                         bgCol = Colors.red.withValues(alpha: 0.05);
                       } else if (_isSuccess) {
                         borderCol = Colors.green;
-                        bgCol =
-                            Colors.green.withValues(alpha: 0.05);
+                        bgCol = Colors.green.withValues(alpha: 0.05);
                       } else if (isCurrent) {
                         borderCol = primaryBlue;
                       }
 
                       final Color finalBgCol = Color.lerp(
-                          bgCol,
-                          Colors.green.withValues(alpha: 0.05),
-                          mergeVal)!;
+                        bgCol,
+                        Colors.green.withValues(alpha: 0.05),
+                        mergeVal,
+                      )!;
                       final Color finalBorderCol = Color.lerp(
-                          borderCol, Colors.green, mergeVal)!;
+                        borderCol,
+                        Colors.green,
+                        mergeVal,
+                      )!;
 
                       return Transform.translate(
                         offset: Offset(translationX, 0),
                         child: Opacity(
-                          opacity:
-                              (1.0 - mergeVal).clamp(0.0, 1.0),
+                          opacity: (1.0 - mergeVal).clamp(0.0, 1.0),
                           child: Container(
                             width: baseBoxWidth,
                             height: baseBoxHeight,
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 6),
+                            margin: const EdgeInsets.symmetric(horizontal: 6),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: finalBgCol,
-                              borderRadius:
-                                  BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: finalBorderCol,
-                                width: (_isSuccess ||
-                                        isCurrent ||
-                                        _isError)
+                                width: (_isSuccess || isCurrent || _isError)
                                     ? 2.0
                                     : 1.0,
                               ),
                               boxShadow: isCurrent
                                   ? [
                                       BoxShadow(
-                                        color: primaryBlue
-                                            .withValues(
-                                                alpha: 0.25),
+                                        color: primaryBlue.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         blurRadius: 10,
                                         spreadRadius: 1.5,
                                       ),
@@ -1005,16 +1122,12 @@ class _FacultyEnterOtpScreenState extends State<FacultyEnterOtpScreen>
                     width: 48,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E293B)
-                          : Colors.white,
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border:
-                          Border.all(color: Colors.green, width: 2),
+                      border: Border.all(color: Colors.green, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              Colors.green.withValues(alpha: 0.15),
+                          color: Colors.green.withValues(alpha: 0.15),
                           blurRadius: 10,
                           spreadRadius: 1,
                         ),

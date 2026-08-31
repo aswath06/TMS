@@ -1,7 +1,10 @@
+import 'package:tripzo/screens/faculty/request/new_battery_vehicle_request_screen.dart';
+import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:tripzo/screens/faculty/faculty_scan_otp_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
@@ -23,7 +26,8 @@ class MissionsScreen extends ConsumerStatefulWidget {
   ConsumerState<MissionsScreen> createState() => _MissionsScreenState();
 }
 
-class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTickerProviderStateMixin {
+class _MissionsScreenState extends ConsumerState<MissionsScreen>
+    with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
@@ -43,19 +47,32 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    
+
+    // Fetch EV data
+    Future.microtask(() {
+      final evStore = ref.read(batteryVehicleStoreProvider);
+      evStore.fetchPassengerBookings();
+      evStore.fetchLocations();
+    });
+
     final String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final store = ref.read(requestStoreProvider);
-    _selectedDateFilter = store.currentRouteDate.isNotEmpty ? store.currentRouteDate : todayStr;
-    
+    _selectedDateFilter = store.currentRouteDate.isNotEmpty
+        ? store.currentRouteDate
+        : todayStr;
+
     // Approximate initial offset
-    _dateScrollController = ScrollController(initialScrollOffset: (_infiniteScrollMiddle * 68.0) - 100);
+    _dateScrollController = ScrollController(
+      initialScrollOffset: (_infiniteScrollMiddle * 68.0) - 100,
+    );
     _dateScrollController.addListener(() {
       if (!mounted) return;
       final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
-      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
-      final bool isFar = (_dateScrollController.offset - todayOffset).abs() > (15 * 68.0);
-      
+      final double todayOffset =
+          (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
+      final bool isFar =
+          (_dateScrollController.offset - todayOffset).abs() > (15 * 68.0);
+
       if (_isScrolledFarFromToday != isFar) {
         setState(() {
           _isScrolledFarFromToday = isFar;
@@ -67,36 +84,57 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     _jumpAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -8.0).chain(CurveTween(curve: Curves.easeOut)), weight: 50.0),
-      TweenSequenceItem(tween: Tween(begin: -8.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50.0),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: -8.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50.0,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: -8.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 50.0,
+      ),
     ]).animate(_jumpController);
 
     _jumpTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted && _selectedDateFilter != DateFormat('yyyy-MM-dd').format(DateTime.now())) {
+      if (mounted &&
+          _selectedDateFilter !=
+              DateFormat('yyyy-MM-dd').format(DateTime.now())) {
         _jumpController.forward(from: 0.0);
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
-      final double todayOffset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34; // 34 is half item width (60 width + 8 margin)
-      
+      final double todayOffset =
+          (_infiniteScrollMiddle * 68.0) -
+          (listWidth / 2) +
+          34; // 34 is half item width (60 width + 8 margin)
+
       DateTime selectedDate;
       try {
         selectedDate = DateFormat('yyyy-MM-dd').parse(_selectedDateFilter);
       } catch (e) {
         selectedDate = DateTime.now();
       }
-      
+
       final DateTime now = DateTime.now();
       final DateTime todayDate = DateTime(now.year, now.month, now.day);
-      final DateTime selDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+      final DateTime selDate = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+      );
       final int diffDays = selDate.difference(todayDate).inDays;
-      
+
       _dateScrollController.jumpTo(todayOffset + (diffDays * 68.0));
-      
+
       final store = ref.read(requestStoreProvider);
       if (store.requests.isEmpty && !store.isLoading) {
         store.fetchRequests(isRefresh: true, routeDate: _selectedDateFilter);
@@ -126,7 +164,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
-        ref.read(requestStoreProvider).fetchRequests(isRefresh: true, search: query);
+        ref
+            .read(requestStoreProvider)
+            .fetchRequests(isRefresh: true, search: query);
       }
     });
   }
@@ -145,24 +185,96 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
         : const Color(0xFFF8FAFC);
 
     final store = ref.watch(requestStoreProvider);
-    
-    final missions = store.requests.where((req) {
+    final evStore = ref.watch(batteryVehicleStoreProvider);
+    final driverStore = ref.watch(driverStoreProvider);
+
+    String _getEvLocationName(dynamic id, List<dynamic> locations) {
+      if (id == null) return '-';
+      final idStr = id.toString();
+      for (var loc in locations) {
+        if (loc['id']?.toString() == idStr) {
+          return loc['name'] ?? idStr;
+        }
+      }
+      return idStr;
+    }
+
+    List<dynamic> combined = List.from(store.requests);
+    for (var b in evStore.passengerBookings) {
+      final actualId = b['id'] ?? b['booking_id'];
+      String fromName =
+          b['from_location'] ??
+          _getEvLocationName(b['from_location_id'], evStore.locations);
+      String toName =
+          b['to_location'] ??
+          _getEvLocationName(b['to_location_id'], evStore.locations);
+      combined.add({
+        'isEv': true,
+        'id': actualId,
+        'dbId': actualId,
+        'status': b['status'] ?? 'PENDING',
+        'rawStatus': (b['status'] == 'PENDING')
+            ? 1
+            : (b['status'] == 'COMPLETED' ? 10 : 2),
+        'vehicle': "Battery Vehicle",
+        'vehicleInfo': b['reason'] ?? "Transport Request",
+        'date': b['created_at'] != null
+            ? b['created_at'].toString().split('T')[0]
+            : "TBD",
+        'pickup': fromName,
+        'drop': toName,
+        'passengers': 1,
+        'travelType': 'One-Way',
+        'drivers': () {
+          if (b['driver'] != null) return [b['driver']];
+          if (b['driver_id'] != null) {
+            try {
+              final d = driverStore.drivers.firstWhere(
+                (drv) => drv['id'].toString() == b['driver_id'].toString(),
+              );
+              return [
+                {
+                  'name': d['name'] ?? 'Driver',
+                  'phone': d['phone_number'] ?? d['mobile'] ?? '',
+                },
+              ];
+            } catch (e) {
+              return [
+                {'name': 'Driver #${b['driver_id']} (Unknown)', 'phone': ''},
+              ];
+            }
+          }
+          return [];
+        }(),
+        'qr_data': b['id']?.toString() ?? '',
+      });
+    }
+
+    final missions = combined.where((req) {
       final String s = (req['status'] ?? "").toString().toUpperCase();
-      
+
+      if (_selectedDateFilter != 'ALL') {
+        final itemDate = req['date'] ?? '';
+        if (itemDate != _selectedDateFilter) return false;
+      }
+
       if (_selectedFilter == 'ALL') return true;
       if (_selectedFilter == 'APPROVED') {
-        return (s == 'APPROVED' || s == 'VEHICLE APPROVED' || s == 'PLANNED') && 
-               s != 'STARTED' && s != 'ONGOING';
+        return (s == 'APPROVED' || s == 'VEHICLE APPROVED' || s == 'PLANNED') &&
+            s != 'STARTED' &&
+            s != 'ONGOING';
       }
-      if (_selectedFilter == 'DRAFT') return s == 'DRAFT' || s == 'PENDING' || s == 'SUBMITTED';
+      if (_selectedFilter == 'DRAFT')
+        return s == 'DRAFT' || s == 'PENDING' || s == 'SUBMITTED';
       if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING';
       if (_selectedFilter == 'COMPLETED') return s == 'COMPLETED';
-      
+
       return true;
     }).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
+
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,17 +310,151 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                         children: [
                           IconButton(
                             onPressed: () async {
-                              final refresh = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const NewRequestScreen(),
+                              final store = ref.read(
+                                batteryVehicleStoreProvider,
+                              );
+                              // Auto refresh config when + is clicked
+                              try {
+                                await store.fetchBookingConfig();
+                              } catch (_) {}
+
+                              if (!mounted) return;
+
+                              // Default to false if config fails or is null, unless you want it true by default.
+                              // Actually, if it's off in backend, we want it off.
+                              // Let's check what the backend actually returns. Sometimes it returns 1 or 0 for booleans.
+                              var rawVal = store
+                                  .bookingConfig['is_faculty_booking_enabled'];
+                              bool isEvEnabled = true;
+                              if (rawVal != null) {
+                                if (rawVal is bool)
+                                  isEvEnabled = rawVal;
+                                else if (rawVal is int)
+                                  isEvEnabled = rawVal == 1;
+                                else if (rawVal is String)
+                                  isEvEnabled =
+                                      rawVal.toLowerCase() == 'true' ||
+                                      rawVal == '1';
+                              }
+
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: isDark
+                                    ? const Color(0xFF1E293B)
+                                    : Colors.white,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(24),
+                                  ),
+                                ),
+                                builder: (context) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 24,
+                                    horizontal: 20,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        "Create New Request",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: const Color(
+                                            0xFF6366F1,
+                                          ).withValues(alpha: 0.1),
+                                          child: const Icon(
+                                            Icons.directions_bus_rounded,
+                                            color: Color(0xFF6366F1),
+                                          ),
+                                        ),
+                                        title: Text(
+                                          "Bus/Route Request",
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          "Request a standard bus or route",
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const NewRequestScreen(),
+                                            ),
+                                          ).then((value) {
+                                            if (value == true) {
+                                              ref
+                                                  .read(requestStoreProvider)
+                                                  .fetchRequests();
+                                            }
+                                          });
+                                        },
+                                      ),
+                                      if (isEvEnabled) const Divider(),
+                                      if (isEvEnabled)
+                                        ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundColor: Colors.green
+                                                .withValues(alpha: 0.1),
+                                            child: const Icon(
+                                              Icons.electric_car_rounded,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                          title: Text(
+                                            "Battery Vehicle",
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            "Request an EV for campus transport",
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : Colors.black54,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const NewBatteryVehicleRequestScreen(),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               );
-                              if (refresh == true) {
-                                if (context.mounted) {
-                                  ref.read(requestStoreProvider).fetchRequests();
-                                }
-                              }
                             },
                             icon: Icon(
                               Icons.add_circle_outline_rounded,
@@ -217,7 +463,12 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                             ),
                           ),
                           IconButton(
-                            onPressed: () => _showReportGenerationSheet(primaryBlue, titleColor, subColor, isDark),
+                            onPressed: () => _showReportGenerationSheet(
+                              primaryBlue,
+                              titleColor,
+                              subColor,
+                              isDark,
+                            ),
                             icon: Icon(
                               Icons.file_download_outlined,
                               color: subColor,
@@ -240,7 +491,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(child: _buildSearchBar(isDark, primaryBlue, subColor)),
+                      Expanded(
+                        child: _buildSearchBar(isDark, primaryBlue, subColor),
+                      ),
                       const SizedBox(width: 12),
                       _buildFilterButton(primaryBlue, titleColor, isDark),
                     ],
@@ -258,7 +511,12 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                       ),
                       Builder(
                         builder: (context) {
-                          final bool shouldShowJump = (_selectedDateFilter != DateFormat('yyyy-MM-dd').format(DateTime.now())) || _isScrolledFarFromToday;
+                          final bool shouldShowJump =
+                              (_selectedDateFilter !=
+                                  DateFormat(
+                                    'yyyy-MM-dd',
+                                  ).format(DateTime.now())) ||
+                              _isScrolledFarFromToday;
                           return AnimatedOpacity(
                             duration: const Duration(milliseconds: 300),
                             opacity: shouldShowJump ? 1.0 : 0.0,
@@ -273,42 +531,71 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               child: IgnorePointer(
                                 ignoring: !shouldShowJump,
                                 child: GestureDetector(
-                              onTap: () {
-                                final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                                if (_selectedDateFilter != todayStr) {
-                                  setState(() => _selectedDateFilter = todayStr);
-                                  ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: todayStr);
-                                }
-                                
-                                final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
-                                final double offset = (_infiniteScrollMiddle * 68.0) - (listWidth / 2) + 34;
-                                _dateScrollController.animateTo(offset, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.fast_rewind_rounded, size: 14, color: primaryBlue),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      "Jump to Today",
-                                      style: TextStyle(
-                                        color: primaryBlue,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                        decoration: TextDecoration.underline,
-                                        decorationColor: primaryBlue,
+                                  onTap: () {
+                                    final todayStr = DateFormat(
+                                      'yyyy-MM-dd',
+                                    ).format(DateTime.now());
+                                    if (_selectedDateFilter != todayStr) {
+                                      setState(
+                                        () => _selectedDateFilter = todayStr,
+                                      );
+                                      ref
+                                          .read(requestStoreProvider)
+                                          .fetchRequests(
+                                            isRefresh: true,
+                                            routeDate: todayStr,
+                                          );
+                                    }
+
+                                    final double listWidth =
+                                        MediaQuery.of(context).size.width -
+                                        48 -
+                                        77;
+                                    final double offset =
+                                        (_infiniteScrollMiddle * 68.0) -
+                                        (listWidth / 2) +
+                                        34;
+                                    _dateScrollController.animateTo(
+                                      offset,
+                                      duration: const Duration(
+                                        milliseconds: 400,
                                       ),
+                                      curve: Curves.easeOutCubic,
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 6,
+                                      horizontal: 4,
                                     ),
-                                  ],
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.fast_rewind_rounded,
+                                          size: 14,
+                                          color: primaryBlue,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          "Jump to Today",
+                                          style: TextStyle(
+                                            color: primaryBlue,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor: primaryBlue,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -320,21 +607,36 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               child: store.isLoading && missions.isEmpty
                   ? _buildRequestsSkeleton(isDark, cardColor)
                   : RefreshIndicator(
-                      onRefresh: () => store.fetchRequests(isRefresh: true),
+                      onRefresh: () async {
+                        await store.fetchRequests(isRefresh: true);
+                        await ref
+                            .read(batteryVehicleStoreProvider)
+                            .fetchPassengerBookings();
+                        try {
+                          await ref.read(driverStoreProvider).fetchDrivers();
+                        } catch (e) {}
+                      },
                       child: missions.isEmpty
                           ? ListView(
                               children: [
                                 SizedBox(
-                                  height: MediaQuery.of(context).size.height * 0.3,
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.3,
                                 ),
                                 Center(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.auto_awesome_motion_rounded, size: 48, color: subColor.withValues(alpha: 0.2)),
+                                      Icon(
+                                        Icons.auto_awesome_motion_rounded,
+                                        size: 48,
+                                        color: subColor.withValues(alpha: 0.2),
+                                      ),
                                       const SizedBox(height: 16),
                                       Text(
-                                        _selectedFilter == 'ALL' ? "No active missions" : "No $_selectedFilter missions found",
+                                        _selectedFilter == 'ALL'
+                                            ? "No active missions"
+                                            : "No $_selectedFilter missions found",
                                         style: TextStyle(
                                           color: subColor,
                                           fontWeight: FontWeight.bold,
@@ -345,7 +647,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                 ),
                               ],
                             )
-                          : _buildGroupedMissionsList(missions, cardColor, titleColor, subColor, primaryBlue),
+                          : _buildGroupedMissionsList(
+                              missions,
+                              cardColor,
+                              titleColor,
+                              subColor,
+                              primaryBlue,
+                            ),
                     ),
             ),
           ],
@@ -366,6 +674,16 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
   Widget _buildStatusBadge(String status) {
     final String s = status.toUpperCase();
     final Map<String, Map<String, Color>> statusStyles = {
+      'PENDING': {
+        'bg': const Color(0xFFFFFBEB),
+        'text': const Color(0xFFF59E0B),
+        'border': const Color(0xFFFDE68A),
+      },
+      'ACCEPTED': {
+        'bg': const Color(0xFFECFDF5),
+        'text': const Color(0xFF10B981),
+        'border': const Color(0xFFA7F3D0),
+      },
       'DRAFT': {
         'bg': const Color(0xFFFFFBEB),
         'text': const Color(0xFFF59E0B),
@@ -413,7 +731,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
       },
     };
 
-    final style = statusStyles[s] ??
+    final style =
+        statusStyles[s] ??
         {
           'bg': Colors.grey.withValues(alpha: 0.1),
           'text': Colors.grey,
@@ -487,7 +806,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
     String driverNameHead = "Driver Assigned";
     String driverPhoneHead = "N/A";
 
-    final bool isDraftCard = status.toUpperCase() == 'DRAFT' || rawStatus == 1 || rawStatus == 10;
+    final bool isDraftCard =
+        status.toUpperCase() == 'DRAFT' || rawStatus == 1 || rawStatus == 10;
 
     if (isDraftCard) {
       driverNameHead = "No Driver Assigned";
@@ -495,28 +815,35 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
       driverNameHead = drivers.map((d) => d['name'] ?? "Driver").join(", ");
       driverPhoneHead = drivers.map((d) => d['phone'] ?? "N/A").join(", ");
     }
+    final bool isEv = missionTitle == "Battery Vehicle";
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MissionDetailsScreen(
-            missionTitle: missionTitle,
-            time: time,
-            driverName: driverNameHead,
-            driverPhone: driverPhoneHead,
-            vehicleInfo: vehicleInfo,
-            capacity: capacity, // Keep for vehicle capacity label if needed
-            passengerCount: capacity, // Using the capacity variable which stores passengers count here
-            pathType: pathType,
-            stops: detailedStops,
-            status: status,
-            statusColor: statusColor,
-            requestId: requestId,
-            rawStatus: rawStatus,
-            creatorName: creatorName,
-          ),
-        ),
-      ),
+      onTap: isEv
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MissionDetailsScreen(
+                    missionTitle: missionTitle,
+                    time: time,
+                    driverName: driverNameHead,
+                    driverPhone: driverPhoneHead,
+                    vehicleInfo: vehicleInfo,
+                    capacity:
+                        capacity, // Keep for vehicle capacity label if needed
+                    passengerCount:
+                        capacity, // Using the capacity variable which stores passengers count here
+                    pathType: pathType,
+                    stops: detailedStops,
+                    status: status,
+                    statusColor: statusColor,
+                    requestId: requestId,
+                    rawStatus: rawStatus,
+                    creatorName: creatorName,
+                  ),
+                ),
+              );
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
@@ -553,7 +880,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (status.toUpperCase() == 'COMPLETED' && allowanceNeeded != null) ...[
+                    if (status.toUpperCase() == 'COMPLETED' &&
+                        allowanceNeeded != null) ...[
                       _buildAllowanceBadge(allowanceNeeded),
                       const SizedBox(width: 8),
                     ],
@@ -591,7 +919,12 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               ],
             ),
             const SizedBox(height: 16),
-            _buildDriverMinimal(primaryBlue, driverNameHead, vehicleInfo, subColor),
+            _buildDriverMinimal(
+              primaryBlue,
+              driverNameHead,
+              vehicleInfo,
+              subColor,
+            ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -617,25 +950,59 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               ],
             ),
             const SizedBox(height: 16),
-            ...detailedStops
-                .asMap()
-                .entries
-                .map(
-                  (entry) {
-                    bool isReached = status.toUpperCase() == 'COMPLETED' || entry.key == 0;
-                    bool isNextReached = status.toUpperCase() == 'COMPLETED';
-                    return _buildSimpleTimelineRow(
-                      entry.key,
-                      entry.value['location']!,
-                      entry.key == detailedStops.length - 1,
-                      primaryBlue,
-                      titleColor,
-                      subColor,
-                      isReached,
-                      isNextReached,
+            ...detailedStops.asMap().entries.map((entry) {
+              bool isReached = isEv
+                  ? true
+                  : (status.toUpperCase() == 'COMPLETED' || entry.key == 0);
+              bool isNextReached = isEv
+                  ? true
+                  : (status.toUpperCase() == 'COMPLETED');
+              return _buildSimpleTimelineRow(
+                entry.key,
+                entry.value['location'] ?? 'Stop',
+                entry.key == detailedStops.length - 1,
+                primaryBlue,
+                titleColor,
+                subColor,
+                isReached,
+                isNextReached,
+              );
+            }),
+            if (isEv &&
+                (status.toUpperCase() == 'ACCEPTED' ||
+                    status.toUpperCase() == 'STARTED')) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FacultyScanOtpScreen(
+                          runId: int.tryParse(requestId) ?? 0,
+                          otpType: 'EV',
+                        ),
+                      ),
                     );
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  label: const Text(
+                    "Scan QR",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                 ),
+              ),
+            ],
           ],
         ),
       ),
@@ -712,7 +1079,12 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               ),
               if (!isLast)
                 Expanded(
-                  child: Container(width: 2, color: isNextReached ? blue.withValues(alpha: 0.3) : Colors.grey.shade300),
+                  child: Container(
+                    width: 2,
+                    color: isNextReached
+                        ? blue.withValues(alpha: 0.3)
+                        : Colors.grey.shade300,
+                  ),
                 ),
             ],
           ),
@@ -749,7 +1121,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
           ),
         ],
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
         ),
       ),
       child: TextField(
@@ -802,7 +1176,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
             ),
           ],
           border: Border.all(
-            color: d ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+            color: d
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
         child: Icon(Icons.tune_rounded, color: p, size: 24),
@@ -839,47 +1215,83 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                   return Wrap(
                     spacing: 8,
                     runSpacing: 12,
-                    children: ['ALL', 'APPROVED', 'DRAFT', 'STARTED', 'COMPLETED'].map((label) {
-                      bool isS = _selectedFilter == label;
-                      return GestureDetector(
-                        onTap: () {
-                          if (_selectedFilter == label) return;
-                          setState(() => _selectedFilter = label);
-                          setModalState(() {});
-                          
-                          String mappedStatus = "";
-                          if (label == 'APPROVED') {
-                            mappedStatus = "APPROVED,VEHICLE APPROVED,PLANNED";
-                          } else if (label == 'DRAFT') mappedStatus = "DRAFT,PENDING,SUBMITTED";
-                          else if (label == 'STARTED') mappedStatus = "STARTED,ONGOING";
-                          else if (label == 'COMPLETED') mappedStatus = "COMPLETED";
-                          
-                          ref.read(requestStoreProvider).fetchRequests(isRefresh: true, statuses: mappedStatus);
-                          Navigator.pop(context);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isS ? p : (d ? const Color(0xFF1E293B) : Colors.white),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: isS ? p : t.withValues(alpha: 0.1), width: 1.5),
-                            boxShadow: isS ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
-                          ),
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              color: isS ? Colors.white : t.withValues(alpha: 0.6),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
+                    children:
+                        [
+                          'ALL',
+                          'APPROVED',
+                          'DRAFT',
+                          'STARTED',
+                          'COMPLETED',
+                        ].map((label) {
+                          bool isS = _selectedFilter == label;
+                          return GestureDetector(
+                            onTap: () {
+                              if (_selectedFilter == label) return;
+                              setState(() => _selectedFilter = label);
+                              setModalState(() {});
+
+                              String mappedStatus = "";
+                              if (label == 'APPROVED') {
+                                mappedStatus =
+                                    "APPROVED,VEHICLE APPROVED,PLANNED";
+                              } else if (label == 'DRAFT')
+                                mappedStatus = "DRAFT,PENDING,SUBMITTED";
+                              else if (label == 'STARTED')
+                                mappedStatus = "STARTED,ONGOING";
+                              else if (label == 'COMPLETED')
+                                mappedStatus = "COMPLETED";
+
+                              ref
+                                  .read(requestStoreProvider)
+                                  .fetchRequests(
+                                    isRefresh: true,
+                                    statuses: mappedStatus,
+                                  );
+                              Navigator.pop(context);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isS
+                                    ? p
+                                    : (d
+                                          ? const Color(0xFF1E293B)
+                                          : Colors.white),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isS ? p : t.withValues(alpha: 0.1),
+                                  width: 1.5,
+                                ),
+                                boxShadow: isS
+                                    ? [
+                                        BoxShadow(
+                                          color: p.withValues(alpha: 0.3),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: isS
+                                      ? Colors.white
+                                      : t.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        }).toList(),
                   );
-                }
+                },
               ),
               const SizedBox(height: 32),
             ],
@@ -889,7 +1301,12 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
     );
   }
 
-  Widget _buildDateScroller(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+  Widget _buildDateScroller(
+    Color primaryBlue,
+    Color titleColor,
+    Color subColor,
+    bool isDark,
+  ) {
     return Row(
       children: [
         // Fixed ALL option
@@ -897,29 +1314,49 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
           onTap: () {
             if (_selectedDateFilter == 'ALL') return;
             setState(() => _selectedDateFilter = 'ALL');
-            ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: 'ALL');
+            ref
+                .read(requestStoreProvider)
+                .fetchRequests(isRefresh: true, routeDate: 'ALL');
           },
           child: Container(
             width: 65,
             height: 70,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: _selectedDateFilter == 'ALL' ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+              color: _selectedDateFilter == 'ALL'
+                  ? primaryBlue
+                  : (isDark ? const Color(0xFF1E293B) : Colors.white),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _selectedDateFilter == 'ALL' ? primaryBlue : titleColor.withValues(alpha: 0.1),
+                color: _selectedDateFilter == 'ALL'
+                    ? primaryBlue
+                    : titleColor.withValues(alpha: 0.1),
               ),
-              boxShadow: _selectedDateFilter == 'ALL' ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+              boxShadow: _selectedDateFilter == 'ALL'
+                  ? [
+                      BoxShadow(
+                        color: primaryBlue.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : [],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.calendar_today_rounded, size: 20, color: _selectedDateFilter == 'ALL' ? Colors.white : subColor),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 20,
+                  color: _selectedDateFilter == 'ALL' ? Colors.white : subColor,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   "ALL",
                   style: TextStyle(
-                    color: _selectedDateFilter == 'ALL' ? Colors.white : titleColor,
+                    color: _selectedDateFilter == 'ALL'
+                        ? Colors.white
+                        : titleColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -938,33 +1375,56 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               itemBuilder: (context, index) {
-                final date = DateTime.now().add(Duration(days: index - _infiniteScrollMiddle));
+                final date = DateTime.now().add(
+                  Duration(days: index - _infiniteScrollMiddle),
+                );
                 final formattedDateStr = DateFormat('yyyy-MM-dd').format(date);
                 final isSelected = _selectedDateFilter == formattedDateStr;
                 return GestureDetector(
                   onTap: () {
                     if (_selectedDateFilter == formattedDateStr) return;
                     setState(() => _selectedDateFilter = formattedDateStr);
-                    ref.read(requestStoreProvider).fetchRequests(isRefresh: true, routeDate: formattedDateStr);
+                    ref
+                        .read(requestStoreProvider)
+                        .fetchRequests(
+                          isRefresh: true,
+                          routeDate: formattedDateStr,
+                        );
                   },
                   child: Container(
                     width: 60,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? primaryBlue : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                      color: isSelected
+                          ? primaryBlue
+                          : (isDark ? const Color(0xFF1E293B) : Colors.white),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? primaryBlue : titleColor.withValues(alpha: 0.1),
+                        color: isSelected
+                            ? primaryBlue
+                            : titleColor.withValues(alpha: 0.1),
                       ),
-                      boxShadow: isSelected ? [BoxShadow(color: primaryBlue.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: primaryBlue.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : [],
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          DateFormat('E').format(date).toUpperCase(), // e.g., SAT
+                          DateFormat(
+                            'E',
+                          ).format(date).toUpperCase(), // e.g., SAT
                           style: TextStyle(
-                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : subColor,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -979,9 +1439,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                           ),
                         ),
                         Text(
-                          DateFormat('MMM').format(date).toUpperCase(), // e.g., JUN
+                          DateFormat(
+                            'MMM',
+                          ).format(date).toUpperCase(), // e.g., JUN
                           style: TextStyle(
-                            color: isSelected ? Colors.white.withValues(alpha: 0.9) : subColor,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.9)
+                                : subColor,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -997,7 +1461,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
       ],
     );
   }
-  void _showReportGenerationSheet(Color primaryBlue, Color titleColor, Color subColor, bool isDark) {
+
+  void _showReportGenerationSheet(
+    Color primaryBlue,
+    Color titleColor,
+    Color subColor,
+    bool isDark,
+  ) {
     DateTime selectedDate = DateTime.now();
     DateTime fromDate = DateTime.now().subtract(const Duration(days: 7));
     DateTime toDate = DateTime.now();
@@ -1021,7 +1491,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               ),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),
@@ -1053,7 +1525,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                           color: primaryBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(Icons.file_download_outlined, color: primaryBlue, size: 24),
+                        child: Icon(
+                          Icons.file_download_outlined,
+                          color: primaryBlue,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -1088,18 +1564,23 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                     height: 48,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       children: [
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setModalState(() => isRangeReport = true),
+                            onTap: () =>
+                                setModalState(() => isRangeReport = true),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
-                                color: isRangeReport ? primaryBlue : Colors.transparent,
+                                color: isRangeReport
+                                    ? primaryBlue
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               alignment: Alignment.center,
@@ -1110,7 +1591,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                   fontWeight: FontWeight.bold,
                                   color: isRangeReport
                                       ? Colors.white
-                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                      : (isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : const Color(0xFF64748B)),
                                 ),
                               ),
                             ),
@@ -1118,11 +1601,14 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                         ),
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setModalState(() => isRangeReport = false),
+                            onTap: () =>
+                                setModalState(() => isRangeReport = false),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
-                                color: !isRangeReport ? primaryBlue : Colors.transparent,
+                                color: !isRangeReport
+                                    ? primaryBlue
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               alignment: Alignment.center,
@@ -1133,7 +1619,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                   fontWeight: FontWeight.bold,
                                   color: !isRangeReport
                                       ? Colors.white
-                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                      : (isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : const Color(0xFF64748B)),
                                 ),
                               ),
                             ),
@@ -1167,15 +1655,26 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                          border: Border.all(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_month_rounded, color: primaryBlue, size: 22),
+                            Icon(
+                              Icons.calendar_month_rounded,
+                              color: primaryBlue,
+                              size: 22,
+                            ),
                             const SizedBox(width: 16),
                             Text(
                               DateFormat('MMMM dd, yyyy').format(selectedDate),
@@ -1186,7 +1685,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               ),
                             ),
                             const Spacer(),
-                            Icon(Icons.keyboard_arrow_down_rounded, color: subColor, size: 24),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: subColor,
+                              size: 24,
+                            ),
                           ],
                         ),
                       ),
@@ -1210,30 +1713,44 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: () async {
-                                  final picked = await CustomDateTimePicker.show(
-                                    context,
-                                    initialDate: fromDate,
-                                    showTime: false,
-                                    accent: primaryBlue,
-                                  );
+                                  final picked =
+                                      await CustomDateTimePicker.show(
+                                        context,
+                                        initialDate: fromDate,
+                                        showTime: false,
+                                        accent: primaryBlue,
+                                      );
                                   if (picked != null) {
                                     setModalState(() => fromDate = picked);
                                   }
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 18,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                                    border: Border.all(
+                                      color: Colors.grey.withValues(alpha: 0.1),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.event_available_rounded, color: primaryBlue, size: 20),
+                                      Icon(
+                                        Icons.event_available_rounded,
+                                        color: primaryBlue,
+                                        size: 20,
+                                      ),
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
-                                          DateFormat('dd MMM yyyy').format(fromDate),
+                                          DateFormat(
+                                            'dd MMM yyyy',
+                                          ).format(fromDate),
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
@@ -1266,30 +1783,44 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               const SizedBox(height: 12),
                               GestureDetector(
                                 onTap: () async {
-                                  final picked = await CustomDateTimePicker.show(
-                                    context,
-                                    initialDate: toDate,
-                                    showTime: false,
-                                    accent: primaryBlue,
-                                  );
+                                  final picked =
+                                      await CustomDateTimePicker.show(
+                                        context,
+                                        initialDate: toDate,
+                                        showTime: false,
+                                        accent: primaryBlue,
+                                      );
                                   if (picked != null) {
                                     setModalState(() => toDate = picked);
                                   }
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 18,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : const Color(0xFFF8FAFC),
                                     borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                                    border: Border.all(
+                                      color: Colors.grey.withValues(alpha: 0.1),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.event_busy_rounded, color: primaryBlue, size: 20),
+                                      Icon(
+                                        Icons.event_busy_rounded,
+                                        color: primaryBlue,
+                                        size: 20,
+                                      ),
                                       const SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
-                                          DateFormat('dd MMM yyyy').format(toDate),
+                                          DateFormat(
+                                            'dd MMM yyyy',
+                                          ).format(toDate),
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
@@ -1348,7 +1879,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                           onPressed: () => Navigator.pop(context),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                           ),
                           child: Text(
                             "Cancel",
@@ -1369,30 +1902,43 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                               : () async {
                                   setModalState(() => downloading = true);
                                   try {
-                                    final String? token = await UserStore.getToken();
+                                    final String? token =
+                                        await UserStore.getToken();
                                     String startStr;
                                     String endStr;
 
                                     if (isRangeReport) {
-                                      startStr = DateFormat('yyyy-MM-dd').format(fromDate);
-                                      endStr = DateFormat('yyyy-MM-dd').format(toDate);
+                                      startStr = DateFormat(
+                                        'yyyy-MM-dd',
+                                      ).format(fromDate);
+                                      endStr = DateFormat(
+                                        'yyyy-MM-dd',
+                                      ).format(toDate);
                                     } else {
-                                      startStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-                                      endStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                                      startStr = DateFormat(
+                                        'yyyy-MM-dd',
+                                      ).format(selectedDate);
+                                      endStr = DateFormat(
+                                        'yyyy-MM-dd',
+                                      ).format(selectedDate);
                                     }
 
                                     final String url =
                                         "${ApiConstants.baseUrl}/request/reports/date-wise?start_date=$startStr&end_date=$endStr&format=$selectedFormat";
 
                                     // ── DEBUG LOGS ──────────────────────────────────────────────────
-                                    debugPrint("━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━");
+                                    debugPrint(
+                                      "━━━━━━━━━━━━ REPORT DOWNLOAD REQUEST ━━━━━━━━━━━━",
+                                    );
                                     debugPrint("URL: $url");
                                     debugPrint(
                                       "curl --location '$url' \\\n"
                                       "  --header 'Authorization: TMS $token' \\\n"
                                       "  --header 'X-Tunnel-Skip-Anti-Phishing-Page: true'",
                                     );
-                                    debugPrint("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                                    debugPrint(
+                                      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                                    );
 
                                     final response = await http.get(
                                       Uri.parse(url),
@@ -1401,28 +1947,50 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
 
                                     if (response.statusCode == 200) {
                                       final bytes = response.bodyBytes;
-                                      final tempDir = await getTemporaryDirectory();
-                                      final ext = selectedFormat == 'pdf' ? 'pdf' : 'xlsx';
-                                      final fileName = isRangeReport ? "Transport_Report_${startStr}_to_$endStr.$ext" : "Transport_Report_$startStr.$ext";
-                                      final file = File("${tempDir.path}/$fileName");
+                                      final tempDir =
+                                          await getTemporaryDirectory();
+                                      final ext = selectedFormat == 'pdf'
+                                          ? 'pdf'
+                                          : 'xlsx';
+                                      final fileName = isRangeReport
+                                          ? "Transport_Report_${startStr}_to_$endStr.$ext"
+                                          : "Transport_Report_$startStr.$ext";
+                                      final file = File(
+                                        "${tempDir.path}/$fileName",
+                                      );
                                       await file.writeAsBytes(bytes);
 
                                       await OpenFilex.open(file.path);
                                       if (context.mounted) {
                                         Navigator.pop(context);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text("${selectedFormat.toUpperCase()} report downloaded successfully"),
-                                            backgroundColor: const Color(0xFF10B981),
+                                            content: Text(
+                                              "${selectedFormat.toUpperCase()} report downloaded successfully",
+                                            ),
+                                            backgroundColor: const Color(
+                                              0xFF10B981,
+                                            ),
                                             behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
                                           ),
                                         );
                                       }
                                     } else {
-                                      debugPrint(ApiErrorParser.parse(response, fallback: "Report Download Error"));
+                                      debugPrint(
+                                        ApiErrorParser.parse(
+                                          response,
+                                          fallback: "Report Download Error",
+                                        ),
+                                      );
                                       debugPrint("Body: ${response.body}");
-                                      String message = "Failed to generate report";
+                                      String message =
+                                          "Failed to generate report";
                                       try {
                                         final data = json.decode(response.body);
                                         message = data['message'] ?? message;
@@ -1431,12 +1999,23 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
-                                          content: Text(e.toString().replaceAll("Exception: ", "")),
+                                          content: Text(
+                                            e.toString().replaceAll(
+                                              "Exception: ",
+                                              "",
+                                            ),
+                                          ),
                                           backgroundColor: Colors.redAccent,
                                           behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
                                         ),
                                       );
                                     }
@@ -1450,7 +2029,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
                             backgroundColor: primaryBlue,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                             elevation: 0,
                             shadowColor: primaryBlue.withValues(alpha: 0.4),
                           ),
@@ -1483,7 +2064,14 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
     );
   }
 
-  Widget _buildFormatRadio(String label, bool isSelected, VoidCallback onTap, Color primaryBlue, Color titleColor, bool isDark) {
+  Widget _buildFormatRadio(
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+    Color primaryBlue,
+    Color titleColor,
+    bool isDark,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -1491,10 +2079,16 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
           decoration: BoxDecoration(
-            color: isSelected ? primaryBlue.withValues(alpha: 0.08) : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+            color: isSelected
+                ? primaryBlue.withValues(alpha: 0.08)
+                : (isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.white),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? primaryBlue : Colors.grey.withValues(alpha: 0.15),
+              color: isSelected
+                  ? primaryBlue
+                  : Colors.grey.withValues(alpha: 0.15),
               width: 2,
             ),
           ),
@@ -1504,7 +2098,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
               Text(
                 label,
                 style: GoogleFonts.plusJakartaSans(
-                  color: isSelected ? primaryBlue : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                  color: isSelected
+                      ? primaryBlue
+                      : (isDark ? Colors.white70 : const Color(0xFF334155)),
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                 ),
@@ -1520,7 +2116,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
     );
   }
 
-  Widget _buildGroupedMissionsList(List<dynamic> missions, Color cardColor, Color titleColor, Color subColor, Color primaryBlue) {
+  Widget _buildGroupedMissionsList(
+    List<dynamic> missions,
+    Color cardColor,
+    Color titleColor,
+    Color subColor,
+    Color primaryBlue,
+  ) {
     // Group missions by date
     final Map<String, List<dynamic>> grouped = {};
     for (var m in missions) {
@@ -1534,12 +2136,19 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
 
     return ListView.builder(
       controller: _scrollController,
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
       itemCount: sortedDates.length + (store.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == sortedDates.length) {
-          return const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 24), child: CircularProgressIndicator()));
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
 
         final date = sortedDates[index];
@@ -1550,44 +2159,52 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
           children: [
             _buildDateHeader(date, primaryBlue),
             const SizedBox(height: 16),
-            ...dayMissions.map((mission) => _buildMissionCard(
-              context,
-              cardColor: cardColor,
-              titleColor: titleColor,
-              subColor: subColor,
-              requestId: mission['dbId']?.toString() ?? mission['id']?.toString() ?? "",
-              rawStatus: mission['rawStatus'] ?? 0,
-              missionTitle: mission['vehicle'] ?? "Transport Request",
-              time: mission['date'] ?? "TBD",
-              drivers: mission['drivers'] ?? [],
-              vehicleInfo: mission['vehicleInfo'] ?? mission['vehicle'] ?? "Pending",
-              capacity: mission['passengers'].toString(),
-              pathType: mission['travelType'] ?? "One-Way",
-              detailedStops: [
-                {
-                  'location': mission['pickup'] ?? "Start",
-                  'eta': "Start",
-                  'type': 'Pickup',
-                },
-                if (mission['intermediateStops'] is List)
-                ... (mission['intermediateStops'] as List).map((s) => {
-                  'location': s.toString(),
-                  'eta': "Transit",
-                  'type': 'Transit',
-                }),
-                {
-                  'location': mission['drop'] ?? "Destination",
-                  'eta': "End",
-                  'type': 'Drop',
-                },
-              ],
-              status: mission['status'] ?? "Active",
-              statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
-              statusColor: _getStatusColor(mission['status'] ?? "Active"),
-              primaryBlue: primaryBlue,
-              creatorName: mission['faculty'] ?? "Unknown Faculty",
-              allowanceNeeded: mission['allowance_needed'],
-            )),
+            ...dayMissions.map(
+              (mission) => _buildMissionCard(
+                context,
+                cardColor: cardColor,
+                titleColor: titleColor,
+                subColor: subColor,
+                requestId:
+                    mission['dbId']?.toString() ??
+                    mission['id']?.toString() ??
+                    "",
+                rawStatus: mission['rawStatus'] ?? 0,
+                missionTitle: mission['vehicle'] ?? "Transport Request",
+                time: mission['date'] ?? "TBD",
+                drivers: mission['drivers'] ?? [],
+                vehicleInfo:
+                    mission['vehicleInfo'] ?? mission['vehicle'] ?? "Pending",
+                capacity: mission['passengers'].toString(),
+                pathType: mission['travelType'] ?? "One-Way",
+                detailedStops: [
+                  {
+                    'location': mission['pickup'] ?? "Start",
+                    'eta': "Start",
+                    'type': 'Pickup',
+                  },
+                  if (mission['intermediateStops'] is List)
+                    ...(mission['intermediateStops'] as List).map(
+                      (s) => {
+                        'location': s.toString(),
+                        'eta': "Transit",
+                        'type': 'Transit',
+                      },
+                    ),
+                  {
+                    'location': mission['drop'] ?? "Destination",
+                    'eta': "End",
+                    'type': 'Drop',
+                  },
+                ],
+                status: mission['status'] ?? "Active",
+                statusBadge: _buildStatusBadge(mission['status'] ?? "Active"),
+                statusColor: _getStatusColor(mission['status'] ?? "Active"),
+                primaryBlue: primaryBlue,
+                creatorName: mission['faculty'] ?? "Unknown Faculty",
+                allowanceNeeded: mission['allowance_needed'],
+              ),
+            ),
           ],
         );
       },
@@ -1637,18 +2254,45 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> with SingleTick
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(width: 80, height: 16, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
-                Container(width: 60, height: 24, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+                Container(
+                  width: 80,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                Container(
+                  width: 60,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Container(width: 200, height: 20, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+            Container(
+              width: 200,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             const SizedBox(height: 12),
-            Container(width: 140, height: 14, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8))),
+            Container(
+              width: 140,
+              height: 14,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
-

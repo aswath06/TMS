@@ -1045,7 +1045,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         const SizedBox(height: 4),
         Text(
-          isTamil ? "BIT-SSG குழுவினரால் உருவாக்கப்பட்டது" : "Built by BIT-SSG",
+          isTamil ? "Zo & CO குழுவினரால் உருவாக்கப்பட்டது" : "Built by Zo & CO",
           style: TextStyle(color: subColor.withValues(alpha: 0.5), fontSize: 11),
         ),
       ],

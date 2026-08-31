@@ -23,6 +23,7 @@ class NotificationProvider extends ChangeNotifier {
   int totalCount = 0;
   bool isFirebaseInitialized = false;
   bool isLoading = false;
+  Function? onEvRideUpdate;
   StreamSubscription? _connectivitySubscription;
 
   Future<void> initialize({
@@ -44,6 +45,11 @@ class NotificationProvider extends ChangeNotifier {
         debugPrint("🔔 [FG] App state update received: $data");
         try {
           final eventType = data['event'];
+          final evType = data['type'];
+          if (evType != null && evType.toString().startsWith('EV_')) {
+            onEvRideUpdate?.call();
+          }
+
           if (eventType != 'notification:new') return;
 
           final notification = NotificationModel.fromJson(data);
@@ -68,7 +74,9 @@ class NotificationProvider extends ChangeNotifier {
             type: notification.type,
           );
         } catch (e) {
-          debugPrint("🔔 Error handling new firebase notification in provider: $e");
+          debugPrint(
+            "🔔 Error handling new firebase notification in provider: $e",
+          );
         }
       },
       // When Firebase gives us a fresh token (e.g. after deleteToken() on first
@@ -84,7 +92,7 @@ class NotificationProvider extends ChangeNotifier {
       },
     );
     isFirebaseInitialized = true;
-    
+
     // Sync FCM token with backend (deleteToken + getToken ensures a fresh v1 token)
     try {
       final token = await firebaseService.getToken();
@@ -96,18 +104,19 @@ class NotificationProvider extends ChangeNotifier {
       debugPrint("Error syncing FCM token: $e");
     }
 
-
     notifyListeners();
     debugPrint("🔔 Firebase Notification Initialized");
 
     // 2. Backup Listener: Also listen to the Background Service if running
     final service = FlutterBackgroundService();
-    
+
     service.on('new_notification_received').listen((data) {
       if (data != null) {
-        debugPrint("🔔 Foreground received notification from Background Service: $data");
+        debugPrint(
+          "🔔 Foreground received notification from Background Service: $data",
+        );
         final notification = NotificationModel.fromJson(data);
-        
+
         // Avoid duplicate if already in list
         if (notifications.any((n) => n.id == notification.id)) return;
 
@@ -119,9 +128,13 @@ class NotificationProvider extends ChangeNotifier {
 
     // 3. Monitor internet connection restoration to sync missed notifications
     _connectivitySubscription?.cancel();
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) async {
       if (results.isNotEmpty && results.first != ConnectivityResult.none) {
-        debugPrint("🔔 NotificationProvider: Connection restored! Syncing missed notifications...");
+        debugPrint(
+          "🔔 NotificationProvider: Connection restored! Syncing missed notifications...",
+        );
         await fetchNotificationsAndSyncMissed();
       }
     });
@@ -132,7 +145,7 @@ class NotificationProvider extends ChangeNotifier {
       final response = await apiService.getMyNotifications();
       final fetchedList = response["data"] as List<NotificationModel>;
       totalCount = response["total"] as int;
-      
+
       // Filter out notifications we already have in our list, AND are unread
       final List<NotificationModel> newUnread = [];
       for (final item in fetchedList) {
@@ -183,7 +196,7 @@ class NotificationProvider extends ChangeNotifier {
       currentType = type;
       refresh = true;
     }
-    
+
     if (refresh) {
       currentPage = 1;
       hasMore = true;
@@ -197,18 +210,18 @@ class NotificationProvider extends ChangeNotifier {
 
     try {
       final response = await apiService.getMyNotifications(
-        page: currentPage, 
-        limit: 10, 
-        type: currentType
+        page: currentPage,
+        limit: 10,
+        type: currentType,
       );
-      
+
       final fetchedList = response["data"] as List<NotificationModel>;
       totalCount = response["total"] as int;
-      
+
       if (fetchedList.isEmpty || fetchedList.length < 10) {
         hasMore = false;
       }
-      
+
       if (refresh) {
         notifications = fetchedList;
       } else {
@@ -249,7 +262,9 @@ class NotificationProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
 
-    final bool exists = notifications.any((n) => n.id == id || (n.title == title && n.message == message));
+    final bool exists = notifications.any(
+      (n) => n.id == id || (n.title == title && n.message == message),
+    );
     if (!exists) {
       notifications.insert(0, newNotif);
       unreadCount += 1;

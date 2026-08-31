@@ -1,3 +1,4 @@
+import 'package:tripzo/store/battery_vehicle_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/security_vehicle_store.dart';
 import 'package:tripzo/store/security_bus_store.dart';
@@ -110,3 +111,5 @@ final driverTaskStoreProvider = ChangeNotifierProvider<DriverTaskStore>((ref) {
 final scheduleDutyStoreProvider = ChangeNotifierProvider<ScheduleDutyStore>((ref) {
   return ScheduleDutyStore();
 });
+
+final batteryVehicleStoreProvider = ChangeNotifierProvider((ref) => BatteryVehicleStore());

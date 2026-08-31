@@ -1,3 +1,4 @@
+import 'package:tripzo/screens/admin/request/admin_battery_vehicles_page.dart';
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/admin/request/request_list_page.dart';
 import 'package:tripzo/screens/admin/request/daily_routines_page.dart';
@@ -117,6 +118,16 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
           'color': const Color(0xFF3B82F6),
           'onTap': () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const DailyRoutinesListPage()));
+          },
+        },
+        {
+          'id': 'battery_vehicles',
+          'title': "Battery Vehicles",
+          'description': "Manage EV fleet, approve requests, and force-assign drivers.",
+          'icon': Icons.electric_car_rounded,
+          'color': Colors.green,
+          'onTap': () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminBatteryVehiclesPage()));
           },
         },
         {

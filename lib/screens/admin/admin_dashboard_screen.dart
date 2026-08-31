@@ -1,3 +1,4 @@
+import 'package:tripzo/screens/admin/request/admin_battery_vehicles_page.dart';
 import 'package:flutter/material.dart';
 import 'package:tripzo/store/admin_dashboard_store.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
@@ -831,8 +832,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   ) {
     return Row(
       children: [
-        _buildActionBtn(
-          'New Req',
+          
+          _buildActionBtn(
+            'New Req',
           Icons.add_box_rounded,
           primaryBlue,
           surface,
