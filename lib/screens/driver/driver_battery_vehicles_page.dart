@@ -27,11 +27,9 @@ class _DriverBatteryVehiclesPageState
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref.read(batteryVehicleStoreProvider).fetchEvSchedules();
       if (mounted) {
-        ref.read(batteryVehicleStoreProvider).initWebSocket();
         ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
         ref.read(notificationProviderFamily).onEvRideUpdate = () {
           if (mounted)
-        ref.read(batteryVehicleStoreProvider).initWebSocket();
             ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
         };
       }
@@ -68,7 +66,6 @@ class _DriverBatteryVehiclesPageState
               color: primaryBlue,
               onRefresh: () async {
                 await ref.read(batteryVehicleStoreProvider).fetchEvSchedules();
-        ref.read(batteryVehicleStoreProvider).initWebSocket();
                 ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
               },
               child: _buildRequestsListRaw(
@@ -176,9 +173,7 @@ class _DriverBatteryVehiclesPageState
                                     b['created_at'] ??
                                     DateTime.now().toIso8601String())
                                 .toString(),
-                            durationSeconds: (b['requestDriver'] != null && (b['requestDriver'] as List).length > 1) ? 120 : 60,
                             onExpire: () {
-        ref.read(batteryVehicleStoreProvider).initWebSocket();
                               ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
                             },
                           ),
