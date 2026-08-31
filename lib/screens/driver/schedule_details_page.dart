@@ -793,14 +793,14 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
         model.toString().toLowerCase().contains('crysta') ||
         make.toString().toLowerCase().contains('marazzo');
 
-    final bool isMyResp = v['is_my_responsibility'] == true;
-    final bool isTaken = v['is_taken'] == true;
-
     final odometer = v['odometer'] as Map<String, dynamic>?;
     final String? startOdo = odometer?['start_odometer']?.toString();
     final String? endOdo = odometer?['end_odometer']?.toString();
     final String? startTime = odometer?['start_time'];
     final String? endTime = odometer?['end_time'];
+
+    final bool isMyResp = v['is_my_responsibility'] == true && startOdo != null && startOdo.isNotEmpty;
+    final bool isTaken = v['is_taken'] == true;
 
     final double? startVal = double.tryParse(startOdo ?? '');
     final double? endVal = double.tryParse(endOdo ?? '');

@@ -1253,22 +1253,33 @@ class _AdminBatteryVehiclesPageState
       children: [
         _buildDateScroller(primaryBlue, textColor, subColor, isDark),
         Expanded(
-          child: filteredBookings.isEmpty
-              ? Center(
-                  child: Text(
-                    "No bookings found for $_selectedDateFilter.",
-                    style: TextStyle(color: subColor),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(batteryVehicleStoreProvider).fetchAllBookings(),
+            child: filteredBookings.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                      Center(
+                        child: Text(
+                          "No bookings found for $_selectedDateFilter.",
+                          style: TextStyle(color: subColor),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   itemCount: filteredBookings.length,
                   itemBuilder: (context, index) {
                     final b = filteredBookings[index];
-                    final status = b['status'] ?? 'UNKNOWN';
+                    String rawStatus = b['status'] ?? 'UNKNOWN';
+                    if (rawStatus == 'EXPIRED') rawStatus = 'PENDING';
+                    final status = rawStatus;
                     final statusColor = _getStatusColor(status);
 
                     String fromName = _getLocName(
@@ -1597,6 +1608,7 @@ class _AdminBatteryVehiclesPageState
                     );
                   },
                 ),
+          ),
         ),
       ],
     );
@@ -1738,10 +1750,10 @@ String _getLocName(
   if (b[key] is Map && b[key]['name'] != null) return b[key]['name'];
   final locId = b[idKey] ?? (b[key] is Map ? b[key]['id'] : null);
   if (locId != null) {
-    final loc = locations.firstWhere(
+    final matches = locations.where(
       (l) => l['id'].toString() == locId.toString(),
-      orElse: () => null,
     );
+    final loc = matches.isNotEmpty ? matches.first : null;
     if (loc != null && loc['name'] != null) return loc['name'];
   }
   return 'Unknown';
@@ -1781,10 +1793,10 @@ String _getDriverNameHelper(dynamic b, List<dynamic> allDrivers) {
         b['driver_id'] ??
         (b['driver'] is Map ? b['driver']['id'] : b['driver']);
     if (driverId != null) {
-      final d = allDrivers.firstWhere(
+      final matches = allDrivers.where(
         (drv) => drv['id'].toString() == driverId.toString(),
-        orElse: () => null,
       );
+      final d = matches.isNotEmpty ? matches.first : null;
       if (d != null && d['name'] != null) return d['name'].toString();
     }
     if (b['driver'] is Map && b['driver']['first_name'] != null) {
@@ -1794,10 +1806,10 @@ String _getDriverNameHelper(dynamic b, List<dynamic> allDrivers) {
   }
 
   if (b['driver_id'] != null) {
-    final d = allDrivers.firstWhere(
+    final matches = allDrivers.where(
       (drv) => drv['id'].toString() == b['driver_id'].toString(),
-      orElse: () => null,
     );
+    final d = matches.isNotEmpty ? matches.first : null;
     if (d != null && d['name'] != null) return d['name'].toString();
   }
   return 'Unknown';

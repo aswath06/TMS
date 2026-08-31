@@ -3,6 +3,7 @@ import 'package:tripzo/utils/toast_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/utils/ev_countdown_timer.dart';
+import 'package:tripzo/store/user_store.dart' as tripzo_user_store;
 
 import 'package:tripzo/store/providers.dart';
 
@@ -87,10 +88,25 @@ class _DriverBatteryVehiclesPageState
     Color primaryBlue,
     bool isDark,
   ) {
-    if (store.isLoading && store.driverBookings.isEmpty) {
+    final currentDriverId = tripzo_user_store.UserStore.driverId;
+    final myBookings = store.driverBookings.where((b) {
+      if (currentDriverId != null && b['requestDriver'] is List) {
+        final rdList = b['requestDriver'] as List;
+        final matches = rdList.where(
+          (r) => r['driver_id']?.toString() == currentDriverId.toString(),
+        );
+        final myRd = matches.isNotEmpty ? matches.first : null;
+        if (myRd == null) return false;
+        b['response_status'] = myRd['response_status'];
+        b['notified_at'] = myRd['notified_at'] ?? b['notified_at'];
+      }
+      return true;
+    }).toList();
+
+    if (store.isLoading && myBookings.isEmpty) {
       return Center(child: CircularProgressIndicator(color: primaryBlue));
     }
-    if (store.driverBookings.isEmpty) {
+    if (myBookings.isEmpty) {
       return Center(
         child: Text(
           "No EV requests at the moment",
@@ -104,9 +120,9 @@ class _DriverBatteryVehiclesPageState
         parent: BouncingScrollPhysics(),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: store.driverBookings.length,
+      itemCount: myBookings.length,
       itemBuilder: (context, index) {
-        final b = store.driverBookings[index];
+        final b = myBookings[index];
         final String rawStatus = (b['status'] ?? 'UNKNOWN')
             .toString()
             .toUpperCase();
@@ -151,15 +167,14 @@ class _DriverBatteryVehiclesPageState
                       children: [
                         if (status == 'PENDING')
                           EvCountdownTimer(
-                            timestampStr:
-                                (b['updated_at'] ??
-                                        b['created_at'] ??
-                                        DateTime.now().toIso8601String())
-                                    .toString(),
+                            timestampStr: (b['notified_at'] ??
+                                    b['assigned_at'] ??
+                                    b['updated_at'] ??
+                                    b['created_at'] ??
+                                    DateTime.now().toIso8601String())
+                                .toString(),
                             onExpire: () {
-                              ref
-                                  .read(batteryVehicleStoreProvider)
-                                  .fetchDriverBookings();
+                              ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
                             },
                           ),
                         if (status == 'PENDING') const SizedBox(width: 8),
@@ -433,10 +448,9 @@ String _getLocName(
   if (b[key] is Map && b[key]['name'] != null) return b[key]['name'];
   final locId = b[idKey] ?? (b[key] is Map ? b[key]['id'] : null);
   if (locId != null) {
-    final loc = locations.firstWhere(
+    final loc = locations.where(
       (l) => l['id'].toString() == locId.toString(),
-      orElse: () => null,
-    );
+    ).firstOrNull;
     if (loc != null && loc['name'] != null) return loc['name'];
   }
   return 'Unknown';

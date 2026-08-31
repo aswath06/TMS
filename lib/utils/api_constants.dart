@@ -4,6 +4,16 @@ class ApiConstants {
   // Dynamic base URL driven by ServerConfig (super admin togglable at runtime)
   static String get baseUrl => ServerConfig().baseUrl;
 
+  static String get notificationBaseUrl {
+    if (baseUrl.contains('4004')) {
+      return baseUrl.replaceAll('4004', '8055');
+    } else if (baseUrl.contains('10.0.2.2')) {
+      // If it's an emulator string without 4004 (rare, but possible if mapped differently)
+      return "http://10.0.2.2:8055";
+    }
+    return "http://localhost:8055";
+  }
+
   static String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) {
@@ -158,10 +168,10 @@ class ApiConstants {
   static String get getVehicleBunks => "$baseUrl/api/maintenance/get-bunks";
   static String get getServiceShops => "$baseUrl/api/maintenance/get-shops";
 
-  static String get myNotifications => "$baseUrl/api/notifications/my";
-  static String get unreadCount => "$baseUrl/api/notifications/unread-count";
-  static String markNotificationRead(dynamic id) => "$baseUrl/api/notifications/$id/read";
-  static String get markAllRead => "$baseUrl/api/notifications/read-all";
+  static String get myNotifications => "$notificationBaseUrl/api/notifications/my";
+  static String get unreadCount => "$notificationBaseUrl/api/notifications/unread-count";
+  static String markNotificationRead(dynamic id) => "$notificationBaseUrl/api/notifications/$id/read";
+  static String get markAllRead => "$notificationBaseUrl/api/notifications/read-all";
 
   // Support
   static String get createSupport => "$baseUrl/api/support/create";

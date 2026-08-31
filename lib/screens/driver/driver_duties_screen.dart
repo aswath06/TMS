@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/battery_vehicle_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/utils/ev_countdown_timer.dart';
+import 'package:tripzo/store/user_store.dart' as tripzo_user_store;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
@@ -48,6 +49,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       useDriverStore.fetchPendingFuelEntries();
       useDriverStore.fetchActiveRoutesToComplete();
       useDriverStore.fetchPendingAllowanceCount();
+      ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
       ref.read(notificationProviderFamily).fetchNotifications();
       ref.read(driverSchedulesStoreProvider).fetchSchedules();
       ref.read(batteryVehicleStoreProvider).fetchEvSchedules().then((_) {
@@ -123,6 +125,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
               builder: (context, ref, _) {
                 final store = ref.watch(driverStoreProvider);
                 final scheduleStore = ref.watch(driverSchedulesStoreProvider);
+                final bvStore = ref.watch(batteryVehicleStoreProvider);
                 final profile = store.profileData.value;
                 final List<Map<String, dynamic>> allAssignments = [];
                 for (var run in store.dailyBusRuns) {
@@ -265,16 +268,6 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                           isTamil,
                         ),
                         const SizedBox(height: 32),
-
-                        _buildPendingEvBookingsSection(
-                          ref,
-                          primaryBlue,
-                          surfaceColor,
-                          titleColor,
-                          subColor,
-                          isDark,
-                        ),
-                        const SizedBox(height: 16),
                         _buildStatCards(
                           primaryBlue,
                           surfaceColor,
@@ -289,6 +282,15 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                           surfaceColor,
                           isDark,
                           isTamil,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPendingEvBookingsSection(
+                          ref,
+                          primaryBlue,
+                          surfaceColor,
+                          titleColor,
+                          subColor,
+                          isDark,
                         ),
                         const SizedBox(height: 36),
                         _buildActiveRoutesSection(
@@ -313,7 +315,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                           children: [
                             Expanded(
                               child: _buildSectionTitle(
-                                "${isTamil ? "இன்றைய பணிகள்" : "Your Assignments"} (${allAssignments.length + todayMissions.length + dashboardSchedules.length})",
+                                "${isTamil ? "உங்கள் பணிகள்" : "Your Assignments"} (${allAssignments.length + todayMissions.length + dashboardSchedules.length + bvStore.pendingDashboardBookings.length})",
                                 titleColor,
                               ),
                             ),
@@ -325,9 +327,23 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                             dashboardSchedules.isEmpty)
                           const Center(child: CircularProgressIndicator())
                         else if (allAssignments.isEmpty &&
-                            dashboardSchedules.isEmpty)
+                            dashboardSchedules.isEmpty &&
+                            bvStore.pendingDashboardBookings.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else ...[
+                          ...bvStore.pendingDashboardBookings.map(
+                            (b) => _buildPendingEvCard(
+                              context: context,
+                              b: b,
+                              cardColor: surfaceColor,
+                              titleColor: titleColor,
+                              subColor: subColor,
+                              primaryBlue: primaryBlue,
+                              isDark: isDark,
+                              isTamil: isTamil,
+                              ref: ref,
+                            ),
+                          ),
                           ...dashboardSchedules.map(
                             (s) => _buildScheduleCard(
                               context: context,
@@ -2113,6 +2129,166 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     );
   }
 
+  Widget _buildPendingEvCard({
+    required BuildContext context,
+    required dynamic b,
+    required Color cardColor,
+    required Color titleColor,
+    required Color subColor,
+    required Color primaryBlue,
+    required bool isDark,
+    required bool isTamil,
+    required WidgetRef ref,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "EV Booking",
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EvCountdownTimer(
+                      timestampStr: (b['notified_at'] ??
+                              b['assigned_at'] ??
+                              b['updated_at'] ??
+                              b['created_at'] ??
+                              DateTime.now().toIso8601String())
+                          .toString(),
+                      onExpire: () {
+                        // The backend handles the 60s escalation/expiration logic automatically.
+                        // We just need to refresh the list so the expired card disappears.
+                        ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        "PENDING",
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final bookingId = (b['id'] ?? b['booking_id'])?.toString();
+                      if (bookingId != null) {
+                        try {
+                          await ref.read(batteryVehicleStoreProvider).acceptRide(bookingId);
+                          showTopToast(
+                            context,
+                            isTamil ? "EV Booking !" : "EV Booking accepted!",
+                          );
+                        } catch (e) {
+                          showTopToast(context, e.toString(), isError: true);
+                        }
+                        ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      isTamil ? " " : "Accept",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final bookingId = (b['id'] ?? b['booking_id'])?.toString();
+                      if (bookingId != null) {
+                        try {
+                          await ref.read(batteryVehicleStoreProvider).rejectRide(bookingId);
+                          showTopToast(
+                            context,
+                            isTamil ? "EV Booking !" : "EV Booking rejected!",
+                          );
+                        } catch (e) {
+                          showTopToast(context, e.toString(), isError: true);
+                        }
+                        ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      isTamil ? "" : "Reject",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildScheduleCard({
     required BuildContext context,
     required Map<String, dynamic> schedule,
@@ -2591,7 +2767,6 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     }
     return 'Unknown';
   }
-
   String _evGetPassengerName(dynamic b) {
     if (b['requestUser'] != null && b['requestUser']['name'] != null) {
       return b['requestUser']['name'];
@@ -2628,9 +2803,25 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     final evStore = ref.watch(batteryVehicleStoreProvider);
     final pendingBookings = evStore.driverBookings.where((b) {
       final status = (b['status'] ?? '').toString().toUpperCase();
-      final rStatus = (b['response_status'] ?? '').toString().toUpperCase();
-      return status == 'REQUESTED' &&
-          rStatus != 'EXPIRED' &&
+      if (status != 'REQUESTED' && status != 'PENDING') return false;
+
+      // Try to read from new 'requestDriver' array
+      final currentDriverId = tripzo_user_store.UserStore.driverId;
+      
+      String rStatus = (b['response_status'] ?? '').toString().toUpperCase();
+      
+      if (currentDriverId != null && b['requestDriver'] is List) {
+        final rdList = b['requestDriver'] as List;
+        final matches = rdList.where(
+          (r) => r['driver_id']?.toString() == currentDriverId.toString(),
+        );
+        final myRd = matches.isNotEmpty ? matches.first : null;
+        if (myRd == null) return false; // Not sent to me!
+        rStatus = (myRd['response_status'] ?? '').toString().toUpperCase();
+        b['notified_at'] = myRd['notified_at'] ?? b['notified_at']; // Inject my specific time
+      }
+
+      return rStatus != 'EXPIRED' &&
           rStatus != 'ACCEPTED' &&
           rStatus != 'REJECTED';
     }).toList();

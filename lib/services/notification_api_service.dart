@@ -12,7 +12,10 @@ class NotificationApiService {
     required this.token,
   });
 
-  Map<String, String> get _headers => ApiConstants.getHeaders(token);
+  Map<String, String> get _headers => {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
 
   Future<Map<String, dynamic>> getMyNotifications({int page = 1, int limit = 10, String type = 'All'}) async {
     String url = '${ApiConstants.myNotifications}?page=$page&limit=$limit&type=$type';

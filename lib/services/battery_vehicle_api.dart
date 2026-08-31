@@ -126,7 +126,7 @@ class BatteryVehicleApi {
         : reason;
 
     final response = await http.post(
-      Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/book'),
+      Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings'),
       headers: await _getHeaders(),
       body: jsonEncode({
         "from_location_id": fromId,
@@ -145,7 +145,7 @@ class BatteryVehicleApi {
 
   Future<void> bookBatteryVehicle(int fromId, int toId, String reason) async {
     final response = await http.post(
-      Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/book'),
+      Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings'),
       headers: await _getHeaders(),
       body: jsonEncode({
         "from_location_id": fromId,
@@ -197,7 +197,7 @@ class BatteryVehicleApi {
   Future<void> scanDriverQr(String bookingId, String qrCodeData) async {
     final response = await http.post(
       Uri.parse(
-        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/start-scan',
+        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/start',
       ),
       headers: await _getHeaders(),
       body: jsonEncode({"qr_code_data": qrCodeData}),
@@ -224,6 +224,21 @@ class BatteryVehicleApi {
       }
     } catch (e) {
       print("ERROR IN GETDRIVERBOOKINGS: $e");
+    }
+    return [];
+  }
+
+  Future<List<dynamic>> getPendingDriverBookingsForDashboard() async {
+    final date = DateTime.now().toIso8601String().split('T')[0];
+    final url = '${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings?date=$date&status=PENDING';
+    try {
+      final response = await http.get(Uri.parse(url), headers: await _getHeaders());
+      if (response.statusCode == 200) {
+        final data = _extractData(response.body);
+        if (data is List) return data;
+      }
+    } catch (e) {
+      print("ERROR IN getPendingDriverBookingsForDashboard: $e");
     }
     return [];
   }
@@ -269,13 +284,15 @@ class BatteryVehicleApi {
   }
 
   Future<void> acceptRide(String bookingId) async {
+    final driverId = await UserStore.getDriverId();
     final response = await http.post(
       Uri.parse(
         '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/accept',
       ),
       headers: await _getHeaders(),
-      body:
-          '{"dummy": "data"}', // To satisfy application/json requirement if backend is strict
+      body: jsonEncode({
+        "driver_id": driverId,
+      }),
     );
     if (response.statusCode >= 400)
       throw Exception(
@@ -284,11 +301,17 @@ class BatteryVehicleApi {
   }
 
   Future<void> rejectRide(String bookingId) async {
+    final driverId = await UserStore.getDriverId();
     final response = await http.post(
       Uri.parse(
-        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/reject',
+        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/respond-driver',
       ),
       headers: await _getHeaders(),
+      body: jsonEncode({
+         "request_id": int.tryParse(bookingId) ?? 0,
+         "driver_id": driverId,
+         "response_status": "EXPIRED"
+      }),
     );
     if (response.statusCode >= 400)
       throw Exception(
@@ -313,7 +336,7 @@ class BatteryVehicleApi {
   Future<void> assignDriver(String bookingId, int driverId) async {
     final response = await http.post(
       Uri.parse(
-        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/assign-driver',
+        '${ApiConstants.baseUrl}/api/battery-vehicle-booking/$bookingId/accept',
       ),
       headers: await _getHeaders(),
       body: jsonEncode({'driver_id': driverId}),

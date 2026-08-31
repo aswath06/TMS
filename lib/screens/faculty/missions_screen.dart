@@ -608,10 +608,10 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                   ? _buildRequestsSkeleton(isDark, cardColor)
                   : RefreshIndicator(
                       onRefresh: () async {
-                        await store.fetchRequests(isRefresh: true);
-                        await ref
-                            .read(batteryVehicleStoreProvider)
-                            .fetchPassengerBookings();
+                        await Future.wait([
+                          store.fetchRequests(isRefresh: true),
+                          ref.read(batteryVehicleStoreProvider).fetchPassengerBookings(),
+                        ]);
                         try {
                           await ref.read(driverStoreProvider).fetchDrivers();
                         } catch (e) {}

@@ -13,6 +13,7 @@ class BatteryVehicleStore extends ChangeNotifier {
   List<dynamic> locations = [];
   List<dynamic> passengerBookings = [];
   List<dynamic> driverBookings = [];
+  List<dynamic> pendingDashboardBookings = [];
   List<dynamic> allBookings = [];
   List<dynamic> evSchedules = [];
   String? lastDriverRawResponse;
@@ -186,7 +187,13 @@ class BatteryVehicleStore extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      passengerBookings = await _api.getMyBookings();
+      final raw = await _api.getMyBookings();
+      final uniqueMap = <String, dynamic>{};
+      for (var b in raw) {
+        final id = b['id'] ?? b['booking_id'];
+        if (id != null) uniqueMap[id.toString()] = b;
+      }
+      passengerBookings = uniqueMap.values.toList();
     } catch (e) {
       debugPrint("FETCH PASSENGER BOOKINGS ERROR: $e");
       _setError(e.toString());
@@ -251,10 +258,35 @@ class BatteryVehicleStore extends ChangeNotifier {
     _setError(null);
     try {
       final rawBookings = await _api.getBookings();
-      allBookings = rawBookings.where((b) {
+      final uniqueMap = <String, dynamic>{};
+      for (var b in rawBookings) {
+        final id = b['id'] ?? b['booking_id'];
+        if (id != null) {
+          uniqueMap[id.toString()] = b;
+        }
+      }
+      allBookings = uniqueMap.values.where((b) {
         final s = (b['status'] ?? '').toString().toUpperCase();
         return s != 'DELETED';
       }).toList();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> fetchPendingDashboardBookings() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final raw = await _api.getPendingDriverBookingsForDashboard();
+      final uniqueMap = <String, dynamic>{};
+      for (var b in raw) {
+        final id = b['id'] ?? b['booking_id'];
+        if (id != null) uniqueMap[id.toString()] = b;
+      }
+      pendingDashboardBookings = uniqueMap.values.toList();
     } catch (e) {
       _setError(e.toString());
     } finally {

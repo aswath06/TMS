@@ -167,6 +167,10 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
       isRefresh: true,
       date: _selectedDateFilter,
     );
+
+    if (!mounted) return;
+    // Fetch Battery Vehicles (EV)
+    await ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
   }
 
   @override
