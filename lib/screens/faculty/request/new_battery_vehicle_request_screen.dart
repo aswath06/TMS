@@ -59,128 +59,216 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final p = Theme.of(context).primaryColor;
+    String searchQuery = '';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredLocations = store.locations.where((loc) {
+              final name = loc['name']?.toString() ?? "";
+              return searchQuery.isEmpty || name.toLowerCase().contains(searchQuery.toLowerCase());
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
               ),
-              const SizedBox(height: 24),
-              Text(
-                isFrom ? "Select Departure" : "Select Destination",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: store.locations.length,
-                  itemBuilder: (context, index) {
-                    final loc = store.locations[index];
-                    final bool isSelected = isFrom ? _fromLocationId == loc['id'] : _toLocationId == loc['id'];
-                    final primaryColor = Theme.of(context).primaryColor;
-                    
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: isSelected 
-                            ? primaryColor.withValues(alpha: 0.1) 
-                            : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade200),
-                          width: 1.5,
-                        ),
-                        boxShadow: isDark || isSelected ? [] : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          )
-                        ],
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            setState(() {
-                              if (isFrom) {
-                                _fromLocationId = loc['id'];
-                              } else {
-                                _toLocationId = loc['id'];
-                              }
-                            });
-                            Navigator.pop(context);
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade100),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    isFrom ? Icons.trip_origin_rounded : Icons.location_on_rounded,
-                                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey.shade600),
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    loc['name'] ?? 'Unknown',
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 16,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                if (isSelected)
-                                  Icon(
-                                    Icons.check_circle_rounded,
-                                    color: primaryColor,
-                                    size: 24,
-                                  ),
-                              ],
-                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isFrom ? "Select Departure" : "Select Destination",
+                        style: const TextStyle(
+                          fontSize: 22, 
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: p.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: p.withValues(alpha: 0.15), width: 1),
+                        ),
+                        child: Text(
+                          "${store.locations.length} Available",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: p,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Choose the ${isFrom ? 'departure' : 'destination'} location for your request.",
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey.shade600, 
+                      fontWeight: FontWeight.w600, 
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.01),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search location...",
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: p.withValues(alpha: 0.6),
+                          size: 22,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setModalState(() {
+                          searchQuery = val;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (filteredLocations.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text("No locations found"),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: filteredLocations.length,
+                        itemBuilder: (context, index) {
+                          final loc = filteredLocations[index];
+                          final bool isSelected = isFrom ? _fromLocationId == loc['id'] : _toLocationId == loc['id'];
+                          
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isFrom) {
+                                  _fromLocationId = loc['id'];
+                                } else {
+                                  _toLocationId = loc['id'];
+                                }
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? p.withValues(alpha: 0.08) 
+                                    : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade50),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? p : Colors.transparent,
+                                  width: 2,
+                                ),
+                                boxShadow: isSelected ? [
+                                  BoxShadow(
+                                    color: p.withValues(alpha: 0.12),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ] : [],
+                              ),
+                              child: Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: isSelected ? 4 : 2,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? p : Colors.grey.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      loc['name'] ?? 'Unknown',
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 15,
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      color: p,
+                                      size: 22,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -190,124 +278,211 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final p = Theme.of(context).primaryColor;
+    String searchQuery = '';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredDepartments = _departments.where((dep) {
+              return searchQuery.isEmpty || dep.toLowerCase().contains(searchQuery.toLowerCase());
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
               ),
-              const SizedBox(height: 24),
-              Text(
-                "Select Department",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _departments.length,
-                  itemBuilder: (context, index) {
-                    final dep = _departments[index];
-                    final bool isSelected = _department == dep;
-                    final primaryColor = Theme.of(context).primaryColor;
-                    
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: isSelected 
-                            ? primaryColor.withValues(alpha: 0.1) 
-                            : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade200),
-                          width: 1.5,
-                        ),
-                        boxShadow: isDark || isSelected ? [] : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          )
-                        ],
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            setState(() {
-                              _department = dep;
-                            });
-                            Navigator.pop(context);
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade100),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.business_rounded,
-                                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey.shade600),
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    dep,
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 16,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                if (isSelected)
-                                  Icon(
-                                    Icons.check_circle_rounded,
-                                    color: primaryColor,
-                                    size: 24,
-                                  ),
-                              ],
-                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Select Department",
+                        style: TextStyle(
+                          fontSize: 22, 
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: p.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: p.withValues(alpha: 0.15), width: 1),
+                        ),
+                        child: Text(
+                          "${_departments.length} Available",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: p,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Choose the department associated with this request.",
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey.shade600, 
+                      fontWeight: FontWeight.w600, 
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.01),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search department...",
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: p.withValues(alpha: 0.6),
+                          size: 22,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setModalState(() {
+                          searchQuery = val;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (filteredDepartments.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text("No departments found"),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: filteredDepartments.length,
+                        itemBuilder: (context, index) {
+                          final dep = filteredDepartments[index];
+                          final bool isSelected = _department == dep;
+                          
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _department = dep;
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? p.withValues(alpha: 0.08) 
+                                    : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade50),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? p : Colors.transparent,
+                                  width: 2,
+                                ),
+                                boxShadow: isSelected ? [
+                                  BoxShadow(
+                                    color: p.withValues(alpha: 0.12),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ] : [],
+                              ),
+                              child: Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: isSelected ? 4 : 2,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? p : Colors.grey.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      dep,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 15,
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      color: p,
+                                      size: 22,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
