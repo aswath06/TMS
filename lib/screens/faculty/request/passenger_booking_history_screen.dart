@@ -14,6 +14,7 @@ class _PassengerBookingHistoryScreenState extends ConsumerState<PassengerBooking
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(batteryVehicleStoreProvider).initWebSocket();
       ref.read(batteryVehicleStoreProvider).fetchPassengerBookings();
     });
   }

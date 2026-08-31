@@ -869,7 +869,7 @@ class _AdminBatteryVehiclesPageState
       );
     }
 
-    await ref.read(driverStoreProvider).fetchDrivers();
+    await ref.read(batteryVehicleStoreProvider).fetchActiveEvDrivers();
 
     if (mounted) {
       Navigator.pop(context);
@@ -886,7 +886,7 @@ class _AdminBatteryVehiclesPageState
         ),
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         builder: (context) {
-          final allDrivers = ref.read(driverStoreProvider).drivers;
+          final allDrivers = ref.read(batteryVehicleStoreProvider).activeEvDrivers;
           String searchQuery = '';
           return StatefulBuilder(
             builder: (BuildContext context, StateSetter setModalState) {

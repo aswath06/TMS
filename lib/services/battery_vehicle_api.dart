@@ -477,4 +477,16 @@ class BatteryVehicleApi {
       );
     }
   }
+
+  Future<List<dynamic>> getActiveEvDrivers() async {
+    final token = await UserStore.getToken();
+    final response = await http.get(
+      Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/active-drivers'),
+      headers: ApiConstants.getHeaders(token),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    return [];
+  }
 }

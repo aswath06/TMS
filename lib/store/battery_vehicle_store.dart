@@ -1,8 +1,41 @@
 import 'package:flutter/foundation.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:tripzo/utils/api_constants.dart';
 import 'package:tripzo/services/battery_vehicle_api.dart';
 import 'package:tripzo/store/user_store.dart';
 
 class BatteryVehicleStore extends ChangeNotifier {
+  IO.Socket? _socket;
+
+  void initWebSocket() {
+    if (_socket != null && _socket!.connected) return;
+    final socketUrl = ApiConstants.baseUrl;
+    _socket = IO.io(socketUrl, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': true,
+      'path': '/tms-socket/',
+      'extraHeaders': {
+        ApiConstants.bypassHeaderKey: ApiConstants.bypassHeaderValue,
+      },
+    });
+    _socket?.onConnect((_) {
+      debugPrint('EV WebSocket connected');
+    });
+    _socket?.on('ev_booking_update', (payload) {
+      debugPrint('Received EV booking update: $payload');
+      fetchDriverBookings();
+      fetchPassengerBookings();
+    });
+    _socket?.connect();
+  }
+
+  @override
+  void dispose() {
+    _socket?.disconnect();
+    _socket?.dispose();
+    super.dispose();
+  }
+
   final BatteryVehicleApi _api = BatteryVehicleApi();
 
   bool isLoading = false;
@@ -248,6 +281,20 @@ class BatteryVehicleStore extends ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       rethrow;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  List<dynamic> activeEvDrivers = [];
+
+  Future<void> fetchActiveEvDrivers() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      activeEvDrivers = await _api.getActiveEvDrivers();
+    } catch (e) {
+      _setError(e.toString());
     } finally {
       _setLoading(false);
     }

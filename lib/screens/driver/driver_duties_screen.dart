@@ -54,6 +54,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       ref.read(driverSchedulesStoreProvider).fetchSchedules();
       ref.read(batteryVehicleStoreProvider).fetchEvSchedules().then((_) {
         if (mounted)
+          ref.read(batteryVehicleStoreProvider).initWebSocket();
           ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
       });
       _checkPendingEmergencyTask();
@@ -247,6 +248,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                     await ref
                         .read(batteryVehicleStoreProvider)
                         .fetchEvSchedules();
+          ref.read(batteryVehicleStoreProvider).initWebSocket();
                     ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
                   },
                   child: SingleChildScrollView(
@@ -2180,6 +2182,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                               b['created_at'] ??
                               DateTime.now().toIso8601String())
                           .toString(),
+                      durationSeconds: (b['requestDriver'] != null && (b['requestDriver'] as List).length > 1) ? 120 : 60,
                       onExpire: () {
                         // The backend handles the 60s escalation/expiration logic automatically.
                         // We just need to refresh the list so the expired card disappears.
