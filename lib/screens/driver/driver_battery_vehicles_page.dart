@@ -373,7 +373,7 @@ class _DriverBatteryVehiclesPageState
                         ),
                       ),
                     ],
-                    if (status == 'ACCEPTED') ...[
+                    if (status == 'ACCEPTED' || status == 'STARTED') ...[
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(

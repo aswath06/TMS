@@ -610,7 +610,7 @@ class _AdminBatteryVehiclesPageState
     if (status == 'COMPLETED') return Colors.green;
     if (status == 'CANCELLED') return Colors.red;
     if (status == 'PENDING' || status == 'REQUESTED') return Colors.orange;
-    if (status == 'ACCEPTED') return Colors.pink;
+    if (status == 'ACCEPTED' || status == 'STARTED') return Colors.pink;
     if (status == 'ONGOING') return Colors.blue;
     return Colors.grey;
   }
