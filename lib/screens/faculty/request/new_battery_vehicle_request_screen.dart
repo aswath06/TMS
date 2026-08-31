@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:tripzo/utils/api_constants.dart';
+import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/utils/animated_notification.dart';
 
@@ -18,9 +22,34 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
   String? _department;
   final TextEditingController _remarkController = TextEditingController();
 
-  final List<String> _departments = [
-    "Computer Science", "Mechanical", "Electrical", "Civil", "Management", "General"
-  ];
+  bool _isLoadingDepartments = false;
+  List<Map<String, dynamic>> _departments = [];
+
+  Future<void> _fetchDepartments() async {
+    if (_departments.isNotEmpty) return;
+    setState(() => _isLoadingDepartments = true);
+    try {
+      final token = await UserStore.getToken();
+      final url = "${ApiConstants.baseUrl}/auth/department";
+      debugPrint("Fetching departments: $url");
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          setState(() {
+            _departments = List<Map<String, dynamic>>.from(data['data']);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Err fetching departments: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingDepartments = false);
+    }
+  }
 
   @override
   void initState() {
@@ -36,7 +65,7 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
     if (_formKey.currentState!.validate()) {
       final store = ref.read(batteryVehicleStoreProvider);
       try {
-        await store.bookVehicle(
+        final message = await ref.read(batteryVehicleStoreProvider).bookVehicle(
           _fromLocationId,
           _toLocationId,
           0.0, // lat
@@ -44,7 +73,7 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
           _remarkController.text.trim(),
         );
         if (mounted) {
-          showPremiumInAppNotification(title: 'Info', message: 'Booking Created Successfully', type: 'INFO');
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green));
           Navigator.pop(context, true);
         }
       } catch (e) {
@@ -275,7 +304,13 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
     );
   }
 
-  void _showDepartmentSheet() {
+  void _showDepartmentSheet() async {
+    if (_departments.isEmpty) {
+      setState(() => _isLoadingDepartments = true);
+      await _fetchDepartments();
+    }
+    if (!mounted) return;
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -290,7 +325,8 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
         return StatefulBuilder(
           builder: (context, setModalState) {
             final filteredDepartments = _departments.where((dep) {
-              return searchQuery.isEmpty || dep.toLowerCase().contains(searchQuery.toLowerCase());
+              final name = dep['department_name'] ?? "";
+              return searchQuery.isEmpty || name.toString().toLowerCase().contains(searchQuery.toLowerCase());
             }).toList();
 
             return Container(
@@ -402,7 +438,13 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (filteredDepartments.isEmpty)
+                  if (_isLoadingDepartments && _departments.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (filteredDepartments.isEmpty)
                     const Expanded(
                       child: Center(
                         child: Text("No departments found"),
@@ -415,12 +457,13 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
                         itemCount: filteredDepartments.length,
                         itemBuilder: (context, index) {
                           final dep = filteredDepartments[index];
-                          final bool isSelected = _department == dep;
+                          final name = dep['department_name'] ?? "";
+                          final bool isSelected = _department == name;
                           
                           return GestureDetector(
                             onTap: () {
                               setState(() {
-                                _department = dep;
+                                _department = name;
                               });
                               Navigator.pop(context);
                             },
@@ -459,7 +502,7 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
-                                      dep,
+                                      name,
                                       style: TextStyle(
                                         color: textColor,
                                         fontSize: 15,

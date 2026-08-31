@@ -22,12 +22,16 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    String parsedType = json["type"] ?? "INFO";
+    final t = (json["title"] ?? "").toString().toLowerCase();
+    final m = (json["message"] ?? "").toString().toLowerCase();
+
     return NotificationModel(
       id: json["id"] is String ? int.parse(json["id"]) : json["id"],
       userId: json["user_id"] is String ? int.parse(json["user_id"]) : json["user_id"],
       title: json["title"] ?? "",
       message: json["message"] ?? "",
-      type: json["type"] ?? "INFO",
+      type: parsedType,
       referenceTable: json["reference_table"],
       referenceId: json["reference_id"] != null && json["reference_id"].toString().isNotEmpty && json["reference_id"] != "null"
           ? (json["reference_id"] is String ? int.tryParse(json["reference_id"]) : json["reference_id"])

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/utils/ev_countdown_timer.dart';
 import 'package:tripzo/store/user_store.dart' as tripzo_user_store;
+import 'package:tripzo/components/common/structural_loading.dart' as tripzo_loading;
 
 import 'package:tripzo/store/providers.dart';
 
@@ -20,6 +21,7 @@ class _DriverBatteryVehiclesPageState
     extends ConsumerState<DriverBatteryVehiclesPage> {
   final TextEditingController _odoController = TextEditingController();
   final TextEditingController _battController = TextEditingController();
+  String? _loadingEvBookingId;
 
   @override
   void initState() {
@@ -91,35 +93,49 @@ class _DriverBatteryVehiclesPageState
   ) {
     final currentDriverId = tripzo_user_store.UserStore.driverId;
     final myBookings = store.driverBookings.where((b) {
+      String driverResponse = '';
       if (currentDriverId != null && b['requestDriver'] is List) {
         final rdList = b['requestDriver'] as List;
         final matches = rdList.where(
           (r) => r['driver_id']?.toString() == currentDriverId.toString(),
         );
         final myRd = matches.isNotEmpty ? matches.first : null;
-        if (myRd == null) return false;
-        b['response_status'] = myRd['response_status'];
-        b['notified_at'] = myRd['notified_at'] ?? b['notified_at'];
+        if (myRd != null) {
+          b['response_status'] = myRd['response_status'];
+          b['notified_at'] = myRd['notified_at'] ?? b['notified_at'];
+          driverResponse = (myRd['response_status'] ?? '').toString().toUpperCase();
+        }
       }
 
+      final rawStatus = (b['status'] ?? '').toString().toUpperCase();
+      final status = (driverResponse == 'EXPIRED' || rawStatus == 'EXPIRED')
+            ? 'EXPIRED'
+            : (rawStatus == 'REQUESTED' ? 'PENDING' : rawStatus);
+
+      // Only show historical trips in the EV tab
+      if (status != 'COMPLETED' && status != 'REJECTED' && status != 'CANCELLED' && status != 'EXPIRED' && driverResponse != 'REJECTED') {
+        return false;
+      }
+
+      // Obey date filter for history
       if (widget.dateFilter != null && widget.dateFilter != 'ALL') {
         final dateStr = (b['created_at'] ?? b['updated_at'] ?? '').toString();
-        if (dateStr.isNotEmpty) {
-          try {
-            final dt = DateTime.parse(dateStr).toLocal();
-            final itemDate = "\${dt.year}-\${dt.month.toString().padLeft(2, '0')}-\${dt.day.toString().padLeft(2, '0')}";
-            if (itemDate != widget.dateFilter) return false;
-          } catch (_) {
-            return false;
-          }
+        if (dateStr.length >= 10) {
+          final itemDate = dateStr.substring(0, 10);
+          if (itemDate != widget.dateFilter) return false;
+        } else {
+          return false;
         }
       }
 
       return true;
     }).toList();
 
-    if (store.isLoading && myBookings.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: primaryBlue));
+    if (store.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 24),
+        child: tripzo_loading.StructuralLoading(itemCount: 3),
+      );
     }
     if (myBookings.isEmpty) {
       return Center(
@@ -169,13 +185,27 @@ class _DriverBatteryVehiclesPageState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "EV Booking",
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.electric_car_rounded, color: primaryBlue, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          "EV Booking",
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,

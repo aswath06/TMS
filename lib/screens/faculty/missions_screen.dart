@@ -1,11 +1,11 @@
 import 'package:tripzo/screens/faculty/request/new_battery_vehicle_request_screen.dart';
-import 'package:tripzo/screens/faculty/missions/otp_flash_screen.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/faculty/faculty_scan_otp_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tripzo/components/common/structural_loading.dart' as tripzo_loading;
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/screens/faculty/request/new_request_screen.dart';
 import 'package:tripzo/screens/faculty/missions/mission_details_screen.dart';
@@ -33,7 +33,6 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
   Timer? _debounce;
   String _selectedFilter = 'ALL';
   String _selectedDateFilter = 'ALL';
-  final List<DateTime> _scrollDates = [];
 
   final int _infiniteScrollMiddle = 100000;
   late ScrollController _dateScrollController;
@@ -188,7 +187,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
     final evStore = ref.watch(batteryVehicleStoreProvider);
     final driverStore = ref.watch(driverStoreProvider);
 
-    String _getEvLocationName(dynamic id, List<dynamic> locations) {
+    String getEvLocationName(dynamic id, List<dynamic> locations) {
       if (id == null) return '-';
       final idStr = id.toString();
       for (var loc in locations) {
@@ -204,14 +203,17 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
       final actualId = b['id'] ?? b['booking_id'];
       String fromName =
           b['from_location'] ??
-          _getEvLocationName(b['from_location_id'], evStore.locations);
+          getEvLocationName(b['from_location_id'], evStore.locations);
       String toName =
           b['to_location'] ??
-          _getEvLocationName(b['to_location_id'], evStore.locations);
+          getEvLocationName(b['to_location_id'], evStore.locations);
       combined.add({
         'isEv': true,
         'id': actualId,
         'dbId': actualId,
+        'faculty': (b['requestUser'] != null)
+            ? (b['requestUser']['name'] ?? b['requestUser']['first_name'] ?? 'Unknown Faculty')
+            : (b['passenger_name'] ?? 'Unknown Faculty'),
         'status': b['status'] ?? 'PENDING',
         'rawStatus': (b['status'] == 'PENDING')
             ? 1
@@ -223,7 +225,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
           if (d != null) {
             try {
               final dt = DateTime.parse(d.toString()).toLocal();
-              return "\${dt.year}-\${dt.month.toString().padLeft(2, '0')}-\${dt.day.toString().padLeft(2, '0')}";
+              return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
             } catch (_) {}
             return d.toString().split('T')[0].split(' ')[0];
           }
@@ -272,10 +274,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
             s != 'STARTED' &&
             s != 'ONGOING';
       }
-      if (_selectedFilter == 'DRAFT')
+      if (_selectedFilter == 'DRAFT') {
         return s == 'DRAFT' || s == 'PENDING' || s == 'SUBMITTED';
-      if (_selectedFilter == 'STARTED') return s == 'STARTED' || s == 'ONGOING';
-      if (_selectedFilter == 'COMPLETED') return s == 'COMPLETED';
+      }
+      if (_selectedFilter == 'STARTED') {
+        return s == 'STARTED' || s == 'ONGOING';
+      }
+      if (_selectedFilter == 'COMPLETED') {
+        return s == 'COMPLETED';
+      }
 
       return true;
     }).toList();
@@ -309,7 +316,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
                               color: titleColor,
-                              letterSpacing: -0.8,
+                              letterSpacing: -0.5,
                             ),
                           ),
                         ],
@@ -326,7 +333,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                                 await store.fetchBookingConfig();
                               } catch (_) {}
 
-                              if (!mounted) return;
+                              if (!context.mounted) return;
 
                               // Default to false if config fails or is null, unless you want it true by default.
                               // Actually, if it's off in backend, we want it off.
@@ -335,14 +342,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                                   .bookingConfig['is_faculty_booking_enabled'];
                               bool isEvEnabled = true;
                               if (rawVal != null) {
-                                if (rawVal is bool)
+                                if (rawVal is bool) {
                                   isEvEnabled = rawVal;
-                                else if (rawVal is int)
+                                } else if (rawVal is int) {
                                   isEvEnabled = rawVal == 1;
-                                else if (rawVal is String)
+                                } else if (rawVal is String) {
                                   isEvEnabled =
                                       rawVal.toLowerCase() == 'true' ||
                                       rawVal == '1';
+                                }
                               }
 
                               showModalBottomSheet(
@@ -616,8 +624,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
               ),
             ),
             Expanded(
-              child: store.isLoading && missions.isEmpty
-                  ? _buildRequestsSkeleton(isDark, cardColor)
+              child: (store.isLoading || evStore.isLoading)
+                  ? const tripzo_loading.StructuralLoading(itemCount: 3)
                   : RefreshIndicator(
                       onRefresh: () async {
                         await Future.wait([
@@ -626,7 +634,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                         ]);
                         try {
                           await ref.read(driverStoreProvider).fetchDrivers();
-                        } catch (e) {}
+                        } catch (e) {
+                          // Ignore error
+                        }
                       },
                       child: missions.isEmpty
                           ? ListView(
@@ -1396,9 +1406,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                   onTap: () {
                     if (_selectedDateFilter == formattedDateStr) return;
                     setState(() => _selectedDateFilter = formattedDateStr);
-                    ref
-                        .read(requestStoreProvider)
-                        .fetchRequests(
+                    ref.read(requestStoreProvider).fetchRequests(
                           isRefresh: true,
                           routeDate: formattedDateStr,
                         );
@@ -2245,66 +2253,6 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
         const SizedBox(width: 12),
         const Expanded(child: Divider(thickness: 1, height: 1)),
       ],
-    );
-  }
-
-  Widget _buildRequestsSkeleton(bool isDark, Color cardColor) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      itemCount: 3,
-      itemBuilder: (context, index) => Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 80,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                Container(
-                  width: 60,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: 200,
-              height: 20,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: 140,
-              height: 14,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -170,7 +170,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
 
     if (!mounted) return;
     // Fetch Battery Vehicles (EV)
-    await ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
+    await ref.read(batteryVehicleStoreProvider).fetchDriverBookings(date: _selectedDateFilter);
   }
 
   @override
@@ -690,7 +690,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
       }).toList();
     }
 
-    if (store.isLoadingMissions && list.isEmpty) {
+    if (store.isLoadingMissions) {
       final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
       return _buildSkeletonList(isDark, cardColor);
     }
@@ -753,7 +753,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
       }).toList();
     }
 
-    if (dailyStore.isLoading && list.isEmpty) {
+    if (dailyStore.isLoading) {
       final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
       return _buildSkeletonList(isDark, cardColor);
     }
@@ -1646,7 +1646,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
       }).toList();
     }
 
-    if (scheduleStore.isLoading && list.isEmpty) {
+    if (scheduleStore.isLoading) {
       return _buildSkeletonList(isDark, cardColor);
     }
 
@@ -2148,7 +2148,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
       return true;
     }).toList();
 
-    if (scheduleStore.isLoading && filteredList.isEmpty) {
+    if (scheduleStore.isLoading) {
       return _buildSkeletonList(isDark, cardColor);
     }
 

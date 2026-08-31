@@ -22,6 +22,7 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
   bool _isSubmittingShift = false;
   String? _errorMessage;
   Map<String, dynamic>? _scheduleDetails;
+  int? _currentDriverId;
 
   @override
   void initState() {
@@ -39,12 +40,19 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
 
     try {
       final token = await UserStore.getToken();
+      final driverId = await UserStore.getDriverId();
       if (token == null) {
         setState(() {
           _errorMessage = "Authentication token not found.";
           _isLoading = false;
         });
         return;
+      }
+      
+      if (mounted) {
+        setState(() {
+          _currentDriverId = driverId;
+        });
       }
 
       final url = ApiConstants.getDriverScheduleDetails(widget.scheduleId);
@@ -343,12 +351,27 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
       }
     }
 
-    final bool hasDriverStartedAnyVehicle = vehicles.isNotEmpty && vehicles.any((v) => v['is_my_responsibility'] == true);
+    final bool hasAssignedVehicle = vehicles.isNotEmpty && vehicles.any((v) => v['is_my_responsibility'] == true);
+
+    final bool hasCurrentDriverStarted = _currentDriverId != null && drivers.any((d) => 
+      d['driver_id']?.toString() == _currentDriverId?.toString() && 
+      d['assignment_status'] == 'STARTED'
+    );
+    
+    final bool hasCurrentDriverCompleted = _currentDriverId != null && drivers.any((d) => 
+      d['driver_id']?.toString() == _currentDriverId?.toString() && 
+      d['assignment_status'] == 'COMPLETED'
+    );
 
     final bool allEndOdoEntered = vehicles.isNotEmpty && vehicles.every((v) {
       final odo = v['odometer'] as Map<String, dynamic>?;
       return odo != null && odo['end_odometer'] != null && odo['end_odometer'].toString().isNotEmpty;
     });
+
+    final bool canStartDuty = hasAssignedVehicle && !hasCurrentDriverStarted && !hasCurrentDriverCompleted && dutyStatus != 'COMPLETED';
+    final bool canEndDuty = hasCurrentDriverStarted && allEndOdoEntered && dutyStatus != 'COMPLETED';
+    final bool showActionBtn = canStartDuty || canEndDuty;
+    final bool isEndAction = canEndDuty;
 
     Color accentColor = primaryBlue;
     if (shiftCode == 'FN') {
@@ -714,9 +737,7 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
         ],
       ),
     ),
-    if (vehicles.isNotEmpty && 
-        ((dutyStatus != 'STARTED' && dutyStatus != 'COMPLETED' && hasDriverStartedAnyVehicle) || 
-         (dutyStatus == 'STARTED' && allEndOdoEntered)))
+    if (showActionBtn)
       Positioned(
         bottom: 20,
         left: 20,
@@ -726,16 +747,16 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
           height: 56,
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: dutyStatus == 'STARTED' ? Colors.red : Colors.green,
+              backgroundColor: isEndAction ? Colors.red : Colors.green,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 4,
-              shadowColor: (dutyStatus == 'STARTED' ? Colors.red : Colors.green).withOpacity(0.3),
+              shadowColor: (isEndAction ? Colors.red : Colors.green).withOpacity(0.3),
             ),
             onPressed: _isSubmittingShift
                 ? null
                 : () {
-                    if (dutyStatus == 'STARTED') {
+                    if (isEndAction) {
                       _endShift(dutyShift['id'] ?? 0);
                     } else {
                       _startShift(dutyShift['id'] ?? 0);
@@ -751,15 +772,15 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
                     ),
                   )
                 : Icon(
-                    dutyStatus == 'STARTED' ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                    isEndAction ? Icons.stop_rounded : Icons.play_arrow_rounded,
                     size: 28,
                   ),
             label: Text(
               _isSubmittingShift
-                  ? (dutyStatus == 'STARTED'
+                  ? (isEndAction
                       ? (isTamil ? "முடிக்கப்படுகிறது..." : "Ending...")
                       : (isTamil ? "தொடங்குகிறது..." : "Starting..."))
-                  : (dutyStatus == 'STARTED'
+                  : (isEndAction
                       ? (isTamil ? "கடமையை முடிக்கவும்" : "End Duty")
                       : (isTamil ? "கடமையைத் தொடங்கு" : "Start Duty")),
               style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w900),

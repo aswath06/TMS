@@ -56,14 +56,14 @@ class _EvCountdownTimerState extends State<EvCountdownTimer> {
 
   @override
   Widget build(BuildContext context) {
-    if (_remainingSeconds <= 0) return const SizedBox.shrink();
+    final displaySeconds = _remainingSeconds <= 0 ? 0 : _remainingSeconds;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.timer, color: Colors.orange, size: 14),
         const SizedBox(width: 4),
         Text(
-          "00:${_remainingSeconds.toString().padLeft(2, '0')}",
+          "00:${displaySeconds.toString().padLeft(2, '0')}",
           style: const TextStyle(
             color: Colors.orange,
             fontWeight: FontWeight.bold,

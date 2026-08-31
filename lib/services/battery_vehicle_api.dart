@@ -144,7 +144,7 @@ class BatteryVehicleApi {
     }
   }
 
-  Future<void> bookBatteryVehicle(int fromId, int toId, String reason) async {
+  Future<String> bookBatteryVehicle(int fromId, int toId, String reason) async {
     final response = await http.post(
       Uri.parse('${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings'),
       headers: await _getHeaders(),
@@ -158,6 +158,15 @@ class BatteryVehicleApi {
       throw Exception(
         'Failed to book vehicle: ${response.statusCode} ${response.body}',
       );
+      
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] != null) {
+        return decoded['message'].toString();
+      }
+    } catch (_) {}
+    
+    return 'Booking Created Successfully';
   }
 
   Future<void> driverStartTrip(
@@ -223,9 +232,13 @@ class BatteryVehicleApi {
       );
   }
 
-  Future<List<dynamic>> getDriverBookings(String scheduleId) async {
+  Future<List<dynamic>> getDriverBookings(String scheduleId, {String? date}) async {
     final headers = await _getHeaders();
-    final url = '${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings';
+    String url = '${ApiConstants.baseUrl}/api/battery-vehicle-booking/bookings';
+    
+    if (date != null && date != 'ALL' && date.isNotEmpty) {
+      url += '?date=$date';
+    }
 
     try {
       print("FETCHING FROM: $url");
@@ -294,7 +307,7 @@ class BatteryVehicleApi {
     );
   }
 
-  Future<void> acceptRide(String bookingId) async {
+  Future<String> acceptRide(String bookingId) async {
     final driverId = await UserStore.getDriverId();
     final response = await http.post(
       Uri.parse(
@@ -305,10 +318,18 @@ class BatteryVehicleApi {
         "driver_id": driverId,
       }),
     );
-    if (response.statusCode >= 400)
+    if (response.statusCode >= 400) {
       throw Exception(
         'Failed to accept ride: ${response.statusCode} ${response.body}',
       );
+    }
+    
+    try {
+      final decoded = jsonDecode(response.body);
+      return decoded['message'] ?? 'Trip Accepted Successfully';
+    } catch (_) {
+      return 'Trip Accepted Successfully';
+    }
   }
 
   Future<void> rejectRide(String bookingId) async {

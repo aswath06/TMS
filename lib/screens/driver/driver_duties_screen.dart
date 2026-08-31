@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/battery_vehicle_store.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 import 'package:tripzo/utils/ev_countdown_timer.dart';
 import 'package:tripzo/store/user_store.dart' as tripzo_user_store;
+import 'package:tripzo/components/common/structural_loading.dart' as tripzo_loading;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/store/providers.dart';
 import 'package:tripzo/store/driver_store.dart';
@@ -36,6 +38,7 @@ class DriverDutiesScreen extends ConsumerStatefulWidget {
 class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
   Timer? _timer;
   Timer? _taskPollTimer;
+  String? _loadingEvBookingId;
 
   @override
   void initState() {
@@ -127,6 +130,12 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                 final scheduleStore = ref.watch(driverSchedulesStoreProvider);
                 final bvStore = ref.watch(batteryVehicleStoreProvider);
                 final profile = store.profileData.value;
+                
+                final activeEvBookings = bvStore.driverBookings.where((b) {
+                  final s = (b['status'] ?? '').toString().toUpperCase();
+                  return s != 'COMPLETED' && s != 'REJECTED' && s != 'CANCELLED';
+                }).toList();
+
                 final List<Map<String, dynamic>> allAssignments = [];
                 for (var run in store.dailyBusRuns) {
                   final assignmentsList = run['assignment'] as List? ?? [];
@@ -225,7 +234,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                   final String shiftStatus = (dutyShift['status'] ?? 'PLANNED')
                       .toString()
                       .toUpperCase();
-                  if (shiftStatus != 'COMPLETED' &&
+                  if (shiftStatus != 'COMPLETED' && shiftStatus != 'REJECTED' &&
                       !dashboardSchedules.any(
                         (item) => item['id'] == s['id'],
                       )) {
@@ -317,41 +326,20 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                           isDark,
                           isTamil,
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: _buildSectionTitle(
-                                "${isTamil ? "உங்கள் பணிகள்" : "Your Assignments"} (${allAssignments.length + todayMissions.length + dashboardSchedules.length + bvStore.pendingDashboardBookings.length})",
-                                titleColor,
-                              ),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 18),
                         if (store.isLoadingBusRuns &&
                             allAssignments.isEmpty &&
                             dashboardSchedules.isEmpty)
-                          const Center(child: CircularProgressIndicator())
+                          const Padding(
+                            padding: EdgeInsets.only(top: 24),
+                            child: tripzo_loading.StructuralLoading(itemCount: 3),
+                          )
                         else if (allAssignments.isEmpty &&
                             dashboardSchedules.isEmpty &&
-                            bvStore.pendingDashboardBookings.isEmpty)
+                            activeEvBookings.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else ...[
-                          ...bvStore.pendingDashboardBookings.map(
-                            (b) => _buildPendingEvCard(
-                              context: context,
-                              b: b,
-                              cardColor: surfaceColor,
-                              titleColor: titleColor,
-                              subColor: subColor,
-                              primaryBlue: primaryBlue,
-                              isDark: isDark,
-                              isTamil: isTamil,
-                              ref: ref,
-                            ),
-                          ),
+
                           ...dashboardSchedules.map(
                             (s) => _buildScheduleCard(
                               context: context,
@@ -2794,6 +2782,13 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     return b['passenger_name'] ?? b['employee_code'] ?? 'Unknown Passenger';
   }
 
+  String _evGetPassengerCode(dynamic b) {
+    if (b['requestUser'] != null && b['requestUser']['employee_code'] != null) {
+      return b['requestUser']['employee_code'];
+    }
+    return b['employee_code'] ?? 'N/A';
+  }
+
   String _evGetPassengerPhone(dynamic b) {
     if (b['requestUser'] != null) {
       if (b['requestUser']['phone_number'] != null &&
@@ -2823,7 +2818,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     final evStore = ref.watch(batteryVehicleStoreProvider);
     final pendingBookings = evStore.driverBookings.where((b) {
       final status = (b['status'] ?? '').toString().toUpperCase();
-      if (status != 'REQUESTED' && status != 'PENDING') return false;
+      if (status == 'COMPLETED' || status == 'CANCELLED' || status == 'EXPIRED') return false;
 
       // Try to read from new 'requestDriver' array
       final currentDriverId = tripzo_user_store.UserStore.driverId;
@@ -2836,14 +2831,13 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
           (r) => r['driver_id']?.toString() == currentDriverId.toString(),
         );
         final myRd = matches.isNotEmpty ? matches.first : null;
-        if (myRd == null) return false; // Not sent to me!
-        rStatus = (myRd['response_status'] ?? '').toString().toUpperCase();
-        b['notified_at'] = myRd['notified_at'] ?? b['notified_at']; // Inject my specific time
+        if (myRd != null) {
+          rStatus = (myRd['response_status'] ?? '').toString().toUpperCase();
+          b['notified_at'] = myRd['notified_at'] ?? b['notified_at'];
+        }
       }
 
-      return rStatus != 'EXPIRED' &&
-          rStatus != 'ACCEPTED' &&
-          rStatus != 'REJECTED';
+      return rStatus != 'EXPIRED' && rStatus != 'REJECTED';
     }).toList();
 
     if (pendingBookings.isEmpty) return const SizedBox.shrink();
@@ -2854,7 +2848,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Text(
-            "New EV Requests",
+            "Active EV Requests",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -2863,6 +2857,21 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
           ),
         ),
         ...pendingBookings.map((b) {
+          final rawStatus = (b['status'] ?? '').toString().toUpperCase();
+          String driverResponse = '';
+          if (tripzo_user_store.UserStore.driverId != null && b['requestDriver'] is List) {
+            final rdList = b['requestDriver'] as List;
+            final matches = rdList.where(
+              (r) => r['driver_id']?.toString() == tripzo_user_store.UserStore.driverId.toString(),
+            );
+            if (matches.isNotEmpty && matches.first['response_status'] != null) {
+               driverResponse = matches.first['response_status'].toString().toUpperCase();
+            }
+          }
+          final status = (driverResponse == 'EXPIRED' || rawStatus == 'EXPIRED')
+              ? 'EXPIRED'
+              : (rawStatus == 'REQUESTED' ? 'PENDING' : rawStatus);
+
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
@@ -2887,31 +2896,73 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        "EV Booking",
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          "PENDING",
-                          style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: primaryBlue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(Icons.electric_car_rounded, color: primaryBlue, size: 20),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "EV Booking",
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (status == 'PENDING')
+                            EvCountdownTimer(
+                              durationSeconds: 60,
+                              timestampStr: (b['notified_at'] ??
+                                      b['assigned_at'] ??
+                                      b['updated_at'] ??
+                                      b['created_at'] ??
+                                      DateTime.now().toIso8601String())
+                                  .toString(),
+                              onExpire: () {
+                                final id = (b['id'] ?? b['booking_id'])?.toString();
+                                if (id != null) ref.read(batteryVehicleStoreProvider).expireBookingLocally(id);
+                              },
+                            ),
+                          if (status == 'PENDING') const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: status == 'EXPIRED'
+                                  ? Colors.red.withOpacity(0.1)
+                                  : status == 'PENDING'
+                                  ? Colors.orange.withOpacity(0.1)
+                                  : primaryBlue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status,
+                              style: TextStyle(
+                                color: status == 'EXPIRED'
+                                    ? Colors.red
+                                    : status == 'PENDING'
+                                    ? Colors.orange
+                                    : primaryBlue,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -2980,58 +3031,165 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                       Icon(Icons.person, size: 16, color: primaryBlue),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          _evGetPassengerName(b),
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Icon(Icons.phone, size: 16, color: subColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        _evGetPassengerPhone(b),
-                        style: TextStyle(
-                          color: primaryBlue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${_evGetPassengerName(b)} (${_evGetPassengerCode(b)})",
+                              style: TextStyle(
+                                color: textColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (b['passenger_email'] != null &&
+                                b['passenger_email'].toString().isNotEmpty)
+                              Text(
+                                "${b['passenger_email']}",
+                                style: TextStyle(color: subColor, fontSize: 13),
+                              ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryBlue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.phone, size: 16, color: subColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _evGetPassengerPhone(b),
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      onPressed: () async {
-                        try {
-                          await ref
-                              .read(batteryVehicleStoreProvider)
-                              .acceptRide(b['id'].toString());
-                          if (mounted)
-                            showTopToast(context, "Trip Accepted Successfully");
-                        } catch (e) {
-                          if (mounted)
-                            showTopToast(context, e.toString(), isError: true);
-                        }
-                      },
-                      child: const Text(
-                        'Accept',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.call, color: Colors.green),
+                        onPressed: () async {
+                          final phone = _evGetPassengerPhone(b);
+                          if (phone != 'N/A') {
+                            final uri = Uri.parse('tel:$phone');
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri);
+                            }
+                          }
+                        },
                       ),
-                    ),
+                    ],
+                  ),
+                  if (status == 'PENDING' || status == 'EXPIRED' || status == 'ONGOING')
+                    const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (status == 'PENDING' || status == 'EXPIRED')
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: status == 'EXPIRED' ? Colors.grey : primaryBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: (status == 'EXPIRED' || _loadingEvBookingId == b['id'].toString())
+                                ? null
+                                : () async {
+                                    if (mounted) {
+                                      setState(() {
+                                        _loadingEvBookingId = b['id'].toString();
+                                      });
+                                    }
+                                    try {
+                                      final msg = await ref
+                                          .read(batteryVehicleStoreProvider)
+                                          .acceptRide(b['id'].toString());
+                                      if (mounted) showTopToast(context, msg);
+                                    } catch (e) {
+                                      if (mounted) showTopToast(context, e.toString(), isError: true);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          if (_loadingEvBookingId == b['id'].toString()) {
+                                            _loadingEvBookingId = null;
+                                          }
+                                        });
+                                      }
+                                    }
+                                  },
+                            child: _loadingEvBookingId == b['id'].toString()
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text(
+                                    'Accept',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                          ),
+                        ),
+                      if (status == 'ONGOING')
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _loadingEvBookingId == b['id'].toString()
+                                ? null
+                                : () async {
+                                    if (mounted) {
+                                      setState(() {
+                                        _loadingEvBookingId = b['id'].toString();
+                                      });
+                                    }
+                                    try {
+                                      await ref
+                                          .read(batteryVehicleStoreProvider)
+                                          .completeRide(b['id'].toString());
+                                      if (mounted) {
+                                        showTopToast(context, "Trip completed successfully", isError: false);
+                                      }
+                                    } catch (e) {
+                                      if (mounted) showTopToast(context, e.toString(), isError: true);
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          if (_loadingEvBookingId == b['id'].toString()) {
+                                            _loadingEvBookingId = null;
+                                          }
+                                        });
+                                      }
+                                    }
+                                  },
+                            child: _loadingEvBookingId == b['id'].toString()
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text(
+                                    'Complete Trip',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

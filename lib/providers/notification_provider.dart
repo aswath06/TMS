@@ -67,12 +67,7 @@ class NotificationProvider extends ChangeNotifier {
           // do NOT call showNotification/showRouteAssignmentAlert here again
           // to avoid showing duplicate banners.
 
-          // Show the beautiful in-app overlay slide-down banner
-          showPremiumInAppNotification(
-            title: notification.title,
-            message: notification.message,
-            type: notification.type,
-          );
+
         } catch (e) {
           debugPrint(
             "🔔 Error handling new firebase notification in provider: $e",
@@ -176,11 +171,7 @@ class NotificationProvider extends ChangeNotifier {
           );
         }
 
-        showPremiumInAppNotification(
-          title: notification.title,
-          message: notification.message,
-          type: notification.type,
-        );
+
       }
     } catch (e) {
       debugPrint("Error syncing missed notifications on reconnect: $e");

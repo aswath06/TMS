@@ -154,7 +154,7 @@ class BatteryVehicleStore extends ChangeNotifier {
     }
   }
 
-  Future<void> bookVehicle(
+  Future<String> bookVehicle(
     dynamic fromId,
     dynamic toId,
     double lat,
@@ -188,12 +188,13 @@ class BatteryVehicleStore extends ChangeNotifier {
         }
       }
 
-      await _api.bookBatteryVehicle(
+      final message = await _api.bookBatteryVehicle(
         int.tryParse(fromId.toString()) ?? 0,
         int.tryParse(toId.toString()) ?? 0,
         reason,
       );
       await fetchPassengerBookings();
+      return message;
     } catch (e) {
       _setError(e.toString());
       rethrow;
@@ -220,7 +221,22 @@ class BatteryVehicleStore extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      final raw = await _api.getMyBookings();
+      List<dynamic> raw = await _api.getMyBookings();
+      if (raw.isEmpty) {
+        try {
+          final userId = await UserStore.getUserId();
+          final all = await _api.getBookings();
+          raw = all.where((b) {
+            if (b['user_id']?.toString() == userId?.toString()) return true;
+            final reqUser = b['requestUser'];
+            if (reqUser is Map) {
+              return reqUser['id']?.toString() == userId?.toString();
+            }
+            return false;
+          }).toList();
+        } catch (_) {}
+      }
+      
       final uniqueMap = <String, dynamic>{};
       for (var b in raw) {
         final id = b['id'] ?? b['booking_id'];
@@ -341,7 +357,7 @@ class BatteryVehicleStore extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchDriverBookings() async {
+  Future<void> fetchDriverBookings({String? date}) async {
     _setLoading(true);
     _setError(null);
     debugLog = 'Starting fetch...\n';
@@ -354,19 +370,19 @@ class BatteryVehicleStore extends ChangeNotifier {
         final sid = s['id']?.toString();
         debugLog += 'Checking schedule $sid...\n';
         if (sid != null && sid.isNotEmpty) {
-          final b = await _api.getDriverBookings(sid);
+          final b = await _api.getDriverBookings(sid, date: date);
           debugLog += 'Got ${b.length} from $sid.\n';
           allRawBookings.addAll(b);
         }
       }
 
-      final bFallback = await _api.getDriverBookings('');
+      final bFallback = await _api.getDriverBookings('', date: date);
       debugLog += 'Got ${bFallback.length} from fallback.\n';
       allRawBookings.addAll(bFallback);
 
       // HARDCODE 101 to see if it's the missing link
       try {
-        final b101 = await _api.getDriverBookings('101');
+        final b101 = await _api.getDriverBookings('101', date: date);
         debugLog += 'Got ${b101.length} from 101.\n';
         allRawBookings.addAll(b101);
       } catch (e) {
@@ -410,11 +426,13 @@ class BatteryVehicleStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> acceptRide(String bookingId) async {
+  Future<String> acceptRide(String bookingId) async {
     _setLoading(true);
     try {
-      await _api.acceptRide(bookingId);
+      final msg = await _api.acceptRide(bookingId);
+      await fetchPendingDashboardBookings();
       await fetchDriverBookings();
+      return msg;
     } catch (e) {
       rethrow;
     } finally {
@@ -465,6 +483,7 @@ class BatteryVehicleStore extends ChangeNotifier {
           otp: otp,
           qrCodeData: qrCodeData,
         );
+        await fetchPendingDashboardBookings();
         await fetchDriverBookings();
       }
     } catch (e) {
@@ -482,6 +501,7 @@ class BatteryVehicleStore extends ChangeNotifier {
       final driverId = await UserStore.getDriverId();
       if (driverId != null) {
         await _api.completeRide(bookingId, driverId);
+        await fetchPendingDashboardBookings();
         await fetchDriverBookings();
       }
     } catch (e) {
