@@ -101,6 +101,20 @@ class _DriverBatteryVehiclesPageState
         b['response_status'] = myRd['response_status'];
         b['notified_at'] = myRd['notified_at'] ?? b['notified_at'];
       }
+
+      if (widget.dateFilter != null && widget.dateFilter != 'ALL') {
+        final dateStr = (b['created_at'] ?? b['updated_at'] ?? '').toString();
+        if (dateStr.isNotEmpty) {
+          try {
+            final dt = DateTime.parse(dateStr).toLocal();
+            final itemDate = "\${dt.year}-\${dt.month.toString().padLeft(2, '0')}-\${dt.day.toString().padLeft(2, '0')}";
+            if (itemDate != widget.dateFilter) return false;
+          } catch (_) {
+            return false;
+          }
+        }
+      }
+
       return true;
     }).toList();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
+import 'package:tripzo/utils/animated_notification.dart';
 
 class NewBatteryVehicleRequestScreen extends ConsumerStatefulWidget {
   const NewBatteryVehicleRequestScreen({super.key});
@@ -43,8 +44,8 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
           _remarkController.text.trim(),
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking Created Successfully')));
-          Navigator.pop(context);
+          showPremiumInAppNotification(title: 'Info', message: 'Booking Created Successfully', type: 'INFO');
+          Navigator.pop(context, true);
         }
       } catch (e) {
         if (mounted) {

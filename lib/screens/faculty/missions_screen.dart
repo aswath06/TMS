@@ -448,7 +448,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
                                                 builder: (context) =>
                                                     const NewBatteryVehicleRequestScreen(),
                                               ),
-                                            );
+                                            ).then((value) {
+                                              if (value == true) {
+                                                ref.read(batteryVehicleStoreProvider).fetchPassengerBookings();
+                                              }
+                                            });
                                           },
                                         ),
                                     ],
