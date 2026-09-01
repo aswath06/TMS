@@ -2158,7 +2158,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                       onExpire: () {
                         // The backend handles the 60s escalation/expiration logic automatically.
                         // We just need to refresh the list so the expired card disappears.
-                        ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+                        ref.read(batteryVehicleStoreProvider).fetchDriverBookings();
                       },
                     ),
                     const SizedBox(width: 8),
@@ -2799,9 +2799,16 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
       final status = (b['status'] ?? '').toString().toUpperCase();
       if (status == 'COMPLETED' || status == 'CANCELLED' || status == 'EXPIRED') return false;
 
-      // Try to read from new 'requestDriver' array
       final currentDriverId = tripzo_user_store.UserStore.driverId;
       
+      // Hide if assigned to another driver (Phase 1) or accepted by someone else
+      final assignedDriverId = b['driver_id']?.toString();
+      if (assignedDriverId != null && assignedDriverId != 'null' && assignedDriverId.isNotEmpty) {
+        if (assignedDriverId != currentDriverId?.toString()) {
+          return false;
+        }
+      }
+
       String rStatus = (b['response_status'] ?? '').toString().toUpperCase();
       
       if (currentDriverId != null && b['requestDriver'] is List) {
