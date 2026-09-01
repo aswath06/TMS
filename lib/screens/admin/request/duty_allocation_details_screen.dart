@@ -227,38 +227,58 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                   ...drivers.map((d) {
                     final String dName = d['driver']?['user']?['name'] ?? 'Unknown Driver';
                     final String type = d['assignment_type'] ?? 'PRIMARY';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12.0),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.01),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
                       child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 14,
+                            radius: 18,
                             backgroundColor: primaryBlue.withOpacity(0.1),
-                            child: Icon(Icons.person, size: 16, color: primaryBlue),
+                            child: Icon(Icons.person, size: 20, color: primaryBlue),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               dName,
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
                                 color: titleColor,
                               ),
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: type == 'PRIMARY' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: type == 'PRIMARY' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                              ),
                             ),
                             child: Text(
                               type,
                               style: TextStyle(
                                 fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w900,
                                 color: type == 'PRIMARY' ? Colors.green : Colors.orange,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
@@ -360,9 +380,19 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.05),
+                          color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.orange.withOpacity(0.15)),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.01),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,9 +452,9 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                               Container(
                                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(isDark ? 0.05 : 0.6),
+                                  color: Colors.orange.withOpacity(isDark ? 0.05 : 0.03),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.orange.withOpacity(0.1)),
+                                  border: Border.all(color: Colors.orange.withOpacity(0.2)),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

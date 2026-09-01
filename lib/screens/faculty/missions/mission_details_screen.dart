@@ -1338,6 +1338,15 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                             hasValidationError = true;
                                             break;
                                           }
+                                          // 0.5 Amount Limit Check
+                                          final masterAmountStr = type['amount']?.toString() ?? "0";
+                                          final masterAmount = double.tryParse(masterAmountStr) ?? 0.0;
+                                          final enteredAmount = double.tryParse((e['amount'] as TextEditingController).text.trim()) ?? 0.0;
+                                          if (masterAmount > 0 && enteredAmount > masterAmount) {
+                                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Amount for ${type['name'] ?? type['type_name']} cannot exceed ₹$masterAmount"), backgroundColor: Colors.red));
+                                            hasValidationError = true;
+                                            break;
+                                          }
                                           // 1. Proof mandatory
                                           if (e['proof'] == null) {
                                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image proof is mandatory for all allowances (${type['name'] ?? type['type_name']})"), backgroundColor: Colors.red));

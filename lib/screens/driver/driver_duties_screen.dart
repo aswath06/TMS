@@ -196,21 +196,29 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                 final now = DateTime.now();
                 final List<Map<String, dynamic>> todayMissions = store.missions
                     .where((m) {
-                      final dtStr = m['start_datetime'];
+                      final dtStr = m['start_datetime'] ?? m['startDate'];
                       if (dtStr == null) return false;
                       try {
                         final dt = DateTime.parse(dtStr).toLocal();
                         final backendStatus = (m['status'] ?? "UNKNOWN")
                             .toString()
                             .toUpperCase();
-                        final isStarted =
+                        
+                        if (backendStatus == 'COMPLETED' || backendStatus == 'FINISHED' || backendStatus == 'REJECTED' || backendStatus == 'CANCELLED') {
+                          return false;
+                        }
+
+                        final isActive =
                             backendStatus == 'STARTED' ||
                             backendStatus == 'ON_TRIP' ||
-                            backendStatus == 'ONGOING';
+                            backendStatus == 'ONGOING' ||
+                            backendStatus == 'APPROVED' ||
+                            backendStatus == 'ASSIGNED';
+                            
                         return (dt.year == now.year &&
                                 dt.month == now.month &&
                                 dt.day == now.day) ||
-                            isStarted;
+                            isActive;
                       } catch (_) {
                         return false;
                       }
@@ -336,10 +344,10 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                           )
                         else if (allAssignments.isEmpty &&
                             dashboardSchedules.isEmpty &&
-                            activeEvBookings.isEmpty)
+                            activeEvBookings.isEmpty &&
+                            todayMissions.isEmpty)
                           _buildEmptyState(subColor, isTamil)
                         else ...[
-
                           ...dashboardSchedules.map(
                             (s) => _buildScheduleCard(
                               context: context,
@@ -362,6 +370,21 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                               subColor: subColor,
                               isDark: isDark,
                               isTamil: isTamil,
+                            ),
+                          ),
+                          ...todayMissions.map(
+                            (m) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _buildMissionCard(
+                                context: context,
+                                mission: m,
+                                surface: surfaceColor,
+                                primary: primaryBlue,
+                                titleColor: titleColor,
+                                subColor: subColor,
+                                isDark: isDark,
+                                isTamil: isTamil,
+                              ),
                             ),
                           ),
                         ],
@@ -1925,7 +1948,13 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     final activeRoutes = store.activeRoutesToComplete;
     if (activeRoutes.isEmpty) return const SizedBox.shrink();
 
-    final validRoutes = activeRoutes;
+    final validRoutes = activeRoutes.where((route) {
+      final tripInstances = route['trip_instances'] as List<dynamic>? ?? [];
+      final firstTrip = tripInstances.isNotEmpty ? tripInstances[0] : null;
+      final endedAtStr = firstTrip?['ended_at'];
+      // Only show this timer if the trip was actually ended by security
+      return endedAtStr != null;
+    }).toList();
 
     if (validRoutes.isEmpty) return const SizedBox.shrink();
 
@@ -1956,25 +1985,14 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     bool isTamil,
   ) {
     final routeName = route['route_name'] ?? "Unknown Route";
-    final legs = route['legs'] as List<dynamic>? ?? [];
-    final lastLeg = legs.isNotEmpty ? legs.last : null;
-    final plannedEndAt = lastLeg != null
-        ? DateTime.tryParse(lastLeg['planned_end_at'] ?? '')
-        : null;
-
-    String remainingStr = "00:00";
     final tripInstances = route['trip_instances'] as List<dynamic>? ?? [];
     final firstTrip = tripInstances.isNotEmpty ? tripInstances[0] : null;
     final endedAtStr = firstTrip?['ended_at'];
 
+    String remainingStr = "00:00";
     DateTime? referenceTime;
     if (endedAtStr != null) {
       referenceTime = DateTime.tryParse(endedAtStr)?.add(const Duration(minutes: 25));
-    } else {
-      final lastLeg = legs.isNotEmpty ? legs.last : null;
-      if (lastLeg != null) {
-        referenceTime = DateTime.tryParse(lastLeg['planned_end_at'] ?? '')?.add(const Duration(minutes: 25));
-      }
     }
 
     if (referenceTime != null) {
@@ -1987,7 +2005,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
         final seconds = diff.inSeconds % 60;
 
         if (hours > 0) {
-          remainingStr = "$hours:${minutes.toString().padLeft(2, '0')}";
+          remainingStr = "$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
         } else {
           remainingStr = "$minutes:${seconds.toString().padLeft(2, '0')}";
         }
@@ -2000,6 +2018,8 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
         : 99;
     if (diffInMinutes < 5) {
       accentColor = Colors.red;
+    } else if (diffInMinutes > 15) {
+      accentColor = Colors.green;
     }
 
     final Color subColor = isDark
@@ -2056,47 +2076,123 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withValues(alpha: 0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
           border: Border.all(
             color: accentColor.withValues(alpha: 0.3),
-            width: 1,
+            width: 1.5,
           ),
         ),
-        child: Row(
+        child: Column(
           children: [
-            Icon(Icons.timer_outlined, color: accentColor, size: 18),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                routeName,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: titleColor,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18.5),
+                  topRight: Radius.circular(18.5),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: accentColor, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isTamil ? "நிலுவையில் உள்ள ஓடோமீட்டர்" : "Pending Odometer Entry",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.timer_outlined, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          remainingStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              remainingStr,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: accentColor,
-                fontFeatures: const [FontFeature.tabularFigures()],
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.route_rounded, color: primary, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          routeName,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isTamil 
+                              ? "படியை சமர்ப்பிக்க கிளிக் செய்யவும்" 
+                              : "Tap to complete mission & submit allowance",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: subColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_ios_rounded, color: subColor, size: 16),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: accentColor.withValues(alpha: 0.5),
-              size: 12,
             ),
           ],
         ),

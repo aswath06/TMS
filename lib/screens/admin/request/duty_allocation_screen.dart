@@ -5,7 +5,7 @@ import 'package:tripzo/store/providers.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tripzo/screens/admin/request/duty_allocation_details_screen.dart';
-
+import 'package:tripzo/components/common/structural_loading.dart';
 class DutyAllocationScreen extends ConsumerStatefulWidget {
   const DutyAllocationScreen({super.key});
 
@@ -310,7 +310,7 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
             ),
             Expanded(
               child: store.isLoading && schedules.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const StructuralLoading(padding: 24)
                   : RefreshIndicator(
                       onRefresh: () => store.fetchMasterSchedules(isRefresh: true),
                       child: schedules.isEmpty

@@ -646,8 +646,17 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
     List<Map<String, dynamic>> list = [];
     final allMissions = List<Map<String, dynamic>>.from(store.missions);
 
-    // Filter by selected date
+    // Filter by selected date and status (only completed/rejected)
     list = allMissions.where((m) {
+      // Status filter
+      final backendStatus = (m['status'] ?? "UNKNOWN").toString().toUpperCase();
+      final isCompletedOrFinished = backendStatus == 'COMPLETED' || 
+                                    backendStatus == 'FINISHED' || 
+                                    backendStatus == 'REJECTED' || 
+                                    backendStatus == 'CANCELLED';
+      if (!isCompletedOrFinished) return false;
+
+      // Date filter
       if (_selectedDateFilter == 'ALL') return true;
       final dateStr = (m['start_datetime'] ?? m['startDate'])?.toString() ?? "";
       if (dateStr.isEmpty) return false;

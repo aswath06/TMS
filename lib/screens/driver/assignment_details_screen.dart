@@ -1755,6 +1755,17 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                   child: TextField(
                                                     controller: amtCtrl,
                                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                    inputFormatters: [
+                                                      TextInputFormatter.withFunction((oldValue, newValue) {
+                                                        if (newValue.text.isEmpty) return newValue;
+                                                        final maxLimit = double.tryParse(type['amount']?.toString() ?? '0') ?? 0;
+                                                        if (maxLimit > 0) {
+                                                          final val = double.tryParse(newValue.text);
+                                                          if (val != null && val > maxLimit) return oldValue;
+                                                        }
+                                                        return newValue;
+                                                      }),
+                                                    ],
                                                     style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                                     decoration: InputDecoration(hintText: "Enter the amount", hintStyle: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 13, fontWeight: FontWeight.normal), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), border: InputBorder.none),
                                                     onChanged: (v) {
@@ -3980,6 +3991,17 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen>
                                                   child: TextField(
                                                     controller: amtCtrl,
                                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                    inputFormatters: [
+                                                      TextInputFormatter.withFunction((oldValue, newValue) {
+                                                        if (newValue.text.isEmpty) return newValue;
+                                                        final maxLimit = double.tryParse(type['amount']?.toString() ?? '0') ?? 0;
+                                                        if (maxLimit > 0) {
+                                                          final val = double.tryParse(newValue.text);
+                                                          if (val != null && val > maxLimit) return oldValue;
+                                                        }
+                                                        return newValue;
+                                                      }),
+                                                    ],
                                                     style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A)),
                                                     decoration: InputDecoration(hintText: "Enter the amount", hintStyle: TextStyle(color: (isDark ? Colors.white : const Color(0xFF0F172A)).withValues(alpha: 0.3), fontSize: 13, fontWeight: FontWeight.normal), isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), border: InputBorder.none),
                                                     onChanged: (v) {

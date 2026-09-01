@@ -13,7 +13,7 @@ class NotificationApiService {
   });
 
   Map<String, String> get _headers => {
-    'Authorization': 'Bearer $token',
+    'Authorization': 'TMS $token',
     'Content-Type': 'application/json',
   };
 

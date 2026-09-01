@@ -763,90 +763,132 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
   void _showFilterBottomSheet(Color p, Color t, bool d) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: d ? const Color(0xFF1E293B) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Filter Routines",
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: t,
+      builder: (ctx) {
+        final surface = d ? const Color(0xFF1E293B) : Colors.white;
+        final subColor = d ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+        return Container(
+          padding: EdgeInsets.only(
+            top: 16,
+            left: 24,
+            right: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+          ),
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: d ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 24),
-                StatefulBuilder(
-                  builder: (context, setModalState) {
-                    return Wrap(
-                      spacing: 8,
-                      runSpacing: 12,
-                      children: [
-                        'ALL',
-                        'PLANNED',
-                        'READY',
-                        'STARTED',
-                        'ARRIVED CAMPUS',
-                        'FN COMPLETED',
-                        'AN STARTED',
-                        'DEPARTED CAMPUS',
-                        'HALT',
-                        'COMPLETED',
-                        'MERGED MIDWAY',
-                        'RESUMED MIDWAY'
-                      ].map((label) {
-                        bool isS = _selectedFilter == label;
-                        return GestureDetector(
-                          onTap: () {
-                            if (_selectedFilter == label) return;
-                            setState(() => _selectedFilter = label);
-                            setModalState(() {});
-                            Navigator.pop(context);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isS ? p : (d ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: isS ? p : t.withValues(alpha: 0.1), width: 1.5),
-                              boxShadow: isS ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Filter Routines",
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: t,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Select a status to narrow down your list",
+                        style: TextStyle(fontSize: 13, color: subColor, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: d ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.close_rounded, color: t, size: 18),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Wrap(
+                    spacing: 10,
+                    runSpacing: 12,
+                    children: [
+                      'ALL',
+                      'PLANNED',
+                      'READY',
+                      'STARTED',
+                      'ARRIVED CAMPUS',
+                      'FN COMPLETED',
+                      'AN STARTED',
+                      'DEPARTED CAMPUS',
+                      'HALT',
+                      'COMPLETED',
+                      'MERGED MIDWAY',
+                      'RESUMED MIDWAY'
+                    ].map((label) {
+                      bool isS = _selectedFilter == label;
+                      return GestureDetector(
+                        onTap: () {
+                          if (_selectedFilter == label) return;
+                          setState(() => _selectedFilter = label);
+                          setModalState(() {});
+                          Navigator.pop(context);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isS ? p : (d ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isS ? p : (d ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                              width: 1.5,
                             ),
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                color: isS ? Colors.white : t.withValues(alpha: 0.6),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
-                              ),
+                            boxShadow: isS 
+                                ? [BoxShadow(color: p.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))] 
+                                : [],
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: isS ? Colors.white : t.withValues(alpha: 0.7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                        );
-                      }).toList(),
-                    );
-                  }
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }
+              ),
+            ],
           ),
         );
       },

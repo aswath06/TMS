@@ -24,11 +24,14 @@ class _AdminBatteryVehiclesPageState
   bool isNonTeachingBookingEnabled = true;
   bool isInternBookingEnabled = true;
 
+  late final dynamic _notificationProviderInstance;
+
   @override
   void initState() {
     super.initState();
     // Auto-refresh bookings when notification arrives (e.g. 60s timeout escalation)
-    ref.read(notificationProviderFamily).addListener(_onNotificationReceived);
+    _notificationProviderInstance = ref.read(notificationProviderFamily);
+    _notificationProviderInstance.addListener(_onNotificationReceived);
 
     _selectedDateFilter = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _dateScrollController = ScrollController(
@@ -77,9 +80,7 @@ class _AdminBatteryVehiclesPageState
 
   @override
   void dispose() {
-    ref
-        .read(notificationProviderFamily)
-        .removeListener(_onNotificationReceived);
+    _notificationProviderInstance.removeListener(_onNotificationReceived);
     _dateScrollController.dispose();
     _tabController.dispose();
     super.dispose();
@@ -136,90 +137,226 @@ class _AdminBatteryVehiclesPageState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final p = const Color(0xFF6366F1);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+        String searchQuery = "";
+        
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filteredLocations = store.evLocations.where((loc) {
+              final name = (loc['name'] ?? '').toString().toLowerCase();
+              return name.contains(searchQuery.toLowerCase());
+            }).toList();
+            
+            filteredLocations.sort((a, b) => (a['name']?.toString() ?? '').toLowerCase().compareTo((b['name']?.toString() ?? '').toLowerCase()));
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
               ),
-              const SizedBox(height: 24),
-              Text(
-                isFrom ? "Select Pickup Location" : "Select Drop Location",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: textColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: store.evLocations.length,
-                  separatorBuilder: (context, index) => Divider(
-                    color: isDark ? Colors.white10 : Colors.black12,
-                    height: 1,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
-                  itemBuilder: (context, index) {
-                    final loc = store.evLocations[index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          isFrom ? "Select Pickup Location" : "Select Drop Location",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: textColor,
+                            letterSpacing: -0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
+                          color: p.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: p.withValues(alpha: 0.15), width: 1),
                         ),
-                        child: Icon(
-                          Icons.location_on_rounded,
-                          color: const Color(0xFF6366F1),
-                          size: 20,
-                        ),
-                      ),
-                      title: Text(
-                        loc['name'] ?? '',
-                        style: TextStyle(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
+                        child: Text(
+                          "${store.evLocations.length} Available",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: p,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
-                      onTap: () {
-                        final val = int.tryParse(loc['id'].toString()) ?? 0;
-                        setParentModalState(() {
-                          if (isFrom) {
-                            _createFromLocationId = val;
-                          } else {
-                            _createToLocationId = val;
-                          }
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Choose the ${isFrom ? 'pickup' : 'drop'} location for this request.",
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey.shade600, 
+                      fontWeight: FontWeight.w600, 
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.01),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search location...",
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white24 : Colors.grey.shade400,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: p.withValues(alpha: 0.6),
+                          size: 22,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setSheetState(() {
+                          searchQuery = val;
                         });
-                        Navigator.pop(context);
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (filteredLocations.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text("No locations found"),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: filteredLocations.length,
+                        itemBuilder: (context, index) {
+                          final loc = filteredLocations[index];
+                          final val = int.tryParse(loc['id'].toString()) ?? 0;
+                          final bool isSelected = isFrom ? _createFromLocationId == val : _createToLocationId == val;
+                          
+                          return GestureDetector(
+                            onTap: () {
+                              setParentModalState(() {
+                                if (isFrom) {
+                                  _createFromLocationId = val;
+                                } else {
+                                  _createToLocationId = val;
+                                }
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? p.withValues(alpha: 0.08) 
+                                    : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade50),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? p : Colors.transparent,
+                                  width: 2,
+                                ),
+                                boxShadow: isSelected ? [
+                                  BoxShadow(
+                                    color: p.withValues(alpha: 0.12),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ] : [],
+                              ),
+                              child: Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: isSelected ? 4 : 2,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? p : Colors.grey.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      loc['name'] ?? 'Unknown',
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontSize: 15,
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      color: p,
+                                      size: 22,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -232,29 +369,64 @@ class _AdminBatteryVehiclesPageState
     final hintColor = isDark ? Colors.white54 : Colors.black54;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
-    InputDecoration premiumDeco(String hint, IconData icon) {
-      return InputDecoration(
-        labelText: hint,
-        labelStyle: TextStyle(color: hintColor, fontWeight: FontWeight.w500),
-        prefixIcon: Icon(icon, color: primaryBlue, size: 22),
-        filled: true,
-        fillColor: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.03),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? Colors.white10 : Colors.black12,
-            width: 1.5,
+    Widget buildInputField({
+      required String hint,
+      required IconData icon,
+      required TextEditingController controller,
+      bool isDropdown = false,
+      int maxLines = 1,
+      VoidCallback? onTap,
+    }) {
+      return GestureDetector(
+        onTap: onTap,
+        child: AbsorbPointer(
+          absorbing: isDropdown,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.01),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: controller,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: maxLines,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: isDark ? Colors.white24 : Colors.grey.shade400,
+                  fontWeight: FontWeight.w700,
+                ),
+                prefixIcon: Icon(
+                  icon,
+                  color: primaryBlue.withValues(alpha: 0.8),
+                  size: 22,
+                ),
+                suffixIcon: isDropdown
+                    ? Icon(Icons.keyboard_arrow_down_rounded, color: hintColor)
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
+              ),
+            ),
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: primaryBlue, width: 2),
         ),
       );
     }
@@ -296,7 +468,7 @@ class _AdminBatteryVehiclesPageState
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(32),
+                  top: Radius.circular(36),
                 ),
               ),
               child: SingleChildScrollView(
@@ -314,7 +486,7 @@ class _AdminBatteryVehiclesPageState
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -324,87 +496,48 @@ class _AdminBatteryVehiclesPageState
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
                             color: isDark ? Colors.white : Colors.black,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: () => Navigator.pop(context),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    GestureDetector(
+                    const SizedBox(height: 24),
+                    buildInputField(
+                      hint: 'From Location',
+                      icon: Icons.my_location_rounded,
+                      controller: TextEditingController(text: fromLocName),
+                      isDropdown: true,
                       onTap: () => _showLocationSheet(true, setModalState),
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: TextEditingController(text: fromLocName),
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          decoration:
-                              premiumDeco(
-                                'From Location',
-                                Icons.my_location_rounded,
-                              ).copyWith(
-                                suffixIcon: Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  color: hintColor,
-                                ),
-                              ),
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 16),
-                    GestureDetector(
+                    buildInputField(
+                      hint: 'To Location',
+                      icon: Icons.location_on_rounded,
+                      controller: TextEditingController(text: toLocName),
+                      isDropdown: true,
                       onTap: () => _showLocationSheet(false, setModalState),
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: TextEditingController(text: toLocName),
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          decoration:
-                              premiumDeco(
-                                'To Location',
-                                Icons.location_on_rounded,
-                              ).copyWith(
-                                suffixIcon: Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  color: hintColor,
-                                ),
-                              ),
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    buildInputField(
+                      hint: 'For Whom (Passenger Name)',
+                      icon: Icons.person_rounded,
                       controller: _createPassengerController,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: premiumDeco(
-                        'For Whom (Passenger Name)',
-                        Icons.person_rounded,
-                      ),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    buildInputField(
+                      hint: 'Remarks / Reason',
+                      icon: Icons.notes_rounded,
                       controller: _createReasonController,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: premiumDeco(
-                        'Remarks / Reason',
-                        Icons.notes_rounded,
-                      ).copyWith(alignLabelWithHint: true),
                       maxLines: 2,
                     ),
                     const SizedBox(height: 32),

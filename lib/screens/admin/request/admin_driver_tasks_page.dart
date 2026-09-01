@@ -898,154 +898,231 @@ class _AdminDriverTasksPageState extends ConsumerState<AdminDriverTasksPage> {
   /// Driver Availability Bottom Sheet
   void _showDriverAvailabilityModal(BuildContext context) {
     final availableDrivers = ref.read(driverTaskStoreProvider).availableDrivers;
+    String searchQuery = '';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
-        final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-        final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final surface = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+            final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+            
+            final filteredDrivers = availableDrivers.where((d) {
+              final name = (d['name'] ?? "Driver #${d['id']}").toString().toLowerCase();
+              final phone = (d['phone'] ?? "").toString().toLowerCase();
+              return name.contains(searchQuery.toLowerCase()) || phone.contains(searchQuery.toLowerCase());
+            }).toList();
 
-        return Container(
-          padding: EdgeInsets.only(
-            top: 16,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          height: MediaQuery.of(context).size.height * 0.6,
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+            return Container(
+              padding: EdgeInsets.only(
+                top: 16,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              height: MediaQuery.of(context).size.height * 0.7,
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Driver Availability",
-                        style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: titleColor),
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      Text(
-                        "Live drivers status overview",
-                        style: TextStyle(fontSize: 12, color: subColor),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Driver Availability",
+                            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: titleColor),
+                          ),
+                          Text(
+                            "Live drivers status overview",
+                            style: TextStyle(fontSize: 12, color: subColor),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.close_rounded, color: titleColor, size: 18),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  // Search Bar
                   Container(
-                    width: 34,
-                    height: 34,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                      shape: BoxShape.circle,
+                      color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(Icons.close_rounded, color: titleColor, size: 18),
-                      onPressed: () => Navigator.pop(ctx),
+                    child: TextField(
+                      onChanged: (value) {
+                        setModalState(() {
+                          searchQuery = value;
+                        });
+                      },
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search drivers...",
+                        hintStyle: TextStyle(
+                          color: subColor.withOpacity(0.7),
+                          fontSize: 15,
+                        ),
+                        prefixIcon: Icon(Icons.search_rounded, color: subColor, size: 20),
+                        suffixIcon: searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close_rounded, color: subColor, size: 18),
+                                onPressed: () {
+                                  setModalState(() {
+                                    searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: availableDrivers.isEmpty
-                    ? Center(child: Text("No drivers found", style: TextStyle(color: subColor, fontWeight: FontWeight.bold)))
-                    : ListView.builder(
-                        itemCount: availableDrivers.length,
-                        itemBuilder: (context, index) {
-                          final d = availableDrivers[index];
-                          final String name = d['name'] ?? "Driver #${d['id']}";
-                          final String status = (d['status'] ?? 'AVAILABLE').toString().toUpperCase();
-                          final bool isAvailable = status == 'AVAILABLE';
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
-                            ),
-                            child: Row(
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: filteredDrivers.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: isAvailable ? const Color(0x1F10B981) : const Color(0x1FF59E0B),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    isAvailable ? Icons.check_circle_rounded : Icons.pause_circle_rounded,
-                                    color: isAvailable ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: TextStyle(fontWeight: FontWeight.bold, color: titleColor, fontSize: 14),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (d['phone'] != null)
-                                        Text(
-                                          "Phone: ${d['phone']}",
-                                          style: TextStyle(fontSize: 12, color: subColor),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isAvailable ? const Color(0x1F10B981) : const Color(0x1FF59E0B),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    status,
-                                    style: TextStyle(
-                                      color: isAvailable ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
+                                Icon(Icons.search_off_rounded, size: 48, color: subColor.withOpacity(0.3)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  searchQuery.isEmpty ? "No drivers available" : "No matches found", 
+                                  style: TextStyle(color: subColor, fontWeight: FontWeight.bold)
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
+                          )
+                        : ListView.builder(
+                            itemCount: filteredDrivers.length,
+                            itemBuilder: (context, index) {
+                              final d = filteredDrivers[index];
+                              final String name = d['name'] ?? "Driver #${d['id']}";
+                              final String status = (d['status'] ?? 'AVAILABLE').toString().toUpperCase();
+                              final bool isAvailable = status == 'AVAILABLE';
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: isAvailable ? const Color(0x1F10B981) : const Color(0x1FF59E0B),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Icon(
+                                        isAvailable ? Icons.check_circle_rounded : Icons.pause_circle_rounded,
+                                        color: isAvailable ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (d['phone'] != null) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              "Phone: ${d['phone']}",
+                                              style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w500),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ]
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isAvailable ? const Color(0x1F10B981) : const Color(0x1FF59E0B),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        status,
+                                        style: TextStyle(
+                                          color: isAvailable ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

@@ -1327,31 +1327,34 @@ class DriverStore extends ChangeNotifier {
       var request = http.MultipartRequest('PATCH', Uri.parse(url));
       request.headers.addAll(headers);
       request.fields['end_odometer'] = endOdometer.toString();
-      request.fields['allowance_needed'] = allowanceNeeded.toString();
-      if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
-        request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
-      }
-      if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
-        request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
-      }
-      if (allowanceItemsJson != null) {
-        request.fields['allowance_items'] = allowanceItemsJson;
-      }
+      request.fields['allowance_needed'] = allowanceNeeded ? "1" : "0";
       
-      if (allowanceProofs != null) {
-        for (int i = 0; i < allowanceProofs.length; i++) {
-          final File proof = allowanceProofs[i];
-          final ext = proof.path.split('.').last.toLowerCase();
-          MediaType mediaType;
-          if (ext == 'pdf') mediaType = MediaType('application', 'pdf');
-          else if (ext == 'png') mediaType = MediaType('image', 'png');
-          else if (ext == 'webp') mediaType = MediaType('image', 'webp');
-          else mediaType = MediaType('image', 'jpeg');
-          request.files.add(await http.MultipartFile.fromPath(
-            'item_proof_$i',
-            proof.path,
-            contentType: mediaType,
-          ));
+      if (allowanceNeeded) {
+        if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
+          request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
+        }
+        if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
+          request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
+        }
+        if (allowanceItemsJson != null) {
+          request.fields['allowance_items'] = allowanceItemsJson;
+        }
+        
+        if (allowanceProofs != null) {
+          for (int i = 0; i < allowanceProofs.length; i++) {
+            final File proof = allowanceProofs[i];
+            final ext = proof.path.split('.').last.toLowerCase();
+            MediaType mediaType;
+            if (ext == 'pdf') mediaType = MediaType('application', 'pdf');
+            else if (ext == 'png') mediaType = MediaType('image', 'png');
+            else if (ext == 'webp') mediaType = MediaType('image', 'webp');
+            else mediaType = MediaType('image', 'jpeg');
+            request.files.add(await http.MultipartFile.fromPath(
+              'item_proof_$i',
+              proof.path,
+              contentType: mediaType,
+            ));
+          }
         }
       }
       
@@ -1419,34 +1422,37 @@ class DriverStore extends ChangeNotifier {
       var request = http.MultipartRequest('PATCH', Uri.parse(url));
       request.headers.addAll(headers);
       request.fields['end_odometer'] = endOdometer.toString();
-      request.fields['allowance_needed'] = allowanceNeeded.toString();
+      request.fields['allowance_needed'] = allowanceNeeded ? "1" : "0";
       if (passengerCount != null) {
         request.fields['passenger_count'] = passengerCount.toString();
       }
-      if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
-        request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
-      }
-      if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
-        request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
-      }
-      if (allowanceItemsJson != null) {
-        request.fields['allowance_items'] = allowanceItemsJson;
-      }
       
-      if (allowanceProofs != null) {
-        for (int i = 0; i < allowanceProofs.length; i++) {
-          final File proof = allowanceProofs[i];
-          final ext = proof.path.split('.').last.toLowerCase();
-          MediaType mediaType;
-          if (ext == 'pdf') mediaType = MediaType('application', 'pdf');
-          else if (ext == 'png') mediaType = MediaType('image', 'png');
-          else if (ext == 'webp') mediaType = MediaType('image', 'webp');
-          else mediaType = MediaType('image', 'jpeg');
-          request.files.add(await http.MultipartFile.fromPath(
-            'item_proof_$i',
-            proof.path,
-            contentType: mediaType,
-          ));
+      if (allowanceNeeded) {
+        if (allowanceTypeIds != null && allowanceTypeIds.isNotEmpty) {
+          request.fields['allowance_type_ids'] = jsonEncode(allowanceTypeIds);
+        }
+        if (allowanceCounts != null && allowanceCounts.isNotEmpty) {
+          request.fields['allowance_counts'] = jsonEncode(allowanceCounts.map((k, v) => MapEntry(k.toString(), v)));
+        }
+        if (allowanceItemsJson != null) {
+          request.fields['allowance_items'] = allowanceItemsJson;
+        }
+        
+        if (allowanceProofs != null) {
+          for (int i = 0; i < allowanceProofs.length; i++) {
+            final File proof = allowanceProofs[i];
+            final ext = proof.path.split('.').last.toLowerCase();
+            MediaType mediaType;
+            if (ext == 'pdf') mediaType = MediaType('application', 'pdf');
+            else if (ext == 'png') mediaType = MediaType('image', 'png');
+            else if (ext == 'webp') mediaType = MediaType('image', 'webp');
+            else mediaType = MediaType('image', 'jpeg');
+            request.files.add(await http.MultipartFile.fromPath(
+              'item_proof_$i',
+              proof.path,
+              contentType: mediaType,
+            ));
+          }
         }
       }
       
