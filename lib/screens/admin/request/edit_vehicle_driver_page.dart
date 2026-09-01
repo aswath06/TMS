@@ -1345,9 +1345,11 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                         // Vehicle selector card
                         Row(
                           children: [
-                            Text(
-                              "SELECT VEHICLE",
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
+                            Expanded(
+                              child: Text(
+                                "SELECT VEHICLE",
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Container(
@@ -1427,9 +1429,11 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                         // Driver selector card
                         Row(
                           children: [
-                            Text(
-                              "SELECT DRIVER",
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
+                            Expanded(
+                              child: Text(
+                                "SELECT DRIVER",
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Container(
@@ -1510,9 +1514,11 @@ class _EditVehicleDriverPageState extends State<EditVehicleDriverPage> {
                       // Assigned Faculty coordinator selector card
                       Row(
                         children: [
-                          Text(
-                            "SELECT ASSIGNED IN-CHARGE / FACULTY",
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
+                          Expanded(
+                            child: Text(
+                              "SELECT ASSIGNED IN-CHARGE / FACULTY",
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subColor, letterSpacing: 0.8),
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Container(
