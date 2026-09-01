@@ -62,6 +62,10 @@ class _AdminBatteryVehiclesPageState
           isInternBookingEnabled = config['is_intern_booking_enabled'] ?? true;
         });
       } catch (_) {}
+
+      try {
+        await store.fetchActiveEvDrivers();
+      } catch (_) {}
     });
   }
 
@@ -861,9 +865,10 @@ class _AdminBatteryVehiclesPageState
   }
 
   void _forceAssignDialog(dynamic bookingId) async {
+    final parentContext = context;
     if (mounted) {
       showDialog(
-        context: context,
+        context: parentContext,
         barrierDismissible: false,
         builder: (c) => const Center(child: CircularProgressIndicator()),
       );
@@ -872,24 +877,24 @@ class _AdminBatteryVehiclesPageState
     await ref.read(batteryVehicleStoreProvider).fetchActiveEvDrivers();
 
     if (mounted) {
-      Navigator.pop(context);
+      Navigator.pop(parentContext);
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(parentContext).brightness == Brightness.dark;
 
     if (mounted) {
       showModalBottomSheet(
-        context: context,
+        context: parentContext,
         isScrollControlled: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        builder: (context) {
+        builder: (sheetContext) {
           final allDrivers = ref.read(batteryVehicleStoreProvider).activeEvDrivers;
           String searchQuery = '';
           return StatefulBuilder(
-            builder: (BuildContext context, StateSetter setModalState) {
+            builder: (BuildContext sbContext, StateSetter setModalState) {
               final filteredDrivers = allDrivers.where((d) {
                 final name = (d['name'] ?? '').toString().toLowerCase();
                 final phone = (d['phone'] ?? '').toString().toLowerCase();
@@ -900,7 +905,7 @@ class _AdminBatteryVehiclesPageState
               return SafeArea(
                 child: Padding(
                   padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                    bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
                   ),
                   child: FractionallySizedBox(
                     heightFactor: 0.8,
@@ -922,7 +927,7 @@ class _AdminBatteryVehiclesPageState
                               ),
                               IconButton(
                                 icon: const Icon(Icons.close),
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: () => Navigator.pop(sheetContext),
                               ),
                             ],
                           ),
@@ -962,7 +967,7 @@ class _AdminBatteryVehiclesPageState
                             child: ListView.builder(
                               shrinkWrap: true,
                               itemCount: filteredDrivers.length,
-                              itemBuilder: (context, index) {
+                              itemBuilder: (listContext, index) {
                                 final d = filteredDrivers[index];
                                 return ListTile(
                                   leading: CircleAvatar(
@@ -982,9 +987,9 @@ class _AdminBatteryVehiclesPageState
                                   ),
                                   subtitle: Text(d['phone'] ?? '-'),
                                   onTap: () async {
-                                    Navigator.pop(context);
+                                    Navigator.pop(sheetContext); // Pop the bottom sheet
                                     showDialog(
-                                      context: context,
+                                      context: parentContext,
                                       barrierDismissible: false,
                                       builder: (c) => const Center(child: CircularProgressIndicator()),
                                     );
@@ -996,9 +1001,9 @@ class _AdminBatteryVehiclesPageState
                                             int.parse(d['id'].toString()),
                                           );
                                       if (mounted) {
-                                        Navigator.pop(context);
+                                        Navigator.pop(parentContext); // Pop the loading dialog
                                         ScaffoldMessenger.of(
-                                          context,
+                                          parentContext,
                                         ).showSnackBar(
                                           const SnackBar(
                                             content: Text("Driver Assigned"),
@@ -1007,9 +1012,9 @@ class _AdminBatteryVehiclesPageState
                                       }
                                     } catch (e) {
                                       if (mounted) {
-                                        Navigator.pop(context);
+                                        Navigator.pop(parentContext); // Pop the loading dialog
                                         ScaffoldMessenger.of(
-                                          context,
+                                          parentContext,
                                         ).showSnackBar(
                                           SnackBar(content: Text("Error: $e")),
                                         );
@@ -1240,7 +1245,11 @@ class _AdminBatteryVehiclesPageState
     bool isDark,
   ) {
     final store = ref.watch(batteryVehicleStoreProvider);
-    final allDrivers = ref.watch(driverStoreProvider).drivers;
+    final baseDrivers = ref.watch(driverStoreProvider).drivers;
+    final allDrivers = [
+      ...baseDrivers,
+      ...store.activeEvDrivers,
+    ];
 
     final filteredBookings = store.allBookings.where((b) {
       final status = (b['status'] ?? '').toString().toUpperCase();
@@ -1521,28 +1530,30 @@ class _AdminBatteryVehiclesPageState
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              if (b['created_at'] != null)
-                                _buildTimePill(
-                                  "Booked",
-                                  b['created_at'],
-                                  isDark,
-                                ),
-                              if (b['accepted_at'] != null)
-                                _buildTimePill(
-                                  "Accepted",
-                                  b['accepted_at'],
-                                  isDark,
-                                ),
-                              if (b['completed_at'] != null)
-                                _buildTimePill(
-                                  "Completed",
-                                  b['completed_at'],
-                                  isDark,
-                                ),
-                            ],
+                          Builder(
+                            builder: (context) {
+                              String? completedTime = b['completed_at'] ?? b['ended_at'];
+                              if (completedTime == null && status == 'COMPLETED') {
+                                completedTime = b['updated_at'];
+                              }
+                              String? startedTime = b['started_at'];
+                              if (startedTime == null && (status == 'STARTED' || status == 'ONGOING')) {
+                                startedTime = b['updated_at'];
+                              }
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  if (b['created_at'] != null)
+                                    _buildTimePill("Booked", b['created_at'], isDark),
+                                  if (b['accepted_at'] != null)
+                                    _buildTimePill("Accepted", b['accepted_at'], isDark),
+                                  if (startedTime != null)
+                                    _buildTimePill("Started", startedTime, isDark),
+                                  if (completedTime != null)
+                                    _buildTimePill("Completed", completedTime, isDark),
+                                ],
+                              );
+                            }
                           ),
                           if (status == 'PENDING' &&
                               b['driver'] == null &&

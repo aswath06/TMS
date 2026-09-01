@@ -722,22 +722,16 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today_rounded, size: 18, color: primaryBlue),
-                    const SizedBox(width: 6),
-                    Text(
-                      formattedDate,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 17,
-                      ),
-                    ),
-                  ],
+                Icon(Icons.calendar_today_rounded, size: 18, color: primaryBlue),
+                const SizedBox(width: 6),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                  ),
                 ),
-                _buildStatusBadge(status),
               ],
             ),
             const SizedBox(height: 12),
@@ -816,6 +810,36 @@ class _DutyAllocationScreenState extends ConsumerState<DutyAllocationScreen> wit
                 ),
               ],
             ),
+            if (shifts.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Divider(height: 1, color: subColor.withOpacity(0.2)),
+              const SizedBox(height: 12),
+              ...shifts.map((shift) {
+                final shiftName = shift['shift_name'] ?? 'Unnamed Shift';
+                final shiftStatus = shift['status'] ?? 'UNKNOWN';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        shiftName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: titleColor.withOpacity(0.8),
+                        ),
+                      ),
+                      Transform.scale(
+                        scale: 0.9,
+                        alignment: Alignment.centerRight,
+                        child: _buildStatusBadge(shiftStatus),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
           ],
         ),
       ),

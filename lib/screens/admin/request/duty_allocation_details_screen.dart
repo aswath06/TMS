@@ -25,7 +25,6 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
     final Color cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
 
     final String name = widget.schedule['schedule_name'] ?? widget.schedule['template']?['name'] ?? 'Unnamed Schedule';
-    final String status = widget.schedule['status'] ?? 'UNKNOWN';
     final String dutyDateStr = widget.schedule['duty_date'] ?? '';
     
     String formattedDate = dutyDateStr;
@@ -97,7 +96,7 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                           ),
                         ],
                       ),
-                      _buildStatusBadge(status),
+                      
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -275,25 +274,63 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                 if (vehicles.isEmpty)
                   Text("No vehicles assigned.", style: TextStyle(color: subColor, fontSize: 13))
                 else
-                  ...vehicles.map((v) {
+                  ...vehicles.asMap().entries.map((entry) {
+                    final int vIndex = entry.key;
+                    final dynamic v = entry.value;
+                    
                     final String vNum = v['vehicle']?['vehicle_number'] ?? v['vehicle_number'] ?? 'Unknown Vehicle';
-                    final int vId = v['vehicle_id'] ?? v['vehicle']?['id'] ?? 0;
+                    final int vId = v['vehicle_id'] ?? v['vehicle']?['id'] ?? v['id'] ?? 0;
+                    
+                    // Find odometer
+                    final dynamic odo = v['odometer'] ?? (shift['odometers'] as List<dynamic>? ?? []).firstWhere(
+                      (o) => o['vehicle_id']?.toString() == vId.toString(), 
+                      orElse: () => null
+                    );
                     
                     // Find assigned driver
                     String driverInfo = "No driver assigned";
-                    if (v['assignedDriver'] != null && v['assignedDriver']['user'] != null) {
-                      driverInfo = v['assignedDriver']['user']['name'] ?? "Unknown Driver";
-                    } else if (v['assigned_driver_id'] != null) {
-                       // fallback if driver info wasn't populated but ID exists
-                       driverInfo = "Driver ID: ${v['assigned_driver_id']}";
-                    }
-                    
-                    // Find odometer
-                    final List<dynamic> odos = shift['odometers'] ?? [];
-                    final odo = odos.firstWhere(
-                      (o) => o['vehicle_id'] == vId, 
+                    final List<dynamic> drvs = shift['drivers'] ?? [];
+                    final drvMatch = drvs.firstWhere(
+                      (d) => d['vehicle_id']?.toString() == vId.toString(),
                       orElse: () => null
                     );
+                    
+                    if (drvMatch != null) {
+                      driverInfo = drvMatch['driver']?['user']?['name'] ?? "Unknown Driver";
+                    } else if (v['assignedDriver'] != null && v['assignedDriver']['user'] != null) {
+                      driverInfo = v['assignedDriver']['user']['name'] ?? "Unknown Driver";
+                    } else if (v['assigned_driver_id'] != null) {
+                       driverInfo = "Driver ID: \${v['assigned_driver_id']}";
+                    }
+                    
+                    if (odo != null && odo is Map && driverInfo == "No driver assigned") {
+                       // fallback to odo driver if any
+                       if (odo['driver']?['user']?['name'] != null) {
+                          driverInfo = odo['driver']['user']['name'];
+                       } else if (odo['driver_id'] != null) {
+                          final odoDrv = drvs.firstWhere(
+                             (d) => d['driver_id']?.toString() == odo['driver_id'].toString() || d['id']?.toString() == odo['driver_id'].toString(), 
+                             orElse: () => null
+                          );
+                          if (odoDrv != null) {
+                             driverInfo = odoDrv['driver']?['user']?['name'] ?? "Driver ID: \${odo['driver_id']}";
+                          } else {
+                             driverInfo = "Driver ID: \${odo['driver_id']}";
+                          }
+                       }
+                    }
+                    
+                    bool hasStartedVehicle = odo != null && odo['start_odometer'] != null;
+                    if (hasStartedVehicle && driverInfo == "No driver assigned") {
+                        // Fallback: assume the driver at the same index as the vehicle is the one who drove it
+                        if (drvs.isNotEmpty) {
+                           if (drvs.length > vIndex) {
+                               driverInfo = drvs[vIndex]['driver']?['user']?['name'] ?? "Unknown Driver";
+                           } else {
+                               driverInfo = drvs[0]['driver']?['user']?['name'] ?? "Unknown Driver";
+                           }
+                        }
+                    }
                     
                     String formatOdo(dynamic value) {
                       if (value == null) return '--';
@@ -362,14 +399,12 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text(
-                                                driverInfo,
+                                                hasStartedVehicle ? "Started by: $driverInfo" : "Assigned to: $driverInfo",
                                                 style: TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w600,
-                                                  color: subColor,
+                                                  color: hasStartedVehicle ? Colors.green[700] : subColor,
                                                 ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
@@ -382,7 +417,7 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                             ),
                             
                             // Bottom Row: Odometer and Distance
-                            if (odo != null && odo['start_odometer'] != null) ...[
+                            if (true) ...[
                               const SizedBox(height: 16),
                               Container(
                                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

@@ -66,16 +66,21 @@ class BlockInterceptorClient extends http.BaseClient {
 }
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides();
   http.runWithClient(() async {
-    // Ensure Flutter framework is initialized before running code
-    WidgetsFlutterBinding.ensureInitialized();
-    
     // Initialize Firebase
     await Firebase.initializeApp();
     
     // Set Firebase background messaging handler early
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+    // Initialize global in-memory static cache for user data
+    await UserStore.init();
+
+    // Load theme and other persistent data
+    await themeStore.loadTheme();
+    await languageStore.loadLanguage();
 
     // Initialize Background Location Service (Non-blocking)
     LocationService().initializeService().catchError((e) {
@@ -92,13 +97,6 @@ void main() {
     } catch (e) {
       debugPrint("Locale initialization error: $e");
     }
-
-    // Load theme and other persistent data
-    await themeStore.loadTheme();
-    await languageStore.loadLanguage();
-    
-    // Initialize global in-memory static cache for user data
-    await UserStore.init();
 
     // FORCE PORTRAIT MODE ONLY
     await SystemChrome.setPreferredOrientations([

@@ -110,6 +110,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        ref.read(batteryVehicleStoreProvider).fetchActiveEvDrivers();
+      } catch (_) {}
       final double listWidth = MediaQuery.of(context).size.width - 48 - 77;
       final double todayOffset =
           (_infiniteScrollMiddle * 68.0) -
@@ -217,7 +220,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
         'status': b['status'] ?? 'PENDING',
         'rawStatus': (b['status'] == 'PENDING')
             ? 1
-            : (b['status'] == 'COMPLETED' ? 10 : 2),
+            : (b['status'] == 'COMPLETED' ? 8 : 2),
         'vehicle': "Battery Vehicle",
         'vehicleInfo': b['reason'] ?? "Transport Request",
         'date': () {
@@ -236,21 +239,58 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
         'passengers': 1,
         'travelType': 'One-Way',
         'drivers': () {
-          if (b['driver'] != null) return [b['driver']];
+          if (b['driver'] != null) {
+            String dName = 'Driver';
+            final drv = b['driver'] is Map ? b['driver'] : {};
+            if (drv['name'] != null) {
+              dName = drv['name'].toString();
+            } else if (drv['first_name'] != null) {
+              dName = "\${drv['first_name']} \${drv['last_name'] ?? ''}".trim();
+            } else if (drv['user'] != null && drv['user'] is Map) {
+              final u = drv['user'];
+              if (u['name'] != null) dName = u['name'].toString();
+              else if (u['first_name'] != null) dName = "\${u['first_name']} \${u['last_name'] ?? ''}".trim();
+            } else if (b['driver'] is String) {
+              dName = b['driver'].toString();
+            }
+            
+            return [
+              {
+                'name': dName,
+                'phone': drv['phone'] ?? drv['phone_number'] ?? '',
+              }
+            ];
+          }
           if (b['driver_id'] != null) {
+            final allDrivers = [
+              ...driverStore.drivers,
+              ...evStore.activeEvDrivers,
+            ];
             try {
-              final d = driverStore.drivers.firstWhere(
+              final d = allDrivers.firstWhere(
                 (drv) => drv['id'].toString() == b['driver_id'].toString(),
               );
+              
+              String matchedName = 'Driver';
+              if (d['name'] != null) {
+                matchedName = d['name'].toString();
+              } else if (d['first_name'] != null) {
+                matchedName = "\${d['first_name']} \${d['last_name'] ?? ''}".trim();
+              } else if (d['user'] != null && d['user'] is Map) {
+                final u = d['user'];
+                if (u['name'] != null) matchedName = u['name'].toString();
+                else if (u['first_name'] != null) matchedName = "\${u['first_name']} \${u['last_name'] ?? ''}".trim();
+              }
+
               return [
                 {
-                  'name': d['name'] ?? 'Driver',
-                  'phone': d['phone_number'] ?? d['mobile'] ?? '',
+                  'name': matchedName,
+                  'phone': d['phone_number'] ?? d['mobile'] ?? d['phone'] ?? '',
                 },
               ];
             } catch (e) {
               return [
-                {'name': 'Driver #${b['driver_id']} (Unknown)', 'phone': ''},
+                {'name': 'Driver (Unknown)', 'phone': ''},
               ];
             }
           }
