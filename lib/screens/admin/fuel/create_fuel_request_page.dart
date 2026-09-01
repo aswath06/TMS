@@ -1534,13 +1534,6 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
           final successMessage = responseData['message'] ?? (widget.isApproveMode ? "Fuel order approved successfully" : (isEdit ? "Fuel order updated successfully" : "Success"));
           
           if (widget.isApproveMode) {
-            if (_userRole != 'driver' && _selectedBunk != null) {
-              final bunkName = _selectedBunk!['name']?.toString().toLowerCase() ?? '';
-              if (!bunkName.contains('other')) {
-                await _createAdminRoute(instanceId);
-              }
-            }
-
             _showIndentPopup(
               instanceId, 
               _selectedVehicle!['vehicle_number'] ?? 'Unknown Vehicle',
@@ -1562,13 +1555,6 @@ class _CreateFuelRequestPageState extends State<CreateFuelRequestPage> {
                 backgroundColor: Colors.green,
               ),
             );
-
-            if (_userRole != 'driver' && _selectedBunk != null) {
-              final bunkName = _selectedBunk!['name']?.toString().toLowerCase() ?? '';
-              if (!bunkName.contains('other')) {
-                await _createAdminRoute(instanceId);
-              }
-            }
 
             _showIndentPopup(instanceId, _selectedVehicle!['vehicle_number'] ?? 'Unknown Vehicle');
           }
