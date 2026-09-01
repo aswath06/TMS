@@ -23,7 +23,7 @@ class ApiService {
       return json.decode(response.body);
     } else if (response.statusCode == 401) {
       // Handle unauthorized (token expired)
-      // UserStore.forceLogout();
+      UserStore.forceLogout();
       throw Exception('Session expired. Please log in again.');
     } else {
       String errorMessage = 'Error ${response.statusCode}';

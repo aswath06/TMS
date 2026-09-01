@@ -12,6 +12,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tripzo/store/providers.dart';
+import 'package:http/http.dart' as http;
+import 'package:tripzo/utils/api_constants.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -232,9 +234,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final String? token = await UserStore.getToken();
     final String? role = await UserStore.getRole();
     
-    // If token and role exist, we consider the local session valid
     if (token != null && token.isNotEmpty && role != null && role.isNotEmpty) {
-      return true;
+      try {
+        final response = await http.get(
+          Uri.parse(ApiConstants.userMe),
+          headers: ApiConstants.getHeaders(token),
+        );
+        if (response.statusCode == 200) {
+          return true; // Token is valid
+        } else {
+          return false; // Token expired or invalid
+        }
+      } catch (e) {
+        // If there's a network error, we assume the token is still valid
+        // so they can access offline features, and APIs will fail gracefully later.
+        debugPrint("Network error checking session: $e");
+        return true; 
+      }
     }
     return false;
   }

@@ -588,7 +588,7 @@ class DriverStore extends ChangeNotifier {
 
         _drivers.addAll(newDrivers);
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
         _driversError = "Session expired. Please login again.";
       } else {
         _driversError = "Failed to load drivers.";
@@ -1079,7 +1079,7 @@ class DriverStore extends ChangeNotifier {
           return;
         }
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
         _profileError = "Session expired.";
         return;
       }
@@ -1578,7 +1578,7 @@ class DriverStore extends ChangeNotifier {
           _leavesError = decoded['message'] ?? "Failed to fetch leaves";
         }
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
         _leavesError = "Session expired. Please login again.";
       } else {
         _leavesError = ApiErrorParser.parse(response, fallback: "Server error");
@@ -1741,7 +1741,7 @@ class DriverStore extends ChangeNotifier {
           _rewardError = decoded['message'] ?? "Failed to fetch reward points";
         }
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
         _rewardError = "Session expired. Please login again.";
       } else {
         _rewardError = ApiErrorParser.parse(response, fallback: "Server error");

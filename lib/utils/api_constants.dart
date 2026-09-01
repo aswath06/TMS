@@ -4,15 +4,7 @@ class ApiConstants {
   // Dynamic base URL driven by ServerConfig (super admin togglable at runtime)
   static String get baseUrl => ServerConfig().baseUrl;
 
-  static String get notificationBaseUrl {
-    if (baseUrl.contains('4004')) {
-      return baseUrl.replaceAll('4004', '8055');
-    } else if (baseUrl.contains('10.0.2.2')) {
-      // If it's an emulator string without 4004 (rare, but possible if mapped differently)
-      return "http://10.0.2.2:8055";
-    }
-    return "http://localhost:8055";
-  }
+  static String get notificationBaseUrl => baseUrl;
 
   static String getImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';

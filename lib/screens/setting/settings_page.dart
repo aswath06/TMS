@@ -1409,7 +1409,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                           context,
                                           isTamil ? "வெற்றிகரமாக வெளியேறப்பட்டது" : "Logged out successfully",
                                         );
-                                        await UserStore.forceLogout();
+                                        await UserStore.forceLogout(manual: true);
                                       } else {
                                         String errorMsg = "Incorrect password";
                                         try {

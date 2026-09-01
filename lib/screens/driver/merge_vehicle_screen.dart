@@ -83,7 +83,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
           });
         }
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
       }
     } catch (e) {
       debugPrint("Error fetching routes: $e");
@@ -128,7 +128,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
             }
           }
         } else if (response.statusCode == 401) {
-          // UserStore.forceLogout();
+          UserStore.forceLogout();
         }
       }
 
@@ -197,7 +197,7 @@ class _MergeVehicleScreenState extends State<MergeVehicleScreen> {
           Navigator.pop(context, true);
         }
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
       } else {
         final resBody = json.decode(response.body);
         if (mounted) {

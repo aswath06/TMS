@@ -2,11 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import '../../../utils/api_constants.dart';
 import '../../../store/user_store.dart';
 import '../../../store/istamil.dart';
-import '../../../components/common/custom_date_time_picker.dart';
 import '../../../components/common/structural_loading.dart';
 import 'package:tripzo/utils/api_error_parser.dart';
 
@@ -20,7 +18,6 @@ class DriverFuelRequestPage extends StatefulWidget {
 class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _volumeController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
 
   Map<String, dynamic>? _selectedVehicle;
   List<Map<String, dynamic>> _vehicles = [];
@@ -101,7 +98,7 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
         'required_volume': _volumeController.text,
         'filled_volume': _volumeController.text, // Backend requires this not to be null
         'current_odometer': "0", // Backend requires this not to be null
-        'filled_at': _selectedDate.toIso8601String(),
+        'filled_at': DateTime.now().toIso8601String(),
         'is_fuel_request': true,
         'fluid_type': _selectedFuelType,
       };
@@ -223,33 +220,13 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField(
-                          label: isTamil ? "அளவு *" : "VOLUME *",
-                          controller: _volumeController,
-                          hint: "e.g. 50",
-                          icon: Icons.water_drop_outlined,
-                          keyboardType: TextInputType.number,
-                          validator: (v) => v!.isEmpty ? (isTamil ? "தேவை" : "Required") : null,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildDateField(
-                          label: isTamil ? "தேதி *" : "DATE *",
-                          icon: Icons.calendar_today_outlined,
-                          value: DateFormat('MMM dd, yyyy h:mm a').format(_selectedDate),
-                          onTap: () async {
-                            final picked = await CustomDateTimePicker.show(context, initialDate: _selectedDate);
-                            if (picked != null) {
-                              setState(() => _selectedDate = picked);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
+                  _buildTextField(
+                    label: isTamil ? "அளவு *" : "VOLUME *",
+                    controller: _volumeController,
+                    hint: "e.g. 50",
+                    icon: Icons.water_drop_outlined,
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v!.isEmpty ? (isTamil ? "தேவை" : "Required") : null,
                   ),
                   const SizedBox(height: 48),
                   ElevatedButton(
@@ -322,61 +299,6 @@ class _DriverFuelRequestPageState extends State<DriverFuelRequestPage> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateField({
-    required String label,
-    required String value,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF6366F1),
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: const Color(0xFF94A3B8), size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    value,
-                    style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1E293B), fontWeight: FontWeight.w600, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
             ),
           ),
         ),

@@ -71,7 +71,7 @@ class DashboardStore extends ChangeNotifier {
           isLoading: false,
         );
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
         _state = _state.copyWith(
           isLoading: false,
           error: "Session expired. Please login again.",
@@ -121,7 +121,7 @@ class DashboardStore extends ChangeNotifier {
           isLoading: false,
         );
       } else if (response.statusCode == 401) {
-        // await UserStore.forceLogout();
+        await UserStore.forceLogout();
         _state = _state.copyWith(isLoading: false, error: "Session expired.");
       } else {
         _state = _state.copyWith(isLoading: false, error: "Failed to fetch history");

@@ -140,7 +140,7 @@ class UserStore {
   }
 
   // Force logout and redirect to login
-  static Future<void> forceLogout({bool isBlocked = false}) async {
+  static Future<void> forceLogout({bool isBlocked = false, bool manual = false}) async {
     try {
       await LocationService().stopTracking();
     } catch (e) {

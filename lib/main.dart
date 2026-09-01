@@ -33,11 +33,14 @@ class MyHttpOverrides extends HttpOverrides {
 class BlockInterceptorClient extends http.BaseClient {
   final http.Client _inner = http.Client();
   static bool _isNavigatingToBlocked = false;
+  static bool _isNavigatingToLogin = false;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final response = await _inner.send(request);
     
+    final path = request.url.path;
+
     if (response.statusCode == 403 && response.headers['x-account-blocked'] == 'true') {
       if (!_isNavigatingToBlocked) {
         _isNavigatingToBlocked = true;
