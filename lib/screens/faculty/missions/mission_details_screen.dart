@@ -1348,10 +1348,19 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
                                             break;
                                           }
                                           // 1. Proof mandatory
-                                          if (e['proof'] == null) {
+                                          if (e['proof'] == null || (e['proof'] as List).isEmpty) {
                                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Image proof is mandatory for all allowances (${type['name'] ?? type['type_name']})"), backgroundColor: Colors.red));
                                             hasValidationError = true;
                                             break;
+                                          }
+                                          // 1.5 Meal mandatory for Food
+                                          if (isFood) {
+                                            final mealsList = e['meals'] as List<String>?;
+                                            if (mealsList == null || mealsList.isEmpty) {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select a meal (Breakfast/Lunch/Dinner) for Food Allowance"), backgroundColor: Colors.red));
+                                              hasValidationError = true;
+                                              break;
+                                            }
                                           }
                                           // 2. Date mandatory for Food if > 3 cards
                                           if (isFood && dynamicEntries[id]!.length > 3) {
