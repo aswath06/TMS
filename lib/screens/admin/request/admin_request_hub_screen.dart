@@ -42,6 +42,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       ref.read(adminAllowanceStoreProvider).fetchPendingAllowanceCreations();
       ref.read(attendanceDashboardStoreProvider).refresh();
       ref.read(driverSchedulesStoreProvider).fetchSchedules();
+      ref.read(batteryVehicleStoreProvider).fetchPendingDashboardBookings();
+      ref.read(batteryVehicleStoreProvider).fetchActiveEvDrivers();
       UIConfig().load();
     });
     _swipeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
@@ -727,6 +729,8 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
               return _buildMissionStats(isDark, primaryBlue);
             case 'routines':
               return _buildRoutineStats(isDark, primaryBlue);
+            case 'battery_vehicles':
+              return _buildBatteryVehicleStats(isDark, primaryBlue);
             case 'duty_allocation':
               return _buildDutyAllocationStats(isDark, primaryBlue);
             case 'driver_tasks':
@@ -907,6 +911,23 @@ class _AdminRequestHubScreenState extends ConsumerState<AdminRequestHubScreen> w
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader("Duty Allocation Statistics", isDark, hasPagination: true),
+        const SizedBox(height: 8),
+        _buildPaginatedStats(tiles, isDark),
+      ],
+    );
+  }
+
+  Widget _buildBatteryVehicleStats(bool isDark, Color primaryBlue) {
+    final store = ref.watch(batteryVehicleStoreProvider);
+    final tiles = [
+      _buildStatTile("Pending Requests", store.pendingDashboardBookings.length.toString(), Icons.pending_actions_rounded, const Color(0xFFF59E0B), isDark),
+      _buildStatTile("Active Drivers", store.activeEvDrivers.length.toString(), Icons.person_pin_circle_rounded, const Color(0xFF10B981), isDark),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Battery Vehicle Stats", isDark, hasPagination: true),
         const SizedBox(height: 8),
         _buildPaginatedStats(tiles, isDark),
       ],

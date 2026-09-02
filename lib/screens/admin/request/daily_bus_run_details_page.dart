@@ -16746,12 +16746,12 @@ class _BusChangeRequestModalState extends State<_BusChangeRequestModal> {
   }
 
   void _showRouteSelectionBottomSheet(BuildContext context) {
+    String searchQuery = '';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        String searchQuery = '';
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             final filteredRoutes = _availableRoutes.where((route) {

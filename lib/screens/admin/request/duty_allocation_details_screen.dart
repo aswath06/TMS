@@ -361,6 +361,44 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                     String startOdo = "--";
                     String endOdo = "--";
                     String distance = "--";
+                    String startTime = "";
+                    String endTime = "";
+                    String durationStr = "";
+
+                    DateTime? startDt;
+                    DateTime? endDt;
+
+                    final List<String> possibleStartKeys = ['updated_at', 'updatedAt', 'start_time', 'startTime', 'started_at', 'startedAt', 'start_date', 'startDate', 'actual_start_time', 'actualStartTime', 'start_odometer_time', 'startOdometerTime', 'created_at', 'createdAt'];
+                    final List<String> possibleEndKeys = ['updated_at', 'updatedAt', 'end_time', 'endTime', 'ended_at', 'endedAt', 'end_date', 'endDate', 'actual_end_time', 'actualEndTime', 'end_odometer_time', 'endOdometerTime'];
+
+                    if (odo != null && odo['start_odometer'] != null) {
+                      for (String key in possibleStartKeys) {
+                        if (odo[key] != null) { try { startDt = DateTime.parse(odo[key]).toLocal(); startTime = DateFormat('hh:mm a').format(startDt!); break; } catch (_) {} }
+                        if (v[key] != null) { try { startDt = DateTime.parse(v[key]).toLocal(); startTime = DateFormat('hh:mm a').format(startDt!); break; } catch (_) {} }
+                      }
+                    }
+                    if (odo != null && odo['end_odometer'] != null) {
+                      for (String key in possibleEndKeys) {
+                        if (odo[key] != null) { try { endDt = DateTime.parse(odo[key]).toLocal(); endTime = DateFormat('hh:mm a').format(endDt!); break; } catch (_) {} }
+                        if (v[key] != null) { try { endDt = DateTime.parse(v[key]).toLocal(); endTime = DateFormat('hh:mm a').format(endDt!); break; } catch (_) {} }
+                      }
+                    }
+                    if (startTime.isEmpty && odo != null && odo['start_odometer'] != null && shift['actual_start_time'] != null) {
+                      try { startDt = DateTime.parse(shift['actual_start_time']).toLocal(); startTime = DateFormat('hh:mm a').format(startDt!); } catch (_) {}
+                    }
+                    if (endTime.isEmpty && odo != null && odo['end_odometer'] != null && shift['actual_end_time'] != null) {
+                      try { endDt = DateTime.parse(shift['actual_end_time']).toLocal(); endTime = DateFormat('hh:mm a').format(endDt!); } catch (_) {}
+                    }
+                    if (startDt != null && endDt != null) {
+                      Duration diff = endDt!.difference(startDt!).abs();
+                      int hours = diff.inHours;
+                      int mins = diff.inMinutes.remainder(60);
+                      if (hours > 0) {
+                        durationStr = "${hours}h ${mins}m";
+                      } else {
+                        durationStr = "${mins}m";
+                      }
+                    }
 
                     if (odo != null && odo['start_odometer'] != null) {
                       startOdo = formatOdo(odo['start_odometer']);
@@ -481,6 +519,17 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                                             color: titleColor,
                                           ),
                                         ),
+                                        if (startTime.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            startTime,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: subColor,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                     
@@ -506,6 +555,17 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                                             color: titleColor,
                                           ),
                                         ),
+                                        if (endTime.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            endTime,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: subColor,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                     
@@ -538,6 +598,17 @@ class _DutyAllocationDetailsScreenState extends ConsumerState<DutyAllocationDeta
                                             ),
                                           ),
                                         ),
+                                        if (durationStr.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            durationStr,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.orange.shade900,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ],

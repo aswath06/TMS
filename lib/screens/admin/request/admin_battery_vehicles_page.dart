@@ -139,13 +139,12 @@ class _AdminBatteryVehiclesPageState
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final p = const Color(0xFF6366F1);
 
+    String searchQuery = "";
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        String searchQuery = "";
-        
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final filteredLocations = store.evLocations.where((loc) {
@@ -1170,7 +1169,102 @@ class _AdminBatteryVehiclesPageState
     }
   }
 
+  Future<bool?> _showConfirmDialog({
+    required String title,
+    required String content,
+    required String confirmText,
+    required Color confirmColor,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: bgColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 48, color: confirmColor),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  content,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: subColor,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: subColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text(
+                          "Keep it",
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: confirmColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          confirmText,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _cancelBooking(dynamic bookingId) async {
+    final bool? confirm = await _showConfirmDialog(
+      title: "Cancel Booking",
+      content: "Are you sure you want to cancel this booking? This action cannot be undone.",
+      confirmText: "Cancel",
+      confirmColor: Colors.orange,
+    );
+    if (confirm != true) return;
+    
     try {
       await ref
           .read(batteryVehicleStoreProvider)
@@ -1188,6 +1282,14 @@ class _AdminBatteryVehiclesPageState
   }
 
   void _deleteBooking(dynamic bookingId) async {
+    final bool? confirm = await _showConfirmDialog(
+      title: "Delete Booking",
+      content: "Are you sure you want to permanently delete this booking? This action cannot be undone.",
+      confirmText: "Delete",
+      confirmColor: Colors.red,
+    );
+    if (confirm != true) return;
+
     try {
       await ref
           .read(batteryVehicleStoreProvider)
@@ -1720,42 +1822,41 @@ class _AdminBatteryVehiclesPageState
                               ),
                             ),
 
-                            const SizedBox(height: 12),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () => _cancelBooking(b['id']),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.orange,
-                                      side: const BorderSide(
-                                        color: Colors.orange,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: const Text("Cancel"),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () => _deleteBooking(b['id']),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Colors.red,
-                                      side: const BorderSide(color: Colors.red),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: const Text("Delete"),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _cancelBooking(b['id']),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.orange,
+                                    side: const BorderSide(
+                                      color: Colors.orange,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text("Cancel"),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => _deleteBooking(b['id']),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: const BorderSide(color: Colors.red),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text("Delete"),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     );

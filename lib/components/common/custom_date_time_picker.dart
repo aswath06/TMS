@@ -9,6 +9,7 @@ class CustomDateTimePicker {
     DateTime? initialDate,
     DateTime? minDate,
     DateTime? maxDate,
+    bool showDate = true,
     bool showTime = true,
     Color? accent,
     Color? cardColor,
@@ -29,6 +30,7 @@ class CustomDateTimePicker {
         initialDate: initialDate,
         minDate: minDate,
         maxDate: maxDate,
+        showDate: showDate,
         showTime: showTime,
         accent: primaryBlue,
         cardColor: cColor,
@@ -43,6 +45,7 @@ class CustomDateTimePickerSheet extends StatefulWidget {
   final DateTime? initialDate;
   final DateTime? minDate;
   final DateTime? maxDate;
+  final bool showDate;
   final bool showTime;
   final Color accent;
   final Color cardColor;
@@ -54,6 +57,7 @@ class CustomDateTimePickerSheet extends StatefulWidget {
     this.initialDate,
     this.minDate,
     this.maxDate,
+    this.showDate = true,
     required this.showTime,
     required this.accent,
     required this.cardColor,
@@ -198,7 +202,9 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            widget.showTime ? "Select Schedule" : "Choose Date",
+                            !widget.showDate 
+                                ? "Select Time" 
+                                : (widget.showTime ? "Select Schedule" : "Choose Date"),
                             style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: widget.titleColor),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -207,12 +213,13 @@ class _CustomDateTimePickerSheetState extends State<CustomDateTimePickerSheet>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildCalendar(),
+                  if (widget.showDate) _buildCalendar(),
                   if (widget.showTime) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Divider(height: 1, color: dividerColor),
-                    ),
+                    if (widget.showDate)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Divider(height: 1, color: dividerColor),
+                      ),
                     _buildTimePicker(isDark),
                   ],
                   Padding(

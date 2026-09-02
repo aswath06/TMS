@@ -2138,6 +2138,35 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
     String? morningOtpEnd;
     String? eveningOtpStart;
     String? eveningOtpEnd;
+    
+    try {
+      if (_selectedRunIds.isNotEmpty) {
+        final routines = ref.read(dailyRoutinesStoreProvider).runs;
+        for (var r in routines) {
+          if (r['id']?.toString() == _selectedRunIds.first) {
+            morningOtpEnd = r['morning_otp_end_time'];
+            eveningOtpStart = r['evening_otp_start_time'];
+            eveningOtpEnd = r['evening_otp_end_time'];
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+    
+    final nowStr = DateFormat('HH:mm:ss').format(DateTime.now());
+    morningOtpEnd ??= nowStr;
+    eveningOtpStart ??= nowStr;
+    eveningOtpEnd ??= nowStr;
+
+    String formatTimeForDisplay(String? timeStr) {
+      if (timeStr == null || timeStr.isEmpty) return "Select Time";
+      try {
+        final parsed = DateFormat('HH:mm:ss').parse(timeStr);
+        return DateFormat('hh:mm a').format(parsed);
+      } catch (_) {
+        return timeStr;
+      }
+    }
 
     showModalBottomSheet(
       context: context,
@@ -2215,7 +2244,8 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                         final picked = await CustomDateTimePicker.show(
                           context,
                           initialDate: DateTime.now(),
-                          showTime: true,
+                          showDate: false,
+                        showTime: true,
                           accent: Colors.orange,
                         );
                         if (picked != null) {
@@ -2236,7 +2266,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                             const Icon(Icons.access_time_rounded, size: 18, color: Colors.orange),
                             const SizedBox(width: 10),
                             Text(
-                              morningOtpEnd ?? "Select Time",
+                              formatTimeForDisplay(morningOtpEnd),
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
                             ),
                           ],
@@ -2256,7 +2286,8 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                         final picked = await CustomDateTimePicker.show(
                           context,
                           initialDate: DateTime.now(),
-                          showTime: true,
+                          showDate: false,
+                        showTime: true,
                           accent: Colors.orange,
                         );
                         if (picked != null) {
@@ -2277,7 +2308,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                             const Icon(Icons.access_time_rounded, size: 18, color: Colors.orange),
                             const SizedBox(width: 10),
                             Text(
-                              eveningOtpStart ?? "Select Time",
+                              formatTimeForDisplay(eveningOtpStart),
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
                             ),
                           ],
@@ -2297,7 +2328,8 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                         final picked = await CustomDateTimePicker.show(
                           context,
                           initialDate: DateTime.now(),
-                          showTime: true,
+                          showDate: false,
+                        showTime: true,
                           accent: Colors.orange,
                         );
                         if (picked != null) {
@@ -2318,7 +2350,7 @@ class _DailyRoutinesListPageState extends ConsumerState<DailyRoutinesListPage> w
                             const Icon(Icons.access_time_rounded, size: 18, color: Colors.orange),
                             const SizedBox(width: 10),
                             Text(
-                              eveningOtpEnd ?? "Select Time",
+                              formatTimeForDisplay(eveningOtpEnd),
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: titleColor),
                             ),
                           ],

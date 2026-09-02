@@ -103,6 +103,7 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
               final name = loc['name']?.toString() ?? "";
               return searchQuery.isEmpty || name.toLowerCase().contains(searchQuery.toLowerCase());
             }).toList();
+            filteredLocations.sort((a, b) => (a['name']?.toString() ?? '').toLowerCase().compareTo((b['name']?.toString() ?? '').toLowerCase()));
 
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
@@ -633,7 +634,7 @@ class _NewBatteryVehicleRequestScreenState extends ConsumerState<NewBatteryVehic
                   TextFormField(
                     controller: _remarkController,
                     style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w500),
-                    decoration: premiumDeco('Reason for booking*', Icons.notes_rounded).copyWith(
+                    decoration: premiumDeco('Purpose for request*', Icons.notes_rounded).copyWith(
                       alignLabelWithHint: true,
                     ),
                     maxLines: 3,

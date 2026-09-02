@@ -201,9 +201,11 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
       return idStr;
     }
 
-    List<dynamic> combined = List.from(store.requests);
+    List<dynamic> combined = [];
+    final Set<String> evBookingIds = {};
     for (var b in evStore.passengerBookings) {
       final actualId = b['id'] ?? b['booking_id'];
+      evBookingIds.add(actualId.toString());
       String fromName =
           b['from_location'] ??
           getEvLocationName(b['from_location_id'], evStore.locations);
@@ -298,6 +300,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen>
         }(),
         'qr_data': b['id']?.toString() ?? '',
       });
+    }
+
+    for (var req in store.requests) {
+      final strId = req['id']?.toString() ?? "";
+      final isBattery = req['vehicle']?.toString().toLowerCase().contains('battery') == true;
+      if (strId.isNotEmpty && evBookingIds.contains(strId) && isBattery) {
+        continue;
+      }
+      combined.add(req);
     }
 
     final missions = combined.where((req) {
