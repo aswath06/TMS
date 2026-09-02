@@ -297,9 +297,11 @@ class _RunEndedGreetingScreenState extends State<RunEndedGreetingScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 12),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
@@ -347,7 +349,8 @@ class _RunEndedGreetingScreenState extends State<RunEndedGreetingScreen> {
                                             ),
                                           ),
                                         ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
