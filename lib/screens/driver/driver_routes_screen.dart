@@ -646,20 +646,12 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
     List<Map<String, dynamic>> list = [];
     final allMissions = List<Map<String, dynamic>>.from(store.missions);
 
-    // Filter by selected date and status (only completed/rejected)
+    // Filter by selected date
     list = allMissions.where((m) {
-      // Status filter
-      final backendStatus = (m['status'] ?? "UNKNOWN").toString().toUpperCase();
-      final isCompletedOrFinished = backendStatus == 'COMPLETED' || 
-                                    backendStatus == 'FINISHED' || 
-                                    backendStatus == 'REJECTED' || 
-                                    backendStatus == 'CANCELLED';
-      if (!isCompletedOrFinished) return false;
-
       // Date filter
       if (_selectedDateFilter == 'ALL') return true;
       final dateStr = (m['start_datetime'] ?? m['startDate'])?.toString() ?? "";
-      if (dateStr.isEmpty) return false;
+      if (dateStr.isEmpty) return true;
       try {
         final dt = DateTime.parse(dateStr).toLocal();
         final itemDate = DateFormat('yyyy-MM-dd').format(dt);
@@ -837,6 +829,17 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
     required bool isDark,
     required bool isTamil,
   }) {
+    final driverStore = ref.read(driverStoreProvider);
+    final String rawReqNo = (mission['request_number'] ??
+            mission['requestNumber'] ??
+            mission['reqNo'] ??
+            driverStore.getRequestNumber(mission['id']) ??
+            (mission['id'] != null ? "REQ-${mission['id']}" : ""))
+        .toString();
+    final String displayReqId = rawReqNo.startsWith('#')
+        ? rawReqNo.substring(1)
+        : rawReqNo;
+
     final String id = "MSN-${mission['id']}";
     final String routeName = mission['routeName'] ?? "Unknown Route";
     final String pickup = mission['startLocation'] ?? 'Unknown';
@@ -909,6 +912,7 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
             status: statusStr,
             statusColor: statusColor,
             requestId: mission['id'].toString(),
+            requestNumber: rawReqNo,
             rawStatus: rawStatusValue is int ? rawStatusValue : 0,
             creatorName: mission['createdBy']?['name'] ?? "Admin",
           ),
@@ -934,20 +938,71 @@ class _DriverRoutesScreenState extends ConsumerState<DriverRoutesScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, size: 14, color: primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      time,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: subColor,
-                        fontSize: 13,
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (displayReqId.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: primary.withValues(alpha: 0.2),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.tag_rounded, size: 12, color: primary),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  displayReqId,
+                                  style: TextStyle(
+                                    color: primary,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11.5,
+                                    letterSpacing: 0.3,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.schedule_rounded, size: 14, color: primary),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                time,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor,
+                                  fontSize: 13,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 _buildStatusBadgeWidget(backendStatus, displayText: statusStr),
               ],
             ),

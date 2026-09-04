@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tripzo/screens/setting/settings_page.dart';
 import 'package:tripzo/store/admin_store.dart';
+import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/setting/scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
@@ -206,7 +207,15 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     final String name = profileData?['name'] ?? "Admin User";
     final String username = profileData?['user_name'] ?? 'admin';
     final String roleStr = _getRoleName(profileData?['role']).toLowerCase();
-    final bool showScanner = true;
+    final String currentStoredRole = (UserStore.role ?? "").toLowerCase();
+    final bool showScanner = roleStr.contains('super admin') ||
+        roleStr.contains('transport admin') ||
+        roleStr.contains('transport coordinator') ||
+        roleStr.contains('coordinator') ||
+        currentStoredRole.contains('super admin') ||
+        currentStoredRole.contains('transport admin') ||
+        currentStoredRole.contains('transport coordinator') ||
+        currentStoredRole.contains('coordinator');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

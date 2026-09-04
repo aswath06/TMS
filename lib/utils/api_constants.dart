@@ -108,6 +108,12 @@ class ApiConstants {
   static String get getMasterSchedules => "$baseUrl/schedule-duty/master/schedules";
   static String getMasterScheduleById(int id) => "$baseUrl/schedule-duty/master/schedules/$id";
   static String get generateMasterSchedule => "$baseUrl/schedule-duty/master/generate";
+  static String startDirectMasterShift(dynamic shiftId) => "$baseUrl/schedule-duty/master/shift/$shiftId/start-direct";
+  static String endDirectMasterShift(dynamic shiftId) => "$baseUrl/schedule-duty/master/shift/$shiftId/end-direct";
+  static String startDirectDriverMasterShift(dynamic shiftId, dynamic driverId) => "$baseUrl/schedule-duty/master/shift/$shiftId/driver/$driverId/start-direct";
+  static String endDirectDriverMasterShift(dynamic shiftId, dynamic driverId) => "$baseUrl/schedule-duty/master/shift/$shiftId/driver/$driverId/end-direct";
+  static String transferMasterShift(dynamic shiftId) => "$baseUrl/schedule-duty/master/shift/$shiftId/transfer";
+  static String editMasterShiftOdometer(dynamic shiftId, dynamic vehicleId) => "$baseUrl/schedule-duty/master/shift/$shiftId/vehicle/$vehicleId/edit-odometer";
 
   // Trip actions
   static String updateTripTime(dynamic tripId) => "$baseUrl/request/trips/$tripId/update-time";

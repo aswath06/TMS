@@ -49,6 +49,7 @@ class MissionDetailsScreen extends ConsumerStatefulWidget {
       status,
       requestId,
       creatorName;
+  final String? requestNumber;
   final int rawStatus;
   final List<Map<String, String>> stops;
   final Color statusColor;
@@ -67,6 +68,7 @@ class MissionDetailsScreen extends ConsumerStatefulWidget {
     required this.status,
     required this.statusColor,
     required this.requestId,
+    this.requestNumber,
     required this.rawStatus,
     this.creatorName = "Faculty Member",
   });
@@ -245,6 +247,12 @@ class _MissionDetailsScreenState extends ConsumerState<MissionDetailsScreen>
         final data = json.decode(response.body);
         if (data['success'] == true) {
           final newData = data['data'];
+          final fetchedReqNo = newData['travel_info']?['request_number']?.toString();
+          if (fetchedReqNo != null && fetchedReqNo.isNotEmpty) {
+            try {
+              ref.read(driverStoreProvider).cacheRequestNumber(widget.requestId, fetchedReqNo);
+            } catch (_) {}
+          }
           // Optimize: Only trigger heavy map updates if data actually changed
           if (jsonEncode(_missionData) != jsonEncode(newData)) {
             setState(() {
@@ -3656,7 +3664,7 @@ Map<int, String> amountMap = {};
     final bool isDriver = _userRole?.toLowerCase() == 'driver';
     final travelInfo = _missionData?['travel_info'];
     final mTitle = travelInfo?['route_name'] ?? widget.missionTitle;
-    final reqNo = travelInfo?['request_number'] ?? "REQ-N/A";
+    final reqNo = travelInfo?['request_number'] ?? (widget.requestNumber != null && widget.requestNumber!.isNotEmpty ? widget.requestNumber! : (widget.requestId.isNotEmpty ? "REQ-${widget.requestId}" : "REQ-N/A"));
     final tType = travelInfo?['trip_type'] ?? widget.pathType;
     final String status = (_missionData?['status'] ?? _missionData?['route_status']?['route_request_status'] ?? travelInfo?['status'] ?? widget.status ?? "UNKNOWN").toString();
     

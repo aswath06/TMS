@@ -1137,6 +1137,7 @@ class DriverStore extends ChangeNotifier {
         final List<dynamic> missionsData = response['data'] ?? [];
         _missions = missionsData.map((e) => e as Map<String, dynamic>).toList();
         if (_searchQuery.isEmpty) _lastMissionsFetch = DateTime.now();
+        _resolveMissingRequestNumbers();
       } else {
         _missionsError = response?['message'] ?? "Failed to load missions.";
       }
@@ -1146,6 +1147,72 @@ class DriverStore extends ChangeNotifier {
       _isLoadingMissions = false;
       notifyListeners();
     }
+  }
+
+  final Map<int, String> _routeRequestNumbers = {};
+
+  String? getRequestNumber(dynamic id) {
+    if (id == null) return null;
+    final intId = int.tryParse(id.toString());
+    return intId != null ? _routeRequestNumbers[intId] : null;
+  }
+
+  void cacheRequestNumber(dynamic id, String reqNo) {
+    if (id == null || reqNo.isEmpty || reqNo == 'REQ-N/A') return;
+    final intId = int.tryParse(id.toString());
+    if (intId != null) {
+      _routeRequestNumbers[intId] = reqNo;
+      for (var m in _missions) {
+        if (m['id'] == intId &&
+            (m['request_number'] == null ||
+                m['request_number'].toString().isEmpty)) {
+          m['request_number'] = reqNo;
+        }
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> _resolveMissingRequestNumbers() async {
+    for (var m in _missions) {
+      final id = m['id'];
+      final existing = m['request_number'] ?? m['requestNumber'] ?? m['reqNo'];
+      if (existing != null && existing.toString().isNotEmpty) {
+        final intId = int.tryParse(id.toString());
+        if (intId != null) _routeRequestNumbers[intId] = existing.toString();
+      } else if (id != null) {
+        final intId = int.tryParse(id.toString());
+        if (intId != null && !_routeRequestNumbers.containsKey(intId)) {
+          _fetchRequestNumberForRoute(intId);
+        }
+      }
+    }
+  }
+
+  Future<void> _fetchRequestNumberForRoute(int routeId) async {
+    try {
+      final token = await UserStore.getToken();
+      final url = "${ApiConstants.getRouteById}$routeId";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final reqNo = data['data']?['travel_info']?['request_number'];
+          if (reqNo != null && reqNo.toString().isNotEmpty) {
+            _routeRequestNumbers[routeId] = reqNo.toString();
+            for (var m in _missions) {
+              if (m['id'] == routeId) {
+                m['request_number'] = reqNo.toString();
+              }
+            }
+            notifyListeners();
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<Map<String, dynamic>> startBusRun({

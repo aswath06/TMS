@@ -183,6 +183,11 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
   ) {
     final bool showTyping = isLoading && data == null;
     final String roleDisplayName = _getRoleDisplayName(data, isTamil);
+    final String currentStoredRole = (UserStore.role ?? "").toLowerCase();
+    final bool showScanner = currentStoredRole.contains('super admin') ||
+        currentStoredRole.contains('transport admin') ||
+        currentStoredRole.contains('transport coordinator') ||
+        currentStoredRole.contains('coordinator');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,14 +292,15 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
           subColor,
           isTamil,
         ),
-        const SizedBox(height: 32),
-
-        _buildSectionTitle(
-          isTamil ? "விரைவான செயல்கள்" : "Quick Actions",
-          titleColor,
-        ),
-        const SizedBox(height: 16),
-        _buildScannerTile(context, isDark, cardColor, titleColor, isTamil),
+        if (showScanner) ...[
+          const SizedBox(height: 32),
+          _buildSectionTitle(
+            isTamil ? "விரைவான செயல்கள்" : "Quick Actions",
+            titleColor,
+          ),
+          const SizedBox(height: 16),
+          _buildScannerTile(context, isDark, cardColor, titleColor, isTamil),
+        ],
         const SizedBox(height: 40),
       ],
     );

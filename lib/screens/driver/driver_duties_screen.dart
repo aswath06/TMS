@@ -45,7 +45,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       useDriverStore.fetchProfile();
-      useDriverStore.fetchMissions();
+      useDriverStore.fetchMissions(isRefresh: true);
       useDriverStore.fetchDailyBusRuns();
       useDriverStore.fetchRewardPoints();
       useDriverStore.fetchTodayKm();
@@ -69,6 +69,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     _taskPollTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
       if (mounted) {
         await ref.read(driverTaskStoreProvider).fetchAllTasks(isRefresh: true);
+        await useDriverStore.fetchMissions(isRefresh: true);
       }
     });
   }
@@ -193,37 +194,37 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                   return weightA.compareTo(weightB);
                 });
 
-                final now = DateTime.now();
                 final List<Map<String, dynamic>> todayMissions = store.missions
                     .where((m) {
-                      final dtStr = m['start_datetime'] ?? m['startDate'];
-                      if (dtStr == null) return false;
-                      try {
-                        final dt = DateTime.parse(dtStr).toLocal();
-                        final backendStatus = (m['status'] ?? "UNKNOWN")
-                            .toString()
-                            .toUpperCase();
-                        
-                        if (backendStatus == 'COMPLETED' || backendStatus == 'FINISHED' || backendStatus == 'REJECTED' || backendStatus == 'CANCELLED') {
-                          return false;
-                        }
-
-                        final isActive =
-                            backendStatus == 'STARTED' ||
-                            backendStatus == 'ON_TRIP' ||
-                            backendStatus == 'ONGOING' ||
-                            backendStatus == 'APPROVED' ||
-                            backendStatus == 'ASSIGNED';
-                            
-                        return (dt.year == now.year &&
-                                dt.month == now.month &&
-                                dt.day == now.day) ||
-                            isActive;
-                      } catch (_) {
+                      final backendStatus = (m['status'] ?? "UNKNOWN")
+                          .toString()
+                          .toUpperCase();
+                      
+                      // Do not show completed, cancelled, or rejected missions on active dashboard
+                      if (backendStatus == 'COMPLETED' ||
+                          backendStatus == 'FINISHED' ||
+                          backendStatus == 'REJECTED' ||
+                          backendStatus == 'CANCELLED') {
                         return false;
                       }
+
+                      // Show all assigned, planned, ready, approved, ongoing, or started routes for this driver
+                      return true;
                     })
                     .toList();
+
+                todayMissions.sort((a, b) {
+                  final statusA = (a['status'] ?? '').toString().toUpperCase();
+                  final statusB = (b['status'] ?? '').toString().toUpperCase();
+                  final isRunningA = statusA == 'STARTED' || statusA == 'ON_TRIP' || statusA == 'ONGOING';
+                  final isRunningB = statusB == 'STARTED' || statusB == 'ON_TRIP' || statusB == 'ONGOING';
+                  if (isRunningA && !isRunningB) return -1;
+                  if (!isRunningA && isRunningB) return 1;
+
+                  final aTime = DateTime.tryParse(a['start_datetime']?.toString() ?? a['startDate']?.toString() ?? '') ?? DateTime(2099);
+                  final bTime = DateTime.tryParse(b['start_datetime']?.toString() ?? b['startDate']?.toString() ?? '') ?? DateTime(2099);
+                  return aTime.compareTo(bTime);
+                });
 
                 final List<Map<String, dynamic>> dashboardSchedules = [];
                 // Prepend started schedules (except completed ones)
@@ -254,7 +255,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
                   onRefresh: () async {
                     await store.fetchProfile();
                     if (!mounted) return;
-                    await store.fetchMissions();
+                    await store.fetchMissions(isRefresh: true);
                     if (!mounted) return;
                     await store.fetchDailyBusRuns();
                     if (!mounted) return;
@@ -1279,6 +1280,17 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
     required bool isDark,
     required bool isTamil,
   }) {
+    final driverStore = ref.read(driverStoreProvider);
+    final String rawReqNo = (mission['request_number'] ??
+            mission['requestNumber'] ??
+            mission['reqNo'] ??
+            driverStore.getRequestNumber(mission['id']) ??
+            (mission['id'] != null ? "REQ-${mission['id']}" : ""))
+        .toString();
+    final String displayReqId = rawReqNo.startsWith('#')
+        ? rawReqNo.substring(1)
+        : rawReqNo;
+
     final String id = "MSN-${mission['id']}";
     final String routeName = mission['routeName'] ?? "Unknown Route";
     final String pickup = mission['startLocation'] ?? 'Unknown';
@@ -1349,6 +1361,7 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
             status: statusStr,
             statusColor: statusColor,
             requestId: mission['id'].toString(),
+            requestNumber: rawReqNo,
             rawStatus: rawStatusValue is int ? rawStatusValue : 0,
             creatorName: mission['createdBy']?['name'] ?? "Admin",
           ),
@@ -1374,20 +1387,71 @@ class _DriverDutiesScreenState extends ConsumerState<DriverDutiesScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, size: 14, color: primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      time,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: subColor,
-                        fontSize: 13,
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (displayReqId.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: primary.withValues(alpha: 0.2),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.tag_rounded, size: 12, color: primary),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  displayReqId,
+                                  style: TextStyle(
+                                    color: primary,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11.5,
+                                    letterSpacing: 0.3,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.schedule_rounded, size: 14, color: primary),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                time,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: subColor,
+                                  fontSize: 13,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,

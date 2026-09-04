@@ -363,13 +363,18 @@ class _ScheduleDetailsPageState extends State<ScheduleDetailsPage> {
       d['assignment_status'] == 'COMPLETED'
     );
 
-    final bool allEndOdoEntered = vehicles.isNotEmpty && vehicles.every((v) {
+    final bool anyStartOdoEntered = vehicles.isNotEmpty && vehicles.any((v) {
+      final odo = v['odometer'] as Map<String, dynamic>?;
+      return odo != null && odo['start_odometer'] != null && odo['start_odometer'].toString().isNotEmpty;
+    });
+
+    final bool anyEndOdoEntered = vehicles.isNotEmpty && vehicles.any((v) {
       final odo = v['odometer'] as Map<String, dynamic>?;
       return odo != null && odo['end_odometer'] != null && odo['end_odometer'].toString().isNotEmpty;
     });
 
-    final bool canStartDuty = hasAssignedVehicle && !hasCurrentDriverStarted && !hasCurrentDriverCompleted && dutyStatus != 'COMPLETED';
-    final bool canEndDuty = hasCurrentDriverStarted && allEndOdoEntered && dutyStatus != 'COMPLETED';
+    final bool canStartDuty = hasAssignedVehicle && anyStartOdoEntered && !hasCurrentDriverStarted && !hasCurrentDriverCompleted && dutyStatus != 'COMPLETED';
+    final bool canEndDuty = hasCurrentDriverStarted && anyEndOdoEntered && dutyStatus != 'COMPLETED';
     final bool showActionBtn = canStartDuty || canEndDuty;
     final bool isEndAction = canEndDuty;
 

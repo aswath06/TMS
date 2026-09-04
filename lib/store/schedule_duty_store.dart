@@ -66,4 +66,154 @@ class ScheduleDutyStore extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> startDirectMasterShift(int shiftId, {List<Map<String, dynamic>>? odometers}) async {
+    try {
+      bool anySuccess = false;
+      dynamic lastData;
+
+      if (odometers != null && odometers.isNotEmpty) {
+        // Iterate and hit the new driver-specific endpoint for each vehicle/driver pair
+        for (var odo in odometers) {
+          final vId = odo['vehicle_id'];
+          final startOdo = odo['start_odometer'];
+          final driverId = odo['driver_id'] ?? 1; // Fallback driver ID if missing
+          
+          if (vId != null && startOdo != null) {
+            try {
+              final dUrl = ApiConstants.startDirectDriverMasterShift(shiftId, driverId);
+              final dBody = {
+                "vehicle_id": vId,
+                "vehicle_number": odo['vehicle_number'],
+                "start_odometer": startOdo,
+                "start_time": DateTime.now().toUtc().toIso8601String(),
+              };
+              lastData = await ApiService.post(dUrl, body: dBody);
+              anySuccess = true;
+            } catch (e) {
+              debugPrint("Failed driver direct start for vehicle $vId: $e");
+            }
+          }
+        }
+      }
+
+      if (!anySuccess) {
+        final url = ApiConstants.startDirectMasterShift(shiftId);
+        lastData = await ApiService.post(url, body: {});
+      }
+
+      if (lastData != null && (lastData['success'] == true || anySuccess)) {
+        await fetchMasterSchedules(isRefresh: true);
+      } else {
+        throw Exception(lastData?['message'] ?? "Failed to start shift directly.");
+      }
+    } catch (e) {
+      debugPrint("ScheduleDutyStore Error (startDirectMasterShift): $e");
+      rethrow;
+    }
+  }
+
+  Future<void> endDirectMasterShift(int shiftId, {List<Map<String, dynamic>>? odometers}) async {
+    try {
+      bool anySuccess = false;
+      dynamic lastData;
+
+      if (odometers != null && odometers.isNotEmpty) {
+        // Iterate and hit the new driver-specific endpoint for each vehicle/driver pair
+        for (var odo in odometers) {
+          final vId = odo['vehicle_id'];
+          final endOdo = odo['end_odometer'];
+          final driverId = odo['driver_id'] ?? 1; // Fallback driver ID if missing
+          
+          if (vId != null && endOdo != null) {
+            try {
+              final dUrl = ApiConstants.endDirectDriverMasterShift(shiftId, driverId);
+              final dBody = {
+                "vehicle_id": vId,
+                "vehicle_number": odo['vehicle_number'],
+                "end_odometer": endOdo,
+                "end_time": DateTime.now().toUtc().toIso8601String(),
+              };
+              lastData = await ApiService.post(dUrl, body: dBody);
+              anySuccess = true;
+            } catch (e) {
+              debugPrint("Failed driver direct end for vehicle $vId: $e");
+            }
+          }
+        }
+      }
+
+      if (!anySuccess) {
+        final url = ApiConstants.endDirectMasterShift(shiftId);
+        lastData = await ApiService.post(url, body: {});
+      }
+
+      if (lastData != null && (lastData['success'] == true || anySuccess)) {
+        await fetchMasterSchedules(isRefresh: true);
+      } else {
+        throw Exception(lastData?['message'] ?? "Failed to end shift directly.");
+      }
+    } catch (e) {
+      debugPrint("ScheduleDutyStore Error (endDirectMasterShift): $e");
+      rethrow;
+    }
+  }
+
+  Future<void> editMasterShiftOdometer(
+    int shiftId, 
+    int vehicleId, {
+    required double startOdometer,
+    required double endOdometer,
+    required String startTime,
+    required String endTime,
+    required int mistakeOnRoleId,
+    required String remark,
+  }) async {
+    try {
+      final url = ApiConstants.editMasterShiftOdometer(shiftId, vehicleId);
+      final body = {
+        "start_odometer": startOdometer,
+        "end_odometer": endOdometer,
+        "start_time": startTime,
+        "end_time": endTime,
+        "mistake_on_role_id": mistakeOnRoleId,
+        "remark": remark,
+      };
+      
+      final response = await ApiService.put(url, body: body);
+      if (response == null) throw 'Failed to edit odometer';
+    } catch (e) {
+      debugPrint('Error editing odometer: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> transferDriverMasterShift(int shiftId, {
+    required int fromDriverId,
+    required int toDriverId,
+    required int vehicleId,
+    required double endOdometer,
+    required String reason,
+  }) async {
+    try {
+      final url = ApiConstants.transferMasterShift(shiftId);
+      final body = {
+        "from_driver_id": fromDriverId,
+        "to_driver_id": toDriverId,
+        "vehicle_id": vehicleId,
+        "end_odometer_for_from_driver": endOdometer,
+        "reason": reason,
+      };
+      
+      final data = await ApiService.post(url, body: body);
+      if (data != null && data['success'] == true) {
+        await fetchMasterSchedules(isRefresh: true);
+      } else {
+        throw Exception(data?['message'] ?? "Failed to transfer shift.");
+      }
+    } catch (e) {
+      debugPrint("ScheduleDutyStore Error (transferDriverMasterShift): $e");
+      rethrow;
+    }
+  }
 }

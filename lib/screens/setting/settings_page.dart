@@ -18,11 +18,9 @@ import 'package:tripzo/services/app_version_service.dart';
 import 'package:tripzo/store/providers.dart';
 import 'scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
-import 'package:tripzo/utils/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -115,6 +113,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _userRole = role ?? "";
       });
     }
+  }
+
+  bool get _canShowScanner {
+    final role = (_userRole.isNotEmpty ? _userRole : (UserStore.role ?? "")).toLowerCase().trim();
+    return role == "super admin" ||
+        role == "transport admin" ||
+        role == "transport coordinator" ||
+        role == "coordinator";
   }
 
   @override
@@ -312,36 +318,37 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       const SizedBox(height: 12),
                     ],
 
-                    // SCANNER TILE
-                    _settingsTile(
-                      Icons.qr_code_scanner_rounded,
-                      isTamil ? "ஸ்கேன் செய்க" : "Scan Code",
-                      isTamil
-                          ? "கேமராவை வைத்து ஸ்கேன் செய்யவும்"
-                          : "Scan using camera",
-                      cardColor,
-                      titleColor,
-                      subTitleColor,
-                      primaryBlue,
-                      onTap: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ScannerPage(),
-                          ),
-                        );
-                        if (result != null) {
-                          showTopToast(
+                    // SCANNER TILE (TRANSPORT ADMIN, TRANSPORT COORDINATOR, SUPER ADMIN ONLY)
+                    if (_canShowScanner) ...[
+                      _settingsTile(
+                        Icons.qr_code_scanner_rounded,
+                        isTamil ? "ஸ்கேன் செய்க" : "Scan Code",
+                        isTamil
+                            ? "கேமராவை வைத்து ஸ்கேன் செய்யவும்"
+                            : "Scan using camera",
+                        cardColor,
+                        titleColor,
+                        subTitleColor,
+                        primaryBlue,
+                        onTap: () async {
+                          final result = await Navigator.push(
                             context,
-                            isTamil
-                                ? "ஸ்கேன் செய்யப்பட்டது: $result"
-                                : "Scanned: $result",
+                            MaterialPageRoute(
+                              builder: (_) => const ScannerPage(),
+                            ),
                           );
-                        }
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
+                          if (result != null) {
+                            showTopToast(
+                              context,
+                              isTamil
+                                  ? "ஸ்கேன் செய்யப்பட்டது: $result"
+                                  : "Scanned: $result",
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // SUPER ADMIN & TRANSPORT ADMIN EXCLUSIVE TILES
                     if (_userRole.toLowerCase() == "super admin" || _userRole.toLowerCase() == "transport admin") ...[
@@ -595,38 +602,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           "Send Request",
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
                         ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Divider(height: 1, thickness: 0.8),
-              const SizedBox(height: 16),
-              Center(
-                child: GestureDetector(
-                  onTap: () async {
-                    final Uri url = Uri.parse("${ApiConstants.baseUrl}/support");
-                    try {
-                      await launchUrl(url);
-                    } catch (e) {
-                      debugPrint("Could not launch support URL: $e");
-                    }
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.help_outline_rounded, size: 14, color: primaryBlue),
-                      const SizedBox(width: 6),
-                      Text(
-                        "Visit Online Support Portal",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: primaryBlue,
-                          decoration: TextDecoration.underline,
-                          decorationColor: primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],

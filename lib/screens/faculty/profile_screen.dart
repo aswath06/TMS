@@ -4,6 +4,7 @@ import 'package:tripzo/components/profile/profile_hero.dart';
 import 'package:tripzo/components/profile/typing_text.dart';
 import 'package:tripzo/screens/setting/settings_page.dart';
 import 'package:tripzo/store/faculty_store.dart';
+import 'package:tripzo/store/user_store.dart';
 import 'package:tripzo/screens/setting/scanner_page.dart';
 import 'package:tripzo/utils/toast_utils.dart';
 
@@ -114,6 +115,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ((data['role']?.toString().toLowerCase().contains('student') ?? false) || 
          (data['role'] is Map && data['role']['name']?.toString().toLowerCase().contains('student') == true));
 
+    final String roleStr = _getRoleName(data?['role']).toLowerCase();
+    final String currentStoredRole = (UserStore.role ?? "").toLowerCase();
+    final bool showScanner = roleStr.contains('super admin') ||
+        roleStr.contains('transport admin') ||
+        roleStr.contains('transport coordinator') ||
+        roleStr.contains('coordinator') ||
+        currentStoredRole.contains('super admin') ||
+        currentStoredRole.contains('transport admin') ||
+        currentStoredRole.contains('transport coordinator') ||
+        currentStoredRole.contains('coordinator');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -131,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildSectionTitle(isStudent ? "Student Details" : "Faculty Details", titleColor),
         const SizedBox(height: 16),
         _buildMenuGrid(data, isLoading, cardColor, titleColor, subColor),
-        if (!isStudent) ...[
+        if (showScanner) ...[
           const SizedBox(height: 32),
           _buildSectionTitle("Quick Actions", titleColor),
           const SizedBox(height: 16),
