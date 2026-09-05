@@ -44,7 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     serverClientId:
         '1044594848603-3l3hi7sf390vgru417runabvpuimfpn2.apps.googleusercontent.com',
     scopes: <String>['email', 'profile', 'openid'],
-    hostedDomain: 'bitsathy.ac.in',
+    hostedDomain: '',
   );
 
   @override
@@ -242,6 +242,15 @@ curl -X POST "$url"
 
       if (googleUser == null) {
         setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      if (!googleUser.email.endsWith('@bitsathy.ac.in') && !googleUser.email.endsWith('@nprcolleges.org')) {
+        await _googleSignIn.signOut();
+        setState(() => _isGoogleLoading = false);
+        if (mounted) {
+          showTopToast(context, "Please use a valid college email (@bitsathy.ac.in or @nprcolleges.org).", isError: true);
+        }
         return;
       }
 
